@@ -12,7 +12,9 @@ import {
     REJECT_PRODUCT_REQUEST, REJECT_PRODUCT_SUCCESS, REJECT_PRODUCT_FAIL,
     TOGGLE_LIKE_PRODUCT_REQUEST, TOGGLE_LIKE_PRODUCT_SUCCESS, TOGGLE_LIKE_PRODUCT_FAIL,
     PLACE_BID_REQUEST, PLACE_BID_SUCCESS, PLACE_BID_FAIL,
-    CLEAR_PRODUCT_ERROR
+    CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
+    REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL,
+    CONFIRM_RECEIPT_REQUEST, CONFIRM_RECEIPT_SUCCESS, CONFIRM_RECEIPT_FAIL
 } from '../actionTypes/productActionType'; // Ensure path is correct
 import { toast } from 'react-toastify';
 
@@ -151,7 +153,7 @@ export const rejectProduct = (productId, reason) => async (dispatch) => {
     if (!config) return dispatch({ type: REJECT_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
 
     try {
-         // --- [!] CORRECTED PATH --- (Matches router/product.js admin route)
+        // --- [!] CORRECTED PATH --- (Matches router/product.js admin route)
         await axios.put(`/product/reject/${productId}`, { reason }, config);
         // --------------------------
         dispatch({ type: REJECT_PRODUCT_SUCCESS, payload: { productId } });
@@ -164,33 +166,40 @@ export const rejectProduct = (productId, reason) => async (dispatch) => {
 };
 
 // --- Toggle Like Product ---
-export const toggleLikeProduct = (productId) => async (dispatch, getState) => {
+export const toggleLikeProduct = (productId) => async (dispatch, getState) => { // <-- إضافة getState
+    // --- *** الحصول على userId من الحالة *** ---
+    const userId = getState().userReducer?.user?._id;
+    if (!userId) {
+        console.error("Toggle Like Error: Cannot get userId from state.");
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, error: "User ID not found." } });
+        return Promise.reject(new Error("User ID not found."));
+    }
+    // --- *** نهاية الحصول على userId *** ---
+
     dispatch({ type: TOGGLE_LIKE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        // Return a rejected promise for the .catch() in the component
-        return Promise.reject(dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } }));
+        const errorPayload = { productId, error: "Not authorized." };
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: errorPayload });
+        return Promise.reject(new Error(errorPayload.error));
     }
 
     try {
-        // --- [!] CORRECTED PATH --- (Matches router/product.js auth route)
         const { data } = await axios.put(`/product/${productId}/like`, {}, config);
-        // --------------------------
         dispatch({
             type: TOGGLE_LIKE_PRODUCT_SUCCESS,
             payload: {
                 productId: productId,
                 likesCount: data.likesCount,
-                userLiked: data.userLiked
+                userLiked: data.userLiked,
+                userId: userId // <-- !! إضافة userId هنا !!
             }
         });
-        // Return a resolved promise for potential .then() in component (optional)
         return Promise.resolve();
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to update like status.';
         dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, error: message } });
-        // Return a rejected promise for the .catch() in the component
-        return Promise.reject(error); // Re-throw or return rejected promise
+        return Promise.reject(error);
     }
 };
 
@@ -224,6 +233,69 @@ export const placeBid = (productId, amount) => async (dispatch, getState) => {
         return Promise.reject(new Error(message));
     }
 };
+
+// --- Accept Bid ---
+export const acceptBid = (productId, bidUserId, bidAmount) => async (dispatch) => {
+    dispatch({ type: ACCEPT_BID_REQUEST, payload: { productId, bidUserId } });
+    const config = getTokenConfig();
+    if (!config) {
+        const errorPayload = { productId, bidUserId, error: "Not authorized." };
+        dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
+        toast.error("Authorization required.");
+        return Promise.reject(errorPayload);
+    }
+
+    try {
+        const { data } = await axios.put(`/product/${productId}/accept-bid`, { bidUserId, bidAmount }, config);
+        dispatch({
+            type: ACCEPT_BID_SUCCESS,
+            payload: { product: data.product, acceptedBidUserId: bidUserId }
+        });
+        toast.success(data.msg || "Bid accepted successfully!");
+        return Promise.resolve(data.product);
+    } catch (error) {
+        console.error("AXIOS Error in acceptBid Action:", error.response || error); // Log الخطأ الفعلي
+        const message = error.response?.data?.msg || error.message || 'Failed to accept bid.';
+        const errorPayload = { productId, bidUserId, error: message };
+        dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
+        toast.error(`Failed to accept bid: ${message}`); // عرض الرسالة الصحيحة
+        return Promise.reject(errorPayload); // إرجاع رفض بالرسالة الصحيحة
+    }
+};
+
+// --- Reject Bid ---
+export const rejectBid = (productId, bidUserId, reason) => async (dispatch) => {
+    dispatch({ type: REJECT_BID_REQUEST, payload: { productId, bidUserId } });
+    const config = getTokenConfig();
+    if (!config) {
+        const errorPayload = { productId, bidUserId, error: "Not authorized." };
+        dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
+        toast.error("Authorization required.");
+        return Promise.reject(errorPayload);
+    }
+
+    try {
+        // --- [!] تفعيل وتأكيد استدعاء API ---
+        // تأكد أن هذا المسار والـ controller موجودان ويعملان في الواجهة الخلفية
+        await axios.put(`/product/${productId}/reject-bid`, { bidUserId, reason }, config);
+        // -----------------------------------
+
+        dispatch({
+            type: REJECT_BID_SUCCESS,
+            payload: { productId, rejectedBidUserId: bidUserId }
+        });
+        toast.info("Bid rejected. Bidder notified."); // تعديل الرسالة
+        return Promise.resolve();
+
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to reject bid.';
+        const errorPayload = { productId, bidUserId, error: message };
+        dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
+        toast.error(`Failed to reject bid: ${message}`);
+        return Promise.reject(errorPayload);
+    }
+};
+
 
 // --- Clear Product Specific Error ---
 export const clearProductError = (productId) => ({

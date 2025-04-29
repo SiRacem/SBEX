@@ -17,6 +17,8 @@ const {
     placeBidOnProduct,
     getProductBids,
     markProductAsSold,
+    acceptBid,
+    rejectBid,
 } = require('../controllers/product.controller');
 
 const router = express.Router();
@@ -34,6 +36,11 @@ router.delete('/delete_products/:id', verifyAuth, deleteProducts); // حذف م�
 router.get('/get_product_counts/:userId', verifyAuth, getProductCountsByUser); // إحصائيات منتجات مستخدم
 router.put('/:productId/like', verifyAuth, toggleLikeProduct); // تبديل الإعجاب بمنتج
 router.post('/:productId/bids', verifyAuth, placeBidOnProduct); // وضع مزايدة على منتج
+
+// --- [!] إضافة مسار قبول المزايدة (يتطلب تسجيل دخول البائع) ---
+// يستخدم PUT لأنه يعدل حالة المنتج والمستخدمين
+router.put('/:productId/accept-bid', verifyAuth, acceptBid);
+router.put('/:productId/reject-bid', verifyAuth, rejectBid);
 
 // --- [!] إضافة مسار تحديد المنتج كمباع (يحتاج تسجيل دخول البائع) ---
 router.put('/:productId/sell', verifyAuth, markProductAsSold);

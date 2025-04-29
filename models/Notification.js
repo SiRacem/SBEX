@@ -19,21 +19,22 @@ const NotificationSchema = new Schema({
             'FUNDS_SENT',
             'FUNDS_RECEIVED',
             // --- [!] إضافة نوع جديد للمزايدة ---
-            'NEW_BID' // إشعار للبائع عند وجود مزايدة جديدة
+            'NEW_BID', // إشعار للبائع عند وجود مزايدة جديدة
             // ----------------------------------
+            'BID_REJECTED',         // إشعار للمشتري برفض مزايدته
+            'BID_ACCEPTED_SELLER',
+            'BID_ACCEPTED_BUYER',
+            // --- [!] إضافة النوع الجديد هنا ---
+            'BID_REJECTED_BY_YOU', // إشعار للبائع بأنه رفض مزايدة
+            'BID_UPDATED'          // تم تحديث مزايدة (للبائع)
         ],
         required: true
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
     relatedEntity: {
-        // في حالة NEW_BID:
-        // id: معرف المنتج الذي تمت المزايدة عليه
-        // modelName: 'Product'
-        // يمكن إضافة حقل آخر هنا لتمرير معرف المزايد إذا لزم الأمر لعرضه في الإشعار
         id: { type: Schema.Types.ObjectId },
         modelName: { type: String }
-        // bidder: { type: Schema.Types.ObjectId, ref: 'User' } // مثال إضافي (اختياري)
     },
     isRead: { type: Boolean, default: false, index: true },
     createdAt: { type: Date, default: Date.now }

@@ -258,19 +258,6 @@ function App() {
   // دالة لتمرير خاصية البحث للمكونات التي تحتاجها
   const renderComponentWithSearch = (Component) => <Component search={search} />;
 
-  // --- دالة زر اختبار الصوت ---
-  const playTestSound = () => {
-    try {
-      console.log("Test button clicked - Attempting sound play");
-      const testAudio = new Audio('/notification.wav'); // استخدم نفس المسار
-      testAudio.play()
-        .then(() => console.log("Test sound played successfully via button."))
-        .catch(error => console.error("Test sound play failed via button:", error));
-    } catch (err) {
-      console.error("Failed to load test sound via button:", err);
-    }
-  };
-
   // --- JSX: بنية التطبيق ---
   return (
     // الحاوية الرئيسية للتطبيق، قد يتم تغيير الـ class بناءً على حالة المصادقة لتطبيق أنماط مختلفة
@@ -321,13 +308,14 @@ function App() {
 
           {/* مسارات البائع (تتطلب دور البائع) */}
           <Route path="/dashboard/vendor/products" element={<VendorRoute>{renderComponentWithSearch(ProductListVendor)}</VendorRoute>} />
-          <Route path="/dashboard/vendor/orders" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
+          <Route path="/dashboard/orders" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
 
           {/* مسار صفحة ملف تعريف مستخدم آخر (يمكن الوصول إليه من الجميع ربما) */}
           <Route path="/profile/:userId" element={<UserProfilePage />} />
 
           {/* مسار الصفحة غير موجودة (404) */}
           <Route path="*" element={<NotFound />} />
+
         </Routes>
       </main>
     </div>

@@ -1,5 +1,5 @@
 // src/components/commun/OfflineProdCard.jsx
-// *** نسخة كاملة ومصححة للتحديث الفوري للإعجاب - بدون اختصارات ***
+// *** نسخة كاملة نهائية بدون أي اختصارات ***
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
@@ -23,8 +23,6 @@ import {
   FaHeart,
   FaRegHeart,
   FaGavel,
-  FaCheck,
-  FaCopy,
   FaInfoCircle,
   FaExclamationTriangle,
   FaWallet,
@@ -68,7 +66,7 @@ const OfflineProdCard = ({ el: product }) => {
   );
   const isLoadingOther = useSelector(
     (state) => state.productReducer?.productLoading?.[product?._id] ?? false
-  );
+  ); // لتحميل المزايدة
   const error = useSelector(
     (state) => state.productReducer?.productErrors?.[product?._id] ?? null
   );
@@ -79,9 +77,9 @@ const OfflineProdCard = ({ el: product }) => {
   const [showBidModal, setShowBidModal] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
   const [bidAmountError, setBidAmountError] = useState(null);
+  const [isEditingBid, setIsEditingBid] = useState(false);
 
-  // --- حالة الإعجاب والعدد المحلية (محسوبة + useEffect للمزامنة) ---
-  // استخدام useMemo لتهيئة الحالة الأولية بشكل صحيح
+  // --- حالة الإعجاب والعدد المحلية ---
   const initialLikedState = useMemo(
     () =>
       product?.likes?.some((id) => String(id) === loggedInUser?._id) ?? false,
@@ -91,7 +89,6 @@ const OfflineProdCard = ({ el: product }) => {
     () => product?.likes?.length ?? 0,
     [product?.likes]
   );
-
   const [isLiked, setIsLiked] = useState(initialLikedState);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
 
@@ -108,20 +105,23 @@ const OfflineProdCard = ({ el: product }) => {
       amount: 0,
     }) || null;
 
+  const currentUserBid = useMemo(() => {
+    if (!loggedInUser || !product?.bids) return null;
+    return product.bids.find(
+      (bid) => String(bid.user?._id || bid.user) === loggedInUser._id
+    );
+  }, [product?.bids, loggedInUser?._id]);
+
   // --- Effects ---
-  // [!] useEffect للمزامنة مع Redux (يعمل عند تغير المصدر الأساسي)
   useEffect(() => {
-    // حساب القيم من الـ props/redux state
     const likedFromRedux =
       product?.likes?.some((id) => String(id) === loggedInUser?._id) ?? false;
     const countFromRedux = product?.likes?.length ?? 0;
-    // تحديث الحالة المحلية فقط إذا اختلفت القيم بالفعل
     setIsLiked(likedFromRedux);
     setLikeCount(countFromRedux);
     // لا تعتمد على isLiked أو likeCount المحليين هنا
   }, [product?.likes, loggedInUser?._id]); // يعتمد فقط على البيانات من Redux/props
 
-  // معالج الأخطاء العامة للمنتج
   useEffect(() => {
     if (error && !isLoadingOther && !isLiking) {
       toast.error(`${error}`);
@@ -169,13 +169,18 @@ const OfflineProdCard = ({ el: product }) => {
       );
       return;
     }
-    setBidAmount("");
+    if (currentUserBid) {
+      setIsEditingBid(true);
+      setBidAmount(currentUserBid.amount.toString());
+    } else {
+      setIsEditingBid(false);
+      setBidAmount("");
+    }
     setBidAmountError(null);
     setShowBidModal(true);
   };
   const handleCloseBidModal = () => setShowBidModal(false);
 
-  // --- [!] معالج الإعجاب بالتحديث المتفائل ---
   const handleLikeToggle = (e) => {
     e.stopPropagation();
     if (!isAuth || !loggedInUser) {
@@ -183,32 +188,22 @@ const OfflineProdCard = ({ el: product }) => {
       navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
-    if (isLiking) return; // منع النقر المتعدد
-
-    // حفظ الحالة السابقة للإعادة عند الفشل
+    if (isLiking) return;
     const previousIsLiked = isLiked;
     const previousLikeCount = likeCount;
-
-    // 1. التحديث البصري الفوري (Optimistic)
     const newState = !previousIsLiked;
     const newCount = newState
       ? previousLikeCount + 1
       : Math.max(0, previousLikeCount - 1);
     setIsLiked(newState);
     setLikeCount(newCount);
-
-    // 2. إرسال الطلب
-    // تأكد من أن الـ action يمرر userId (تم التعديل في الرد السابق)
-    dispatch(toggleLikeProduct(product._id)) // افترض أن action يحصل على userId من getState
-      .catch((error) => {
-        // 3. إعادة الحالة عند الفشل
-        console.error("Failed to toggle like, reverting UI.", error);
-        toast.error("Could not update like status.");
-        setIsLiked(previousIsLiked);
-        setLikeCount(previousLikeCount);
-      });
+    dispatch(toggleLikeProduct(product._id)).catch((error) => {
+      console.error("Like toggle failed, reverting.", error);
+      toast.error("Failed to update like.");
+      setIsLiked(previousIsLiked);
+      setLikeCount(previousLikeCount);
+    });
   };
-  // ----------------------------------------------
 
   const handleBidAmountChange = (e) => {
     const value = e.target.value;
@@ -243,8 +238,6 @@ const OfflineProdCard = ({ el: product }) => {
         MINIMUM_BALANCE_TO_PARTICIPATE_BID
       )} required.`;
     }
-    // لا يوجد تحقق من أعلى مزايدة هنا
-
     if (currentError) {
       setBidAmountError(currentError);
       return;
@@ -252,14 +245,14 @@ const OfflineProdCard = ({ el: product }) => {
 
     try {
       await dispatch(placeBid(product._id, amountNum));
-      toast.success("Bid placed successfully!");
+      toast.success(
+        isEditingBid ? "Bid updated successfully!" : "Bid placed successfully!"
+      );
       handleCloseBidModal();
       setTimeout(() => dispatch(getProfile()), 1000);
     } catch (caughtError) {
-      setBidAmountError(
-        caughtError.message || "An unknown error occurred placing bid."
-      );
-      console.error("Failed to place bid:", caughtError);
+      setBidAmountError(caughtError.message || "An unknown error occurred.");
+      console.error("Failed to place/update bid:", caughtError);
     }
   };
 
@@ -285,12 +278,12 @@ const OfflineProdCard = ({ el: product }) => {
 
   const handleAddToCart = useCallback(() => {
     if (!isAuth) {
-      toast.info("Please login to add items to your cart.");
+      toast.info("Please login to add items.");
       navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
     if (isOwner) {
-      toast.warn("You cannot add your own product to the cart.");
+      toast.warn("Cannot add your own product.");
       return;
     }
     if (!isOutOfStock && product?._id && !cartLoading) {
@@ -404,7 +397,6 @@ const OfflineProdCard = ({ el: product }) => {
           </div>
           <div className="mt-auto d-flex justify-content-between align-items-center actions-row">
             <div className="d-flex align-items-center">
-              {/* Like Button */}
               <OverlayTrigger
                 placement="top"
                 overlay={<Tooltip>{isLiked ? "Unlike" : "Like"}</Tooltip>}
@@ -427,10 +419,8 @@ const OfflineProdCard = ({ el: product }) => {
                     <FaRegHeart />
                   )}
                   <span className="action-count">{likeCount}</span>
-                  {/* <-- استخدام العداد المحلي */}
                 </Button>
               </OverlayTrigger>
-              {/* Bidders Count */}
               <OverlayTrigger
                 placement="top"
                 overlay={<Tooltip>Bidders</Tooltip>}
@@ -444,7 +434,6 @@ const OfflineProdCard = ({ el: product }) => {
               </OverlayTrigger>
             </div>
             <div className="d-flex">
-              {/* Bid Button */}
               <OverlayTrigger
                 placement="top"
                 overlay={
@@ -453,13 +442,17 @@ const OfflineProdCard = ({ el: product }) => {
                       ? "Your item"
                       : isOutOfStock
                       ? "Out of stock"
+                      : currentUserBid
+                      ? "Update Your Bid"
                       : "Place a Bid"}
                   </Tooltip>
                 }
               >
                 <span className="d-inline-block me-2">
                   <Button
-                    variant="success"
+                    variant={
+                      currentUserBid ? "outline-warning" : "outline-success"
+                    }
                     size="sm"
                     onClick={handleShowBidModal}
                     disabled={isLoadingOther || isOwner || isOutOfStock}
@@ -468,11 +461,10 @@ const OfflineProdCard = ({ el: product }) => {
                       isOwner || isOutOfStock ? { pointerEvents: "none" } : {}
                     }
                   >
-                    <FaGavel /> Bid
+                    <FaGavel /> {currentUserBid ? "Update Bid" : "Bid"}
                   </Button>
                 </span>
               </OverlayTrigger>
-              {/* Cart Button */}
               <OverlayTrigger
                 placement="top"
                 overlay={
@@ -587,7 +579,7 @@ const OfflineProdCard = ({ el: product }) => {
         )}
       </Card>
 
-      {/* Modals */}
+      {/* Image Lightbox Modal */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}
@@ -632,6 +624,7 @@ const OfflineProdCard = ({ el: product }) => {
         </Modal.Body>
       </Modal>
 
+      {/* Bid Modal */}
       <Modal
         show={showBidModal}
         onHide={handleCloseBidModal}
@@ -639,11 +632,10 @@ const OfflineProdCard = ({ el: product }) => {
         backdrop="static"
       >
         <Modal.Header closeButton>
-          {" "}
           <Modal.Title>
             <FaGavel className="me-2" />
-            Place Your Bid
-          </Modal.Title>{" "}
+            {isEditingBid ? "Update Your Bid" : "Place Your Bid"}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Alert
@@ -672,9 +664,22 @@ const OfflineProdCard = ({ el: product }) => {
             }}
           >
             <Form.Group controlId="bidAmountInput">
+              {isEditingBid && currentUserBid && (
+                <div className="mb-2 current-bid-info">
+                  <small className="text-muted">Your current bid: </small>
+                  <Badge bg="secondary">
+                    {formatCurrency(
+                      currentUserBid.amount,
+                      currentUserBid.currency
+                    )}
+                  </Badge>
+                </div>
+              )}
               <FloatingLabel
                 controlId="bidAmountFloat"
-                label={`Your Bid Amount (${product.currency})`}
+                label={`${isEditingBid ? "New" : "Your"} Bid Amount (${
+                  product.currency
+                })`}
                 className="mb-1"
               >
                 <InputGroup>
@@ -743,8 +748,10 @@ const OfflineProdCard = ({ el: product }) => {
           >
             {isLoadingOther ? (
               <>
-                <Spinner size="sm" animation="border" /> Placing...
+                <Spinner size="sm" animation="border" /> Processing...
               </>
+            ) : isEditingBid ? (
+              "Update Bid"
             ) : (
               "Confirm Bid"
             )}

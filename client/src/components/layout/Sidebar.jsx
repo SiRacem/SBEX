@@ -45,7 +45,6 @@ const Sidebar = ({ onSearchChange }) => {
 
   return (
     <div className="unified-sidebar">
-      {" "}
       {/* تم تبسيط الكلاسات هنا */}
       {/* Header section for logo and search (on larger screens) */}
       <div className="sidebar-header">
@@ -72,31 +71,27 @@ const Sidebar = ({ onSearchChange }) => {
       <nav className="sidebar-nav">
         {/* --- روابط مشتركة --- */}
         <NavLink className="sidebar-link" to="/dashboard" end title="Dashboard">
-          {" "}
-          <FaHome className="icon" /> <span className="link-text">Main</span>{" "}
+          <FaHome className="icon" /> <span className="link-text">Main</span>
         </NavLink>
         <NavLink className="sidebar-link" to="/dashboard/wallet" title="Wallet">
-          {" "}
-          <FaWallet className="icon" />{" "}
-          <span className="link-text">Wallet</span>{" "}
+          <FaWallet className="icon" />
+          <span className="link-text">Wallet</span>
         </NavLink>
         <NavLink
           className="sidebar-link"
           to="/dashboard/profile"
           title="Profile"
         >
-          {" "}
-          <FaUserCircle className="icon" />{" "}
-          <span className="link-text">Profile</span>{" "}
+          <FaUserCircle className="icon" />
+          <span className="link-text">Profile</span>
         </NavLink>
         <NavLink
           className="sidebar-link"
           to="/dashboard/support"
           title="Support"
         >
-          {" "}
-          <FaHeadset className="icon" />{" "}
-          <span className="link-text">Support</span>{" "}
+          <FaHeadset className="icon" />
+          <span className="link-text">Support</span>
         </NavLink>
 
         {/* --- روابط البائع --- */}
@@ -104,12 +99,11 @@ const Sidebar = ({ onSearchChange }) => {
           <>
             <NavLink
               className="sidebar-link"
-              to="/dashboard/comptes"
+              to="/dashboard/orders"
               title="My Accounts"
             >
-              {" "}
-              <FaImages className="icon" />{" "}
-              <span className="link-text">My Accounts</span>{" "}
+              <FaImages className="icon" />
+              <span className="link-text">My Accounts & Bids</span>
             </NavLink>
             {/* <NavLink className="sidebar-link" to="/dashboard/vendor/orders" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink> */}
           </>
@@ -123,18 +117,16 @@ const Sidebar = ({ onSearchChange }) => {
               to="/dashboard/admin/products"
               title="Manage Products"
             >
-              {" "}
-              <FaTasks className="icon" />{" "}
-              <span className="link-text">Products</span>{" "}
+              <FaTasks className="icon" />
+              <span className="link-text">Products</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/users"
               title="Manage Users"
             >
-              {" "}
-              <FaUsers className="icon" />{" "}
-              <span className="link-text">Users</span>{" "}
+              <FaUsers className="icon" />
+              <span className="link-text">Users</span>
             </NavLink>
             {/* <NavLink className="sidebar-link" to="/dashboard/admin/orders" title="Manage Orders"> <FaClipboardList className="icon" /> <span className="link-text">All Orders</span> </NavLink> */}
           </>
@@ -149,14 +141,10 @@ const Sidebar = ({ onSearchChange }) => {
       </nav>
       {/* Logout Button (on larger screens) */}
       <div className="sidebar-footer">
-        <button
-          className="sidebar-link logout-button"
-          onClick={handleLogout}
-          title="Logout"
-        >
-          <FaSignOutAlt className="icon" />{" "}
+        <Link to="/login" className="sidebar-link logout-button" onClick={handleLogout}>
+          <FaSignOutAlt className="icon" />
           <span className="link-text">Logout</span>
-        </button>
+        </Link>
       </div>
     </div>
   );

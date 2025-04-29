@@ -5,6 +5,7 @@ import notificationReducer from "./notificationReducer";
 import walletReducer from "./walletReducer";
 import adminUserReducer from "./adminUserReducer";
 import transactionReducer from "./transactionReducer";
+import uiReducer from "./uiReducer";
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
     walletReducer,
     adminUserReducer,
     transactionReducer,
+    ui: uiReducer,
     // orderReducer,
     // cartReducer,
 });

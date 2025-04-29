@@ -10,7 +10,9 @@ import {
   Badge,
 } from "react-bootstrap"; // Import Image and Badge
 import { getProfile } from "../../redux/actions/userAction"; // Adjust path
-import './ProfileRedesigned.css';
+import CurrencySwitcher from "./CurrencySwitcher"; // <-- استيراد المكون
+import useCurrencyDisplay from "../../hooks/useCurrencyDisplay"; // <-- استيراد الهوك
+import "./ProfileRedesigned.css";
 
 // أيقونات اختيارية
 import {
@@ -28,19 +30,22 @@ const Profile = () => {
   const dispatch = useDispatch();
   const { user, loading, isAuth } = useSelector((state) => state.userReducer);
 
+  // --- استخدام الهوك لكل رصيد ---
+  const principalBalanceDisplay = useCurrencyDisplay(user?.balance);
+  const depositBalanceDisplay = useCurrencyDisplay(user?.depositBalance);
+  const withdrawalBalanceDisplay = useCurrencyDisplay(user?.withdrawalBalance);
+  const sellerAvailableBalanceDisplay = useCurrencyDisplay(
+    user?.sellerAvailableBalance
+  );
+  const sellerPendingBalanceDisplay = useCurrencyDisplay(
+    user?.sellerPendingBalance
+  );
+
   useEffect(() => {
     if (isAuth && !user) {
       dispatch(getProfile());
     }
   }, [dispatch, isAuth, user]);
-
-  const formatCurrency = (amount, currencyCode = "TND") => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-    }).format(amount || 0);
-  };
 
   if (loading || !user) {
     return (
@@ -48,7 +53,7 @@ const Profile = () => {
         className="d-flex justify-content-center align-items-center"
         style={{ minHeight: "80vh" }}
       >
-        <Spinner animation="border" variant="primary" /> {" "}
+        <Spinner animation="border" variant="primary" />{" "}
       </Container>
     );
   }
@@ -96,16 +101,23 @@ const Profile = () => {
             </Card.Header>
 
             <Card.Body className="p-4">
-              <h4 className="mb-4 section-title">Account Balances</h4>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="section-title mb-0">Account Balances</h4>
+                <CurrencySwitcher size="sm" /> {/* <-- إضافة مبدل العملات */}
+              </div>
               <Row className="g-3 text-center">
-                {/* g-3 for gap */}
+                {/* --- استخدام قيم الهوك للعرض --- */}
                 <Col sm={6} lg={4}>
                   <div className="balance-info-box">
                     <FaPiggyBank size={28} className="text-primary mb-2 icon" />
                     <span className="label">Principal</span>
                     <span className="value">
-                      {formatCurrency(user.balance)}
+                      {principalBalanceDisplay.displayValue}
                     </span>
+                    <span className="approx-value">
+                      {principalBalanceDisplay.approxValue}
+                    </span>{" "}
+                    {/* <-- القيمة التقريبية */}
                   </div>
                 </Col>
                 <Col sm={6} lg={4}>
@@ -113,7 +125,10 @@ const Profile = () => {
                     <FaUniversity size={28} className="text-info mb-2 icon" />
                     <span className="label">Deposit</span>
                     <span className="value">
-                      {formatCurrency(user.depositBalance)}
+                      {depositBalanceDisplay.displayValue}
+                    </span>
+                    <span className="approx-value">
+                      {depositBalanceDisplay.approxValue}
                     </span>
                   </div>
                 </Col>
@@ -122,7 +137,10 @@ const Profile = () => {
                     <FaDollarSign size={28} className="text-danger mb-2 icon" />
                     <span className="label">Withdrawal</span>
                     <span className="value">
-                      {formatCurrency(user.withdrawalBalance)}
+                      {withdrawalBalanceDisplay.displayValue}
+                    </span>
+                    <span className="approx-value">
+                      {sellerAvailableBalanceDisplay.approxValue}
                     </span>
                   </div>
                 </Col>
@@ -130,7 +148,6 @@ const Profile = () => {
                 {(user.userRole === "Vendor" || user.userRole === "Admin") && (
                   <>
                     <Col sm={6} lg={6}>
-                      {/* Take half width on large screens */}
                       <div className="balance-info-box seller">
                         <FaBalanceScale
                           size={28}
@@ -138,12 +155,14 @@ const Profile = () => {
                         />
                         <span className="label">Seller Available</span>
                         <span className="value">
-                          {formatCurrency(user.sellerAvailableBalance)}
+                          {sellerAvailableBalanceDisplay.displayValue}
+                        </span>
+                        <span className="approx-value">
+                          {sellerAvailableBalanceDisplay.approxValue}
                         </span>
                       </div>
                     </Col>
                     <Col sm={6} lg={6}>
-                      {/* Take half width on large screens */}
                       <div className="balance-info-box seller">
                         <FaHourglassHalf
                           size={28}
@@ -151,12 +170,16 @@ const Profile = () => {
                         />
                         <span className="label">Seller On Hold</span>
                         <span className="value">
-                          {formatCurrency(user.sellerPendingBalance)}
+                          {sellerPendingBalanceDisplay.displayValue}
+                        </span>
+                        <span className="approx-value">
+                          {sellerPendingBalanceDisplay.approxValue}
                         </span>
                       </div>
                     </Col>
                   </>
                 )}
+                {/* --- نهاية استخدام قيم الهوك --- */}
               </Row>
             </Card.Body>
           </Card>

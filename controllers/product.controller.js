@@ -599,7 +599,6 @@ exports.getProductCountsByUser = async (req, res) => {
     }
 };
 
-
 // --- Get User By ID ---
 exports.getUserById = async (req, res) => {
     const userId = req.params.id;
@@ -657,14 +656,13 @@ exports.toggleLikeProduct = async (req, res) => {
 };
 
 // --- Place Bid On Product ---
-// (الكود الخاص بالمزايدة يبقى كما هو، لم يتم طلب تغييره)
 exports.placeBidOnProduct = async (req, res) => {
-    const productId = req.params.productId;
+    const { productId } = req.params;
     const bidderId = req.user._id;
     const bidderFullName = req.user.fullName;
     const { amount } = req.body;
 
-    console.log(`--- Controller: placeBidOnProduct on Product: ${productId} by User: ${bidderId} for Amount: ${amount} ---`);
+    console.log(`--- Controller: placeOrUpdateBid on Product: ${productId} by User: ${bidderId} for Amount: ${amount} ---`);
 
     if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ msg: "Invalid Product ID format." });
     const numericAmount = Number(amount);
@@ -672,6 +670,7 @@ exports.placeBidOnProduct = async (req, res) => {
 
     const session = await mongoose.startSession();
     session.startTransaction();
+    let isNewBid = true;
 
     try {
         const product = await Product.findById(productId).session(session);
@@ -681,7 +680,6 @@ exports.placeBidOnProduct = async (req, res) => {
         if (!bidder) throw new Error('Bidder (User) not found.');
         if (product.user.equals(bidderId)) throw new Error('You cannot bid on your own product.');
         if (product.status !== 'approved') throw new Error('Bids can only be placed on approved products.');
-
         if (bidder.balance < MINIMUM_BALANCE_TO_PARTICIPATE) {
             const requiredCurrency = bidder.currency || 'TND';
             throw new Error(`You need at least ${MINIMUM_BALANCE_TO_PARTICIPATE.toFixed(2)} ${requiredCurrency} in your balance to place any bid.`);
@@ -691,50 +689,74 @@ exports.placeBidOnProduct = async (req, res) => {
         let bidAmountInTND;
         if (bidCurrency === 'USD') { bidAmountInTND = numericAmount * TND_TO_USD_RATE; }
         else { bidAmountInTND = numericAmount; }
-
         if (bidder.balance < bidAmountInTND) {
             throw new Error(`Insufficient balance. You need ${bidAmountInTND.toFixed(2)} TND to cover this ${numericAmount.toFixed(2)} ${bidCurrency} bid, but you only have ${bidder.balance.toFixed(2)} TND.`);
         }
 
-        const newBid = { user: bidderId, amount: numericAmount, currency: bidCurrency, createdAt: new Date() };
-        product.bids.push(newBid);
-        product.bids.sort((a, b) => b.amount - a.amount);
+        const existingBidIndex = product.bids.findIndex(bid => bid.user.equals(bidderId));
 
+        if (existingBidIndex > -1) {
+            isNewBid = false;
+            if (product.bids[existingBidIndex].amount === numericAmount) {
+                await session.commitTransaction();
+                session.endSession();
+                console.log(`Bid amount for user ${bidderId} is already ${numericAmount}. No update needed.`);
+                const currentBids = await Product.findById(productId).select('bids').populate('bids.user', 'fullName email');
+                return res.status(200).json({ msg: "Bid amount is the same as your current bid.", bids: currentBids.bids });
+            }
+            console.log(`Updating existing bid for user ${bidderId}. Old: ${product.bids[existingBidIndex].amount}, New: ${numericAmount}`);
+            product.bids[existingBidIndex].amount = numericAmount;
+            product.bids[existingBidIndex].createdAt = new Date();
+        } else {
+            isNewBid = true;
+            console.log(`Adding new bid for user ${bidderId}. Amount: ${numericAmount}`);
+            const newBid = { user: bidderId, amount: numericAmount, currency: bidCurrency, createdAt: new Date() };
+            product.bids.push(newBid);
+        }
+
+        product.bids.sort((a, b) => b.amount - a.amount);
         await product.save({ session });
-        console.log(`[placeBidOnProduct] Bid placed successfully by ${bidderId} on product ${productId}`);
+        console.log(`Product bids updated successfully.`);
 
         if (product.user) {
-            const notificationMessage = `User "${bidderFullName}" placed a bid of ${numericAmount.toFixed(2)} ${bidCurrency} on your product "${product.title}".`;
+            let notificationMessage; let notificationTitle; let notificationType;
+            if (isNewBid) {
+                notificationTitle = 'New Bid Received!';
+                notificationMessage = `User "${bidderFullName}" placed a new bid of ${numericAmount.toFixed(2)} ${bidCurrency} on your product "${product.title}".`;
+                notificationType = 'NEW_BID';
+            } else {
+                notificationTitle = 'Bid Updated!';
+                notificationMessage = `User "${bidderFullName}" updated their bid to ${numericAmount.toFixed(2)} ${bidCurrency} on your product "${product.title}".`;
+                notificationType = 'BID_UPDATED'; // تأكد من إضافة هذا النوع لـ Notification.js
+            }
             await Notification.create([{
-                user: product.user, type: 'NEW_BID', title: 'New Bid Received!', message: notificationMessage,
-                relatedEntity: { id: productId, modelName: 'Product' }
+                user: product.user, type: notificationType, title: notificationTitle,
+                message: notificationMessage, relatedEntity: { id: productId, modelName: 'Product' }
             }], { session });
-            console.log(`[placeBidOnProduct] Notification created for seller ${product.user}`);
-            // يمكنك إضافة إرسال Socket.IO هنا للبائع إذا أردت
+            console.log(`Notification created for seller ${product.user}. Type: ${notificationType}`);
         }
 
         await session.commitTransaction();
-        console.log("[placeBidOnProduct] Bid transaction committed.");
+        console.log("Place/Update bid transaction committed.");
 
-        const updatedProductWithBids = await Product.findById(productId)
-            .select('bids')
-            .populate('bids.user', 'fullName email');
-        res.status(201).json({ msg: "Bid placed successfully!", bids: updatedProductWithBids.bids });
+        const updatedProductWithBids = await Product.findById(productId).select('bids').populate('bids.user', 'fullName email');
+        res.status(isNewBid ? 201 : 200).json({
+            msg: isNewBid ? "Bid placed successfully!" : "Bid updated successfully!",
+            bids: updatedProductWithBids.bids
+        });
 
     } catch (error) {
         await session.abortTransaction();
-        console.error("Error placing bid:", error.message);
-        let userFriendlyError = 'Failed to place bid. Please try again later.';
-        if (error.message.includes('Insufficient balance') || error.message.includes('need at least') || error.message === 'Product not found.' || error.message === 'Bidder (User) not found.' || error.message === 'You cannot bid on your own product.' || error.message === 'Bids can only be placed on approved products.') {
-            userFriendlyError = error.message;
-        }
-        res.status(400).json({ msg: userFriendlyError });
+        console.error("--- Controller: placeBidOnProduct ERROR ---:", error); // Log الخطأ الكامل
+        // --- [!] إرجاع رسالة الخطأ المحددة التي تم رميها ---
+        res.status(400).json({ msg: error.message || 'Failed to place/update bid.' });
+        // --------------------------------------------------
     } finally {
         session.endSession();
-        console.log("[placeBidOnProduct] Bid session ended.");
+        console.log("--- Controller: placeBidOnProduct END --- Session ended.");
     }
 };
-
+// --- نهاية دالة وضع/تعديل المزايدة ---
 
 // --- Get Product Bids ---
 // (الكود الخاص بجلب المزايدات يبقى كما هو)
@@ -757,7 +779,6 @@ exports.getProductBids = async (req, res) => {
         if (!res.headersSent) res.status(500).json({ errors: "Server error while fetching bids." });
     }
 };
-
 
 // --- Mark Product As Sold ---
 // (الكود الخاص بتحديد المنتج كمباع يبقى كما هو)
@@ -796,5 +817,205 @@ exports.markProductAsSold = async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({ msg: "Server error marking product as sold." });
         }
+    }
+};
+
+// --- [!] الكود الكامل لدالة قبول المزايدة (Accept Bid) ---
+exports.acceptBid = async (req, res) => {
+    const { productId } = req.params;
+    const sellerId = req.user._id;
+    const { bidUserId, bidAmount } = req.body;
+
+    console.log(`--- Controller: acceptBid START ---`);
+    console.log(`   ProductId: ${productId}`);
+    console.log(`   SellerId: ${sellerId}`);
+    console.log(`   BidUserId (from body): ${bidUserId}`);
+    console.log(`   BidAmount (from body): ${bidAmount} (Type: ${typeof bidAmount})`);
+
+    const numericBidAmount = Number(bidAmount); // تحويل المبلغ لرقم
+
+    // 1. التحقق الأساسي
+    if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(bidUserId) || !bidAmount) {
+        console.error("Accept Bid Error: Invalid IDs or missing bidAmount.");
+        return res.status(400).json({ msg: "Invalid Product ID, Bid User ID, or Bid Amount provided." });
+    }
+    if (isNaN(numericBidAmount) || numericBidAmount <= 0) {
+        console.error(`Accept Bid Error: Invalid numericBidAmount (${numericBidAmount})`);
+        return res.status(400).json({ msg: "Invalid Bid Amount format." });
+    }
+    if (sellerId.equals(bidUserId)) {
+        console.error("Accept Bid Error: Seller cannot accept own bid.");
+        return res.status(400).json({ msg: "Seller cannot accept their own bid." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    console.log("   MongoDB session started for acceptBid.");
+
+    try {
+        // 2. جلب البيانات داخل المعاملة
+        console.log("   Fetching product, seller, and buyer...");
+        const product = await Product.findById(productId).session(session);
+        const seller = await User.findById(sellerId).session(session);
+        const buyer = await User.findById(bidUserId).session(session);
+        console.log(`   Product found: ${!!product}, Seller found: ${!!seller}, Buyer found: ${!!buyer}`);
+
+        // 3. التحقق من صحة العملية
+        if (!product) throw new Error("Product not found.");
+        if (!seller) throw new Error("Seller not found.");
+        if (!buyer) throw new Error("Buyer (user who placed the bid) not found.");
+        if (!product.user.equals(sellerId)) throw new Error("You are not the seller of this product.");
+        if (product.status !== 'approved') throw new Error("You can only accept bids on approved products that are not already sold.");
+        if (product.sold === true) throw new Error("This product has already been sold.");
+        console.log("   Initial validation passed.");
+
+        // 4. البحث عن المزايدة المحددة
+        console.log(`   Searching for bid with user ${bidUserId} and amount ${numericBidAmount}`);
+        const acceptedBid = product.bids.find(bid => bid.user.equals(bidUserId) && bid.amount === numericBidAmount);
+        if (!acceptedBid) {
+            console.error("   Matching bid not found in product bids:", product.bids);
+            throw new Error("The specified bid was not found for this product and user.");
+        }
+        console.log("   Matching bid found.");
+
+        // 5. التحقق من رصيد المشتري (بالدينار TND)
+        const bidCurrency = product.currency;
+        let bidAmountInTND;
+        if (bidCurrency === 'USD') { bidAmountInTND = numericBidAmount * TND_TO_USD_RATE; }
+        else { bidAmountInTND = numericBidAmount; }
+        console.log(`   Converted bid amount to TND: ${bidAmountInTND.toFixed(2)}`);
+        console.log(`   Checking buyer balance. Available: ${buyer.balance.toFixed(2)} TND, Required: ${bidAmountInTND.toFixed(2)} TND`);
+        if (buyer.balance < bidAmountInTND) {
+            throw new Error(`Buyer (${buyer.fullName || 'User'}) no longer has sufficient balance (${buyer.balance.toFixed(2)} TND) to cover the accepted bid (${bidAmountInTND.toFixed(2)} TND).`);
+        }
+        console.log("   Buyer balance sufficient.");
+
+        // 6. تجميد الرصيد للمشتري
+        console.log(`   Updating buyer balance. Current: ${buyer.balance}, Escrow: ${buyer.escrowBalance}`);
+        buyer.balance -= bidAmountInTND;
+        buyer.escrowBalance = (buyer.escrowBalance || 0) + bidAmountInTND;
+        await buyer.save({ session });
+        console.log(`   Buyer balance updated. New balance: ${buyer.balance.toFixed(2)}, New escrow: ${buyer.escrowBalance.toFixed(2)}`);
+
+        // 7. تحديث حالة المنتج
+        console.log("   Updating product status to 'sold'.");
+        product.sold = true;
+        product.status = 'sold';
+        product.buyer = bidUserId; // استخدام bidUserId هنا
+        product.soldAt = new Date();
+        product.quantity = 0;
+        // product.bids = product.bids.filter(b => b.user.equals(bidUserId) && b.amount === numericBidAmount); // أبقِ فقط على المزايدة المقبولة
+        await product.save({ session });
+        console.log(`   Product ${productId} status updated successfully.`);
+
+        // 8. تحديث عداد المبيعات للبائع
+        console.log("   Incrementing seller sold count.");
+        await User.findByIdAndUpdate(sellerId, { $inc: { productsSoldCount: 1 } }, { session });
+
+        // 9. إنشاء إشعارات للطرفين
+        console.log("   Creating acceptance notifications...");
+        const sellerMessage = `You accepted the bid of ${numericBidAmount.toFixed(2)} ${bidCurrency} from ${buyer.fullName} ...`;
+        const buyerMessage = `Your bid of ${numericBidAmount.toFixed(2)} ${bidCurrency} for "${product.title}" was accepted...`;
+
+        // --- [!] إضافة ordered: true هنا ---
+        await Notification.create([
+            { user: sellerId, type: 'BID_ACCEPTED_SELLER', title: 'Bid Accepted!', message: sellerMessage, relatedEntity: { id: productId, modelName: 'Product' } },
+            { user: bidUserId, type: 'BID_ACCEPTED_BUYER', title: 'Your Bid Was Accepted!', message: buyerMessage, relatedEntity: { id: productId, modelName: 'Product' } }
+        ], { session: session, ordered: true }); // <-- إضافة الخيار هنا
+        // ------------------------------------
+        console.log("   Notifications created.");
+
+        // 10. إتمام المعاملة
+        await session.commitTransaction();
+        console.log("   Accept bid transaction committed successfully.");
+
+        // 11. إرجاع استجابة ناجحة
+        const finalProduct = await Product.findById(productId).populate('user', 'fullName email').populate('buyer', 'fullName email').lean();
+        res.status(200).json({ msg: "Bid accepted successfully! Amount held in escrow.", product: finalProduct });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("--- Controller: acceptBid ERROR ---", error);
+        res.status(400).json({ msg: error.message || 'Failed to accept bid.' });
+    } finally {
+        session.endSession();
+        console.log("--- Controller: acceptBid END --- Session ended.");
+    }
+};
+
+// --- [!] طريقة بديلة لدالة rejectBid باستخدام findByIdAndUpdate ---
+exports.rejectBid = async (req, res) => {
+    const { productId } = req.params;
+    const sellerId = req.user._id;
+    const { bidUserId, reason } = req.body;
+
+    console.log(`--- Controller: rejectBid (findByIdAndUpdate) START ---`);
+    // ... (نفس جمل التحقق الأساسية IDs + reason) ...
+    if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(bidUserId) || !reason || reason.trim() === '') {
+        console.error("Reject Bid Error: Invalid input.");
+        return res.status(400).json({ msg: "Invalid IDs or missing reason." });
+    }
+
+    try {
+        // 1. أولاً، نحتاج للعثور على المزايدة للحصول على بياناتها (مثل المبلغ واسم المزايد) للإشعارات
+        //    ونتأكد أن البائع هو المالك
+        console.log("   Fetching product to find bid details and verify owner...");
+        const productCheck = await Product.findOne(
+            { _id: productId, user: sellerId, 'bids.user': bidUserId }, // ابحث عن المنتج + البائع + مزايدة للمستخدم المحدد
+            { 'bids.$': 1, title: 1, currency: 1 } // جلب المزايدة المطابقة فقط + عنوان وعملة المنتج
+        ).populate('bids.user', 'fullName'); // جلب اسم المزايد
+
+        if (!productCheck) {
+            console.error("   Product/Seller/Bid combination not found.");
+            return res.status(404).json({ msg: "Product not found, you are not the seller, or the specified bid does not exist." });
+        }
+        const bidToReject = productCheck.bids[0]; // المزايدة موجودة في أول عنصر بالمصفوفة
+        if (!bidToReject) {
+            console.error("   Error extracting bid details."); // يجب ألا يحدث هذا إذا نجح findOne
+            return res.status(500).json({ msg: "Internal error finding bid details." });
+        }
+        console.log("   Bid details found:", bidToReject);
+
+        // 2. الآن نقوم بتحديث المنتج لإزالة المزايدة باستخدام $pull
+        console.log(`   Attempting to remove bid for user ${bidUserId} using findByIdAndUpdate/$pull...`);
+        const updateResult = await Product.findByIdAndUpdate(
+            productId,
+            { $pull: { bids: { user: bidUserId } } }, // اسحب كل المزايدات لهذا المستخدم (يفترض أن يكون لديه واحدة فقط)
+            // أو إذا كان للمزايدات _id: { $pull: { bids: { _id: bidToReject._id } } }
+            { new: true } // أرجع المستند المحدث (اختياري هنا)
+        );
+
+        if (!updateResult) {
+            // هذا لا يجب أن يحدث لأننا تحققنا من المنتج سابقًا، لكن للاحتياط
+            console.error("   Product not found during update attempt!");
+            return res.status(404).json({ msg: "Product could not be updated (not found)." });
+        }
+        console.log("   Product updated via $pull. New bid count:", updateResult.bids.length);
+
+        // 3. إنشاء وإرسال الإشعارات ...
+        // ... (نفس كود إنشاء وإرسال الإشعارات و Socket.IO كما في الطريقة السابقة، باستخدام بيانات bidToReject) ...
+        console.log(`   Creating rejection notifications for user: ${bidUserId} and seller: ${sellerId}`);
+        const bidderFullName = bidToReject.user?.fullName || 'Bidder';
+        const buyerMessage = `Unfortunately, your bid of ${bidToReject.amount.toFixed(2)} ${productCheck.currency} for "${productCheck.title}" was rejected by the seller. Reason: ${reason}`;
+        const sellerMessage = `You rejected the bid from ${bidderFullName} for "${productCheck.title}". Reason: ${reason}`;
+
+        const notificationsToCreate = [
+            { user: bidUserId, type: 'BID_REJECTED', title: 'Bid Rejected', message: buyerMessage, relatedEntity: { id: productId, modelName: 'Product' } },
+            { user: sellerId, type: 'BID_REJECTED_BY_YOU', title: 'You Rejected a Bid', message: sellerMessage, relatedEntity: { id: productId, modelName: 'Product' } }
+        ];
+        await Notification.insertMany(notificationsToCreate);
+        console.log("   Rejection notifications created successfully.");
+        // ... (إرسال Socket.IO) ...
+
+        // 4. إرجاع استجابة نجاح
+        res.status(200).json({ msg: "Bid rejected successfully and removed. Notifications sent." });
+
+    } catch (error) {
+        console.error("--- Controller: rejectBid (findByIdAndUpdate) ERROR ---", error);
+        if (!res.headersSent) {
+            res.status(500).json({ msg: error.message || "Server error rejecting bid." });
+        }
+    } finally {
+        console.log("--- Controller: rejectBid (findByIdAndUpdate) END ---");
     }
 };

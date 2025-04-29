@@ -21,6 +21,7 @@ import "./NotificationsPage.css"; // أنشئ هذا الملف أو أضف ال
 const NotificationsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate(); // للانتقال عند النقر
+  const { user } = useSelector((state) => state.userReducer);
 
   // --- الحصول على الحالة من Redux بأمان ---
   const { notifications, unreadCount, loading, error, loadingMarkRead } =
@@ -49,41 +50,99 @@ const NotificationsPage = () => {
   }, [dispatch]);
 
   // --- دالة لتمييز إشعار واحد كمقروء والانتقال (إذا أمكن) ---
+  // --- *** تعديل دالة النقر على الإشعار *** ---
   const handleNotificationClick = useCallback(
     (notification) => {
-      // تمييز كمقروء فقط إذا لم يكن مقروءًا بالفعل ولم يكن التحديث جاريًا
+      // تمييز كمقروء
       if (!notification.isRead && !loadingMarkRead) {
         console.log("Marking notification as read:", notification._id);
         dispatch(markNotificationsRead([notification._id]));
       }
 
-      // محاولة الانتقال إلى الصفحة المتعلقة بالإشعار
-      if (
-        notification.relatedEntity?.id &&
-        notification.relatedEntity?.modelName
-      ) {
-        // يمكنك بناء مسارات مختلفة بناءً على modelName
-        let path;
-        switch (notification.relatedEntity.modelName) {
-          case "Product":
-            // افترض وجود مسار لتفاصيل المنتج (قد تحتاج لإنشائه)
-            // أو توجيهه لصفحة إدارة المنتجات
-            path = `/dashboard/admin/products`; // مثال: توجيه لقائمة المنتجات للأدمن
-            // أو path = `/dashboard/product/${notification.relatedEntity.id}`;
+      // تحديد المسار بناءً على نوع الإشعار والكيان المرتبط ودور المستخدم
+      let path = "/dashboard"; // المسار الافتراضي
+
+      const entityId = notification.relatedEntity?.id;
+      const modelName = notification.relatedEntity?.modelName;
+      const notificationType = notification.type;
+
+      console.log("Notification Clicked:", {
+        notificationType,
+        modelName,
+        entityId,
+      });
+
+      if (entityId && modelName === "Product") {
+        // --- منطق الإشعارات المتعلقة بالمنتجات ---
+        switch (notificationType) {
+          // إشعارات تخص البائع عن منتجاته
+          case "PRODUCT_APPROVED":
+          case "PRODUCT_REJECTED":
+          case "PRODUCT_DELETED": // إشعار بأن منتجه حذف (يذهب لحساباته)
+            path = "/dashboard/comptes"; // توجيه لصفحة حسابات المستخدم
             break;
-          case "Order":
-            // path = `/dashboard/order/${notification.relatedEntity.id}`;
+
+          // إشعارات تخص البائع عن مزادات منتجاته
+          case "NEW_BID":
+          case "BID_UPDATED":
+          case "BID_ACCEPTED_SELLER":
+          case "BID_REJECTED_BY_YOU": // إشعارات يراها البائع في صفحة الطلبات/المزايدات
+            path = "/dashboard/orders"; // <-- المسار الصحيح لصفحة البائع للمزايدات/الطلبات
             break;
-          // أضف حالات أخرى حسب الحاجة
+
+          // إشعارات تخص المشتري (المزايد)
+          case "BID_ACCEPTED_BUYER": // مزايدته قبلت (يمكن توجيهه لطلباته أو المنتج)
+          case "BID_REJECTED": // مزايدته رفضت (يمكن توجيهه لطلباته أو المنتج)
+            // قد تحتاج لصفحة طلبات/مزايدات خاصة بالمشتري، أو توجيهه للمنتج
+            // أو لصفحة الإشعارات كبديل مؤقت إذا لم تكن الصفحة جاهزة
+            // path = `/dashboard/my-bids`; // مثال
+            path = `/`; // مثال: توجيه لصفحة المنتج نفسه
+            break;
+
+          // إشعارات تخص الأدمن
+          case "NEW_PRODUCT_PENDING":
+          case "PRODUCT_UPDATE_PENDING":
+            if (user?.userRole === "Admin") {
+              path = `/dashboard/admin/products`; // صفحة منتجات الأدمن المعلقة
+              // يمكنك إضافة #productId للانتقال للمنتج المحدد إذا كان الجدول يدعم ذلك
+              // path = `/dashboard/admin/products#${entityId}`;
+            } else {
+              // إذا وصل إشعار أدمن لمستخدم ليس أدمن (غير محتمل)، يذهب للوحة التحكم
+              path = "/dashboard";
+            }
+            break;
+
           default:
-            path = "/dashboard"; // مسار افتراضي
+            // إذا كان النوع غير معروف ولكن مرتبط بمنتج، يمكن توجيهه لصفحة المنتج أو الحسابات
+            console.log(
+              `Unhandled Product notification type: ${notificationType}. Defaulting path.`
+            );
+            if (user?.userRole === "Admin") path = "/dashboard/admin/products";
+            else path = "/dashboard/comptes"; // أو صفحة المنتج العام؟
+            break;
         }
-        console.log("Navigating to related entity path:", path);
+      } else if (entityId && modelName === "Order") {
+        // منطق الإشعارات المتعلقة بالطلبات (إذا تم تطبيقها لاحقاً)
+        path = `/dashboard/orders/${entityId}`; // مثال
+      } else if (
+        notificationType === "FUNDS_RECEIVED" ||
+        notificationType === "FUNDS_SENT" ||
+        notificationType === "USER_BALANCE_ADJUSTED" ||
+        notificationType === "ADMIN_BALANCE_ADJUSTMENT"
+      ) {
+        // إشعارات المحفظة
+        path = "/dashboard/wallet";
+      }
+      // يمكنك إضافة حالات أخرى لـ modelName أو types أخرى هنا
+
+      console.log("Navigating to resolved path:", path);
+      if (path) {
         navigate(path);
       }
     },
-    [dispatch, loadingMarkRead, navigate]
+    [dispatch, loadingMarkRead, navigate, user?.userRole] // <-- إضافة userRole للاعتمادية
   );
+  // --- *** نهاية تعديل دالة النقر *** ---
 
   // --- دالة لتمييز الكل كمقروء ---
   const handleMarkAllRead = useCallback(() => {

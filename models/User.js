@@ -18,6 +18,13 @@ const UserSchema = new Schema({
     blocked: { type: Boolean, default: false },
     avatarUrl: { type: String, default: null }, // حقل اختياري لصورة الأفاتار
 
+    // --- [!] إضافة رصيد الضمان/المجمد ---
+    escrowBalance: { // الرصيد المحجوز للمعاملات الجارية
+        type: Number,
+        default: 0,
+        min: 0
+    },
+
     // --- [!] حقول جديدة للإحصائيات المجمعة ---
     positiveRatings: { // عدد اللايكات التي تلقاها
         type: Number,

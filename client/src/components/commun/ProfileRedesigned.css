@@ -80,6 +80,13 @@
     border-color: #dee2e6;
 }
 
+.balance-info-box .approx-value {
+    display: block;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .profile-header {

@@ -70,6 +70,7 @@ const OfflineHeader = () => {
                   <FaUserCircle className="me-1 opacity-75" />{" "}
                   {user.fullName || user.email}
                 </Nav.Link>
+                <Link to="/login">
                 <Button
                   variant="outline-danger"
                   size="sm"
@@ -77,6 +78,7 @@ const OfflineHeader = () => {
                 >
                   <FaSignOutAlt className="me-1" /> Logout
                 </Button>
+                </Link>
               </>
             ) : (
               <>

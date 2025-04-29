@@ -1,0 +1,145 @@
+/* src/components/vendor/CommandsListVendor.css */
+
+.commands-list-vendor-page .page-title {
+    color: #343a40;
+    font-weight: 600;
+}
+
+/* Tabs Styling */
+.product-tabs .nav-link {
+    color: #6c757d;
+    /* Default tab text color */
+    font-weight: 500;
+    border: none;
+    /* Remove default borders */
+    border-bottom: 3px solid transparent;
+    /* Prepare for active border */
+    transition: color 0.2s ease, border-color 0.2s ease;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+}
+
+.product-tabs .nav-link.active {
+    color: #0d6efd;
+    /* Active tab text color (Bootstrap primary) */
+    background-color: transparent !important;
+    /* Ensure no background */
+    border-bottom: 3px solid #0d6efd;
+    /* Active indicator */
+}
+
+.product-tabs .nav-link:hover {
+    color: #0a58ca;
+    /* Darker blue on hover */
+    border-bottom-color: #cfe2ff;
+    /* Lighter blue border bottom on hover */
+}
+
+.product-tabs .nav-link .badge {
+    font-size: 0.7em;
+    /* Smaller badge */
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+/* Product Entry Card */
+.product-entry {
+    border: 1px solid #e9ecef;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.product-entry:hover {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08) !important;
+}
+
+.product-entry-img-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    /* Light background for image area */
+}
+
+.product-entry-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #343a40;
+}
+
+.product-entry-actions {
+    /* Styles for edit/delete buttons container */
+}
+
+.product-entry-actions .btn-link {
+    padding: 0.2rem 0.4rem;
+    /* Smaller padding for link buttons */
+    vertical-align: middle;
+}
+
+/* Bids Section Styling */
+.bids-section-vendor {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    /* Separator line */
+}
+
+.bids-title {
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 0.75rem !important;
+}
+
+.bids-list-vendor .list-group-item {
+    padding-left: 0;
+    /* Remove left padding for list items */
+    padding-right: 0;
+    border: none;
+    /* Remove default list group item borders */
+    border-bottom: 1px dashed #eee;
+    /* Light dashed separator */
+}
+
+.bids-list-vendor .list-group-item:last-child {
+    border-bottom: none;
+}
+
+.bidder-name {
+    font-weight: 500;
+    color: #212529;
+    font-size: 0.9rem;
+}
+
+.bidder-name:hover {
+    color: #0d6efd;
+}
+
+.bids-list-vendor .badge {
+    font-size: 0.85rem;
+    vertical-align: baseline;
+}
+
+.bid-actions-vendor .action-btn-vendor {
+    padding: 0.15rem 0.4rem;
+    /* Smaller buttons */
+    font-size: 0.75rem;
+    /* Smaller font size */
+    line-height: 1.4;
+}
+
+.bid-actions-vendor .spinner-border {
+    width: 0.8rem;
+    height: 0.8rem;
+}
+
+/* Simple entry for non-approved products */
+.product-entry-simple .col {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.product-entry-simple h6 {
+    margin-bottom: 0.1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+}

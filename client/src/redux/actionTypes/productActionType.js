@@ -34,12 +34,6 @@ export const REJECT_PRODUCT_REQUEST = "REJECT_PRODUCT_REQUEST";
 export const REJECT_PRODUCT_SUCCESS = "REJECT_PRODUCT_SUCCESS"; // تأكد من وجوده
 export const REJECT_PRODUCT_FAIL = "REJECT_PRODUCT_FAIL";
 
-// --- RESET ERRORS (Optional) ---
-// export const RESET_PRODUCT_ERRORS = 'RESET_PRODUCT_ERRORS';
-
-// src/redux/actionTypes/productActionType.js
-// ... (أنواع سابقة مثل GET_PRODUCTS_REQUEST/SUCCESS/FAIL) ...
-
 // أنواع الإعجاب
 export const TOGGLE_LIKE_PRODUCT_REQUEST = 'TOGGLE_LIKE_PRODUCT_REQUEST';
 export const TOGGLE_LIKE_PRODUCT_SUCCESS = 'TOGGLE_LIKE_PRODUCT_SUCCESS';
@@ -50,10 +44,20 @@ export const PLACE_BID_REQUEST = 'PLACE_BID_REQUEST';
 export const PLACE_BID_SUCCESS = 'PLACE_BID_SUCCESS';
 export const PLACE_BID_FAIL = 'PLACE_BID_FAIL';
 
-// (اختياري) أنواع جلب المزايدات بشكل منفصل (قد لا نحتاجه إذا جاءت مع المنتج)
-// export const GET_BIDS_REQUEST = 'GET_BIDS_REQUEST';
-// export const GET_BIDS_SUCCESS = 'GET_BIDS_SUCCESS';
-// export const GET_BIDS_FAIL = 'GET_BIDS_FAIL';
-
 // مسح حالة الخطأ للمنتج
 export const CLEAR_PRODUCT_ERROR = 'CLEAR_PRODUCT_ERROR';
+
+// أنواع قبول المزايدة
+export const ACCEPT_BID_REQUEST = 'ACCEPT_BID_REQUEST';
+export const ACCEPT_BID_SUCCESS = 'ACCEPT_BID_SUCCESS';
+export const ACCEPT_BID_FAIL =    'ACCEPT_BID_FAIL';
+
+// (اختياري) أنواع رفض المزايدة (إذا لم تكن موجودة)
+export const REJECT_BID_REQUEST = 'REJECT_BID_REQUEST';
+export const REJECT_BID_SUCCESS = 'REJECT_BID_SUCCESS';
+export const REJECT_BID_FAIL =    'REJECT_BID_FAIL';
+
+// (اختياري) أنواع تأكيد الاستلام (للمستقبل)
+export const CONFIRM_RECEIPT_REQUEST = 'CONFIRM_RECEIPT_REQUEST';
+export const CONFIRM_RECEIPT_SUCCESS = 'CONFIRM_RECEIPT_SUCCESS';
+export const CONFIRM_RECEIPT_FAIL =    'CONFIRM_RECEIPT_FAIL';

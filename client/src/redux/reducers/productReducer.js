@@ -11,7 +11,9 @@ import {
     REJECT_PRODUCT_REQUEST, REJECT_PRODUCT_SUCCESS, REJECT_PRODUCT_FAIL,
     TOGGLE_LIKE_PRODUCT_REQUEST, TOGGLE_LIKE_PRODUCT_SUCCESS, TOGGLE_LIKE_PRODUCT_FAIL,
     PLACE_BID_REQUEST, PLACE_BID_SUCCESS, PLACE_BID_FAIL,
-    CLEAR_PRODUCT_ERROR
+    CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
+    REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL,
+    CONFIRM_RECEIPT_REQUEST, CONFIRM_RECEIPT_SUCCESS, CONFIRM_RECEIPT_FAIL
 } from '../actionTypes/productActionType'; // تأكد من المسار الصحيح
 
 const initialState = {
@@ -28,6 +30,8 @@ const initialState = {
     loadingApprove: {},
     loadingReject: {},
     productLiking: {}, // حالة تحميل منفصلة للإعجاب
+    acceptingBid: {}, // e.g., { productId_bidUserId: true }
+    rejectingBid: {}, // e.g., { productId_bidUserId: true }
 };
 
 // --- دالة مساعدة لتحديث مصفوفة الإعجابات ---
@@ -46,10 +50,12 @@ function calculateUpdatedLikes(currentLikes = [], userId, userLiked) {
     }
     return Array.from(likesSet);
 }
-// -----------------------------------------
+
+// دالة مساعدة لإنشاء مفتاح مركب للتحميل
+const createBidActionKey = (productId, bidUserId) => `${productId}_${bidUserId}`;
 
 const productReducer = (state = initialState, { type, payload }) => {
-    // console.log("--- PRODUCT REDUCER --- Action:", type);
+    let bidActionKey;
 
     switch (type) {
         // --- جلب قائمة المنتجات ---
@@ -196,6 +202,74 @@ const productReducer = (state = initialState, { type, payload }) => {
             const newErrors = { ...state.productErrors };
             delete newErrors[payload.productId];
             return { ...state, productErrors: newErrors };
+
+        // --- [!] حالات قبول المزايدة ---
+        case ACCEPT_BID_REQUEST:
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تعريف هنا
+            return {
+                ...state,
+                acceptingBid: { ...state.acceptingBid, [bidActionKey]: true },
+                productErrors: { ...state.productErrors, [payload.productId]: null }
+            };
+
+        case ACCEPT_BID_SUCCESS:
+            const acceptedProduct = payload.product;
+            bidActionKey = createBidActionKey(acceptedProduct._id, payload.acceptedBidUserId); // تعريف هنا
+            return {
+                ...state,
+                acceptingBid: { ...state.acceptingBid, [bidActionKey]: false },
+                Products: state.Products.map(p => p._id === acceptedProduct._id ? acceptedProduct : p),
+                pendingProducts: (state.pendingProducts || []).filter(p => p._id !== acceptedProduct._id),
+            };
+
+        case ACCEPT_BID_FAIL:
+            // --- *** التصحيح هنا: إعادة تعريف المفتاح *** ---
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
+            // --- *** نهاية التصحيح *** ---
+            return {
+                ...state,
+                acceptingBid: { ...state.acceptingBid, [bidActionKey]: false },
+                productErrors: { ...state.productErrors, [payload.productId]: payload.error }
+            };
+
+        // --- [!] حالات رفض المزايدة ---
+        case REJECT_BID_REQUEST:
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تعريف هنا
+            return {
+                ...state,
+                rejectingBid: { ...state.rejectingBid, [bidActionKey]: true },
+                productErrors: { ...state.productErrors, [payload.productId]: null }
+            };
+
+        case REJECT_BID_SUCCESS:
+            bidActionKey = createBidActionKey(payload.productId, payload.rejectedBidUserId); // تعريف هنا
+            console.log(`REDUCER: REJECT_BID_SUCCESS for key ${bidActionKey}. Removing bid from UI.`);
+            const updatedProductsAfterReject = state.Products.map(p => {
+                if (p._id === payload.productId) {
+                    const remainingBids = (p.bids || []).filter(b => {
+                        const bidderId = String(b.user?._id || b.user);
+                        return bidderId !== String(payload.rejectedBidUserId);
+                    });
+                    return { ...p, bids: remainingBids };
+                }
+                return p;
+            });
+            // -----------------------------------------
+            return {
+                ...state,
+                rejectingBid: { ...state.rejectingBid, [bidActionKey]: false },
+                Products: updatedProductsAfterReject,
+            };
+
+        case REJECT_BID_FAIL:
+            // --- *** التصحيح هنا: إعادة تعريف المفتاح *** ---
+            bidActionKey = createBidActionKey(payload.productId, payload.rejectedBidUserId);
+            // --- *** نهاية التصحيح *** ---
+            return {
+                ...state,
+                rejectingBid: { ...state.rejectingBid, [bidActionKey]: false },
+                productErrors: { ...state.productErrors, [payload.productId]: payload.error }
+            };
 
         default:
             return state;
