@@ -3,62 +3,40 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const TransactionSchema = new Schema({
-    sender: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: function() { return this.type !== 'DEPOSIT'; } // المرسل مطلوب إلا في الإيداع
-    },
-    recipient: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-         required: function() { return this.type !== 'WITHDRAWAL'; } // المستلم مطلوب إلا في السحب
-    },
-    amount: {
-        type: Number,
-        required: true,
-        min: [0.01, 'Transaction amount must be positive'] // يجب أن يكون المبلغ إيجابياً
-    },
-    currency: {
-        type: String,
-        required: true,
-        enum: ['TND', 'USD'], // حدد العملات المسموح بها
-        default: 'TND'
-    },
+    user: { type: Schema.Types.ObjectId, ref: 'User' }, // المستخدم المرتبط أساسًا (يمكن أن يكون المرسل أو المستلم أو صاحب الإيداع/السحب)
+    sender: { type: Schema.Types.ObjectId, ref: 'User' }, // المرسل (في التحويلات)
+    recipient: { type: Schema.Types.ObjectId, ref: 'User' }, // المستلم (في التحويلات والإيداع من جهة خارجية؟)
+    amount: { type: Number, required: true },
+    currency: { type: String, required: true },
     type: {
         type: String,
         required: true,
-        enum: [
-            'TRANSFER',     // إرسال من مستخدم لآخر
-            'DEPOSIT',      // إيداع في الحساب
-            'WITHDRAWAL',   // سحب من الحساب
-            'PRODUCT_PURCHASE', // شراء منتج
-            'PRODUCT_SALE'    // بيع منتج (تسوية للبائع)
-            // أضف أنواع أخرى حسب الحاجة
-        ]
+        enum: ['TRANSFER', 'DEPOSIT', 'WITHDRAWAL', 'COMMISSION', 'REFUND', 'PRODUCT_SALE', 'BID_ESCROW', 'ESCROW_RELEASE', 'OTHER'] // أضف أنواعًا حسب الحاجة
     },
     status: {
         type: String,
         required: true,
-        enum: ['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'],
+        enum: ['PENDING', 'COMPLETED', 'FAILED', 'REJECTED', 'CANCELLED', 'PROCESSING'], // حالات ممكنة
         default: 'PENDING'
     },
-    description: { // وصف اختياري
-        type: String,
-        trim: true
-    },
-    relatedEntity: { // لربط المعاملة بكيان آخر (مثل طلب أو منتج)
-        id: { type: Schema.Types.ObjectId },
-        modelName: { type: String }
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
-}, { timestamps: true }); // timestamps يضيف createdAt و updatedAt تلقائياً
+    description: { type: String }, // وصف للمعاملة
+    relatedDepositRequest: { type: Schema.Types.ObjectId, ref: 'DepositRequest' }, // ربط بطلب الإيداع
+    relatedWithdrawalRequest: { type: Schema.Types.ObjectId, ref: 'WithdrawalRequest' }, // ربط بطلب السحب
+    relatedProduct: { type: Schema.Types.ObjectId, ref: 'Product' }, // ربط بالمنتج (للبيع أو المزايدة)
+    relatedTransaction: { type: Schema.Types.ObjectId, ref: 'Transaction' }, // ربط بمعاملة أخرى (مثل استرداد)
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
 
-// إضافة index لتحسين البحث عن معاملات مستخدم معين
-TransactionSchema.index({ sender: 1, createdAt: -1 });
-TransactionSchema.index({ recipient: 1, createdAt: -1 });
-TransactionSchema.index({ type: 1, status: 1 });
+// لتحديث updatedAt تلقائيًا
+TransactionSchema.pre('save', function (next) {
+    this.updatedAt = Date.now();
+    next();
+});
+TransactionSchema.pre('findOneAndUpdate', function (next) {
+    this.set({ updatedAt: Date.now() });
+    next();
+});
+
 
 module.exports = mongoose.model("Transaction", TransactionSchema);

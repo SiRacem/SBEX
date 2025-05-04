@@ -87,7 +87,7 @@ const NotificationsPage = () => {
           case "BID_UPDATED":
           case "BID_ACCEPTED_SELLER":
           case "BID_REJECTED_BY_YOU": // إشعارات يراها البائع في صفحة الطلبات/المزايدات
-            path = "/dashboard/orders"; // <-- المسار الصحيح لصفحة البائع للمزايدات/الطلبات
+            path = "/dashboard/comptes_bids"; // <-- المسار الصحيح لصفحة البائع للمزايدات/الطلبات
             break;
 
           // إشعارات تخص المشتري (المزايد)

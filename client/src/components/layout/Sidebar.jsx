@@ -9,11 +9,11 @@ import {
   FaImages,
   FaUserCircle,
   FaSignOutAlt,
-  FaSearch,
   FaUsers,
-  FaClipboardList,
   FaTasks,
   FaHeadset,
+  FaMoneyCheckAlt,
+  FaGavel,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { Form } from "react-bootstrap";
@@ -99,7 +99,7 @@ const Sidebar = ({ onSearchChange }) => {
           <>
             <NavLink
               className="sidebar-link"
-              to="/dashboard/orders"
+              to="/dashboard/comptes_bids"
               title="My Accounts"
             >
               <FaImages className="icon" />
@@ -128,7 +128,22 @@ const Sidebar = ({ onSearchChange }) => {
               <FaUsers className="icon" />
               <span className="link-text">Users</span>
             </NavLink>
-            {/* <NavLink className="sidebar-link" to="/dashboard/admin/orders" title="Manage Orders"> <FaClipboardList className="icon" /> <span className="link-text">All Orders</span> </NavLink> */}
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/payment-methods"
+              title="Manage Users"
+            >
+              <FaMoneyCheckAlt className="icon" />
+              <span className="link-text">Payment Methods</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/deposit-requests"
+              title="Manage Users"
+            >
+              <FaGavel className="icon" />
+              <span className="link-text">Manage Orders</span>
+            </NavLink>
           </>
         )}
 

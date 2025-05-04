@@ -114,14 +114,20 @@ exports.getTransactionsController = async (req, res) => {
     console.log(`[WalletCtrl] Fetching transactions for User ID: ${userId}`);
 
     try {
-        // البحث عن المعاملات حيث المستخدم هو المرسل أو المستلم
+        // --- [!] تعديل الاستعلام ليشمل حقل 'user' ---
         const transactions = await Transaction.find({
-            $or: [{ sender: userId }, { recipient: userId }]
+            $or: [
+                { user: userId }, // <-- [جديد] المعاملات المرتبطة مباشرة بالمستخدم (إيداع، سحب، إلخ)
+                { sender: userId }, // المعاملات التي أرسلها المستخدم
+                { recipient: userId } // المعاملات التي استقبلها المستخدم
+            ]
         })
-        .populate('sender', 'fullName email') // جلب بيانات المرسل الأساسية
-        .populate('recipient', 'fullName email') // جلب بيانات المستلم الأساسية
+        // -------------------------------------------
+        .populate('sender', 'fullName email avatarUrl') // جلب بيانات المرسل (مع الصورة الرمزية إذا أردت)
+        .populate('recipient', 'fullName email avatarUrl') // جلب بيانات المستلم
+        .populate('user', 'fullName email avatarUrl') // <-- [جديد] جلب بيانات المستخدم الأساسي للمعاملة
         .sort({ createdAt: -1 }) // ترتيب من الأحدث للأقدم
-        .limit(20); // جلب آخر 20 معاملة كمثال (يمكن إضافة pagination لاحقًا)
+        .limit(50); // زيادة الحد أو جعله قابل للتعديل (pagination)
 
         console.log(`[WalletCtrl] Found ${transactions.length} transactions.`);
         res.status(200).json(transactions);

@@ -1,5 +1,7 @@
 {
     "secret" : "appAuth",
     "PORT" : 8000,
-    "db" : "mongodb+srv://SiRacem:0000@onlinegroupdb.iqlvt.mongodb.net/SAEX?retryWrites=true&w=majority&appName=OnlineGroupDB"
+    "db" : "mongodb+srv://SiRacem:0000@onlinegroupdb.iqlvt.mongodb.net/SAEX?retryWrites=true&w=majority&appName=OnlineGroupDB",
+    "FRONTEND_URL": "http://localhost:3000",
+    "TND_TO_USD_RATE": 3.0
 }

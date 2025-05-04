@@ -6,6 +6,9 @@ import walletReducer from "./walletReducer";
 import adminUserReducer from "./adminUserReducer";
 import transactionReducer from "./transactionReducer";
 import uiReducer from "./uiReducer";
+import paymentMethodReducer from "./paymentMethodReducer";
+import depositRequestReducer from "./depositRequestReducer";
+import withdrawalRequestReducer from "./withdrawalRequestReducer";
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -17,6 +20,9 @@ const rootReducer = combineReducers({
     adminUserReducer,
     transactionReducer,
     ui: uiReducer,
+    paymentMethodReducer,
+    depositRequestReducer,
+    withdrawalRequestReducer,
     // orderReducer,
     // cartReducer,
 });

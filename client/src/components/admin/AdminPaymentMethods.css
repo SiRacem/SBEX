@@ -1,0 +1,42 @@
+/* src/pages/admin/AdminPaymentMethods.css */
+
+.admin-payment-methods-page .page-title {
+    color: #343a40;
+    font-weight: 600;
+}
+
+.admin-methods-table th {
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+    background-color: #f8f9fa;
+    /* Light header background */
+}
+
+.admin-methods-table td {
+    font-size: 0.9rem;
+    vertical-align: middle;
+}
+
+.admin-methods-table .action-cell .btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    /* Smaller buttons */
+    font-size: 0.8rem;
+}
+
+.admin-methods-table .action-cell .spinner-border {
+    width: 0.8rem;
+    height: 0.8rem;
+}
+
+/* Modal Form Adjustments */
+.modal-body h6 {
+    /* Style for subtitles like Limits & Fees */
+    color: #0d6efd;
+    margin-top: 1rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* Add more specific styles as needed */

@@ -9,9 +9,6 @@ import { ToastContainer, toast } from 'react-toastify'; // استيراد React 
 
 // --- استيراد الصفحات والمكونات ---
 import NotFound from './pages/NotFound';
-import CommandsListVendor from './components/vendor/CommandsListVendor';
-import ProductListVendor from './components/vendor/ProductListVendor';
-import CommandsListAd from './components/admin/CommandsListAd';
 import UserListAd from './components/admin/UserListAd';
 import ProductListAdmin from './components/admin/ProductListAdmin';
 import NotificationsPage from './pages/NotificationsPage';
@@ -32,6 +29,9 @@ import 'react-toastify/dist/ReactToastify.css'; // React Toastify CSS
 import './App.css'; // ملف CSS الرئيسي للتطبيق
 import './components/layout/Sidebar.css'; // CSS للشريط الجانبي
 import './pages/MainDashboard.css'; // CSS لـ MainDashboard
+import AdminPaymentMethods from './components/admin/AdminPaymentMethods';
+import AdminTransactionRequests from './components/admin/AdminTransactionRequests';
+import CommandsListVendor from './components/vendor/CommandsListVendor';
 
 // --- تعريف ثابت رابط خادم Socket.IO ---
 const SOCKET_SERVER_URL = "http://localhost:8000"; // تأكد من تطابق هذا مع منفذ الخادم الخلفي
@@ -304,11 +304,11 @@ function App() {
           {/* مسارات الأدمن (تتطلب دور الأدمن) */}
           <Route path="/dashboard/admin/products" element={<AdminRoute>{renderComponentWithSearch(ProductListAdmin)}</AdminRoute>} />
           <Route path="/dashboard/admin/users" element={<AdminRoute><UserListAd search={search} /></AdminRoute>} />
-          <Route path="/dashboard/admin/orders" element={<AdminRoute>{renderComponentWithSearch(CommandsListAd)}</AdminRoute>} />
-
+          <Route path="/dashboard/admin/deposit-requests" element={<AdminRoute>{renderComponentWithSearch(AdminTransactionRequests)}</AdminRoute>} />
+          {/* --- [!] إضافة المسار الجديد لإدارة طرق الدفع --- */}
+          <Route path="/dashboard/admin/payment-methods" element={<AdminRoute><AdminPaymentMethods /></AdminRoute>} />          
           {/* مسارات البائع (تتطلب دور البائع) */}
-          <Route path="/dashboard/vendor/products" element={<VendorRoute>{renderComponentWithSearch(ProductListVendor)}</VendorRoute>} />
-          <Route path="/dashboard/orders" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
+          <Route path="/dashboard/comptes_bids" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
 
           {/* مسار صفحة ملف تعريف مستخدم آخر (يمكن الوصول إليه من الجميع ربما) */}
           <Route path="/profile/:userId" element={<UserProfilePage />} />
