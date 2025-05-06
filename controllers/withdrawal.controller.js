@@ -646,11 +646,11 @@ exports.adminRejectWithdrawal = async (req, res) => {
         console.log("[WithdrawCtrl - adminRejectWithdrawal] Attempting to notify user...");
         try {
             // الرسالة تستخدم المبلغ المسترد بالدينار
-            const userMessage = `Your withdrawal request via ${updatedRequest.paymentMethod?.displayName || 'N/A'} was rejected. Reason: ${rejectionReason}. The amount ${formatCurrency(amountToRefund, 'TND')} has been refunded to your balance.`;
-            await notifyUserWithdrawalStatus(req, updatedRequest.user, 'WITHDRAWAL_REJECTED', 'Withdrawal Rejected', userMessage, updatedRequest._id);
-            console.log("[WithdrawCtrl - adminRejectWithdrawal] Finished attempting rejection notification.");
+            const userMessage = `Your withdrawal request of ${formatCurrency(updatedRequest.originalAmount, updatedRequest.originalCurrency)} via ${paymentMethodDetails?.displayName || 'N/A'} has been processed and completed. You should receive approx. ${formatCurrency(netAmountToReceiveInOriginalCurrency, updatedRequest.originalCurrency)} shortly.`;
+            await notifyUserWithdrawalStatus(req, updatedRequest.user._id, 'WITHDRAWAL_COMPLETED', 'Withdrawal Completed', userMessage, updatedRequest._id);
+            console.log("[WithdrawCtrl - adminCompleteWithdrawal] Finished attempting completion notification.");
         } catch (notificationError) {
-            console.error("[WithdrawCtrl - adminRejectWithdrawal] >>> ERROR occurred during notification function call:", notificationError);
+            console.error("[WithdrawCtrl - adminCompleteWithdrawal] >>> ERROR occurred during notification function call:", notificationError);
         }
 
         res.status(200).json({ msg: "Withdrawal rejected successfully.", updatedRequest: updatedRequest });

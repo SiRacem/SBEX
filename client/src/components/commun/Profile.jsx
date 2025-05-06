@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import React, { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -8,13 +9,12 @@ import {
   Spinner,
   Image,
   Badge,
-} from "react-bootstrap"; // Import Image and Badge
-import { getProfile } from "../../redux/actions/userAction"; // Adjust path
-import CurrencySwitcher from "./CurrencySwitcher"; // <-- استيراد المكون
-import useCurrencyDisplay from "../../hooks/useCurrencyDisplay"; // <-- استيراد الهوك
+} from "react-bootstrap";
+import { getProfile } from "../../redux/actions/userAction";
+import CurrencySwitcher from "./CurrencySwitcher";
+import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
 import "./ProfileRedesigned.css";
 
-// أيقونات اختيارية
 import {
   FaMapMarkerAlt,
   FaCheckCircle,
@@ -30,10 +30,9 @@ const Profile = () => {
   const dispatch = useDispatch();
   const { user, loading, isAuth } = useSelector((state) => state.userReducer);
 
-  // --- استخدام الهوك لكل رصيد ---
   const principalBalanceDisplay = useCurrencyDisplay(user?.balance);
   const depositBalanceDisplay = useCurrencyDisplay(user?.depositBalance);
-  const withdrawalBalanceDisplay = useCurrencyDisplay(user?.withdrawalBalance);
+  const withdrawalBalanceDisplay = useCurrencyDisplay(user?.withdrawalBalance); // هذا الهوك صحيح
   const sellerAvailableBalanceDisplay = useCurrencyDisplay(
     user?.sellerAvailableBalance
   );
@@ -70,7 +69,7 @@ const Profile = () => {
                     src={
                       user.avatarUrl ||
                       "https://bootdey.com/img/Content/avatar/avatar7.png"
-                    } // Placeholder
+                    }
                     roundedCircle
                     width={100}
                     height={100}
@@ -103,10 +102,9 @@ const Profile = () => {
             <Card.Body className="p-4">
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h4 className="section-title mb-0">Account Balances</h4>
-                <CurrencySwitcher size="sm" /> {/* <-- إضافة مبدل العملات */}
+                <CurrencySwitcher size="sm" />
               </div>
               <Row className="g-3 text-center">
-                {/* --- استخدام قيم الهوك للعرض --- */}
                 <Col sm={6} lg={4}>
                   <div className="balance-info-box">
                     <FaPiggyBank size={28} className="text-primary mb-2 icon" />
@@ -116,8 +114,7 @@ const Profile = () => {
                     </span>
                     <span className="approx-value">
                       {principalBalanceDisplay.approxValue}
-                    </span>{" "}
-                    {/* <-- القيمة التقريبية */}
+                    </span>
                   </div>
                 </Col>
                 <Col sm={6} lg={4}>
@@ -139,12 +136,14 @@ const Profile = () => {
                     <span className="value">
                       {withdrawalBalanceDisplay.displayValue}
                     </span>
+                    {/* --- [!!!] التصحيح هنا [!!!] --- */}
                     <span className="approx-value">
-                      {sellerAvailableBalanceDisplay.approxValue}
+                      {withdrawalBalanceDisplay.approxValue}{" "}
+                      {/* <-- تم التصحيح */}
                     </span>
+                    {/* ----------------------------- */}
                   </div>
                 </Col>
-                {/* Seller Balances */}
                 {(user.userRole === "Vendor" || user.userRole === "Admin") && (
                   <>
                     <Col sm={6} lg={6}>
@@ -179,7 +178,6 @@ const Profile = () => {
                     </Col>
                   </>
                 )}
-                {/* --- نهاية استخدام قيم الهوك --- */}
               </Row>
             </Card.Body>
           </Card>

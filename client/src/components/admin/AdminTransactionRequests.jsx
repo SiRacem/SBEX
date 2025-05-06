@@ -1,5 +1,5 @@
 // src/pages/admin/AdminTransactionRequests.jsx
-// *** النسخة النهائية المفترضة (مطابقة للكود الأخير الذي قدمته، مع التأكيد على التعديلات السابقة) ***
+// *** نسخة كاملة ونهائية بدون اختصارات - مع تعديلات عرض السحب ***
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -32,8 +32,6 @@ import {
 } from "react-icons/fa";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-
-// --- [!] تأكد أن الاستيرادات صحيحة ومطابقة لملف الأكشن ---
 import {
   adminGetDeposits,
   adminApproveDeposit,
@@ -48,19 +46,40 @@ import {
   adminGetWithdrawalDetails,
   adminClearWithdrawalDetails,
 } from "../../redux/actions/withdrawalRequestAction";
-// ----------------------------------------------------
-
 import DepositRequestDetailsModal from "../../components/admin/DepositRequestDetailsModal";
 import RejectReasonModal from "../../components/admin/RejectReasonModal";
 
-const PAGE_LIMIT = 15; // تأكد أن هذه القيمة متوافقة مع الخادم
+const PAGE_LIMIT = 15;
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="40px" fill="%23aaaaaa">?</text></svg>';
+
+const TND_TO_USD_RATE = 3.0;
+const formatCurrencyLocal = (amount, currencyCode = "TND") => {
+  const num = Number(amount);
+  if (isNaN(num) || amount == null) return "N/A";
+  let safeCurrencyCode = currencyCode;
+  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
+    safeCurrencyCode = "TND";
+  }
+  try {
+    return num.toLocaleString("en-US", {
+      style: "currency",
+      currency: safeCurrencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch (error) {
+    console.warn(
+      `Currency formatting error for code '${safeCurrencyCode}':`,
+      error
+    );
+    return `${num.toFixed(2)} ${safeCurrencyCode}`;
+  }
+};
 
 const AdminTransactionRequests = () => {
   const dispatch = useDispatch();
 
-  // --- Redux state selectors ---
   const depositState = useSelector(
     (state) => state.depositRequestReducer || {}
   );
@@ -68,38 +87,29 @@ const AdminTransactionRequests = () => {
     (state) => state.withdrawalRequestReducer || {}
   );
 
-  // --- [معدل] الوصول للمصفوفة داخل adminRequestsData ---
   const {
-    adminRequestsData: { requests: depositRequests = [] } = {}, // <-- الوصول لـ requests داخل adminRequestsData
+    adminRequestsData: { requests: depositRequests = [] } = {},
     loadingAdminList: loadingDeposits = false,
     errorAdminList: errorDeposits = null,
-    adminRequestsData: { totalPages: depositTotalPages = 1 } = {}, // <-- الوصول لـ totalPages
-    adminRequestsData: { currentPage: depositCurrentPage = 1 } = {}, // <-- الوصول لـ currentPage
-    loadingApprove: loadingDepositApprove = {}, // افترض أنها مسطحة إذا كانت من reducer آخر أو عدلها
-    loadingReject: loadingDepositReject = {}, // افترض أنها مسطحة إذا كانت من reducer آخر أو عدلها
+    adminRequestsData: { totalPages: depositTotalPages = 1 } = {},
+    adminRequestsData: { currentPage: depositCurrentPage = 1 } = {},
+    loadingApprove: loadingDepositApprove = {},
+    loadingReject: loadingDepositReject = {},
     errorAdminAction: errorDepositAction = null,
   } = depositState;
-  // --------------------------------------------------
-
-  console.log(
-    "Deposit Requests in Component (from adminRequestsData):",
-    depositRequests
-  ); // <-- تحديث console.log
 
   const {
-    // --- [معدل] الوصول لمصفوفة السحب أيضاً ---
-    adminRequestsData: { requests: withdrawalRequests = [] } = {}, // <-- الوصول لـ requests
+    adminRequestsData: { requests: withdrawalRequests = [] } = {},
     loadingAdminList: loadingWithdrawals = false,
     errorAdminList: errorWithdrawals = null,
-    adminRequestsData: { totalPages: withdrawalTotalPages = 1 } = {}, // <-- الوصول لـ totalPages
-    adminRequestsData: { currentPage: withdrawalCurrentPage = 1 } = {}, // <-- الوصول لـ currentPage
+    adminRequestsData: { totalPages: withdrawalTotalPages = 1 } = {},
+    adminRequestsData: { currentPage: withdrawalCurrentPage = 1 } = {},
     loadingAdminAction: loadingWithdrawalAction = {},
     errorAdminAction: errorWithdrawalAction = null,
-    adminRequestDetails: selectedWithdrawalDetails, // <-- استخدام اسم الحقل الصحيح من Reducer
+    adminRequestDetails: selectedWithdrawalDetails,
     loadingAdminDetails: loadingWithdrawalDetails = false,
-  } = withdrawalState; // افترض أن withdrawal reducer يستخدم نفس بنية adminRequestsData
+  } = withdrawalState;
 
-  // --- Local component state ---
   const [activeTab, setActiveTab] = useState("pendingDeposits");
   const [currentPageData, setCurrentPageData] = useState({
     page: 1,
@@ -110,27 +120,19 @@ const AdminTransactionRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [requestType, setRequestType] = useState("deposit");
 
-  // --- Fetch lists ---
   const fetchData = useCallback(
     (page = 1) => {
-      // --- [!] فلتر الحالة بأحرف صغيرة ---
-      const statusFilter = activeTab.includes("pending") ? "pending" : ""; // <-- استخدام 'pending'
-      // ----------------------------------
+      const statusFilter = activeTab.includes("pending") ? "pending" : "";
       console.log(
         `Fetching data for tab: ${activeTab}, page: ${page}, statusFilter: '${statusFilter}'`
       );
-
       setCurrentPageData((prev) => ({ ...prev, page }));
-
       if (activeTab.includes("Deposits")) {
-        // --- [معدل] إضافة toLowerCase للفلتر ---
         dispatch(
           adminGetDeposits({ page, limit: PAGE_LIMIT, status: statusFilter })
         );
-        // -------------------------------------
         dispatch(clearDepositErrors());
       } else if (activeTab.includes("Withdrawals")) {
-        // --- [معدل] إضافة toLowerCase للفلتر ---
         dispatch(
           adminGetWithdrawalRequests({
             page,
@@ -138,17 +140,16 @@ const AdminTransactionRequests = () => {
             status: statusFilter,
           })
         );
-        // -------------------------------------
         dispatch(adminClearWithdrawalError());
       }
     },
-    [activeTab, dispatch] // الاعتماديات
+    [activeTab, dispatch]
   );
 
-  // جلب البيانات عند التحميل أو تغيير التبويب
   useEffect(() => {
     fetchData(1);
-  }, [fetchData]); // fetchData يعتمد على activeTab
+  }, [fetchData]);
+
   useEffect(() => {
     if (activeTab.includes("Deposits")) {
       setCurrentPageData({
@@ -169,7 +170,6 @@ const AdminTransactionRequests = () => {
     activeTab,
   ]);
 
-  // --- Handlers (تبقى كما هي من النسخة السابقة) ---
   const handleShowDetails = (request, type) => {
     if (!request || !request._id) {
       toast.error("Invalid request data.");
@@ -208,7 +208,15 @@ const AdminTransactionRequests = () => {
   const handleApproveOrComplete = (request, type) => {
     if (!request || !request._id) return;
     const userFullName = request.user?.fullName || "user";
-    const amountStr = `${request.amount?.toFixed(2)} ${request.currency}`;
+    const amountToDisplay =
+      type === "withdrawal" ? request.originalAmount : request.amount;
+    const currencyToDisplay =
+      type === "withdrawal" ? request.originalCurrency : request.currency;
+    const amountStr = `${formatCurrencyLocal(
+      amountToDisplay,
+      currencyToDisplay
+    )}`;
+
     if (type === "deposit") {
       if (
         window.confirm(`Approve deposit of ${amountStr} for ${userFullName}?`)
@@ -216,17 +224,17 @@ const AdminTransactionRequests = () => {
         dispatch(adminApproveDeposit(request._id));
       }
     } else {
+      // withdrawal
       if (
         window.confirm(
           `Complete withdrawal of ${amountStr} for ${userFullName}?`
         )
       ) {
-        dispatch(adminCompleteWithdrawal(request._id));
+        dispatch(adminCompleteWithdrawal(request._id)); // Assuming transactionReference is optional or handled elsewhere
       }
     }
   };
 
-  // --- Render Helpers (تبقى كما هي من النسخة السابقة) ---
   const renderStatusBadge = (status) => {
     let variant = "secondary";
     let icon = <FaInfoCircle />;
@@ -254,7 +262,8 @@ const AdminTransactionRequests = () => {
         bg={variant}
         className="d-inline-flex align-items-center status-badge"
       >
-        {React.cloneElement(icon, { className: "me-1" })} {displayStatus}
+        {" "}
+        {React.cloneElement(icon, { className: "me-1" })} {displayStatus}{" "}
       </Badge>
     );
   };
@@ -283,15 +292,12 @@ const AdminTransactionRequests = () => {
     </OverlayTrigger>
   );
 
-  // --- [!] تعديل بسيط في renderTable للتحقق من loadingMap ---
   const renderTable = (requests = [], type) => {
     const loadingList =
       type === "deposit" ? loadingDeposits : loadingWithdrawals;
     const errorList = type === "deposit" ? errorDeposits : errorWithdrawals;
-
     const isLoadingMap = (reqId) => {
       if (type === "deposit") {
-        // التحقق إذا كانت حالات التحميل كائنات
         const approveLoading =
           typeof loadingDepositApprove === "object"
             ? loadingDepositApprove[reqId]
@@ -302,31 +308,28 @@ const AdminTransactionRequests = () => {
             : loadingDepositReject;
         return approveLoading || rejectLoading;
       } else {
-        // افترض أن loadingWithdrawalAction هو كائن { requestId: boolean }
         return typeof loadingWithdrawalAction === "object"
           ? loadingWithdrawalAction[reqId]
           : loadingWithdrawalAction;
       }
     };
-
     const { page, totalPages } = currentPageData;
 
     if (loadingList)
       return (
         <div className="text-center p-5">
-          <Spinner />
-          <p className="mt-2 text-muted">Loading...</p>
+          {" "}
+          <Spinner /> <p className="mt-2 text-muted">Loading...</p>{" "}
         </div>
       );
     if (errorList)
       return (
         <Alert variant="danger" className="text-center">
-          Error: {errorList}
+          {" "}
+          Error: {errorList}{" "}
         </Alert>
       );
-    // --- [!] تعديل رسالة عدم وجود طلبات ---
     if (!requests || requests.length === 0) {
-      // استخدم statusFilter للتحقق إذا كان الفلتر مفعلاً
       const statusFilter = activeTab.includes("pending") ? "pending" : "";
       const message =
         statusFilter === "pending"
@@ -338,7 +341,6 @@ const AdminTransactionRequests = () => {
         </Alert>
       );
     }
-    // -------------------------------------
 
     return (
       <>
@@ -365,11 +367,40 @@ const AdminTransactionRequests = () => {
             <tbody>
               {requests.map((req) => {
                 if (!req?._id || !req.user) {
-                  console.warn("Skipping render:", req);
+                  console.warn(
+                    "Skipping render for invalid request object:",
+                    req
+                  );
                   return null;
                 }
                 const isProcessing = isLoadingMap(req._id);
                 const isPending = req.status?.toLowerCase() === "pending";
+
+                let displayAmount = req.amount;
+                let displayCurrency = req.currency;
+                if (
+                  type === "withdrawal" &&
+                  req.originalAmount != null &&
+                  req.originalCurrency
+                ) {
+                  displayAmount = req.originalAmount;
+                  displayCurrency = req.originalCurrency;
+                }
+
+                let infoToDisplay = req.transactionId || req.senderInfo || "-";
+                if (type === "withdrawal" && req.withdrawalInfo) {
+                  if (typeof req.withdrawalInfo === "string") {
+                    infoToDisplay = req.withdrawalInfo;
+                  } else if (
+                    typeof req.withdrawalInfo === "object" &&
+                    req.withdrawalInfo !== null
+                  ) {
+                    // Example: Display the first value if it's an object, or join them
+                    const values = Object.values(req.withdrawalInfo);
+                    infoToDisplay = values.length > 0 ? values[0] : "-";
+                  }
+                }
+
                 return (
                   <tr
                     key={req._id}
@@ -396,8 +427,7 @@ const AdminTransactionRequests = () => {
                       </div>
                     </td>
                     <td className="fw-medium align-middle">
-                      {req.amount != null ? req.amount.toFixed(2) : "N/A"}{" "}
-                      <span className="text-muted">{req.currency || ""}</span>
+                      {formatCurrencyLocal(displayAmount, displayCurrency)}
                     </td>
                     <td className="align-middle">
                       {req.method ||
@@ -411,17 +441,13 @@ const AdminTransactionRequests = () => {
                     <td className="small text-muted align-middle">
                       <OverlayTrigger
                         placement="top"
-                        overlay={
-                          <Tooltip>
-                            {req.transactionId || req.senderInfo || "-"}
-                          </Tooltip>
-                        }
+                        overlay={<Tooltip>{infoToDisplay}</Tooltip>}
                       >
                         <span
                           className="text-truncate d-inline-block"
                           style={{ maxWidth: "100px" }}
                         >
-                          {req.transactionId || req.senderInfo || "-"}
+                          {infoToDisplay}
                         </span>
                       </OverlayTrigger>
                     </td>
@@ -472,7 +498,8 @@ const AdminTransactionRequests = () => {
                   active={i + 1 === page}
                   onClick={() => fetchData(i + 1)}
                 >
-                  {i + 1}
+                  {" "}
+                  {i + 1}{" "}
                 </Pagination.Item>
               ))}
               <Pagination.Next
@@ -485,16 +512,13 @@ const AdminTransactionRequests = () => {
       </>
     );
   };
-  // ----------------------------------------------------------
 
-  // --- JSX الرئيسي للمكون ---
   return (
     <Container fluid className="py-4 admin-requests-page">
       <Row className="mb-3 align-items-center">
-        {" "}
         <Col>
           <h2 className="page-title">Transaction Requests</h2>
-        </Col>{" "}
+        </Col>
         <Col xs="auto">
           <Button
             variant="outline-primary"
@@ -504,13 +528,25 @@ const AdminTransactionRequests = () => {
           >
             <FaSync /> Refresh
           </Button>
-        </Col>{" "}
+        </Col>
       </Row>
       {errorDepositAction && (
-        <Alert variant="danger">Error: {errorDepositAction}</Alert>
+        <Alert
+          variant="danger"
+          onClose={() => dispatch(clearDepositErrors())}
+          dismissible
+        >
+          Error: {errorDepositAction}
+        </Alert>
       )}
       {errorWithdrawalAction && (
-        <Alert variant="danger">Error: {errorWithdrawalAction}</Alert>
+        <Alert
+          variant="danger"
+          onClose={() => dispatch(adminClearWithdrawalError())}
+          dismissible
+        >
+          Error: {errorWithdrawalAction}
+        </Alert>
       )}
 
       <Tabs
@@ -520,7 +556,6 @@ const AdminTransactionRequests = () => {
         className="mb-3 nav-tabs-custom"
         fill
       >
-        {/* --- [معدل] تمرير المصفوفات الصحيحة لـ renderTable --- */}
         <Tab eventKey="pendingDeposits" title="Pending Deposits">
           {renderTable(depositRequests, "deposit")}
         </Tab>
@@ -533,7 +568,6 @@ const AdminTransactionRequests = () => {
         <Tab eventKey="allWithdrawals" title="All Withdrawals">
           {renderTable(withdrawalRequests, "withdrawal")}
         </Tab>
-        {/* ------------------------------------------------- */}
       </Tabs>
 
       <DepositRequestDetailsModal
@@ -549,9 +583,11 @@ const AdminTransactionRequests = () => {
           requestType === "deposit"
             ? selectedRequest
             : selectedWithdrawalDetails
-        } // <-- مرر تفاصيل السحب من Redux
+        }
         requestType={requestType}
         loading={requestType === "withdrawal" && loadingWithdrawalDetails}
+        formatCurrencyFn={formatCurrencyLocal}
+        tndToUsdRate={TND_TO_USD_RATE}
       />
 
       <RejectReasonModal
@@ -564,9 +600,10 @@ const AdminTransactionRequests = () => {
                 -6
               )}) from ${
                 selectedRequest.user?.fullName || "user"
-              } for ${selectedRequest.amount?.toFixed(2)} ${
-                selectedRequest.currency
-              }`
+              } for ${formatCurrencyLocal(
+                selectedRequest.originalAmount || selectedRequest.amount,
+                selectedRequest.originalCurrency || selectedRequest.currency
+              )}`
             : "Reject Request"
         }
       />

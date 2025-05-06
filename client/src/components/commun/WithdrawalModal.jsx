@@ -129,6 +129,8 @@ const WithdrawModal = ({ show, onHide }) => {
   const dispatch = useDispatch();
 
   // --- Redux State ---
+  const userBalanceTND = useSelector((state) => state.userReducer?.user?.balance ?? 0);
+  const userBalanceUSD = useMemo(() => userBalanceTND / TND_TO_USD_RATE, [userBalanceTND]);
   const userBalance = useSelector(
     (state) => state.userReducer?.user?.balance ?? 0
   ); // الرصيد الأساسي بالدينار
@@ -265,6 +267,20 @@ const WithdrawModal = ({ show, onHide }) => {
       setWithdrawalAmount(value);
     }
   };
+
+    // --- [!!!] دالة جديدة لزر MAX [!!!] ---
+    const handleSetMaxWithdrawalAmount = useCallback(() => {
+      let maxAmount = 0;
+      // المبلغ الذي سيتم إدخاله هو رصيد المستخدم بالعملة المختارة
+      if (inputCurrency === "USD") {
+        maxAmount = userBalanceUSD;
+      } else { // TND
+        maxAmount = userBalanceTND;
+      }
+      // تقريب لأقرب سنتين لضمان عدم تجاوز الرصيد بسبب مشاكل الفاصلة العائمة
+      setWithdrawalAmount( (Math.floor(maxAmount * 100) / 100).toFixed(2) );
+      setAmountError(null); // مسح أي خطأ سابق
+    }, [inputCurrency, userBalanceTND, userBalanceUSD]);
 
   // الانتقال للخطوة التالية مع التحقق
   const goToStep = (nextStep) => {
@@ -641,6 +657,9 @@ const WithdrawModal = ({ show, onHide }) => {
                     isInvalid={!!amountError}
                     autoFocus
                   />
+                                    {/* --- [!!!] زر MAX المضاف --- */}
+                                    <Button variant="outline-secondary" onClick={handleSetMaxWithdrawalAmount}> MAX </Button>
+                  {/* ------------------------- */}
                   <InputGroup.Text>{inputCurrency}</InputGroup.Text>
                 </InputGroup>
                 {/* عرض خطأ المبلغ */}
@@ -804,18 +823,7 @@ const WithdrawModal = ({ show, onHide }) => {
                 </Col>
               </Row>
               {/* المبلغ الإجمالي المخصوم بالدينار */}
-              <Row className="fs-6">
-                <Col className="text-muted">Total Deducted from Balance:</Col>
-                <Col xs="auto" className="fw-bold text-primary">
-                  ≈{" "}
-                  {formatCurrency(
-                    inputCurrency === "USD"
-                      ? parseFloat(withdrawalAmount) * TND_TO_USD_RATE
-                      : parseFloat(withdrawalAmount),
-                    "TND"
-                  )}
-                </Col>
-              </Row>
+              
               <hr className="my-2" />
               {/* تفاصيل السحب المدخلة */}
               <Row>
