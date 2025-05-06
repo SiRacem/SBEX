@@ -1,5 +1,5 @@
 // src/pages/admin/AdminPaymentMethods.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Container,
@@ -456,7 +456,7 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
 };
 
 // --- المكون الرئيسي للصفحة (معدل في عرض الجدول) ---
-const AdminPaymentMethods = () => {
+const AdminPaymentMethods = ({ search }) => {
   const dispatch = useDispatch();
   const allMethods = useSelector(
     (state) => state.paymentMethodReducer?.allMethods ?? []
@@ -475,6 +475,7 @@ const AdminPaymentMethods = () => {
   );
   const [showModal, setShowModal] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
+  const currentSearch = search !== undefined ? search : "";
 
   useEffect(() => {
     dispatch(adminGetAllPaymentMethods());
@@ -495,6 +496,17 @@ const AdminPaymentMethods = () => {
     setShowModal(false);
     setEditingMethod(null);
   }, []);
+
+  // الفلترة
+  const filteredMethods = useMemo(() => {
+    if (!currentSearch) return allMethods;
+    const searchTerm = currentSearch.toLowerCase();
+    return allMethods.filter(
+      (u) =>
+        u.name?.toLowerCase().includes(searchTerm) ||
+        u.type?.toLowerCase().includes(searchTerm)
+      );
+  }, [allMethods, currentSearch]);
 
   const handleSaveMethod = useCallback(
     async (formData) => {
@@ -528,14 +540,17 @@ const AdminPaymentMethods = () => {
     <Container fluid className="py-4 admin-payment-methods-page">
       <Row className="mb-3 align-items-center">
         <Col>
-          {" "}
-          <h2 className="page-title mb-0">Manage Payment Methods</h2>{" "}
+          <h2 className="page-title mb-0">
+            Manage Payment Methods
+            <Badge bg="secondary" className="ms-2" pill>
+              {filteredMethods.length}
+            </Badge>
+          </h2>
         </Col>
         <Col xs="auto">
-          {" "}
           <Button variant="primary" onClick={handleShowAddModal}>
             <FaPlus className="me-1" /> Add New Method
-          </Button>{" "}
+          </Button>
         </Col>
       </Row>
 
@@ -580,15 +595,14 @@ const AdminPaymentMethods = () => {
                 </tr>
               </thead>
               <tbody>
-                {allMethods.length > 0 ? (
-                  allMethods.map((method) => {
+                {filteredMethods.length > 0 ? (
+                  filteredMethods.map((method) => {
                     const isUpdating = loadingUpdate[method._id] ?? false;
                     const isDeleting = loadingDelete[method._id] ?? false;
                     const isProcessing = isUpdating || isDeleting;
                     return (
                       <tr key={method._id}>
                         <td>
-                          {" "}
                           <Image
                             src={method.logoUrl || noImageUrl}
                             alt={method.name}
@@ -599,10 +613,10 @@ const AdminPaymentMethods = () => {
                               e.target.onerror = null;
                               e.target.src = noImageUrl;
                             }}
-                          />{" "}
+                          />
                         </td>
                         <td>
-                          {method.displayName}{" "}
+                          {method.displayName}
                           <small className="text-muted d-block">
                             ({method.name})
                           </small>
@@ -642,11 +656,11 @@ const AdminPaymentMethods = () => {
                         </td>
                         {/* --- [معدل] عرض العمولات المنفصلة --- */}
                         <td>
-                          {method.depositCommissionPercent ?? 0}% /{" "}
+                          {method.depositCommissionPercent ?? 0}% /
                           {method.withdrawalCommissionPercent ?? 0}%
                         </td>
                         <td>
-                          {method.minDepositTND ?? "-"} /{" "}
+                          {method.minDepositTND ?? "-"} /
                           {method.minDepositUSD ?? "-"}
                         </td>
                         <td>

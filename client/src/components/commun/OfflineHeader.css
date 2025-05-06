@@ -1,7 +1,5 @@
 /* src/components/commun/OfflineHeader.css */
 
-
-
 .main-header {
     background-color: #ffffff !important;
     /* تأكيد الخلفية البيضاء */
@@ -36,4 +34,11 @@
     transition: background-color 0.2s ease, color 0.2s ease;
     border-radius: 15px;
     padding: 8px;
+}
+
+@media (max-width: 768px) {
+    .sidebar-logo {
+        height: 175px;
+    }
+    
 }

@@ -306,7 +306,7 @@ function App() {
           <Route path="/dashboard/admin/users" element={<AdminRoute><UserListAd search={search} /></AdminRoute>} />
           <Route path="/dashboard/admin/deposit-requests" element={<AdminRoute>{renderComponentWithSearch(AdminTransactionRequests)}</AdminRoute>} />
           {/* --- [!] إضافة المسار الجديد لإدارة طرق الدفع --- */}
-          <Route path="/dashboard/admin/payment-methods" element={<AdminRoute><AdminPaymentMethods /></AdminRoute>} />          
+          <Route path="/dashboard/admin/payment-methods" element={<AdminRoute><AdminPaymentMethods search={search} /></AdminRoute>} />          
           {/* مسارات البائع (تتطلب دور البائع) */}
           <Route path="/dashboard/comptes_bids" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
 

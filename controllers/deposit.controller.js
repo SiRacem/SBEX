@@ -67,27 +67,54 @@ exports.createDepositRequest = async (req, res) => {
         const numericAmount = Number(amount);
         if (isNaN(numericAmount) || numericAmount <= 0) throw new Error("Invalid amount.");
         const paymentMethodDoc = await PaymentMethod.findOne({ name: methodName, isActive: true }).session(session);
-        console.log("Found Payment Method Doc:", paymentMethodDoc);
+        console.log("   [DEBUG] Found Payment Method Doc:", paymentMethodDoc);
         if (!paymentMethodDoc) throw new Error(`Payment method '${methodName}' not found or inactive.`);
+
+        // --- [!!!] أضف تسجيل هنا [!!!] ---
+        console.log(`   [DEBUG] Inputs for calculateCommissionServer:`);
+        console.log(`     Method Name: ${paymentMethodDoc?.name}`);
+        console.log(`     Method Commission %: ${paymentMethodDoc?.depositCommissionPercent}`); // <-- تأكد أن هذه القيمة 3 للـ Faucet Pay
+        console.log(`     Amount: ${numericAmount}`);
+        console.log(`     Currency: ${currency}`);
+        // --------------------------------
+        
         const { fee, netAmount } = calculateCommissionServer(paymentMethodDoc, numericAmount, currency); // حساب العمولة هنا
+
+        // --- [!!!] أضف تسجيل هنا [!!!] ---
+        console.log(`   [DEBUG] Result from calculateCommissionServer: Fee = ${fee}, Net = ${netAmount}`);
+        // --------------------------------
+
         const newDepositRequest = new DepositRequest({
-            user: userId, amount: numericAmount, currency, method: methodName, paymentMethod: paymentMethodDoc._id,
-            transactionId: transactionId || undefined, senderInfo: senderInfo || undefined,
-            screenshotUrl: screenshotUrl || undefined, feeAmount: fee, netAmountCredited: netAmount, status: 'pending'
+            user: userId,
+            amount: numericAmount, // المبلغ الإجمالي الأصلي
+            currency, // العملة الأصلية
+            method: methodName,
+            paymentMethod: paymentMethodDoc._id,
+            transactionId: transactionId || undefined,
+            senderInfo: senderInfo || undefined,
+            screenshotUrl: screenshotUrl || undefined,
+            feeAmount: fee, // <--- حفظ العمولة المحسوبة (يجب أن تكون 0.15)
+            netAmountCredited: netAmount, // <--- حفظ الصافي المحسوب (يجب أن يكون 4.85)
+            status: 'pending'
         });
         await newDepositRequest.save({ session });
-        console.log("   DepositRequest saved:", newDepositRequest._id);
-        const depositTransaction = new Transaction({
+        console.log("   DepositRequest saved with fee:", fee, "and netAmount:", netAmount); // <-- تحقق من القيم المحفوظة
+
+        /*const depositTransaction = new Transaction({
             user: userId, amount: netAmount, currency, type: 'DEPOSIT', status: 'PENDING',
             description: `Deposit: ${numericAmount} ${currency} via ${methodName}. Fee: ${fee}`,
             relatedDepositRequest: newDepositRequest._id
         });
         await depositTransaction.save({ session });
-        console.log("   Transaction saved:", depositTransaction._id);
+        console.log("   Transaction saved:", depositTransaction._id);*/
         const admins = await User.find({ userRole: 'Admin' }).select('_id').lean().session(session);
         const notifications = [];
         notifications.push({ user: userId, type: 'DEPOSIT_PENDING', title: 'Deposit Pending', message: `Request for ${formatCurrency(numericAmount, currency)} is pending.`, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } });
-        admins.forEach(admin => notifications.push({ user: admin._id, type: 'NEW_DEPOSIT_REQUEST', title: 'New Deposit', message: `User ${userFullName} requested ${formatCurrency(numericAmount, currency)}. Fee: ${formatCurrency(fee, currency)}`, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } }));
+admins.forEach(admin => {
+             const adminNotifMsg = `User ${userFullName} requested ${formatCurrency(numericAmount, currency)}. Fee: ${formatCurrency(fee, currency)}`;
+             console.log(`   [DEBUG] Admin Notification Message: ${adminNotifMsg}`); // <-- تحقق من الرسالة
+             notifications.push({ user: admin._id, type: 'NEW_DEPOSIT_REQUEST', title: 'New Deposit', message: adminNotifMsg, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } })
+        });
         const createdNotifications = await Notification.insertMany(notifications, { session });
         console.log(`   ${createdNotifications.length} notifications saved.`);
         await session.commitTransaction();
@@ -233,10 +260,25 @@ exports.adminApproveDeposit = async (req, res) => {
         await depositRequest.save({ session });
         console.log("   Deposit request updated to 'approved'.");
 
+        // --- [!!!] أضف إنشاء المعاملة المكتملة هنا ---
+        const completedTransaction = new Transaction({
+            user: depositRequest.user,
+            amount: amountToAdd, // المبلغ الفعلي المضاف للرصيد بالعملة الأساسية (TND)
+            currency: userBalanceCurrency, // عملة الرصيد
+            type: 'DEPOSIT',
+            status: 'COMPLETED', // الحالة مكتملة
+            description: `Approved Deposit via ${depositRequest.paymentMethod?.name || 'N/A'}`,
+            relatedDepositRequest: depositRequest._id
+            // يمكنك إضافة حقول أخرى إذا لزم الأمر
+        });
+        await completedTransaction.save({ session });
+        console.log("   Completed Transaction saved:", completedTransaction._id);
+        // -------------------------------------------
+
         // تحديث المعاملة
-        const transactionUpdateResult = await Transaction.updateOne({ relatedDepositRequest: id, status: 'PENDING' }, { $set: { status: 'COMPLETED', amount: depositRequest.netAmountCredited } }, { session });
+        /*const transactionUpdateResult = await Transaction.updateOne({ relatedDepositRequest: id, status: 'PENDING' }, { $set: { status: 'COMPLETED', amount: depositRequest.netAmountCredited } }, { session });
         if (transactionUpdateResult.matchedCount > 0) console.log(`   Transaction status updated to 'COMPLETED'.`);
-        else console.warn(`   Warning: PENDING transaction not found for request ${id}.`);
+        else console.warn(`   Warning: PENDING transaction not found for request ${id}.`);*/
 
         // إنشاء وإرسال الإشعار
         const notification = new Notification({
@@ -280,9 +322,9 @@ exports.adminRejectDeposit = async (req, res) => {
             { session, new: true }).populate('paymentMethod');
         if (!rejectedRequest) throw new Error("Pending request not found or already processed.");
         console.log("   Deposit request updated to 'rejected'.");
-        const transactionUpdateResult = await Transaction.updateOne({ relatedDepositRequest: id, status: 'PENDING' }, { $set: { status: 'REJECTED' } }, { session });
+        /*const transactionUpdateResult = await Transaction.updateOne({ relatedDepositRequest: id, status: 'PENDING' }, { $set: { status: 'REJECTED' } }, { session });
         if (transactionUpdateResult.matchedCount > 0) console.log(`   Transaction status updated to 'REJECTED'.`);
-        else console.warn(`   Warning: PENDING transaction not found for request ${id}.`);
+        else console.warn(`   Warning: PENDING transaction not found for request ${id}.`);*/
         const notification = new Notification({
             user: rejectedRequest.user, type: 'DEPOSIT_REJECTED', title: 'Deposit Rejected',
             message: `Deposit request of ${formatCurrency(rejectedRequest.amount, rejectedRequest.currency)} was rejected. Reason: ${reason}`,

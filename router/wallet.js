@@ -19,11 +19,6 @@ const {
 // sendFundsController هي الدالة التي ستحتوي على منطق التحويل في الواجهة الخلفية
 router.post('/send', verifyAuth, sendFundsController);
 router.get('/transactions', verifyAuth, getTransactionsController);
-// --- يمكنك إضافة مسارات أخرى للمحفظة هنا ---
-// مثل:
-// GET /wallet/transactions - لجلب سجل المعاملات
-// POST /wallet/deposit - لبدء عملية إيداع
-// POST /wallet/withdraw - لبدء عملية سحب
 
 // --- نهاية تعريف المسارات ---
 

@@ -20,10 +20,8 @@ import { Form } from "react-bootstrap";
 import { logoutUser } from "../../redux/actions/userAction";
 import "./Sidebar.css"; // تأكد من وجود هذا الملف
 
-// --- المسار المؤقت للشعار ---
-// const logoUrl = "/images/logo.png"; // استخدم هذا إذا وضعت الشعار في public/images
 const logoUrl =
-  "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png"; // استخدم رابطًا خارجيًا مؤقتًا للتأكد
+  "https://res.cloudinary.com/draghygoj/image/upload/v1746477147/wmremove-transformed-removebg-preview_adyzjs.png"; // استخدم رابطًا خارجيًا مؤقتًا للتأكد
 
 const Sidebar = ({ onSearchChange }) => {
   const dispatch = useDispatch();

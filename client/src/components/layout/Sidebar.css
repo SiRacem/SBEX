@@ -43,9 +43,7 @@
 
 .sidebar-logo {
     display: block;
-    /* لإزالة المسافات الزائدة */
-    height: 35px;
-    /* تحديد ارتفاع الشعار */
+    height: 75px;
     width: auto;
     transition: height 0.2s ease-out;
 }
@@ -235,7 +233,7 @@
 
     /* الشعار على اليسار */
     .sidebar-logo {
-        height: 30px;
+        height: 55px;
     }
 
     .sidebar-search-container {

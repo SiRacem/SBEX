@@ -88,7 +88,7 @@ const getUploadTokenConfig = () => {
 const calculateCommissionLocal = (method, amount, currency = "TND") => {
   if (!method || isNaN(amount) || amount <= 0)
     return { error: "Invalid input." };
-  const percent = method.commissionPercent ?? 0;
+  const percent = method.depositCommissionPercent ?? 0;
   const fixedTND = method.commissionFixedTND ?? 0;
   const fixedUSD = method.commissionFixedUSD ?? 0;
   const minFeeTND = method.minFeeTND ?? 0;
@@ -465,8 +465,8 @@ const DepositModal = ({ show, onHide }) => {
     if (!method) return null;
     let feeStrings = [];
     let limitStrings = [];
-    if (method.commissionPercent > 0)
-      feeStrings.push(`${method.commissionPercent}%`);
+    if (method.depositCommissionPercent > 0)
+      feeStrings.push(`${method.depositCommissionPercent}%`);
     if (method.commissionFixedTND > 0)
       feeStrings.push(
         `${formatCurrencyLocal(method.commissionFixedTND, "TND")}`

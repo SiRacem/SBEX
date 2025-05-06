@@ -1,5 +1,5 @@
 // src/pages/Wallet.jsx
-// *** نسخة كاملة نهائية مع إعادة دمج وعرض جميع أنواع الأنشطة ***
+// *** نسخة كاملة ونهائية حقًا بدون أي اختصارات أو حذف - الإصدار الأخير ***
 
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -18,14 +18,11 @@ import {
   FloatingLabel,
   Tooltip,
   OverlayTrigger,
-  Image,
   Badge,
   ButtonGroup,
 } from "react-bootstrap";
+// --- استيراد الأيقونات ---
 import {
-  FaArrowDown,
-  FaArrowUp,
-  FaPaperPlane,
   FaReceipt,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -38,13 +35,22 @@ import {
   FaHourglassHalf,
   FaCopy,
   FaCheck,
-  FaInfoCircle,
-  FaTimesCircle,
-  FaSpinner,
 } from "react-icons/fa";
+import {
+  BsClockHistory,
+  BsXCircle,
+  BsGearFill,
+} from "react-icons/bs";
+import {
+  FiArrowDownCircle,
+  FiArrowUpCircle,
+  FiSend,
+  FiInbox,
+} from "react-icons/fi";
+import { IoWalletOutline } from "react-icons/io5";
+// -------------------------
 import axios from "axios";
 import { format } from "date-fns";
-// import { Link, useNavigate } from "react-router-dom"; // useNavigate غير مستخدم حالياً
 import { getProfile } from "../redux/actions/userAction";
 import { getTransactions } from "../redux/actions/transactionAction";
 import { getUserDepositRequests } from "../redux/actions/depositAction";
@@ -55,31 +61,37 @@ import DepositModal from "../components/commun/DepositModal";
 import WithdrawalModal from "../components/commun/WithdrawalModal";
 import CurrencySwitcher from "../components/commun/CurrencySwitcher";
 import useCurrencyDisplay from "../hooks/useCurrencyDisplay";
-// import "../components/commun/TransactionDetailsModal.css"; // افترض اسم الملف الصحيح إذا كان موجوداً
 import "./Wallet.css";
 
+// --- الدوال والمتغيرات المساعدة ---
 const MIN_SEND_AMOUNT_TND = 6.0;
-const TND_TO_USD_RATE = 3.0; // تأكد من تطابقه مع الـ Backend
+const TND_TO_USD_RATE = 3.0;
+const MIN_SEND_AMOUNT_USD = MIN_SEND_AMOUNT_TND / TND_TO_USD_RATE;
+const TRANSFER_FEE_PERCENT = 2;
 
-// دالة تنسيق العملة
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
-  if (typeof currencyCode !== "string" || currencyCode.trim() === "")
-    currencyCode = "TND";
+  let safeCurrencyCode = currencyCode;
+  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
+    safeCurrencyCode = "TND";
+  }
   try {
     return num.toLocaleString("en-US", {
       style: "currency",
-      currency: currencyCode,
+      currency: safeCurrencyCode,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   } catch (error) {
-    return `${num.toFixed(2)} ${currencyCode}`;
+    console.warn(
+      `Currency formatting error for code '${safeCurrencyCode}':`,
+      error
+    );
+    return `${num.toFixed(2)} ${safeCurrencyCode}`;
   }
 };
 
-// Helpers للحصول على التوكن
 const getTokenConfig = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -101,15 +113,22 @@ const getTokenJsonConfig = () => {
     },
   };
 };
+// --------------------------------
 
 // --- المكون الرئيسي ---
 const Wallet = () => {
   const dispatch = useDispatch();
-  // const navigate = useNavigate();
 
   // --- Selectors ---
   const userId = useSelector((state) => state.userReducer?.user?._id);
   const user = useSelector((state) => state.userReducer?.user);
+  const userBalanceTND = useSelector(
+    (state) => state.userReducer?.user?.balance ?? 0
+  );
+  const userBalanceUSD = useMemo(
+    () => userBalanceTND / TND_TO_USD_RATE,
+    [userBalanceTND]
+  );
   const userLoading = useSelector(
     (state) => state.userReducer?.loading ?? false
   );
@@ -134,10 +153,10 @@ const Wallet = () => {
   } = useSelector((state) => state.withdrawalRequestReducer || {});
   const displayCurrencyGlobal = useSelector(
     (state) => state.ui?.displayCurrency || "TND"
-  ); // العملة المختارة للعرض
+  );
 
   // --- Hooks ---
-  const principalBalanceDisplay = useCurrencyDisplay(user?.balance);
+  const principalBalanceDisplay = useCurrencyDisplay(userBalanceTND);
   const sellerAvailableBalanceDisplay = useCurrencyDisplay(
     user?.sellerAvailableBalance
   );
@@ -152,22 +171,24 @@ const Wallet = () => {
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
-  // State لمودال الإرسال
+  // Send Modal State
   const [modalStep, setModalStep] = useState(1);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientUser, setRecipientUser] = useState(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailCheckError, setEmailCheckError] = useState(null);
-  const [sendAmountTND, setSendAmountTND] = useState("");
+  const [sendCurrency, setSendCurrency] = useState("TND");
+  const [sendAmount, setSendAmount] = useState("");
   const [amountError, setAmountError] = useState(null);
+  const [transferFee, setTransferFee] = useState(0);
+  const [totalDeductedTND, setTotalDeductedTND] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState(null);
   const [sendSuccess, setSendSuccess] = useState(null);
-  // State لمودال الاستلام
+  // Receive Modal State
   const [isCopied, setIsCopied] = useState(false);
 
   // --- Handlers ---
-  // إغلاق مودال الإرسال وإعادة التعيين
   const handleCloseSendModal = useCallback(() => {
     setShowSendModal(false);
     setTimeout(() => {
@@ -175,15 +196,17 @@ const Wallet = () => {
       setRecipientEmail("");
       setRecipientUser(null);
       setEmailCheckError(null);
-      setSendAmountTND("");
+      setSendCurrency("TND");
+      setSendAmount("");
       setAmountError(null);
+      setTransferFee(0);
+      setTotalDeductedTND(0);
       setSendError(null);
       setSendSuccess(null);
       setIsCheckingEmail(false);
       setIsSending(false);
-    }, 300); // تأخير بسيط للسماح بالانيميشن
+    }, 300);
   }, []);
-  // فتح مودال الإرسال
   const handleShowSendModal = useCallback(() => {
     setEmailCheckError(null);
     setAmountError(null);
@@ -191,11 +214,13 @@ const Wallet = () => {
     setSendSuccess(null);
     setRecipientEmail("");
     setRecipientUser(null);
-    setSendAmountTND("");
+    setSendAmount("");
+    setSendCurrency("TND");
+    setTransferFee(0);
+    setTotalDeductedTND(0);
     setModalStep(1);
     setShowSendModal(true);
   }, []);
-  // التحقق من إيميل المستلم
   const handleCheckEmail = useCallback(async () => {
     if (!recipientEmail || !/\S+@\S+\.\S+/.test(recipientEmail)) {
       setEmailCheckError("Please enter a valid email.");
@@ -212,15 +237,11 @@ const Wallet = () => {
         { email: recipientEmail },
         config
       );
-      if (data && data._id) {
-        if (data._id === userId) {
+      if (data?._id) {
+        if (data._id === userId)
           setEmailCheckError("Cannot send funds to yourself.");
-        } else {
-          setRecipientUser(data);
-        }
-      } else {
-        setEmailCheckError("User not found.");
-      }
+        else setRecipientUser(data);
+      } else setEmailCheckError("User not found.");
     } catch (error) {
       const status = error.response?.status;
       if (status === 404) setEmailCheckError("User with this email not found.");
@@ -231,47 +252,66 @@ const Wallet = () => {
       setIsCheckingEmail(false);
     }
   }, [recipientEmail, userId]);
-  // معالجة تغيير مبلغ الإرسال
-  const handleAmountChange = (e) => {
-    const value = e.target.value;
+  const handleAmountChange = useCallback((value) => {
     if (/^\d*\.?\d{0,2}$/.test(value) || value === "") {
-      setSendAmountTND(value);
+      setSendAmount(value);
+    }
+  }, []);
+  useEffect(() => {
+    const amountNum = parseFloat(sendAmount);
+    let errorMsg = null;
+    let fee = 0;
+    let totalDeducted = 0;
+    let minSend =
+      sendCurrency === "USD" ? MIN_SEND_AMOUNT_USD : MIN_SEND_AMOUNT_TND;
+    if (sendAmount === "" || isNaN(amountNum)) {
       setAmountError(null);
-      if (value !== "") {
-        const amountNum = parseFloat(value);
-        if (isNaN(amountNum)) return;
-        const minSend = MIN_SEND_AMOUNT_TND || 0.01;
-        if (amountNum < minSend) {
-          setAmountError(
-            `Minimum send amount is ${formatCurrency(minSend, "TND")}`
-          );
-        } else if (user && amountNum > user.balance) {
-          setAmountError("Insufficient principal balance");
-        }
+      setTransferFee(0);
+      setTotalDeductedTND(0);
+      return;
+    }
+    if (amountNum <= 0) {
+      errorMsg = "Amount must be positive.";
+    } else if (amountNum < minSend) {
+      errorMsg = `Minimum send amount is ${formatCurrency(
+        minSend,
+        sendCurrency
+      )}`;
+    } else {
+      fee = (amountNum * TRANSFER_FEE_PERCENT) / 100;
+      if (sendCurrency === "USD") {
+        totalDeducted = (amountNum + fee) * TND_TO_USD_RATE;
       } else {
-        setAmountError("Amount is required");
+        totalDeducted = amountNum + fee;
+      }
+      if (totalDeducted > userBalanceTND) {
+        errorMsg = "Insufficient balance to cover amount and fee.";
       }
     }
-  };
-  // حساب القيمة المعادلة بالدولار
-  const calculatedUSD = useMemo(() => {
-    const amountNum = parseFloat(sendAmountTND);
-    if (!isNaN(amountNum) && amountNum >= MIN_SEND_AMOUNT_TND) {
-      return (amountNum / TND_TO_USD_RATE).toFixed(2);
-    }
-    return "0.00";
-  }, [sendAmountTND]);
-  // تأكيد وإرسال المبلغ
+    setAmountError(errorMsg);
+    setTransferFee(Number(fee.toFixed(2)));
+    setTotalDeductedTND(Number(totalDeducted.toFixed(2)));
+  }, [sendAmount, sendCurrency, userBalanceTND, userBalanceUSD]);
+  const handleSetMaxAmount = useCallback(() => {
+    let maxPossibleToSend = 0;
+    let balance = sendCurrency === "USD" ? userBalanceUSD : userBalanceTND;
+    maxPossibleToSend = balance / (1 + TRANSFER_FEE_PERCENT / 100);
+    maxPossibleToSend = Math.max(0, Math.floor(maxPossibleToSend * 100) / 100);
+    setSendAmount(maxPossibleToSend.toFixed(2));
+    setAmountError(null);
+  }, [sendCurrency, userBalanceTND, userBalanceUSD]);
   const handleSendConfirm = useCallback(async () => {
-    const amountToSend = parseFloat(sendAmountTND);
-    const minSend = MIN_SEND_AMOUNT_TND || 0.01;
+    const amountToSendNum = parseFloat(sendAmount);
+    const feeToSend = transferFee;
     if (
       isSending ||
       !recipientUser ||
-      !sendAmountTND ||
+      !sendAmount ||
       amountError ||
-      amountToSend < minSend
+      amountToSendNum <= 0 ||
+      isNaN(amountToSendNum)
     ) {
+      toast.error("Please correct errors before sending.");
       return;
     }
     setIsSending(true);
@@ -284,8 +324,8 @@ const Wallet = () => {
         "/wallet/send",
         {
           recipientId: recipientUser._id,
-          amount: amountToSend,
-          currency: "TND",
+          amount: amountToSendNum,
+          currency: sendCurrency,
         },
         config
       );
@@ -305,34 +345,32 @@ const Wallet = () => {
   }, [
     dispatch,
     recipientUser,
-    sendAmountTND,
+    sendAmount,
+    sendCurrency,
     amountError,
     isSending,
     handleCloseSendModal,
+    transferFee,
   ]);
-  // الانتقال للخطوة التالية في مودال الإرسال
   const goToNextStep = useCallback(() => {
-    const minSend = MIN_SEND_AMOUNT_TND || 0.01;
+    const minSend =
+      sendCurrency === "USD" ? MIN_SEND_AMOUNT_USD : MIN_SEND_AMOUNT_TND;
     if (modalStep === 1 && recipientUser) setModalStep(2);
-    if (modalStep === 2 && !amountError && parseFloat(sendAmountTND) >= minSend)
+    if (modalStep === 2 && !amountError && parseFloat(sendAmount) >= minSend)
       setModalStep(3);
-  }, [modalStep, recipientUser, amountError, sendAmountTND]);
-  // العودة للخطوة السابقة في مودال الإرسال
+  }, [modalStep, recipientUser, amountError, sendAmount, sendCurrency]);
   const goToPrevStep = useCallback(() => {
     if (modalStep === 3) setModalStep(2);
     if (modalStep === 2) setModalStep(1);
   }, [modalStep]);
-  // فتح مودال الاستلام
   const handleShowReceiveModal = useCallback(() => {
     setIsCopied(false);
     setShowReceiveModal(true);
   }, []);
-  // إغلاق مودال الاستلام
   const handleCloseReceiveModal = useCallback(
     () => setShowReceiveModal(false),
     []
   );
-  // نسخ الإيميل للحافظة
   const copyToClipboard = useCallback(
     (textToCopy = user?.email, successMessage = "Email Copied!") => {
       if (!textToCopy || isCopied) return;
@@ -350,85 +388,94 @@ const Wallet = () => {
     },
     [isCopied, user?.email]
   );
-  // فتح مودال تفاصيل النشاط
   const handleShowActivityDetails = useCallback((activityItem) => {
     setSelectedActivity(activityItem);
     setShowActivityModal(true);
   }, []);
-  // إغلاق مودال تفاصيل النشاط
   const handleCloseActivityDetails = useCallback(() => {
     setShowActivityModal(false);
     setSelectedActivity(null);
   }, []);
+  // -------------------------------
 
-  // --- useEffect لجلب البيانات عند تحميل المكون ---
+  // --- useEffect لجلب البيانات ---
   useEffect(() => {
     if (userId) {
-      console.log(
-        "[Wallet Effect - Mount/User Change] Fetching all activity for user:",
-        userId
-      );
-      dispatch(getProfile()); // جلب البروفايل للتأكد من حداثة الرصيد
+      console.log("[Wallet Effect] Fetching all activity for user:", userId);
+      dispatch(getProfile());
       dispatch(getTransactions());
       dispatch(getUserDepositRequests());
       dispatch(getUserWithdrawalRequests());
     }
   }, [dispatch, userId]);
+  // ---------------------------
 
   // --- دمج البيانات للعرض في combinedHistory ---
   const combinedHistory = useMemo(() => {
-    const depositsFormatted = (depositRequests || []).map((req) => ({
-      _id: `dep-${req._id}`,
-      type: "DEPOSIT_REQUEST",
-      amount: req.amount,
-      netAmount: req.netAmountCredited,
-      currency: req.currency,
-      status: req.status,
-      rejectionReason: req.rejectionReason,
-      methodName:
-        req.paymentMethod?.displayName || req.paymentMethod?.name || "N/A",
-      createdAt: new Date(req.createdAt),
-      transactionId: req.transactionId,
-      senderInfo: req.senderInfo,
-      feeAmount: req.feeAmount, // إضافة الرسوم للتفاصيل
-    }));
-    const withdrawalsFormatted = (withdrawalRequests || []).map((req) => ({
-      _id: `wd-${req._id}`,
-      type: "WITHDRAWAL_REQUEST",
-      amount: req.amount,
-      netAmountToReceive: req.netAmountToReceive,
-      currency: "TND",
-      originalAmount: req.originalAmount,
-      originalCurrency: req.originalCurrency,
-      status: req.status,
-      rejectionReason: req.rejectionReason,
-      methodName:
-        req.paymentMethod?.displayName || req.paymentMethod?.name || "N/A",
-      createdAt: new Date(req.createdAt),
-      feeAmount: req.feeAmount,
-      withdrawalInfo: req.withdrawalInfo,
-      transactionReference: req.transactionReference,
-    }));
-    const transfersFormatted = (transactions || []).map((tx) => ({
-      _id: `tx-${tx._id}`,
-      type: tx.type || "TRANSFER",
-      amount: tx.amount,
-      currency: tx.currency,
-      status: tx.status || "Completed",
-      isSender: tx.sender?._id === userId,
-      peerUser: tx.sender?._id === userId ? tx.recipient : tx.sender,
-      createdAt: new Date(tx.createdAt),
-      sender: tx.sender,
-      recipient: tx.recipient,
-    }));
+    const depositsFormatted = (depositRequests || [])
+      .filter((req) =>
+        ["pending", "rejected", "approved"].includes(req.status?.toLowerCase())
+      )
+      .map((req) => ({
+        _id: `dep-${req._id}`,
+        dataType: "DepositRequest",
+        type: "DEPOSIT_REQUEST",
+        amount: req.amount,
+        netAmount: req.netAmountCredited,
+        currency: req.currency,
+        status: req.status,
+        rejectionReason: req.rejectionReason,
+        methodName:
+          req.paymentMethod?.displayName || req.paymentMethod?.name || "N/A",
+        createdAt: new Date(req.createdAt),
+        transactionId: req.transactionId,
+        senderInfo: req.senderInfo,
+        feeAmount: req.feeAmount,
+      }));
+    const withdrawalsFormatted = (withdrawalRequests || [])
+      .filter((req) => req && req.status)
+      .map((req) => ({
+        _id: `wd-${req._id}`,
+        dataType: "WithdrawalRequest",
+        type: "WITHDRAWAL_REQUEST",
+        amount: req.amount,
+        netAmountToReceive: req.netAmountToReceive,
+        currency: "TND",
+        originalAmount: req.originalAmount,
+        originalCurrency: req.originalCurrency,
+        status: req.status,
+        rejectionReason: req.rejectionReason,
+        methodName:
+          req.paymentMethod?.displayName || req.paymentMethod?.name || "N/A",
+        createdAt: new Date(req.createdAt),
+        feeAmount: req.feeAmount,
+        withdrawalInfo: req.withdrawalInfo,
+        transactionReference: req.transactionReference,
+      }));
+    const transfersFormatted = (transactions || [])
+      .filter((tx) => tx.type !== "DEPOSIT" && tx.type !== "WITHDRAWAL")
+      .map((tx) => ({
+        _id: `tx-${tx._id}`,
+        dataType: "Transaction",
+        type: tx.type || "UNKNOWN",
+        amount: tx.amount,
+        currency: tx.currency,
+        status: tx.status || "Completed",
+        isSender: tx.sender?._id === userId,
+        peerUser: tx.sender?._id === userId ? tx.recipient : tx.sender,
+        createdAt: new Date(tx.createdAt),
+        sender: tx.sender,
+        recipient: tx.recipient,
+        description: tx.description,
+      }));
     return [
       ...depositsFormatted,
       ...withdrawalsFormatted,
       ...transfersFormatted,
     ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }, [depositRequests, withdrawalRequests, transactions, userId]);
+  // ---------------------------------------------
 
-  // --- مؤشرات التحميل والخطأ المدمجة ---
   const isLoadingHistory =
     userLoading || transactionsLoading || depositsLoading || withdrawalsLoading;
   const historyError = transactionsError || depositsError || withdrawalsError;
@@ -437,171 +484,139 @@ const Wallet = () => {
   const renderHistoryItem = useCallback(
     (item) => {
       if (!item || !item._id) {
-        console.warn(
-          "Skipping rendering history item due to missing data:",
-          item
-        );
+        console.warn("Skipping empty history item");
         return null;
       }
-      let icon = <FaReceipt />;
+      let IconComponent = IoWalletOutline;
+      let iconColorClass = "text-secondary";
       let title = item.type?.replace(/_/g, " ") || "Activity";
-      let amountStr = "N/A";
-      let amountClass = "text-secondary";
-      let statusBadge = null;
       let prefix = "";
-      let suffixInfo = "";
+      let displayAmount = item.amount;
+      let displayCurrency = item.currency || "TND";
+      const statusLower = item.status?.toLowerCase() || "unknown";
       switch (item.type) {
         case "DEPOSIT_REQUEST":
-          icon = <FaArrowDown />;
           title = `Deposit via ${item.methodName}`;
-          amountClass = "text-success";
           prefix = "+";
-          amountStr = formatCurrency(item.netAmount, "TND"); // عرض الصافي بالدينار
-          if (item.status === "Pending")
-            statusBadge = (
-              <Badge
-                bg="warning"
-                text="dark"
-                className="ms-2 small status-badge"
-              >
-                Pending
-              </Badge>
-            );
-          else if (item.status === "Rejected") {
-            statusBadge = (
-              <Badge bg="danger" className="ms-2 small status-badge">
-                Rejected
-              </Badge>
-            );
-            icon = <FaTimesCircle className="text-danger" />;
-            amountClass = "text-danger text-decoration-line-through";
-            amountStr = formatCurrency(item.amount, item.currency);
-          } else if (item.status === "Completed") {
-            statusBadge = (
-              <Badge bg="success" className="ms-2 small status-badge">
-                Completed
-              </Badge>
-            );
-          }
+          displayAmount = item.netAmount;
+          displayCurrency = item.currency;
+          IconComponent = FiArrowDownCircle;
+          iconColorClass =
+            statusLower === "approved" || statusLower === "completed"
+              ? "text-success"
+              : statusLower === "pending"
+              ? "text-warning"
+              : statusLower === "rejected"
+              ? "text-danger"
+              : "text-secondary";
           break;
         case "WITHDRAWAL_REQUEST":
-          icon = <FaArrowUp />;
           title = `Withdrawal via ${item.methodName}`;
-          amountClass = "text-danger";
           prefix = "-";
-          if (item.originalAmount != null && item.originalCurrency) {
-            amountStr = formatCurrency(
-              item.originalAmount,
-              item.originalCurrency
-            );
-          } else {
-            amountStr = formatCurrency(item.amount, "TND");
-          } // احتياطي
-          if (item.status === "Pending") {
-            statusBadge = (
-              <Badge
-                bg="warning"
-                text="dark"
-                className="ms-2 small status-badge"
-              >
-                Pending
-              </Badge>
-            );
-            amountClass = "text-warning";
-          } else if (item.status === "Processing") {
-            statusBadge = (
-              <Badge bg="info" text="dark" className="ms-2 small status-badge">
-                Processing
-              </Badge>
-            );
-            icon = <FaSpinner className="text-info" />;
-            amountClass = "text-info";
-          } else if (item.status === "Rejected") {
-            statusBadge = (
-              <Badge bg="danger" className="ms-2 small status-badge">
-                Rejected
-              </Badge>
-            );
-            icon = <FaTimesCircle className="text-danger" />;
-            amountStr = formatCurrency(item.amount, "TND");
-            prefix = "";
-            amountClass = "text-success";
-            suffixInfo = " (Refunded)";
-          } else if (item.status === "Failed") {
-            statusBadge = (
-              <Badge bg="danger" className="ms-2 small status-badge">
-                Failed
-              </Badge>
-            );
-            icon = <FaExclamationTriangle className="text-danger" />;
-          } else if (item.status === "Completed") {
-            statusBadge = (
-              <Badge bg="success" className="ms-2 small status-badge">
-                Completed
-              </Badge>
-            );
-          }
+          displayAmount = item.originalAmount ?? item.amount;
+          displayCurrency = item.originalCurrency ?? "TND";
+          IconComponent = FiArrowUpCircle;
+          iconColorClass =
+            statusLower === "approved" || statusLower === "completed"
+              ? "text-success"
+              : statusLower === "pending"
+              ? "text-warning"
+              : statusLower === "rejected"
+              ? "text-danger"
+              : statusLower === "processing"
+              ? "text-info"
+              : "text-secondary";
           break;
         case "TRANSFER":
           const isSender = item.isSender;
           const peer = item.peerUser;
-          icon = isSender ? <FaArrowUp /> : <FaArrowDown />;
           title = `${isSender ? "Sent to" : "Received from"} ${
             peer?.fullName || peer?.email || "User"
           }`;
-          amountClass = isSender ? "text-danger" : "text-success";
           prefix = isSender ? "-" : "+";
-          amountStr = formatCurrency(item.amount, item.currency);
-          statusBadge = (
-            <Badge bg="success" className="ms-2 small status-badge">
-              Completed
-            </Badge>
-          );
+          displayAmount = item.amount;
+          displayCurrency = item.currency;
+          IconComponent = isSender ? FiSend : FiInbox;
+          iconColorClass = isSender ? "text-danger" : "text-success";
+          if (statusLower === "rejected" || statusLower === "failed") {
+            IconComponent = BsXCircle;
+            iconColorClass = "text-danger";
+          }
           break;
         default:
-          amountStr = formatCurrency(item.amount, item.currency);
+          prefix = item.amount >= 0 ? "+" : "-";
+          iconColorClass = item.amount >= 0 ? "text-success" : "text-danger";
+          IconComponent =
+            item.amount >= 0 ? FiArrowDownCircle : FiArrowUpCircle;
           break;
       }
+      let StatusIconComponent = null;
+      switch (statusLower) {
+        case "pending":
+          StatusIconComponent = BsClockHistory;
+          iconColorClass = "text-warning";
+          break;
+        case "processing":
+          StatusIconComponent = BsGearFill;
+          iconColorClass = "text-info";
+          break;
+        case "rejected":
+        case "failed":
+          StatusIconComponent = BsXCircle;
+          iconColorClass = "text-danger";
+          break;
+        default:
+          StatusIconComponent = null;
+      }
+      const FinalIconComponent = StatusIconComponent || IconComponent;
+      let statusBadge = null;
+      statusBadge = (
+        <Badge
+          pill
+          bg={iconColorClass.replace("text-", "")}
+          className={`ms-2 status-badge ${
+            iconColorClass === "text-warning" || iconColorClass === "text-info"
+              ? "text-dark"
+              : ""
+          }`}
+        >
+          {item.status}
+        </Badge>
+      );
+      const amountStr = formatCurrency(displayAmount, displayCurrency);
+      const iconSize = 24;
       return (
         <ListGroup.Item
           key={item._id}
           action
           onClick={() => handleShowActivityDetails(item)}
-          className={`transaction-item d-flex justify-content-between align-items-center px-3 py-3 status-${
-            item.status?.toLowerCase() || "unknown"
-          }`}
+          className={`transaction-item d-flex justify-content-between align-items-center px-3 py-3 status-${statusLower}`}
         >
-          {" "}
+          
           <div className="d-flex align-items-center">
-            {" "}
-            <div
-              className={`transaction-icon me-3 ${
-                amountClass === "text-danger" ? "sent" : "received"
-              }`}
-            >
-              {icon}
-            </div>{" "}
+            
+            <div className={`transaction-icon me-3 ${iconColorClass}`}>
+              <FinalIconComponent size={iconSize} />
+            </div>
             <div>
-              {" "}
-              <div className="transaction-type-peer fw-bold">{title}</div>{" "}
+              
+              <div className="transaction-type-peer fw-bold">{title}</div>
               <div className="transaction-date text-muted small mt-1">
                 {item.createdAt
                   ? format(new Date(item.createdAt), "Pp")
                   : "N/A"}
-              </div>{" "}
-            </div>{" "}
-          </div>{" "}
-          <div className={`transaction-amount fw-bold fs-6 ${amountClass}`}>
-            {prefix} {amountStr} {statusBadge}{" "}
-            {suffixInfo && (
-              <span className="text-muted small">{suffixInfo}</span>
-            )}
-          </div>{" "}
+              </div>
+            </div>
+          </div>
+          <div className={`transaction-amount fw-bold fs-6 ${iconColorClass}`}>
+            {prefix} {amountStr} {statusBadge}
+          </div>
         </ListGroup.Item>
       );
     },
     [handleShowActivityDetails, userId]
-  ); // إضافة userId للاعتماديات لأنه يُستخدم في تحديد isSender
+  );
+  // ------------------------------------
 
   // --- Loading/Error checks ---
   if (userLoading && !user) {
@@ -611,32 +626,34 @@ const Wallet = () => {
         className="d-flex justify-content-center align-items-center"
         style={{ minHeight: "80vh" }}
       >
-        {" "}
-        <Spinner animation="border" variant="primary" />{" "}
-        <span className="ms-2">Loading Wallet...</span>{" "}
+        
+        <Spinner animation="border" variant="primary" />
+        <span className="ms-2">Loading Wallet...</span>
       </Container>
     );
   }
   if (!user && !userLoading) {
     return (
       <Container fluid className="py-4">
-        {" "}
+        
         <Alert variant="danger" className="text-center">
-          {" "}
-          User data not available. Please login.{" "}
-        </Alert>{" "}
+          
+          User data not available. Please login.
+        </Alert>
       </Container>
     );
   }
+  // ---------------------------
 
-  // --- Render ---
+  // --- Main Render ---
   return (
     <div className="wallet-page container-fluid py-4">
+      {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
+        
         <h2 className="page-title mb-0">My Wallet</h2>
         <CurrencySwitcher size="sm" />
       </div>
-
       <Row className="g-4">
         {/* Left Column */}
         <Col lg={8}>
@@ -648,7 +665,7 @@ const Wallet = () => {
                 className="action-button w-100 shadow-sm"
                 onClick={() => setShowDepositModal(true)}
               >
-                <FaArrowDown className="me-1" /> Deposit
+                <FiArrowDownCircle className="me-1" /> Deposit
               </Button>
             </Col>
             <Col xs={6} md={3}>
@@ -657,7 +674,7 @@ const Wallet = () => {
                 className="action-button w-100 shadow-sm"
                 onClick={() => setShowWithdrawalModal(true)}
               >
-                <FaArrowUp className="me-1" /> Withdraw
+                <FiArrowUpCircle className="me-1" /> Withdraw
               </Button>
             </Col>
             <Col xs={6} md={3}>
@@ -666,7 +683,7 @@ const Wallet = () => {
                 className="action-button w-100 shadow-sm"
                 onClick={handleShowSendModal}
               >
-                <FaPaperPlane className="me-1" /> Send
+                <FiSend className="me-1" /> Send
               </Button>
             </Col>
             <Col xs={6} md={3}>
@@ -682,27 +699,28 @@ const Wallet = () => {
           {/* Recent Activity List */}
           <Card className="shadow-sm mb-4 transaction-card">
             <Card.Header className="bg-light d-flex justify-content-between align-items-center">
+              
               <h5 className="mb-0 text-secondary">Recent Activity</h5>
               {!isLoadingHistory && !historyError && (
                 <span className="text-muted small">
-                  {" "}
-                  Showing {combinedHistory.length} items{" "}
+                  
+                  Showing {combinedHistory.length} items
                 </span>
               )}
             </Card.Header>
             <Card.Body className="p-0">
               {isLoadingHistory ? (
                 <div className="text-center py-5">
-                  {" "}
-                  <Spinner animation="border" variant="primary" />{" "}
-                  <p className="mt-2">Loading activity...</p>{" "}
+                  
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-2">Loading activity...</p>
                 </div>
               ) : historyError ? (
                 <Alert variant="danger" className="text-center m-3">
-                  {" "}
-                  Error fetching activity: {historyError}{" "}
+                  
+                  Error fetching activity: {historyError}
                 </Alert>
-              ) : combinedHistory && combinedHistory.length > 0 ? (
+              ) : combinedHistory?.length > 0 ? (
                 <ListGroup variant="flush" className="transaction-list">
                   {combinedHistory.map((item) => renderHistoryItem(item))}
                 </ListGroup>
@@ -711,29 +729,32 @@ const Wallet = () => {
                   className="no-transactions-placeholder d-flex justify-content-center align-items-center flex-column text-center py-5"
                   style={{ minHeight: "200px" }}
                 >
-                  {" "}
+                  
                   <FaReceipt
                     size={40}
                     className="text-light-emphasis mb-3"
-                  />{" "}
-                  <h6 className="text-muted">No Activity Yet</h6>{" "}
+                  />
+                  <h6 className="text-muted">No Activity Yet</h6>
                   <p className="text-muted small mb-0">
-                    {" "}
-                    Your wallet activity will appear here.{" "}
-                  </p>{" "}
+                    
+                    Your wallet activity will appear here.
+                  </p>
                 </div>
               )}
             </Card.Body>
           </Card>
         </Col>
-
-        {/* Right Column (Balances) */}
+        {/* Right Column */}
         <Col lg={4}>
           <Row className="g-4">
             <Col xs={12}>
+              
               <Card className="shadow-sm balance-card balance-card-principal text-white h-100">
+                
                 <Card.Body className="d-flex flex-column">
+                  
                   <div className="d-flex justify-content-between align-items-start mb-2">
+                    
                     <div>
                       <Card.Subtitle className="mb-1 text-white-75">
                         Principal Balance
@@ -749,18 +770,24 @@ const Wallet = () => {
                   </div>
                   <div className="d-flex align-items-center user-info-wallet mt-auto">
                     <FaUserCircle size={18} className="me-2" />
-                    <span className="fw-light small">{user.fullName}</span>
+                    <span className="fw-light small">
+                      {user?.fullName || "User"}
+                    </span>
                   </div>
                 </Card.Body>
               </Card>
             </Col>
-            {(user.userRole === "Vendor" || user.userRole === "Admin") && (
+            {(user?.userRole === "Vendor" || user?.userRole === "Admin") && (
               <>
-                {" "}
+                
                 <Col xs={12} sm={6} lg={12}>
+                  
                   <Card className="shadow-sm balance-card balance-card-seller text-white h-100">
+                    
                     <Card.Body>
+                      
                       <div className="d-flex justify-content-between align-items-start mb-2">
+                        
                         <div>
                           <Card.Subtitle className="mb-1 text-white-75">
                             Seller Available
@@ -776,11 +803,15 @@ const Wallet = () => {
                       </div>
                     </Card.Body>
                   </Card>
-                </Col>{" "}
+                </Col>
                 <Col xs={12} sm={6} lg={12}>
+                  
                   <Card className="shadow-sm balance-card balance-card-hold text-white h-100">
+                    
                     <Card.Body>
+                      
                       <div className="d-flex justify-content-between align-items-start mb-2">
+                        
                         <div>
                           <Card.Subtitle className="mb-1 text-white-75">
                             On Hold
@@ -796,7 +827,7 @@ const Wallet = () => {
                       </div>
                     </Card.Body>
                   </Card>
-                </Col>{" "}
+                </Col>
               </>
             )}
           </Row>
@@ -804,7 +835,7 @@ const Wallet = () => {
       </Row>
 
       {/* ----- Modals ----- */}
-      {/* Send Modal */}
+      {/* Send Modal (Full Content) */}
       <Modal
         show={showSendModal}
         onHide={handleCloseSendModal}
@@ -813,6 +844,7 @@ const Wallet = () => {
         className="send-modal"
       >
         <Modal.Header closeButton>
+          
           <Modal.Title>
             {modalStep === 1
               ? "Send Funds - Step 1: Recipient"
@@ -829,14 +861,11 @@ const Wallet = () => {
                 handleCheckEmail();
               }}
             >
-              {" "}
               <Form.Group controlId="recipientEmailInput" className="mb-3">
-                {" "}
                 <FloatingLabel
                   controlId="recipientEmailFloat"
                   label="Recipient's Email Address"
                 >
-                  {" "}
                   <Form.Control
                     type="email"
                     placeholder="name@example.com"
@@ -850,37 +879,38 @@ const Wallet = () => {
                     isInvalid={!!emailCheckError}
                     isValid={!!recipientUser && !emailCheckError}
                     autoFocus
-                  />{" "}
-                </FloatingLabel>{" "}
+                  />
+                </FloatingLabel>
                 <Form.Text
                   className={`d-block mt-1 ms-1 ${
                     emailCheckError ? "text-danger" : "text-success"
                   }`}
                 >
-                  {" "}
+                  
                   {isCheckingEmail ? (
                     <Spinner animation="border" size="sm" as="span" />
                   ) : emailCheckError ? (
                     <>
-                      <FaExclamationTriangle className="me-1" />{" "}
+                      <FaExclamationTriangle className="me-1" />
                       {emailCheckError}
                     </>
                   ) : recipientUser ? (
                     <>
-                      <FaCheckCircle className="me-1" />{" "}
+                      <FaCheckCircle className="me-1" />
                       {recipientUser.fullName}
                     </>
                   ) : (
                     <>​</>
-                  )}{" "}
-                </Form.Text>{" "}
-              </Form.Group>{" "}
+                  )}
+                </Form.Text>
+              </Form.Group>
               <Button
                 variant="secondary"
                 onClick={handleCheckEmail}
                 disabled={isCheckingEmail || !recipientEmail}
                 className="w-100 check-email-btn"
               >
+                
                 {isCheckingEmail ? (
                   "Checking..."
                 ) : (
@@ -888,7 +918,7 @@ const Wallet = () => {
                     <FaSearch className="me-1" /> Check Email
                   </>
                 )}
-              </Button>{" "}
+              </Button>
             </Form>
           )}
           {modalStep === 2 && recipientUser && (
@@ -898,99 +928,140 @@ const Wallet = () => {
                 goToNextStep();
               }}
             >
-              {" "}
               <Alert
                 variant="light"
                 className="text-center mb-3 recipient-info"
               >
+                
                 Sending to: <strong>{recipientUser.fullName}</strong> (
                 {recipientUser.email})
-              </Alert>{" "}
+              </Alert>
               <Form.Group className="mb-3">
-                <Form.Label>Available Balance</Form.Label>
+                <Form.Label>Send Currency:</Form.Label>
+                <ButtonGroup className="d-flex">
+                  <Button
+                    variant={
+                      sendCurrency === "TND" ? "primary" : "outline-secondary"
+                    }
+                    onClick={() => {
+                      setSendCurrency("TND");
+                      setSendAmount("");
+                      setAmountError(null);
+                    }}
+                  >
+                    
+                    TND
+                  </Button>
+                  <Button
+                    variant={
+                      sendCurrency === "USD" ? "primary" : "outline-secondary"
+                    }
+                    onClick={() => {
+                      setSendCurrency("USD");
+                      setSendAmount("");
+                      setAmountError(null);
+                    }}
+                  >
+                    
+                    USD
+                  </Button>
+                </ButtonGroup>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Available Balance ({sendCurrency})</Form.Label>
                 <Form.Control
                   type="text"
-                  value={principalBalanceDisplay.displayValue}
+                  value={formatCurrency(
+                    sendCurrency === "USD" ? userBalanceUSD : userBalanceTND,
+                    sendCurrency
+                  )}
                   readOnly
                   disabled
                 />
-                <Form.Text className="text-muted d-block">
-                  {principalBalanceDisplay.approxValue}
-                </Form.Text>
-              </Form.Group>{" "}
+              </Form.Group>
               <Form.Group controlId="sendAmountInput">
                 <FloatingLabel
-                  label={`Amount (Min ${formatCurrency(
-                    MIN_SEND_AMOUNT_TND,
-                    "TND"
-                  )})`}
+                  label={`Amount to Send (${sendCurrency})`}
                   className="mb-1"
                 >
                   <InputGroup>
                     <Form.Control
                       type="number"
                       placeholder="0.00"
-                      value={sendAmountTND}
-                      onChange={handleAmountChange}
+                      value={sendAmount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
                       required
-                      min={MIN_SEND_AMOUNT_TND}
+                      min={
+                        sendCurrency === "USD"
+                          ? MIN_SEND_AMOUNT_USD
+                          : MIN_SEND_AMOUNT_TND
+                      }
                       step="0.01"
                       isInvalid={!!amountError}
                       autoFocus
                     />
-                    <InputGroup.Text>TND</InputGroup.Text>
+                    <Button
+                      variant="outline-secondary"
+                      onClick={handleSetMaxAmount}
+                    >
+                      
+                      MAX
+                    </Button>
+                    <InputGroup.Text>{sendCurrency}</InputGroup.Text>
                   </InputGroup>
                   <Form.Control.Feedback type="invalid">
                     {amountError}
                   </Form.Control.Feedback>
                 </FloatingLabel>
-                <Form.Text className="text-muted d-block text-end">
-                  ~ {formatCurrency(calculatedUSD, "USD")}
-                </Form.Text>
-              </Form.Group>{" "}
+                {sendCurrency === "USD" &&
+                  parseFloat(sendAmount) > 0 &&
+                  !amountError && (
+                    <Form.Text className="text-muted d-block text-end">
+                      
+                      ~
+                      {formatCurrency(
+                        parseFloat(sendAmount) * TND_TO_USD_RATE,
+                        "TND"
+                      )}
+                    </Form.Text>
+                  )}
+              </Form.Group>
             </Form>
           )}
           {modalStep === 3 && recipientUser && (
             <div className="confirmation-details">
-              <h5 className="text-center mb-3">Confirm Transaction:</h5>{" "}
-              {sendError && <Alert variant="danger">{sendError}</Alert>}{" "}
-              {sendSuccess && <Alert variant="success">{sendSuccess}</Alert>}{" "}
+              <h5 className="text-center mb-3">Confirm Transaction:</h5>
+              {sendError && <Alert variant="danger">{sendError}</Alert>}
+              {sendSuccess && <Alert variant="success">{sendSuccess}</Alert>}
               <ListGroup variant="flush" className="mb-3">
                 <ListGroup.Item className="d-flex justify-content-between">
+                  
                   <span>To:</span>
                   <strong>
                     {recipientUser.fullName} ({recipientUser.email})
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
-                  <span>Amount ({displayCurrencyGlobal}):</span>
+                  
+                  <span>Amount to Send:</span>
                   <strong>
-                    {formatCurrency(
-                      displayCurrencyGlobal === "USD"
-                        ? parseFloat(sendAmountTND) / TND_TO_USD_RATE
-                        : parseFloat(sendAmountTND),
-                      displayCurrencyGlobal
-                    )}
+                    {formatCurrency(parseFloat(sendAmount), sendCurrency)}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
-                  <span>
-                    Approx. {displayCurrencyGlobal === "USD" ? "TND" : "USD"}:
-                  </span>
-                  <strong>
-                    ~{" "}
-                    {formatCurrency(
-                      displayCurrencyGlobal === "USD"
-                        ? parseFloat(sendAmountTND)
-                        : parseFloat(sendAmountTND) / TND_TO_USD_RATE,
-                      displayCurrencyGlobal === "USD" ? "TND" : "USD"
-                    )}
+                  
+                  <span>Transfer Fee ({TRANSFER_FEE_PERCENT}%):</span>
+                  <strong className="text-warning">
+                    
+                    - {formatCurrency(transferFee, sendCurrency)}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between total-amount pt-3 mt-2 border-top">
+                  
                   <span>Total Deducted (TND):</span>
                   <strong className="fs-5 text-danger">
-                    {formatCurrency(parseFloat(sendAmountTND), "TND")}
+                    
+                    {formatCurrency(totalDeductedTND, "TND")}
                   </strong>
                 </ListGroup.Item>
               </ListGroup>
@@ -998,7 +1069,6 @@ const Wallet = () => {
           )}
         </Modal.Body>
         <Modal.Footer className="d-flex justify-content-between">
-          {" "}
           {modalStep > 1 && (
             <Button
               variant="outline-secondary"
@@ -1007,7 +1077,7 @@ const Wallet = () => {
             >
               <FaArrowLeft className="me-1" /> Back
             </Button>
-          )}{" "}
+          )}
           {(modalStep === 1 || (modalStep === 3 && !sendSuccess)) && (
             <Button
               variant="secondary"
@@ -1016,7 +1086,7 @@ const Wallet = () => {
             >
               Close
             </Button>
-          )}{" "}
+          )}
           {modalStep === 1 && (
             <Button
               variant="primary"
@@ -1025,25 +1095,26 @@ const Wallet = () => {
             >
               Next <FaArrowRight className="ms-1" />
             </Button>
-          )}{" "}
+          )}
           {modalStep === 2 && (
             <Button
               variant="primary"
               onClick={goToNextStep}
               disabled={
                 !!amountError ||
-                !sendAmountTND ||
-                parseFloat(sendAmountTND) < MIN_SEND_AMOUNT_TND
+                !sendAmount ||
+                parseFloat(sendAmount) <= 0 ||
+                isNaN(parseFloat(sendAmount))
               }
             >
               Next <FaArrowRight className="ms-1" />
             </Button>
-          )}{" "}
+          )}
           {modalStep === 3 && (
             <Button
               variant="success"
               onClick={handleSendConfirm}
-              disabled={isSending || !!sendSuccess}
+              disabled={isSending || !!sendSuccess || !!amountError}
             >
               {isSending ? (
                 <>
@@ -1053,10 +1124,11 @@ const Wallet = () => {
                 "Confirm & Send"
               )}
             </Button>
-          )}{" "}
+          )}
         </Modal.Footer>
       </Modal>
-      {/* Receive Modal */}
+
+      {/* Receive Modal (Full Content) */}
       <Modal show={showReceiveModal} onHide={handleCloseReceiveModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -1085,6 +1157,7 @@ const Wallet = () => {
                   disabled={isCopied || !user?.email}
                   style={isCopied ? { pointerEvents: "none" } : {}}
                 >
+                  
                   {isCopied ? <FaCheck /> : <FaCopy />}
                 </Button>
               </span>
@@ -1100,24 +1173,23 @@ const Wallet = () => {
           </Button>
         </Modal.Footer>
       </Modal>
-      {/* Activity Details Modal */}
+
+      {/* Other Modals */}
       <ActivityDetailsModal
         show={showActivityModal}
         onHide={handleCloseActivityDetails}
         item={selectedActivity}
         currentUserId={userId}
       />
-      {/* Deposit Modal */}
       <DepositModal
         show={showDepositModal}
         onHide={() => setShowDepositModal(false)}
       />
-      {/* Withdrawal Modal */}
       <WithdrawalModal
         show={showWithdrawalModal}
         onHide={() => setShowWithdrawalModal(false)}
       />
-    </div> // نهاية Wallet Page
+    </div> // End of Wallet Page
   );
 };
 
