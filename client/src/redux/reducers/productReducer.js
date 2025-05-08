@@ -213,13 +213,25 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
 
         case ACCEPT_BID_SUCCESS:
-            const acceptedProduct = payload.product;
-            bidActionKey = createBidActionKey(acceptedProduct._id, payload.acceptedBidUserId); // تعريف هنا
             return {
                 ...state,
-                acceptingBid: { ...state.acceptingBid, [bidActionKey]: false },
-                Products: state.Products.map(p => p._id === acceptedProduct._id ? acceptedProduct : p),
-                pendingProducts: (state.pendingProducts || []).filter(p => p._id !== acceptedProduct._id),
+                // إيقاف مؤشر التحميل لهذا القبول المحدد
+                acceptingBid: { ...state.acceptingBid, [`${payload.productId}_${payload.acceptedBidUserId}`]: false },
+                // تحديث المنتج في القائمة
+                Products: state.Products.map(p =>
+                    p._id === payload.productId // البحث باستخدام productId من الـ payload
+                        ? {
+                            ...p, // نسخ خصائص المنتج القديم
+                            status: payload.newProductStatus, // <-- استخدام الحالة الجديدة من الـ payload
+                            mediationRequest: payload.mediationRequestId, // <-- استخدام معرف الوساطة من الـ payload
+                            sold: false, // التأكد من أن sold لا تزال false في هذه المرحلة
+                            buyer: payload.acceptedBidUserId, // تعيين المشتري المبدئي
+                            // يمكنك تحديث bids هنا إذا أردت إزالة المزايدات الأخرى
+                            bids: p.bids.filter(b => (b.user?._id || b.user)?.toString() === payload.acceptedBidUserId) // إبقاء المزايدة المقبولة فقط (اختياري)
+                        }
+                        : p // إرجاع المنتجات الأخرى كما هي
+                ),
+                errors: { ...state.errors, acceptBid: null } // مسح أي خطأ سابق للقبول
             };
 
         case ACCEPT_BID_FAIL:

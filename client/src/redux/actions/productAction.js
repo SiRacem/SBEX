@@ -1,5 +1,4 @@
 // src/redux/actions/productAction.js
-// *** Corrected API Paths Version ***
 
 import axios from 'axios';
 import {
@@ -247,12 +246,22 @@ export const acceptBid = (productId, bidUserId, bidAmount) => async (dispatch) =
 
     try {
         const { data } = await axios.put(`/product/${productId}/accept-bid`, { bidUserId, bidAmount }, config);
+
+        // --- [!!!] تعديل الـ Payload ليشمل بيانات الوساطة [!!!] ---
         dispatch({
             type: ACCEPT_BID_SUCCESS,
-            payload: { product: data.product, acceptedBidUserId: bidUserId }
+            payload: {
+                productId: data.productId, // استخدام ID المنتج من الرد
+                newProductStatus: data.newProductStatus, // استخدام الحالة الجديدة من الرد
+                acceptedBidUserId: bidUserId,
+                mediationRequestId: data.mediationRequestId // <-- تمرير معرف الوساطة
+                // product: data.product // يمكنك إزالة هذا إذا لم تعد تحتاجه مباشرة في reducer
+            }
         });
-        toast.success(data.msg || "Bid accepted successfully!");
-        return Promise.resolve(data.product);
+        // ---------------------------------------------------------
+        toast.success(data.msg || "Bid accepted successfully! Mediation initiated.");
+        return Promise.resolve(data); // يمكنك إرجاع البيانات كاملة إذا احتجت
+
     } catch (error) {
         console.error("AXIOS Error in acceptBid Action:", error.response || error); // Log الخطأ الفعلي
         const message = error.response?.data?.msg || error.message || 'Failed to accept bid.';

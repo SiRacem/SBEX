@@ -30,8 +30,7 @@ import {
   FaHourglassHalf,
   FaDollarSign,
   FaTimesCircle,
-  FaGavel,
-  FaUserCircle,
+  FaHandshake,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 // استيراد actions المنتجات (تأكد من المسارات)
@@ -43,8 +42,6 @@ import {
 } from "../../redux/actions/productAction";
 // استيراد action جلب البروفايل (لتحديث الرصيد بعد القبول)
 import { getProfile } from "../../redux/actions/userAction";
-// يمكنك استيراد CSS مخصص لهذه الصفحة
-// import './CommandsListVendor.css';
 
 // --- تعريف الصور البديلة ---
 const fallbackImageUrl =
@@ -112,7 +109,7 @@ const CommandsListVendor = () => {
       ); // فرز بالأحدث
   }, [allProducts, userId]);
 
-  // تقسيم المنتجات حسب الحالة للعرض في التابات
+  // --- [!!!] تعديل تقسيم المنتجات ليشمل حالة الوساطة [!!!] ---
   const approvedProducts = useMemo(
     () => myProducts.filter((p) => p.status === "approved"),
     [myProducts]
@@ -121,6 +118,13 @@ const CommandsListVendor = () => {
     () => myProducts.filter((p) => p.status === "pending"),
     [myProducts]
   );
+  const mediationProducts = useMemo(
+    () =>
+      myProducts.filter((p) =>
+        ["PendingMediation", "MediationInProgress"].includes(p.status)
+      ),
+    [myProducts]
+  ); // <-- فلتر جديد
   const soldProducts = useMemo(
     () => myProducts.filter((p) => p.status === "sold"),
     [myProducts]
@@ -209,22 +213,31 @@ const CommandsListVendor = () => {
       (a, b) => b.amount - a.amount
     );
     const productLoadingDelete = loadingDelete[product._id] ?? false;
+    // --- [!] تحديد إذا كان المنتج في مرحلة الوساطة [!] ---
+    const isInMediation = ["PendingMediation", "MediationInProgress"].includes(
+      product.status
+    );
+    // -----------------------------------------------
 
     return (
-      <Card key={product._id} className="mb-3 product-entry shadow-sm">
+      <Card
+        key={product._id}
+        className={`mb-3 product-entry shadow-sm ${
+          isInMediation ? "border-primary" : ""
+        }`}
+      >
         <Row className="g-0">
-          {/* صورة وعنوان المنتج */}
           <Col md={3} lg={2} className="text-center p-2 product-entry-img-col">
+            {" "}
             <Image
               src={product.imageUrls?.[0] || noImageUrl}
               fluid
               rounded
               style={{ maxHeight: "100px", objectFit: "contain" }}
-            />
+            />{" "}
           </Col>
           <Col md={9} lg={10}>
             <Card.Body className="p-3 position-relative">
-              {/* معلومات المنتج الأساسية */}
               <div className="d-flex justify-content-between align-items-start mb-2">
                 <div>
                   <h5 className="mb-1 product-entry-title">{product.title}</h5>
@@ -247,8 +260,18 @@ const CommandsListVendor = () => {
                       Price: {formatCurrency(product.price, product.currency)}
                     </small>
                   </div>
+                  {/* --- [!] عرض رسالة حالة الوساطة [!] --- */}
+                  {isInMediation && (
+                    <Alert
+                      variant="info"
+                      className="p-1 px-2 small mt-1 d-inline-block"
+                    >
+                      <FaHandshake size={12} className="me-1" /> Awaiting
+                      Mediator Assignment...
+                    </Alert>
+                  )}
                 </div>
-                {product.status !== "sold" && (
+                {!isInMediation && product.status !== "sold" && (
                   <div className="product-entry-actions">
                     <OverlayTrigger
                       placement="top"
@@ -262,7 +285,6 @@ const CommandsListVendor = () => {
                         className="p-1 text-secondary"
                         onClick={() => navigate("/dashboard/comptes")}
                       >
-                        {" "}
                         {/* <-- تغيير الوجهة */}
                         <FaEdit />
                       </Button>
@@ -290,7 +312,7 @@ const CommandsListVendor = () => {
               </div>
 
               {/* عرض المزايدات فقط للمنتجات المعتمدة */}
-              {product.status === "approved" && (
+              {product.status === "approved" && !isInMediation && (
                 <div className="bids-section-vendor mt-3">
                   <h6 className="bids-title small text-muted">
                     Received Bids ({sortedBids.length})
@@ -386,14 +408,14 @@ const CommandsListVendor = () => {
               {/* عرض معلومات البيع إذا كان المنتج مباعاً */}
               {product.status === "sold" && product.buyer && (
                 <Alert variant="info" className="mt-3 p-2 small">
-                  Sold to{" "}
+                  Sold to
                   <Link
                     to={`/profile/${product.buyer._id || product.buyer}`}
                     className="fw-bold"
                   >
                     {product.buyer.fullName || "a user"}
-                  </Link>{" "}
-                  on{" "}
+                  </Link>
+                  on
                   {new Date(
                     product.soldAt || product.updatedAt
                   ).toLocaleDateString()}
@@ -432,14 +454,15 @@ const CommandsListVendor = () => {
   return (
     <Container fluid className="py-4 commands-list-vendor-page">
       <Row className="mb-3 align-items-center">
+        {" "}
         <Col>
           <h2 className="page-title mb-0">My Products & Bids</h2>
-        </Col>
+        </Col>{" "}
         <Col xs="auto">
           <Button as={Link} to="/dashboard/comptes" variant="primary" size="sm">
             + Add New Product
           </Button>
-        </Col>
+        </Col>{" "}
       </Row>
 
       <Tabs
@@ -453,8 +476,8 @@ const CommandsListVendor = () => {
           eventKey="approved"
           title={
             <>
-              <FaCheck className="me-1" /> Approved{" "}
-              <Badge pill bg="success">
+              <FaCheck className="me-1" /> Approved
+              <Badge pill bg="success" className="ms-1">
                 {approvedProducts.length}
               </Badge>
             </>
@@ -468,12 +491,32 @@ const CommandsListVendor = () => {
             </Alert>
           )}
         </Tab>
+        {/* --- [!!!] إضافة تاب الوساطة [!!!] --- */}
+        <Tab
+          eventKey="mediation"
+          title={
+            <>
+              <FaHandshake className="me-1" /> In Mediation{" "}
+              <Badge pill bg="primary">
+                {mediationProducts.length}
+              </Badge>
+            </>
+          }
+        >
+          {mediationProducts.length > 0 ? (
+            mediationProducts.map(renderProductEntry)
+          ) : (
+            <Alert variant="light" className="text-center py-4">
+              No products currently in mediation.
+            </Alert>
+          )}
+        </Tab>
         <Tab
           eventKey="pending"
           title={
             <>
-              <FaHourglassHalf className="me-1" /> Pending{" "}
-              <Badge pill bg="warning" text="dark">
+              <FaHourglassHalf className="me-1" /> Pending
+              <Badge pill bg="warning" text="dark" className="ms-1">
                 {pendingProducts.length}
               </Badge>
             </>
@@ -491,8 +534,8 @@ const CommandsListVendor = () => {
           eventKey="sold"
           title={
             <>
-              <FaDollarSign className="me-1" /> Sold{" "}
-              <Badge pill bg="secondary">
+              <FaDollarSign className="me-1" /> Sold
+              <Badge pill bg="secondary" className="ms-1">
                 {soldProducts.length}
               </Badge>
             </>
@@ -510,8 +553,8 @@ const CommandsListVendor = () => {
           eventKey="rejected"
           title={
             <>
-              <FaTimesCircle className="me-1" /> Rejected{" "}
-              <Badge pill bg="danger">
+              <FaTimesCircle className="me-1" /> Rejected
+              <Badge pill bg="danger" className="ms-1">
                 {rejectedProducts.length}
               </Badge>
             </>
@@ -538,8 +581,8 @@ const CommandsListVendor = () => {
         </Modal.Header>
         <Modal.Body>
           <p>
-            Reason for rejecting bid from{" "}
-            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for{" "}
+            Reason for rejecting bid from
+            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for
             <strong>
               {formatCurrency(
                 bidToReject?.bid?.amount,

@@ -53,8 +53,16 @@ const ProductSchema = new Schema({
     date_added: { type: Date, default: Date.now },
     status: {
         type: String,
-        // --- [!] إضافة حالة 'sold' ---
-        enum: ['pending', 'approved', 'rejected', 'sold'],
+        // --- [!!!] التأكد من إضافة الحالات هنا [!!!] ---
+        enum: [
+            'pending',
+            'approved',
+            'rejected',
+            'sold',
+            'PendingMediation',    // <-- تأكد من وجود هذه القيمة
+            'MediationInProgress', // <-- أضف هذه أيضًا للمستقبل
+            'Archived'             // <-- وهذه إذا كنت تخطط لأرشفتها
+        ],
         // -----------------------------
         default: 'pending',
         index: true // إضافة index للحالة لتحسين البحث
@@ -78,7 +86,9 @@ const ProductSchema = new Schema({
     },
     soldAt: { // تاريخ ووقت البيع (اختياري)
         type: Date
-    }
+    },
+    // --- [!!!] إضافة حقل لربط طلب الوساطة [!!!] ---
+    mediationRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'MediationRequest', default: null, index: true }
     // ---------------------------------
 
 }, { timestamps: true }); // لإضافة createdAt و updatedAt تلقائياً

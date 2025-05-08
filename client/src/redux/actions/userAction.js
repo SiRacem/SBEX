@@ -3,7 +3,13 @@ import {
     REGISTER_REQUEST, REGISTER_SUCCESS, REGISTER_FAIL, CLEAR_REGISTRATION_STATUS,
     LOGIN_REQUEST, LOGIN_SUCCESS, LOGIN_FAIL, CLEAR_LOGIN_SUCCESS_MESSAGE,
     GET_PROFILE_REQUEST, GET_PROFILE_SUCCESS, GET_PROFILE_FAIL,
-    LOGOUT, CLEAR_USER_ERRORS
+    LOGOUT, CLEAR_USER_ERRORS,
+    APPLY_MEDIATOR_REQUEST, APPLY_MEDIATOR_SUCCESS, APPLY_MEDIATOR_FAIL, APPLY_MEDIATOR_RESET,
+    ADMIN_GET_MEDIATOR_APPS_REQUEST, ADMIN_GET_MEDIATOR_APPS_SUCCESS, ADMIN_GET_MEDIATOR_APPS_FAIL,
+    ADMIN_PROCESS_MEDIATOR_APP_REQUEST, ADMIN_PROCESS_MEDIATOR_APP_SUCCESS, ADMIN_PROCESS_MEDIATOR_APP_FAIL,
+    ADMIN_PROCESS_MEDIATOR_APP_RESET,
+    // الأنواع الخاصة بجلب الوسطاء المتاحين (التي أضفناها سابقًا يجب أن تكون هنا أيضًا)
+    ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL
 } from "../actionTypes/userActionType";
 import { toast } from 'react-toastify';
 
@@ -103,3 +109,83 @@ export const logoutUser = () => (dispatch) => {
     // dispatch({ type: 'CLEAR_NOTIFICATIONS' });
     // dispatch({ type: 'CLEAR_PRODUCTS' });
 };
+
+// --- [!] جلب الوسطاء المتاحين للأدمن (تأكد من وجود هذه) [!] ---
+export const adminGetAvailableMediators = () => async (dispatch) => {
+    dispatch({ type: ADMIN_GET_MEDIATORS_REQUEST });
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: 'Auth Error' });
+    try {
+        const { data } = await axios.get('/user/admin/mediators', config);
+        dispatch({ type: ADMIN_GET_MEDIATORS_SUCCESS, payload: data });
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch mediators.';
+        dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: message });
+        toast.error(`Error fetching mediators: ${message}`);
+    }
+};
+// ---------------------------------------------------------
+
+// --- [!!!] Action: تقديم طلب الانضمام كوسيط [!!!] ---
+export const applyForMediator = (applicationType) => async (dispatch) => {
+    dispatch({ type: APPLY_MEDIATOR_REQUEST });
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: APPLY_MEDIATOR_FAIL, payload: 'Authorization Error' });
+
+    try {
+        const { data } = await axios.post('/user/apply-mediator', { applicationType }, config);
+        dispatch({
+            type: APPLY_MEDIATOR_SUCCESS,
+            payload: { msg: data.msg, newStatus: 'Pending' } // نرسل الحالة الجديدة
+        });
+        toast.success(data.msg || "Application submitted successfully!");
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to submit application.';
+        dispatch({ type: APPLY_MEDIATOR_FAIL, payload: message });
+        toast.error(`Application failed: ${message}`);
+    }
+};
+export const resetApplyMediatorStatus = () => ({ type: APPLY_MEDIATOR_RESET });
+// ----------------------------------------------------
+
+// --- [!!!] Action: جلب طلبات الانضمام المعلقة (للأدمن) [!!!] ---
+export const adminGetPendingMediatorApplications = (params = {}) => async (dispatch) => {
+    dispatch({ type: ADMIN_GET_MEDIATOR_APPS_REQUEST });
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: 'Auth Error' });
+
+    try {
+        const { data } = await axios.get('/user/admin/mediator-applications', { ...config, params });
+        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_SUCCESS, payload: data }); // payload is { applications, totalPages, ... }
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch applications.';
+        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: message });
+        toast.error(`Error fetching applications: ${message}`);
+    }
+};
+// ----------------------------------------------------------
+
+// --- [!!!] Action: معالجة طلب الانضمام (موافقة/رفض للأدمن) [!!!] ---
+export const adminProcessMediatorApplication = (userId, action, reason = null) => async (dispatch) => {
+    dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_REQUEST, payload: { userId, action } });
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, error: 'Auth Error' } });
+
+    const url = `/user/admin/mediator-application/${userId}/${action}`; // 'approve' or 'reject'
+    const body = action === 'reject' ? { reason } : {};
+
+    try {
+        const { data } = await axios.put(url, body, config);
+        dispatch({
+            type: ADMIN_PROCESS_MEDIATOR_APP_SUCCESS,
+            payload: { userId, action, updatedUser: data.user } // إرسال المستخدم المحدث
+        });
+        toast.success(`Application ${action}ed successfully!`);
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || `Failed to ${action} application.`;
+        dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, error: message } });
+        toast.error(`Failed to ${action} application: ${message}`);
+    }
+};
+export const adminResetProcessMediatorAppStatus = () => ({ type: ADMIN_PROCESS_MEDIATOR_APP_RESET });
+// -------------------------------------------------------------

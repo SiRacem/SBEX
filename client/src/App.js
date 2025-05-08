@@ -32,6 +32,8 @@ import './pages/MainDashboard.css'; // CSS لـ MainDashboard
 import AdminPaymentMethods from './components/admin/AdminPaymentMethods';
 import AdminTransactionRequests from './components/admin/AdminTransactionRequests';
 import CommandsListVendor from './components/vendor/CommandsListVendor';
+import AssignMediatorRequests from './components/admin/AssignMediatorRequests';
+import ReviewMediatorApplications from './components/admin/ReviewMediatorApplications';
 
 // --- تعريف ثابت رابط خادم Socket.IO ---
 const SOCKET_SERVER_URL = "http://localhost:8000"; // تأكد من تطابق هذا مع منفذ الخادم الخلفي
@@ -305,8 +307,14 @@ function App() {
           <Route path="/dashboard/admin/products" element={<AdminRoute>{renderComponentWithSearch(ProductListAdmin)}</AdminRoute>} />
           <Route path="/dashboard/admin/users" element={<AdminRoute><UserListAd search={search} /></AdminRoute>} />
           <Route path="/dashboard/admin/deposit-requests" element={<AdminRoute>{renderComponentWithSearch(AdminTransactionRequests)}</AdminRoute>} />
+          {/* مثال لمسار محمي للأدمن */}
+          <Route path="/dashboard/admin/mediators" element={<AdminRoute>{renderComponentWithSearch(AssignMediatorRequests)}</AdminRoute>
+          } />
+          <Route path="/dashboard/admin/mediator-review" element={<AdminRoute>{renderComponentWithSearch(ReviewMediatorApplications)}</AdminRoute>
+          } />
+
           {/* --- [!] إضافة المسار الجديد لإدارة طرق الدفع --- */}
-          <Route path="/dashboard/admin/payment-methods" element={<AdminRoute><AdminPaymentMethods search={search} /></AdminRoute>} />          
+          <Route path="/dashboard/admin/payment-methods" element={<AdminRoute><AdminPaymentMethods search={search} /></AdminRoute>} />
           {/* مسارات البائع (تتطلب دور البائع) */}
           <Route path="/dashboard/comptes_bids" element={<VendorRoute>{renderComponentWithSearch(CommandsListVendor)}</VendorRoute>} />
 

@@ -14,6 +14,8 @@ import {
   FaHeadset,
   FaMoneyCheckAlt,
   FaGavel,
+  FaUserCheck,
+  FaClipboardCheck,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { Form } from "react-bootstrap";
@@ -142,6 +144,23 @@ const Sidebar = ({ onSearchChange }) => {
               <FaGavel className="icon" />
               <span className="link-text">Manage Orders</span>
             </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/mediators"
+              title="Manage Mediators"
+            >
+              <FaUserCheck className="icon" />
+              <span className="link-text">Manage Mediators</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/mediator-review" // <-- المسار الجديد
+              title="Review Mediator"
+            >
+              <FaClipboardCheck className="icon" />
+              {/* أو أيقونة أخرى مثل FaClipboardCheck */}
+              <span className="link-text">Review Mediator</span>
+            </NavLink>
           </>
         )}
 
@@ -154,7 +173,11 @@ const Sidebar = ({ onSearchChange }) => {
       </nav>
       {/* Logout Button (on larger screens) */}
       <div className="sidebar-footer">
-        <Link to="/login" className="sidebar-link logout-button" onClick={handleLogout}>
+        <Link
+          to="/login"
+          className="sidebar-link logout-button"
+          onClick={handleLogout}
+        >
           <FaSignOutAlt className="icon" />
           <span className="link-text">Logout</span>
         </Link>

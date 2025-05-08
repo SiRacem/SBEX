@@ -9,6 +9,7 @@ import uiReducer from "./uiReducer";
 import paymentMethodReducer from "./paymentMethodReducer";
 import depositRequestReducer from "./depositRequestReducer";
 import withdrawalRequestReducer from "./withdrawalRequestReducer";
+import mediationReducer from "./mediationReducer";
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -23,6 +24,8 @@ const rootReducer = combineReducers({
     paymentMethodReducer,
     depositRequestReducer,
     withdrawalRequestReducer,
+    // --- [!!!] إضافة الـ Reducer الجديد [!!!] ---
+    mediationReducer,
     // orderReducer,
     // cartReducer,
 });

@@ -5,12 +5,18 @@ const {
     Register, Login, Auth,
     getUsers, updateUsers, deleteUsers,
     checkEmailExists, // <-- تأكد من وجودها هنا
-    getUserPublicProfile // <-- [!] إضافة الدالة الجديدة
+    getUserPublicProfile, // <-- [!] إضافة الدالة الجديدة
+    adminGetAvailableMediators, // <-- استيراد الدالة الجديدة
+    // --- [!!!] استيراد الدوال الجديدة [!!!] ---
+    applyForMediator, adminGetPendingMediatorApplications,
+    adminApproveMediatorApplication, adminRejectMediatorApplication
+    // ------------------------------------
 } = require('../controllers/user.controller'); // <-- تأكد من المسار الصحيح
 // -------------------------------------------
 const { registerRules, validatorMiddleware } = require('../middlewares/validator');
 const { verifyAuth } = require('../middlewares/verifyAuth');
-
+const { isAdmin } = require('../middlewares/roleCheck');
+// -------------------------------------------
 const router = express.Router();
 
 // -- Auth Routes --
@@ -25,9 +31,22 @@ router.post("/check-email", verifyAuth, checkEmailExists);
 // -- Public Profile Route --
 router.get('/profile/:userId', getUserPublicProfile);
 
+// --- [!!!] مسار تقديم طلب الوساطة (للمستخدم المسجل) [!!!] ---
+router.post('/apply-mediator', verifyAuth, applyForMediator);
+// ----------------------------------------------------------
+
 // -- User Management Routes --
 router.get("/get_users", verifyAuth, /* isAdmin, */ getUsers);
 router.put('/update_users/:id', verifyAuth, /* isAdminOrSelf, */ updateUsers);
 router.delete('/delete_users/:id', verifyAuth, /* isAdmin, */ deleteUsers);
+
+// --- [!!!] إضافة مسار جديد للأدمن لجلب الوسطاء [!!!] ---
+router.get('/admin/mediators', verifyAuth, isAdmin, adminGetAvailableMediators);
+
+// --- [!!!] مسارات إدارة طلبات الوسطاء (للأدمن) [!!!] ---
+router.get('/admin/mediator-applications', verifyAuth, isAdmin, adminGetPendingMediatorApplications);
+router.put('/admin/mediator-application/:userId/approve', verifyAuth, isAdmin, adminApproveMediatorApplication);
+router.put('/admin/mediator-application/:userId/reject', verifyAuth, isAdmin, adminRejectMediatorApplication);
+// ------------------------------------------------------
 
 module.exports = router;

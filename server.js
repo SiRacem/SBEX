@@ -37,6 +37,8 @@ const paymentMethodRoute = require('./router/paymentMethod');
 const depositRoute = require('./router/deposit.router'); // تأكد من اسم الملف .router
 const uploadRoute = require('./router/upload.router');   // تأكد من اسم الملف .router
 const withdrawalRoute = require('./router/withdrawal.router'); // تأكد من اسم الملف .router
+// --- [!!!] إضافة استيراد Router الوساطة [!!!] ---
+const mediationRoute = require('./router/mediation.router');
 
 // --- استيراد اتصال قاعدة البيانات ---
 const connectDB = require('./config/connectDB');
@@ -134,6 +136,8 @@ app.use('/payment-methods', paymentMethodRoute);
 app.use('/deposits', depositRoute);
 app.use('/uploads', uploadRoute);
 app.use('/withdrawals', withdrawalRoute);
+// --- [!!!] ربط Router الوساطة [!!!] ---
+app.use('/mediation', mediationRoute); // استخدام المسار /mediation
 
 // --- مسار أساسي للتحقق من أن الـ API يعمل ---
 app.get('/', (req, res) => {

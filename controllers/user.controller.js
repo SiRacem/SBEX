@@ -6,6 +6,11 @@ const bcrypt = require("bcryptjs")
 var jwt = require('jsonwebtoken');
 const config = require("config")
 
+// --- [!!!] إضافة ثوابت الشروط (يمكن نقلها لملف config) [!!!] ---
+const MEDIATOR_REQUIRED_LEVEL = 3; // المستوى المطلوب للتأهيل عبر السمعة
+const MEDIATOR_ESCROW_AMOUNT_TND = 150.00; // مبلغ الضمان المطلوب بالدينار
+// ----------------------------------------------------------
+
 // --- Register ---
 exports.Register = async (req, res) => {
     const { fullName, email, phone, address, password, userRole, blocked = false } = req.body;
@@ -52,7 +57,7 @@ exports.Login = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-             console.warn(`Login failed: Incorrect password for ${email}.`);
+            console.warn(`Login failed: Incorrect password for ${email}.`);
             return res.status(401).json({ msg: "Invalid credentials" });
         }
 
@@ -145,7 +150,6 @@ exports.checkEmailExists = async (req, res) => {
     }
 };
 // --- *** نهاية دالة التحقق من الإيميل *** ---
-
 
 // --- Get Users ---
 exports.getUsers = async (req, res) => {
@@ -359,3 +363,266 @@ exports.getUserPublicProfile = async (req, res) => {
         if (!res.headersSent) res.status(500).json({ msg: "Server error fetching profile data." });
     }
 };
+
+// --- [!!!] تعديل دالة جلب الوسطاء المتاحين [!!!] ---
+exports.adminGetAvailableMediators = async (req, res) => {
+    console.log(`--- Controller: adminGetAvailableMediators (Using isMediatorQualified) ---`);
+    try {
+        // --- البحث عن الوسطاء المؤهلين، غير المحظورين، والمتاحين ---
+        const mediators = await User.find({
+            isMediatorQualified: true,
+            blocked: false,
+            mediatorStatus: 'Available' // <-- إضافة شرط الحالة "متاح"
+        })
+            .select('_id fullName email avatarUrl reputationPoints level mediatorStatus') // إضافة حالة الوسيط
+            .sort({ fullName: 1 });
+        // ---------------------------------------------------------
+
+        console.log(`Found ${mediators.length} available qualified mediators.`);
+        res.status(200).json(mediators);
+
+    } catch (error) {
+        console.error("Error fetching available mediators:", error);
+        res.status(500).json({ msg: "Server error fetching mediators." });
+    }
+};
+
+// --- [!!!] دالة جديدة: تقديم طلب الانضمام كوسيط [!!!] ---
+exports.applyForMediator = async (req, res) => {
+    const userId = req.user._id;
+    const { applicationType } = req.body; // 'reputation' or 'guarantee'
+
+    console.log(`--- Controller: applyForMediator - User: ${userId}, Type: ${applicationType} ---`);
+
+    if (!['reputation', 'guarantee'].includes(applicationType)) {
+        return res.status(400).json({ msg: "Invalid application type. Must be 'reputation' or 'guarantee'." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const user = await User.findById(userId).session(session);
+        if (!user) throw new Error("User not found.");
+
+        // التحقق إذا كان مؤهلاً بالفعل أو لديه طلب معلق
+        if (user.isMediatorQualified) throw new Error("You are already a qualified mediator.");
+        if (user.mediatorApplicationStatus === 'Pending') throw new Error("You already have a pending application.");
+        if (user.mediatorApplicationStatus === 'Approved') throw new Error("Your application was already approved."); // حالة نادرة
+
+        let canApply = false;
+        let conditionMet = '';
+
+        // التحقق من شروط السمعة
+        if (user.level >= MEDIATOR_REQUIRED_LEVEL) {
+            canApply = true;
+            conditionMet = `Level ${user.level} (>=${MEDIATOR_REQUIRED_LEVEL})`;
+        }
+
+        // التحقق من شروط الضمان
+        if (user.balance >= MEDIATOR_ESCROW_AMOUNT_TND) {
+            canApply = true;
+            conditionMet = conditionMet ? `${conditionMet} OR Balance Sufficient` : `Balance ${user.balance.toFixed(2)} TND (>=${MEDIATOR_ESCROW_AMOUNT_TND.toFixed(2)} TND)`;
+        }
+
+        if (!canApply) {
+            throw new Error(`You do not meet the requirements (Level >= ${MEDIATOR_REQUIRED_LEVEL} or Balance >= ${MEDIATOR_ESCROW_AMOUNT_TND.toFixed(2)} TND).`);
+        }
+
+        // ---(اختياري: يمكن تجميد الضمان هنا إذا كان النوع guarantee, أو تركه للأدمن)---
+        // if (applicationType === 'guarantee') {
+        //     if (user.balance < MEDIATOR_ESCROW_AMOUNT_TND) throw new Error("Insufficient balance for guarantee deposit.");
+        //     // قد ترغب في تجميده هنا أو عند موافقة الأدمن
+        // }
+        // -------------------------------------------------------------------
+
+        // تحديث حالة طلب المستخدم
+        user.mediatorApplicationStatus = 'Pending';
+        // مسح الملاحظات السابقة إن وجدت
+        user.mediatorApplicationNotes = undefined;
+        await user.save({ session });
+        console.log(`   User ${userId} application status set to Pending. Condition met: ${conditionMet}`);
+
+        // إرسال إشعار للأدمن
+        const admins = await User.find({ userRole: 'Admin' }).select('_id').session(session);
+        if (admins.length > 0) {
+            const adminNotifications = admins.map(admin => ({
+                user: admin._id, type: 'NEW_MEDIATOR_APPLICATION', // نوع جديد
+                title: 'New Mediator Application',
+                message: `User "${user.fullName || user.email}" has applied to become a mediator (Condition: ${applicationType}). Please review their application.`,
+                relatedEntity: { id: userId, modelName: 'User' }
+            }));
+            await Notification.insertMany(adminNotifications, { session });
+            console.log(`   Admin notifications created for new mediator application.`);
+            // يمكنك إضافة إرسال Socket.IO للأدمن هنا
+        }
+
+        await session.commitTransaction();
+        console.log("   Mediator application submitted and transaction committed.");
+        res.status(200).json({ msg: "Your application to become a mediator has been submitted successfully and is pending review." });
+
+    } catch (error) {
+        if (session.inTransaction()) { await session.abortTransaction(); }
+        console.error("[applyForMediator] Error:", error);
+        res.status(400).json({ msg: error.message || 'Failed to submit application.' });
+    } finally {
+        if (session.endSession) await session.endSession();
+        console.log("--- Controller: applyForMediator END ---");
+    }
+};
+
+// --- [!!!] دالة جديدة: جلب طلبات الانضمام المعلقة (للأدمن) [!!!] ---
+exports.adminGetPendingMediatorApplications = async (req, res) => {
+    const { page = 1, limit = 15 } = req.query;
+    console.log(`--- Controller: adminGetPendingMediatorApplications - Page: ${page}, Limit: ${limit} ---`);
+
+    try {
+        const options = {
+            page: parseInt(page, 10) || 1,
+            limit: parseInt(limit, 10) || 15,
+            sort: { updatedAt: -1 }, // عرض الأحدث أولاً (آخر تحديث للطلب)
+            select: '-password', // استبعاد كلمة المرور
+            lean: true
+        };
+
+        const result = await User.paginate(
+            { mediatorApplicationStatus: 'Pending' }, // جلب المستخدمين الذين لديهم طلب معلق
+            options
+        );
+
+        console.log(`   Found ${result.totalDocs || 0} pending mediator applications.`);
+        res.status(200).json({
+            applications: result.docs || result.users, // اسم الحقل يعتمد على paginate
+            totalPages: result.totalPages,
+            currentPage: result.page,
+            totalApplications: result.totalDocs || result.totalUsers
+        });
+
+    } catch (error) {
+        console.error("[adminGetPendingMediatorApplications] Error:", error);
+        res.status(500).json({ msg: "Server error fetching pending mediator applications." });
+    }
+};
+
+// --- [!!!] دالة جديدة: موافقة الأدمن على طلب الانضمام [!!!] ---
+exports.adminApproveMediatorApplication = async (req, res) => {
+    const { userId } = req.params; // ID المستخدم صاحب الطلب
+    const adminUserId = req.user._id;
+    const adminFullName = req.user.fullName;
+
+    console.log(`--- Controller: adminApproveMediatorApplication - User: ${userId}, Admin: ${adminUserId} ---`);
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).json({ msg: "Invalid User ID." });
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const user = await User.findOne({ _id: userId, mediatorApplicationStatus: 'Pending' }).session(session);
+        if (!user) throw new Error("Pending application not found for this user.");
+
+        // التحقق من شرط الضمان إذا كان مطلوبًا (أو يمكن تركه لـ applyForMediator)
+        // if (user.balance < MEDIATOR_ESCROW_AMOUNT_TND) {
+        //     throw new Error(`User balance (${user.balance.toFixed(2)}) is insufficient for the required guarantee (${MEDIATOR_ESCROW_AMOUNT_TND.toFixed(2)}). Ask user to deposit first.`);
+        // }
+
+        // تجميد الضمان (إذا لم يتم عند التقديم)
+        if (user.mediatorEscrowGuarantee <= 0 && user.balance >= MEDIATOR_ESCROW_AMOUNT_TND) { // تجميد فقط إذا لم يكن مجمدًا والرصيد كافٍ
+            const balanceBefore = user.balance;
+            const guaranteeAmount = MEDIATOR_ESCROW_AMOUNT_TND;
+            user.balance -= guaranteeAmount;
+            user.mediatorEscrowGuarantee += guaranteeAmount; // إضافة بدلًا من التعيين للاحتياط
+            console.log(`   Guarantee ${guaranteeAmount} TND moved from balance to escrow. Balance: ${balanceBefore} -> ${user.balance}`);
+        } else if (user.mediatorEscrowGuarantee <= 0 && user.balance < MEDIATOR_ESCROW_AMOUNT_TND && user.level < MEDIATOR_REQUIRED_LEVEL) {
+            // إذا كان الضمان مطلوبًا (ليس لديه المستوى الكافي) والرصيد غير كافٍ
+            throw new Error(`User does not meet reputation level and has insufficient balance (${user.balance.toFixed(2)} TND) for the guarantee deposit (${MEDIATOR_ESCROW_AMOUNT_TND.toFixed(2)}).`);
+        }
+
+
+        // تحديث حالة المستخدم
+        user.isMediatorQualified = true;
+        user.mediatorApplicationStatus = 'Approved';
+        user.mediatorStatus = 'Available'; // جعله متاحًا افتراضيًا
+        user.mediatorApplicationNotes = `Approved by ${adminFullName || adminUserId} on ${new Date().toLocaleDateString()}`;
+        await user.save({ session });
+        console.log(`   User ${userId} approved as mediator.`);
+
+        // إرسال إشعار للمستخدم
+        const userMessage = `Congratulations! Your application to become a mediator has been approved by admin "${adminFullName}". You can now be assigned mediation tasks when your status is 'Available'.`;
+        await Notification.create([{
+            user: userId, type: 'MEDIATOR_APP_APPROVED', // نوع جديد
+            title: 'Mediator Application Approved!', message: userMessage
+        }], { session });
+        console.log(`   Approval notification created for user ${userId}.`);
+        // إرسال Socket.IO للمستخدم
+
+        await session.commitTransaction();
+        console.log("   Approval transaction committed.");
+        res.status(200).json({ msg: "Mediator application approved successfully.", user: user.toObject() }); // أرجع المستخدم المحدث
+
+    } catch (error) {
+        if (session.inTransaction()) { await session.abortTransaction(); }
+        console.error("[adminApproveMediatorApplication] Error:", error);
+        res.status(400).json({ msg: error.message || 'Failed to approve application.' });
+    } finally {
+        if (session.endSession) await session.endSession();
+        console.log("--- Controller: adminApproveMediatorApplication END ---");
+    }
+};
+
+// --- [!!!] دالة جديدة: رفض الأدمن لطلب الانضمام [!!!] ---
+exports.adminRejectMediatorApplication = async (req, res) => {
+    const { userId } = req.params;
+    const { reason } = req.body; // سبب الرفض من الأدمن
+    const adminUserId = req.user._id;
+    const adminFullName = req.user.fullName;
+
+    console.log(`--- Controller: adminRejectMediatorApplication - User: ${userId}, Admin: ${adminUserId} ---`);
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).json({ msg: "Invalid User ID." });
+    if (!reason || reason.trim() === '') return res.status(400).json({ msg: "Rejection reason is required." });
+
+    try {
+        // لا نحتاج معاملة هنا لأننا فقط نحدث حالة المستخدم
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId, mediatorApplicationStatus: 'Pending' },
+            {
+                $set: {
+                    mediatorApplicationStatus: 'Rejected',
+                    mediatorApplicationNotes: `Rejected by ${adminFullName || adminUserId}: ${reason.trim()}`,
+                    // لا نغير isMediatorQualified أو mediatorStatus
+                }
+            },
+            { new: true }
+        ).select('-password'); // استبعاد كلمة المرور
+
+        if (!updatedUser) {
+            // التحقق إذا كان الطلب موجودًا ولكن ليس pending
+            const existingUser = await User.findById(userId);
+            if (existingUser && existingUser.mediatorApplicationStatus !== 'Pending') {
+                throw new Error(`Application for user ${userId} is already processed (Status: ${existingUser.mediatorApplicationStatus}).`);
+            } else {
+                throw new Error("Pending application not found for this user.");
+            }
+        }
+        console.log(`   User ${userId} mediator application rejected.`);
+
+        // إرسال إشعار للمستخدم
+        const userMessage = `We regret to inform you that your application to become a mediator was rejected by admin "${adminFullName}". Reason: ${reason.trim()}`;
+        await Notification.create({
+            user: userId, type: 'MEDIATOR_APP_REJECTED', // نوع جديد
+            title: 'Mediator Application Rejected', message: userMessage
+        });
+        console.log(`   Rejection notification created for user ${userId}.`);
+        // إرسال Socket.IO للمستخدم
+
+        res.status(200).json({ msg: "Mediator application rejected.", user: updatedUser });
+
+    } catch (error) {
+        console.error("[adminRejectMediatorApplication] Error:", error);
+        res.status(400).json({ msg: error.message || 'Failed to reject application.' });
+    } finally {
+        console.log("--- Controller: adminRejectMediatorApplication END ---");
+    }
+};
+// -----------------------------------------------------

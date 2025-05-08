@@ -1,47 +1,86 @@
-// models/User.js
+// server/models/User.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+// --- [!!!] تأكد من وجود هذا الاستيراد [!!!] ---
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const UserSchema = new Schema({
     fullName: { type: String, trim: true },
-    email: { type: String, unique: true, lowercase: true, trim: true }, // جعل الإيميل فريداً
+    email: { type: String, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
-    password: { type: String, required: true }, // كلمة المرور يجب أن تكون مطلوبة
-    userRole: { type: String, enum: ['User', 'Vendor', 'Admin'], default: 'User' }, // تحديد الأدوار المسموحة
+    password: { type: String, required: true },
+    userRole: { type: String, enum: ['User', 'Vendor', 'Admin'], default: 'User' }, // الدور الأساسي
     registerDate: { type: Date, default: Date.now },
-    balance: { type: Number, required: true, default: 0, min: 0 }, // التأكد من أن الرصيد لا يكون سالباً
+    balance: { type: Number, required: true, default: 0, min: 0 },
     sellerAvailableBalance: { type: Number, default: 0, min: 0 },
     sellerPendingBalance: { type: Number, default: 0, min: 0 },
     depositBalance: { type: Number, default: 0, min: 0 },
     withdrawalBalance: { type: Number, default: 0, min: 0 },
-    blocked: { type: Boolean, default: false },
-    avatarUrl: { type: String, default: null }, // حقل اختياري لصورة الأفاتار
+    blocked: { type: Boolean, default: false, index: true }, // Added index
+    avatarUrl: { type: String, default: null },
+    escrowBalance: { type: Number, default: 0, min: 0 }, // رصيد المشتري المجمد للمعاملة
 
-    // --- [!] إضافة رصيد الضمان/المجمد ---
-    escrowBalance: { // الرصيد المحجوز للمعاملات الجارية
+    // --- [!!!] حقول الوساطة والسمعة الجديدة [!!!] ---
+    isMediatorQualified: { // هل المستخدم مؤهل ليكون وسيط؟
+        type: Boolean,
+        default: false,
+        index: true // لفهرسة البحث عن الوسطاء المؤهلين
+    },
+    mediatorStatus: { // حالة توفر الوسيط
+        type: String,
+        enum: ['Available', 'Unavailable', 'Busy'], // متاح، غير متاح، مشغول بمهمة
+        default: 'Unavailable', // الافتراضي غير متاح
+        index: true // لفهرسة البحث عن الوسطاء المتاحين
+    },
+    mediatorEscrowGuarantee: { // رصيد ضمان الوسيط (بالدينار TND)
         type: Number,
         default: 0,
         min: 0
     },
+    successfulMediationsCount: { // عداد الوساطات الناجحة
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    canWithdrawGuarantee: { // هل يستطيع سحب الضمان؟ (بناءً على عدد الوساطات مثلاً)
+        type: Boolean,
+        default: false
+    },
+    mediatorApplicationStatus: { // حالة طلب الانضمام كوسيط
+        type: String,
+        enum: ['None', 'Pending', 'Approved', 'Rejected'],
+        default: 'None'
+    },
+    mediatorApplicationNotes: { // ملاحظات الأدمن على طلب الانضمام
+        type: String,
+        trim: true
+    },
+    reputationPoints: { // نقاط السمعة
+        type: Number,
+        default: 0
+        // يمكن أن تكون النقاط سالبة في حالات نادرة جدًا
+    },
+    level: { // مستوى المستخدم بناءً على النقاط
+        type: Number,
+        default: 1, // يبدأ من المستوى 1
+        min: 1
+    },
+    // ----------------------------------------------------
 
-    // --- [!] حقول جديدة للإحصائيات المجمعة ---
-    positiveRatings: { // عدد اللايكات التي تلقاها
-        type: Number,
-        default: 0,
-        min: 0 // لا يجب أن يكون سالباً
-    },
-    negativeRatings: { // عدد الديسلايكات التي تلقاها
-        type: Number,
-        default: 0,
-        min: 0
-    },
-    productsSoldCount: { // عدد المنتجات التي باعها (اختياري)
-        type: Number,
-        default: 0,
-        min: 0
-    }
+    // --- حقول التقييم (تبقى كما هي) ---
+    positiveRatings: { type: Number, default: 0, min: 0 },
+    negativeRatings: { type: Number, default: 0, min: 0 },
+    productsSoldCount: { type: Number, default: 0, min: 0 }
     // -----------------------------------------
-}, { timestamps: true }); // إضافة createdAt و updatedAt
+
+}, { timestamps: true });
+
+// Indexes إضافية لتحسين الأداء
+UserSchema.index({ mediatorStatus: 1, isMediatorQualified: 1 }); // للبحث عن وسطاء مؤهلين ومتاحين
+
+// --- [!!!] تأكد من وجود هذا السطر لإضافة الـ Plugin [!!!] ---
+UserSchema.plugin(mongoosePaginate);
+// -----------------------------------------------------------
 
 module.exports = mongoose.model("User", UserSchema);
