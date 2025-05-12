@@ -11,12 +11,13 @@ const NotificationSchema = new Schema({
             'PRODUCT_DELETED', 'PRODUCT_APPROVED', 'PRODUCT_REJECTED',
             'NEW_PRODUCT_PENDING', 'PRODUCT_UPDATE_PENDING',
 
-            // Order/Transaction related (Keep or adapt based on your final flow)
+            // Order/Transaction related
             'ORDER_STATUS_UPDATE', 'FUNDS_SENT', 'FUNDS_RECEIVED',
 
             // Bidding related
-            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER',
-            'BID_ACCEPTED_BUYER', 'BID_REJECTED_BY_YOU', 'BID_UPDATED',
+            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER', // هذا قديم، يمكن إزالته إذا لم يعد مستخدمًا
+            'BID_ACCEPTED_BUYER',  // هذا قديم، يمكن إزالته إذا لم يعد مستخدمًا
+            'BID_REJECTED_BY_YOU', 'BID_UPDATED',
 
             // Deposit related
             'NEW_DEPOSIT_REQUEST', 'DEPOSIT_APPROVED', 'DEPOSIT_REJECTED', 'DEPOSIT_PENDING',
@@ -28,23 +29,43 @@ const NotificationSchema = new Schema({
             // Admin Actions
             'ADMIN_BALANCE_ADJUSTMENT', 'USER_BALANCE_ADJUSTED',
 
-            // --- [!!!] إضافة أنواع إشعارات الوساطة [!!!] ---
-            'BID_ACCEPTED_PENDING_MEDIATION',   // للمشتري عند قبول مزايدته وبدء انتظار الوسيط
-            'BID_ACCEPTANCE_INITIATED_MEDIATION', // للبائع عند قبوله للمزايدة وبدء انتظار الوسيط
-            'NEW_MEDIATION_REQUEST_ASSIGNMENT',   // للأدمن لإعلامه بحاجة لتعيين وسيط
-            'MEDIATION_ASSIGNED',               // للوسيط لإعلامه بتعيينه لمهمة
-            'MEDIATION_ACCEPTED_BY_MEDIATOR',   // للأطراف والأدمن عند قبول الوسيط للمهمة
-            'MEDIATION_REJECTED_BY_MEDIATOR',   // للأدمن عند رفض الوسيط للمهمة
-            'MEDIATION_CONFIRMED_BY_PARTY',     // للوسيط/الطرف الآخر عند تأكيد أحدهما
-            'MEDIATION_STARTED',                // للأطراف الثلاثة عند بدء الوساطة (بعد تأكيد الطرفين وتجميد الرصيد)
-            'MEDIATION_COMPLETED',              // للأطراف الثلاثة عند إتمام الوسيط للصفقة بنجاح
-            'MEDIATION_CANCELLED',              // للأطراف عند إلغاء الوساطة
-            'MEDIATION_DISPUTED',               // للأدمن عند تصعيد النزاع
-            // ---------------------------------------------
+            // --- أنواع إشعارات الوساطة ---
+            // 'BID_ACCEPTED_PENDING_MEDIATION',   // للمشتري عند قبول مزايدته وبدء انتظار الوسيط <-- كان مكررًا ومحذوفًا
+            'BID_ACCEPTED_AWAITING_SELLER',   // هذا موجود بالفعل
+            'BID_ACCEPTED_SELECT_MEDIATOR',   // هذا موجود بالفعل للبائع
+
+            // --- [!!!] إضافة النوع الناقص هنا بشكل واضح ---
+            'BID_ACCEPTED_PENDING_MEDIATOR',  // للمشتري: تم قبول مزايدتك، ينتظر البائع اختيار وسيط
+            // -----------------------------------------------
+
+            'NEW_MEDIATION_REQUEST_ASSIGNMENT',
+            'MEDIATION_ASSIGNED',
+            'MEDIATION_ACCEPTED_BY_MEDIATOR',
+            'MEDIATION_REJECTED_BY_MEDIATOR',
+            'MEDIATION_CONFIRMED_BY_PARTY',
+            'MEDIATION_STARTED',
+            'MEDIATION_COMPLETED',
+            'MEDIATION_CANCELLED',
+            'MEDIATION_DISPUTED',
+
+            // --- أنواع طلبات الانضمام كوسيط ---
+            'NEW_MEDIATOR_APPLICATION',
+            'MEDIATOR_APP_APPROVED',
+            'MEDIATOR_APP_REJECTED',
+            'MEDIATOR_APP_PENDING',
+            'MEDIATOR_SELECTED_BY_SELLER',
+            'MEDIATOR_SELECTION_CONFIRMED',
+            'MEDIATOR_SELECTION_REJECTED',
+            'MEDIATION_TASK_ACCEPTED_SELF',
+            'MEDIATION_TASK_REJECTED_SELF',
+            'MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW',
+            'SELLER_CONFIRMED_AWAITING_YOUR_ACTION',
+            'BUYER_CONFIRMED_AWAITING_YOUR_ACTION',
+            'PARTY_CONFIRMED_READINESS',
 
             // General/Other
             'NEW_MESSAGE',
-            'WELCOME' // Example
+            'WELCOME'
         ],
         required: true
     },

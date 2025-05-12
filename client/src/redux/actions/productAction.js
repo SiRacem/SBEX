@@ -235,76 +235,84 @@ export const placeBid = (productId, amount) => async (dispatch, getState) => {
 
 // --- Accept Bid ---
 export const acceptBid = (productId, bidUserId, bidAmount) => async (dispatch) => {
-    dispatch({ type: ACCEPT_BID_REQUEST, payload: { productId, bidUserId } });
+    dispatch({ type: ACCEPT_BID_REQUEST, payload: { productId, bidUserId } }); //  تتبع حالة التحميل
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, bidUserId, error: "Not authorized." };
+        const errorPayload = { productId, error: "Not authorized." }; // خطأ مبسط للـ reducer
         dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
-        toast.error("Authorization required.");
-        return Promise.reject(errorPayload);
+        toast.error("Authorization required to accept bid.");
+        return Promise.reject(errorPayload); // إرجاع وعد مرفوض
     }
 
     try {
+        // Endpoint للـ backend
         const { data } = await axios.put(`/product/${productId}/accept-bid`, { bidUserId, bidAmount }, config);
+        console.log("ACTION: acceptBid - API Response Data:", data);
 
-        // --- [!!!] تعديل الـ Payload ليشمل بيانات الوساطة [!!!] ---
-        dispatch({
-            type: ACCEPT_BID_SUCCESS,
-            payload: {
-                productId: data.productId, // استخدام ID المنتج من الرد
-                newProductStatus: data.newProductStatus, // استخدام الحالة الجديدة من الرد
-                acceptedBidUserId: bidUserId,
-                mediationRequestId: data.mediationRequestId // <-- تمرير معرف الوساطة
-                // product: data.product // يمكنك إزالة هذا إذا لم تعد تحتاجه مباشرة في reducer
-            }
-        });
-        // ---------------------------------------------------------
-        toast.success(data.msg || "Bid accepted successfully! Mediation initiated.");
-        return Promise.resolve(data); // يمكنك إرجاع البيانات كاملة إذا احتجت
+        // الـ payload الآن هو الكائن الذي يحتوي على updatedProduct
+        if (data && data.updatedProduct) {
+            dispatch({
+                type: ACCEPT_BID_SUCCESS,
+                payload: { updatedProduct: data.updatedProduct } // تمرير المنتج المحدث بالكامل
+            });
+            toast.success(data.msg || "Bid accepted! Mediation process initiated.");
+            return Promise.resolve(data.updatedProduct); // إرجاع المنتج المحدث للمكون إذا لزم الأمر
+        } else {
+            // إذا لم يتم إرجاع updatedProduct بشكل صحيح
+            throw new Error("API response for acceptBid did not include updatedProduct.");
+        }
 
     } catch (error) {
-        console.error("AXIOS Error in acceptBid Action:", error.response || error); // Log الخطأ الفعلي
+        console.error("ACTION: acceptBid - Error:", error.response?.data || error.message);
         const message = error.response?.data?.msg || error.message || 'Failed to accept bid.';
-        const errorPayload = { productId, bidUserId, error: message };
+        // تأكد من أن payload الخطأ يحتوي على معرف المنتج للـ reducer
+        const errorPayload = { productId, error: message, bidUserId };
         dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
-        toast.error(`Failed to accept bid: ${message}`); // عرض الرسالة الصحيحة
-        return Promise.reject(errorPayload); // إرجاع رفض بالرسالة الصحيحة
+        toast.error(`Accept bid failed: ${message}`);
+        return Promise.reject(errorPayload); // إرجاع وعد مرفوض مع الخطأ
     }
 };
+// --- نهاية تعديل دالة acceptBid ---
 
 // --- Reject Bid ---
 export const rejectBid = (productId, bidUserId, reason) => async (dispatch) => {
     dispatch({ type: REJECT_BID_REQUEST, payload: { productId, bidUserId } });
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, bidUserId, error: "Not authorized." };
+        const errorPayload = { productId, error: "Not authorized." };
         dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
-        toast.error("Authorization required.");
         return Promise.reject(errorPayload);
     }
 
     try {
-        // --- [!] تفعيل وتأكيد استدعاء API ---
-        // تأكد أن هذا المسار والـ controller موجودان ويعملان في الواجهة الخلفية
-        await axios.put(`/product/${productId}/reject-bid`, { bidUserId, reason }, config);
-        // -----------------------------------
-
-        dispatch({
-            type: REJECT_BID_SUCCESS,
-            payload: { productId, rejectedBidUserId: bidUserId }
-        });
-        toast.info("Bid rejected. Bidder notified."); // تعديل الرسالة
-        return Promise.resolve();
+        const { data } = await axios.put(`/product/${productId}/reject-bid`, { bidUserId, reason }, config);
+        
+        if (data && data.updatedProduct) {
+            dispatch({
+                type: REJECT_BID_SUCCESS,
+                payload: { updatedProduct: data.updatedProduct, rejectedBidUserId: bidUserId } // تمرير المنتج المحدث
+            });
+            toast.info(data.msg || "Bid rejected successfully.");
+            return Promise.resolve(data.updatedProduct);
+        } else {
+            // إذا لم يتم إرجاع المنتج المحدث، يمكنك الاعتماد على تحديث محلي بسيط
+            dispatch({
+                type: REJECT_BID_SUCCESS,
+                payload: { productId, rejectedBidUserId: bidUserId } // الـ payload الأصلي إذا لم يكن هناك منتج محدث
+            });
+            toast.info(data.msg || "Bid rejected successfully (local update).");
+            return Promise.resolve();
+        }
 
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to reject bid.';
-        const errorPayload = { productId, bidUserId, error: message };
+        const errorPayload = { productId, error: message, bidUserId };
         dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
-        toast.error(`Failed to reject bid: ${message}`);
+        toast.error(`Reject bid failed: ${message}`);
         return Promise.reject(errorPayload);
     }
 };
-
+// --- نهاية تعديل دالة rejectBid ---
 
 // --- Clear Product Specific Error ---
 export const clearProductError = (productId) => ({

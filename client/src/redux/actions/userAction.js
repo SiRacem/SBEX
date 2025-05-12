@@ -9,7 +9,8 @@ import {
     ADMIN_PROCESS_MEDIATOR_APP_REQUEST, ADMIN_PROCESS_MEDIATOR_APP_SUCCESS, ADMIN_PROCESS_MEDIATOR_APP_FAIL,
     ADMIN_PROCESS_MEDIATOR_APP_RESET,
     // الأنواع الخاصة بجلب الوسطاء المتاحين (التي أضفناها سابقًا يجب أن تكون هنا أيضًا)
-    ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL
+    ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL,
+    UPDATE_MEDIATOR_STATUS_REQUEST, UPDATE_MEDIATOR_STATUS_SUCCESS, UPDATE_MEDIATOR_STATUS_FAIL,
 } from "../actionTypes/userActionType";
 import { toast } from 'react-toastify';
 
@@ -124,7 +125,6 @@ export const adminGetAvailableMediators = () => async (dispatch) => {
         toast.error(`Error fetching mediators: ${message}`);
     }
 };
-// ---------------------------------------------------------
 
 // --- [!!!] Action: تقديم طلب الانضمام كوسيط [!!!] ---
 export const applyForMediator = (applicationType) => async (dispatch) => {
@@ -145,8 +145,8 @@ export const applyForMediator = (applicationType) => async (dispatch) => {
         toast.error(`Application failed: ${message}`);
     }
 };
+
 export const resetApplyMediatorStatus = () => ({ type: APPLY_MEDIATOR_RESET });
-// ----------------------------------------------------
 
 // --- [!!!] Action: جلب طلبات الانضمام المعلقة (للأدمن) [!!!] ---
 export const adminGetPendingMediatorApplications = (params = {}) => async (dispatch) => {
@@ -163,7 +163,6 @@ export const adminGetPendingMediatorApplications = (params = {}) => async (dispa
         toast.error(`Error fetching applications: ${message}`);
     }
 };
-// ----------------------------------------------------------
 
 // --- [!!!] Action: معالجة طلب الانضمام (موافقة/رفض للأدمن) [!!!] ---
 export const adminProcessMediatorApplication = (userId, action, reason = null) => async (dispatch) => {
@@ -187,5 +186,23 @@ export const adminProcessMediatorApplication = (userId, action, reason = null) =
         toast.error(`Failed to ${action} application: ${message}`);
     }
 };
+
 export const adminResetProcessMediatorAppStatus = () => ({ type: ADMIN_PROCESS_MEDIATOR_APP_RESET });
-// -------------------------------------------------------------
+
+export const updateMediatorStatus = (newStatus) => async (dispatch) => {
+    dispatch({ type: 'UPDATE_MEDIATOR_STATUS_REQUEST' }); // <-- تأكد من تعريف النوع
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: 'Auth Error' });
+
+    try {
+        // --- [!!!] تأكد من وجود هذا المسار والـ Controller في الـ Backend [!!!] ---
+        const { data } = await axios.put('/user/mediator/status', { status: newStatus }, config);
+        // --------------------------------------------------------------------
+        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_SUCCESS', payload: { newStatus: data.newStatus } }); // <-- الـ Backend يعيد الحالة الجديدة
+        toast.success(`Your status is now set to ${data.newStatus}.`);
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to update status.';
+        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: message });
+        toast.error(`Status update failed: ${message}`);
+    }
+};

@@ -34,6 +34,8 @@ import AdminTransactionRequests from './components/admin/AdminTransactionRequest
 import CommandsListVendor from './components/vendor/CommandsListVendor';
 import AssignMediatorRequests from './components/admin/AssignMediatorRequests';
 import ReviewMediatorApplications from './components/admin/ReviewMediatorApplications';
+import MediatorDashboardPage from './pages/MediatorDashboardPage';
+import MyMediationRequestsPage from './pages/MyMediationRequestsPage';
 
 // --- تعريف ثابت رابط خادم Socket.IO ---
 const SOCKET_SERVER_URL = "http://localhost:8000"; // تأكد من تطابق هذا مع منفذ الخادم الخلفي
@@ -323,6 +325,15 @@ function App() {
 
           {/* مسار الصفحة غير موجودة (404) */}
           <Route path="*" element={<NotFound />} />
+
+          <Route path="/mediator/dashboard" element={
+          <ProtectedRoute requiredRole="mediator"> {/* أو isMediatorQualified */}
+              <MediatorDashboardPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/my-mediation-requests" element={<MyMediationRequestsPage />} />
+
 
         </Routes>
       </main>

@@ -1,32 +1,44 @@
 // src/components/profile/MediatorApplication.jsx
-import React from "react";
+// *** نسخة مصححة مع نقل استدعاءات useCallback للأعلى ***
+
+import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Card, Button, Alert, Spinner } from "react-bootstrap";
+import {
+  Card,
+  Button,
+  Alert,
+  Spinner,
+  ButtonGroup,
+  ListGroup,
+  Badge,
+} from "react-bootstrap";
 import {
   applyForMediator,
   resetApplyMediatorStatus,
+  updateMediatorStatus,
 } from "../../redux/actions/userAction";
 import {
-  FaCheckCircle,
   FaTimesCircle,
   FaHourglassHalf,
-  FaInfoCircle,
+  FaUserCheck,
+  FaUserClock,
+  FaUserTimes,
+  FaStar,
+  FaMoneyBillWave,
+
 } from "react-icons/fa";
 
-// --- [!] جلب الشروط من ملف الإعدادات أو تعريفها هنا [!] ---
 const MEDIATOR_REQUIRED_LEVEL = 3;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.0;
-const TND_TO_USD_RATE = 3.0; // تأكد من تطابقه
-// -------------------------------------------------------
-
-// دالة تنسيق العملة (يمكن استيرادها)
+const TND_TO_USD_RATE = 3.0;
 const formatCurrency = (amount, currencyCode = "TND") => {
-    if (currencyCode === "TND") {
-        return `${amount.toFixed(2)} TND`;
-    } else if (currencyCode === "USD") {
-        return `${(amount / TND_TO_USD_RATE).toFixed(2)} USD`;
-    }
-    return `${amount} ${currencyCode}`;
+  const options = {
+    style: "currency",
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  };
+  return new Intl.NumberFormat("en-US", options).format(amount);
 };
 
 const MediatorApplication = () => {
@@ -36,146 +48,273 @@ const MediatorApplication = () => {
     loadingApplyMediator,
     errorApplyMediator,
     successApplyMediator,
+    loadingUpdateMediatorStatus,
+    errorUpdateMediatorStatus,
   } = useSelector((state) => state.userReducer);
 
-  // التحقق من وجود المستخدم وبياناته
-  if (!user) return null; // لا تعرض شيئًا إذا لم يتم تحميل المستخدم
+  // --- [!!!] نقل تعريفات useCallback إلى هنا (أعلى المكون) [!!!] ---
+  const handleApply = useCallback(
+    (type) => {
+      // الوصول لـ loadingApplyMediator من الـ closure
+      if (loadingApplyMediator) return;
+      dispatch(applyForMediator(type));
+    },
+    [dispatch, loadingApplyMediator]
+  ); // تعتمد على dispatch و loadingApplyMediator
 
-  const canApplyByReputation = user.level >= MEDIATOR_REQUIRED_LEVEL;
-  const canApplyByGuarantee = user.balance >= MEDIATOR_ESCROW_AMOUNT_TND;
-  const currentStatus = user.mediatorApplicationStatus || "None";
-  const isQualified = user.isMediatorQualified;
-
-  const handleApply = (type) => {
-    if (loadingApplyMediator) return;
-    dispatch(applyForMediator(type));
-  };
-
-  // إعادة تعيين الحالة عند إغلاق الرسالة
-  const handleCloseAlert = () => {
+  const handleCloseApplyAlert = useCallback(() => {
     dispatch(resetApplyMediatorStatus());
-  };
+  }, [dispatch]);
 
-  // --- العرض ---
+  const handleStatusChange = useCallback(
+    (newStatus) => {
+      // الوصول لـ loadingUpdateMediatorStatus و user?.mediatorStatus من الـ closure
+      if (loadingUpdateMediatorStatus || user?.mediatorStatus === newStatus)
+        return;
+      dispatch(updateMediatorStatus(newStatus));
+    },
+    [dispatch, loadingUpdateMediatorStatus, user?.mediatorStatus]
+  ); // إضافة user?.mediatorStatus كاعتمادية
+  // ----------------------------------------------------------------
+
+  // --- State المحلي (يمكن أن يبقى هنا) ---
+  const [selectedStatus, setSelectedStatus] = useState(
+    user?.mediatorStatus || "Unavailable"
+  );
+  // ------------------------------------
+
+  // تحديث الحالة المحلية عند تغير حالة المستخدم في Redux
+  useEffect(() => {
+    if (user?.mediatorStatus) {
+      setSelectedStatus(user.mediatorStatus);
+    }
+  }, [user?.mediatorStatus]);
+
+  // --- [!!!] التحقق من المستخدم يتم الآن بعد تعريف الـ Hooks [!!!] ---
+  if (!user) return null;
+  // -------------------------------------------------------------
+
+  // --- حساب الشروط والمتغيرات (يبقى كما هو) ---
+  const canApplyByReputation = (user.level || 1) >= MEDIATOR_REQUIRED_LEVEL;
+  const canApplyByGuarantee = (user.balance || 0) >= MEDIATOR_ESCROW_AMOUNT_TND;
+  const currentAppStatus = user.mediatorApplicationStatus || "None";
+  const isQualified = user.isMediatorQualified || false;
+  const currentMediatorStatus = user.mediatorStatus || "Unavailable";
+  // ------------------------------------------
+
   return (
-    <Card className="shadow-sm my-4">
-      <Card.Header className="bg-light">
-        <h5 className="mb-0">Become a Mediator</h5>
-      </Card.Header>
-      <Card.Body>
-        {/* عرض الحالة الحالية */}
-        {isQualified && (
-          <Alert variant="success" className="d-flex align-items-center">
-            <FaCheckCircle className="me-2" /> You are a qualified mediator! You
-            can manage your availability status soon.
-          </Alert>
-        )}
-
-        {!isQualified &&
-          currentStatus === "Approved" && ( // حالة نادرة لكن للاحتياط
-            <Alert variant="success" className="d-flex align-items-center">
-              <FaCheckCircle className="me-2" /> Your mediator application was
-              approved.
-            </Alert>
-          )}
-
-        {!isQualified && currentStatus === "Pending" && (
-          <Alert variant="info" className="d-flex align-items-center">
-            <FaHourglassHalf className="me-2" /> Your application is pending
-            review by administration.
-          </Alert>
-        )}
-
-        {!isQualified && currentStatus === "Rejected" && (
-          <Alert variant="danger" className="d-flex align-items-center">
-            <FaTimesCircle className="me-2" /> Your previous application was
-            rejected.
-            {user.mediatorApplicationNotes && (
-              <small className="d-block mt-1">
-                Reason: {user.mediatorApplicationNotes}
-              </small>
+    <Card className="shadow-sm mb-4">
+      {isQualified ? (
+        // --- واجهة إدارة حالة الوسيط ---
+        <>
+          <Card.Header className="bg-light d-flex justify-content-between align-items-center p-3 border-0">
+            <h5 className="mb-0">
+              <FaUserCheck className="me-2 text-success" /> Mediator Status
+            </h5>
+            <Badge
+              pill
+              bg={
+                currentMediatorStatus === "Available"
+                  ? "success"
+                  : currentMediatorStatus === "Busy"
+                  ? "warning text-dark"
+                  : "secondary"
+              }
+              className="status-badge-lg"
+            >
+              {currentMediatorStatus}
+            </Badge>
+          </Card.Header>
+          <Card.Body className="p-4">
+            <p className="text-muted small mb-3">
+              Set your availability to receive new mediation tasks.
+            </p>
+            {errorUpdateMediatorStatus && (
+              <Alert variant="danger">
+                Error updating status: {errorUpdateMediatorStatus}
+              </Alert>
             )}
-            {/* يمكنك إضافة زر لإعادة التقديم بعد فترة */}
-          </Alert>
-        )}
-
-        {/* عرض شروط التقديم إذا لم يكن مؤهلاً أو طلبه مرفوضًا */}
-        {!isQualified &&
-          (currentStatus === "None" || currentStatus === "Rejected") && (
-            <>
-              <p>
-                You can become a mediator and help ensure safe transactions on
-                our platform. You need to meet one of the following
-                requirements:
+            <ButtonGroup className="d-flex mediator-status-buttons">
+              <Button
+                variant={
+                  selectedStatus === "Available" ? "success" : "outline-success"
+                }
+                onClick={() => handleStatusChange("Available")}
+                disabled={
+                  loadingUpdateMediatorStatus ||
+                  currentMediatorStatus === "Busy"
+                }
+                className="flex-grow-1 py-2"
+              >
+                {loadingUpdateMediatorStatus &&
+                selectedStatus === "Available" ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <FaUserCheck className="me-1" />
+                )}
+                Available
+              </Button>
+              <Button
+                variant={
+                  selectedStatus === "Unavailable"
+                    ? "secondary"
+                    : "outline-secondary"
+                }
+                onClick={() => handleStatusChange("Unavailable")}
+                disabled={
+                  loadingUpdateMediatorStatus ||
+                  currentMediatorStatus === "Busy"
+                }
+                className="flex-grow-1 py-2"
+              >
+                {loadingUpdateMediatorStatus &&
+                selectedStatus === "Unavailable" ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <FaUserTimes className="me-1" />
+                )}
+                Unavailable
+              </Button>
+            </ButtonGroup>
+            {currentMediatorStatus === "Busy" && (
+              <Alert variant="warning" className="mt-3 small text-center p-2">
+                <FaUserClock className="me-1" /> You are currently busy with a
+                mediation task.
+              </Alert>
+            )}
+            <div className="mt-4 border-top pt-3 mediator-stats">
+              <p className="small text-muted mb-1 d-flex justify-content-between">
+                <span>Successful Mediations:</span>
+                <span className="fw-bold">
+                  {user.successfulMediationsCount || 0}
+                </span>
               </p>
-              <ul>
-                <li>
-                  Reach Reputation Level{" "}
-                  <strong>{MEDIATOR_REQUIRED_LEVEL}</strong> (Your current
-                  level: {user.level || 1})
-                </li>
-                <li>
-                  Deposit a guarantee of{" "}
-                  <strong>
-                    {formatCurrency(MEDIATOR_ESCROW_AMOUNT_TND, "TND")}
-                  </strong>{" "}
-                  (Your current balance: {formatCurrency(user.balance, "TND")})
-                </li>
-              </ul>
-
-              {/* رسائل النجاح أو الخطأ */}
-              {successApplyMediator && (
-                <Alert variant="success" onClose={handleCloseAlert} dismissible>
-                  Application submitted successfully!
-                </Alert>
-              )}
-              {errorApplyMediator && (
-                <Alert variant="danger" onClose={handleCloseAlert} dismissible>
-                  Error: {errorApplyMediator}
-                </Alert>
-              )}
-
-              {/* أزرار التقديم */}
-              <div className="d-grid gap-2 d-sm-flex justify-content-start">
-                <Button
-                  variant="primary"
-                  onClick={() => handleApply("reputation")}
-                  disabled={loadingApplyMediator || !canApplyByReputation}
-                  title={
-                    !canApplyByReputation
-                      ? `Requires Level ${MEDIATOR_REQUIRED_LEVEL}`
-                      : "Apply based on your reputation"
-                  }
-                >
-                  {loadingApplyMediator ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    "Apply (Level)"
+              <p className="small text-muted mb-0 d-flex justify-content-between">
+                <span>Guarantee Held:</span>
+                <span className="fw-bold">
+                  {formatCurrency(user.mediatorEscrowGuarantee || 0, "TND")}
+                </span>
+              </p>
+              {user.canWithdrawGuarantee &&
+                user.mediatorEscrowGuarantee > 0 && (
+                  <div className="text-center mt-3">
+                    <Button size="sm" variant="outline-primary">
+                      Request Guarantee Withdrawal
+                    </Button>
+                  </div>
+                )}
+            </div>
+          </Card.Body>
+        </>
+      ) : (
+        // --- واجهة طلب الانضمام ---
+        <>
+          <Card.Header className="bg-light p-3 border-0">
+            <h5 className="mb-0 section-title-modern">
+              Become a Mediator
+            </h5>
+          </Card.Header>
+          <Card.Body className="p-4">
+            {currentAppStatus === "Pending" && (
+              <Alert variant="info" className="d-flex align-items-center">
+                <FaHourglassHalf className="me-2 flex-shrink-0" /> Your
+                application is pending review.
+              </Alert>
+            )}
+            {currentAppStatus === "Rejected" && (
+              <Alert variant="danger" className="d-flex align-items-start">
+                <FaTimesCircle className="me-2 mt-1 flex-shrink-0" />
+                <div>
+                  Your previous application was rejected.
+                  {user.mediatorApplicationNotes && (
+                    <small className="d-block mt-1">
+                      <strong>Reason:</strong> {user.mediatorApplicationNotes}
+                    </small>
                   )}
-                </Button>
-                <Button
-                  variant="success"
-                  onClick={() => handleApply("guarantee")}
-                  disabled={loadingApplyMediator || !canApplyByGuarantee}
-                  title={
-                    !canApplyByGuarantee
-                      ? `Requires ${formatCurrency(
-                          MEDIATOR_ESCROW_AMOUNT_TND,
-                          "TND"
-                        )} balance`
-                      : "Apply with guarantee deposit"
-                  }
-                >
-                  {loadingApplyMediator ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    "Apply (Guarantee)"
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
-      </Card.Body>
+                </div>
+              </Alert>
+            )}
+            {(currentAppStatus === "None" ||
+              currentAppStatus === "Rejected") && (
+              <>
+                <p className="text-muted mb-3">You can become a mediator if :</p>
+                <ListGroup variant="flush" className="mb-3 requirement-list">
+                  <ListGroup.Item className="d-flex align-items-center ps-0 border-0">
+                    <FaStar className="me-2 text-info requirement-icon" />
+                    <span>
+                      Reach Reputation Level <strong>{MEDIATOR_REQUIRED_LEVEL}</strong> (Your current
+                      level: {user.level || 1})
+                    </span>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex align-items-center ps-0 border-0">
+                    <FaMoneyBillWave className="me-2 text-success requirement-icon" />
+                    <span>
+                      Deposit a guarantee of <strong>
+                        {formatCurrency(MEDIATOR_ESCROW_AMOUNT_TND, "TND")}
+                      </strong> (Your current balance:{formatCurrency(user.balance || 0, "TND")})
+                    </span>
+                  </ListGroup.Item>
+                </ListGroup>
+                {successApplyMediator && (
+                  <Alert
+                    variant="success"
+                    onClose={handleCloseApplyAlert}
+                    dismissible
+                  >
+                    Application submitted successfully!
+                  </Alert>
+                )}
+                {errorApplyMediator && (
+                  <Alert
+                    variant="danger"
+                    onClose={handleCloseApplyAlert}
+                    dismissible
+                  >
+                    Error: {errorApplyMediator}
+                  </Alert>
+                )}
+                <div className="d-grid gap-2 d-sm-flex justify-content-start apply-buttons">
+                  <Button
+                    variant="primary"
+                    onClick={() => handleApply("reputation")}
+                    disabled={loadingApplyMediator || !canApplyByReputation}
+                    title={
+                      !canApplyByReputation
+                        ? `Requires Level ${MEDIATOR_REQUIRED_LEVEL}`
+                        : "Apply based on your reputation"
+                    }
+                  >
+                    {loadingApplyMediator ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      "Apply (Level)"
+                    )}
+                  </Button>
+                  <Button
+                    variant="success"
+                    onClick={() => handleApply("guarantee")}
+                    disabled={loadingApplyMediator || !canApplyByGuarantee}
+                    title={
+                      !canApplyByGuarantee
+                        ? `Requires ${formatCurrency(
+                            MEDIATOR_ESCROW_AMOUNT_TND,
+                            "TND"
+                          )} balance`
+                        : "Apply with guarantee deposit"
+                    }
+                  >
+                    {loadingApplyMediator ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      "Apply (Guarantee)"
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card.Body>
+        </>
+      )}
     </Card>
   );
 };

@@ -12,8 +12,8 @@ import {
     TOGGLE_LIKE_PRODUCT_REQUEST, TOGGLE_LIKE_PRODUCT_SUCCESS, TOGGLE_LIKE_PRODUCT_FAIL,
     PLACE_BID_REQUEST, PLACE_BID_SUCCESS, PLACE_BID_FAIL,
     CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
-    REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL,
-    CONFIRM_RECEIPT_REQUEST, CONFIRM_RECEIPT_SUCCESS, CONFIRM_RECEIPT_FAIL
+    REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL, UPDATE_SINGLE_PRODUCT_LOCALLY,
+    UPDATE_SINGLE_PRODUCT_IN_STORE
 } from '../actionTypes/productActionType'; // تأكد من المسار الصحيح
 
 const initialState = {
@@ -65,9 +65,9 @@ const productReducer = (state = initialState, { type, payload }) => {
         case GET_PRODUCTS_SUCCESS:
             console.log("REDUCER: GET_PRODUCTS_SUCCESS - Replacing Products. Payload length:", payload?.length);
             return { ...state, loading: false, Products: Array.isArray(payload) ? payload : [], errors: null };
-        case GET_PRODUCTS_FAIL:
+        case GET_PRODUCTS_FAIL: // مثال على حالة فشل
             console.error("REDUCER: GET_PRODUCTS_FAIL - Setting error:", payload);
-            return { ...state, loading: false, errors: payload, Products: [] };
+            return { ...state, loading: false, errors: typeof payload === 'string' ? payload : "Failed to fetch products.", Products: [] }; // تأكد أن errors هو نص
 
         // --- إضافة منتج ---
         case ADD_PRODUCT_REQUEST:
@@ -205,7 +205,7 @@ const productReducer = (state = initialState, { type, payload }) => {
 
         // --- [!] حالات قبول المزايدة ---
         case ACCEPT_BID_REQUEST:
-            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تعريف هنا
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
             return {
                 ...state,
                 acceptingBid: { ...state.acceptingBid, [bidActionKey]: true },
@@ -213,40 +213,48 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
 
         case ACCEPT_BID_SUCCESS:
+            console.log("REDUCER: ACCEPT_BID_SUCCESS - Payload (expecting updatedProduct):", payload);
+            const receivedUpdatedProduct = payload.updatedProduct;
+
+            if (!receivedUpdatedProduct || !receivedUpdatedProduct._id) {
+                console.error("REDUCER: ACCEPT_BID_SUCCESS - updatedProduct is missing or invalid in payload!");
+                // حاول إيقاف التحميل للمفتاح الأصلي إذا كان موجودًا في الـ payload الأولي للـ REQUEST
+                // هذا الجزء يحتاج إلى معرفة ما إذا كان payload الـ REQUEST لا يزال في الذاكرة أو إذا كان يجب تمريره
+                // الطريقة الأبسط هي مسح كل حالات التحميل المتعلقة بـ acceptBid عند الفشل أو إذا كانت البيانات غير كاملة
+                return {
+                    ...state,
+                    acceptingBid: {}, // مسح كل عمليات التحميل لـ acceptBid
+                    errors: { ...state.errors, acceptBid: "Failed to process bid acceptance due to missing data." }
+                };
+            }
+
+            // بناء مفتاح التحميل للإيقاف بناءً على المنتج المحدث (المشتري)
+            const buyerIdFromUpdated = receivedUpdatedProduct.buyer?._id || receivedUpdatedProduct.buyer;
+            const keyToStopLoadingAccept = `${receivedUpdatedProduct._id}_${buyerIdFromUpdated}`;
+
             return {
                 ...state,
-                // إيقاف مؤشر التحميل لهذا القبول المحدد
-                acceptingBid: { ...state.acceptingBid, [`${payload.productId}_${payload.acceptedBidUserId}`]: false },
-                // تحديث المنتج في القائمة
+                acceptingBid: { ...state.acceptingBid, [keyToStopLoadingAccept]: false },
                 Products: state.Products.map(p =>
-                    p._id === payload.productId // البحث باستخدام productId من الـ payload
-                        ? {
-                            ...p, // نسخ خصائص المنتج القديم
-                            status: payload.newProductStatus, // <-- استخدام الحالة الجديدة من الـ payload
-                            mediationRequest: payload.mediationRequestId, // <-- استخدام معرف الوساطة من الـ payload
-                            sold: false, // التأكد من أن sold لا تزال false في هذه المرحلة
-                            buyer: payload.acceptedBidUserId, // تعيين المشتري المبدئي
-                            // يمكنك تحديث bids هنا إذا أردت إزالة المزايدات الأخرى
-                            bids: p.bids.filter(b => (b.user?._id || b.user)?.toString() === payload.acceptedBidUserId) // إبقاء المزايدة المقبولة فقط (اختياري)
-                        }
-                        : p // إرجاع المنتجات الأخرى كما هي
+                    p._id === receivedUpdatedProduct._id ? receivedUpdatedProduct : p
                 ),
-                errors: { ...state.errors, acceptBid: null } // مسح أي خطأ سابق للقبول
+                errors: null,
+                productErrors: { ...state.productErrors, [receivedUpdatedProduct._id]: null }
             };
 
         case ACCEPT_BID_FAIL:
-            // --- *** التصحيح هنا: إعادة تعريف المفتاح *** ---
-            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
-            // --- *** نهاية التصحيح *** ---
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تأكد أن bidUserId موجود في payload الخطأ
             return {
                 ...state,
                 acceptingBid: { ...state.acceptingBid, [bidActionKey]: false },
-                productErrors: { ...state.productErrors, [payload.productId]: payload.error }
+                productErrors: { ...state.productErrors, [payload.productId]: typeof payload.error === 'string' ? payload.error : "Failed to accept bid on this product." },
+                errors: { ...state.errors, acceptBid: typeof payload.error === 'string' ? payload.error : "Failed to accept bid." }
             };
+        // --- نهاية تعديل حالة ACCEPT_BID_SUCCESS ---
 
-        // --- [!] حالات رفض المزايدة ---
+        // --- [!!!] تعديل حالة REJECT_BID_SUCCESS (اختياري، إذا كان الـ API يعيد المنتج المحدث) ---
         case REJECT_BID_REQUEST:
-            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تعريف هنا
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
             return {
                 ...state,
                 rejectingBid: { ...state.rejectingBid, [bidActionKey]: true },
@@ -254,33 +262,75 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
 
         case REJECT_BID_SUCCESS:
-            bidActionKey = createBidActionKey(payload.productId, payload.rejectedBidUserId); // تعريف هنا
-            console.log(`REDUCER: REJECT_BID_SUCCESS for key ${bidActionKey}. Removing bid from UI.`);
-            const updatedProductsAfterReject = state.Products.map(p => {
-                if (p._id === payload.productId) {
-                    const remainingBids = (p.bids || []).filter(b => {
-                        const bidderId = String(b.user?._id || b.user);
-                        return bidderId !== String(payload.rejectedBidUserId);
-                    });
-                    return { ...p, bids: remainingBids };
-                }
-                return p;
-            });
-            // -----------------------------------------
-            return {
-                ...state,
-                rejectingBid: { ...state.rejectingBid, [bidActionKey]: false },
-                Products: updatedProductsAfterReject,
-            };
+            const { updatedProduct: updatedProductAfterReject, rejectedBidUserId, productId: rejectedProductId } = payload;
+            const keyToStopLoadingReject = createBidActionKey(updatedProductAfterReject ? updatedProductAfterReject._id : rejectedProductId, rejectedBidUserId);
+
+            if (updatedProductAfterReject) {
+                console.log("REDUCER: REJECT_BID_SUCCESS - Updating with full product payload:", updatedProductAfterReject);
+                return {
+                    ...state,
+                    rejectingBid: { ...state.rejectingBid, [keyToStopLoadingReject]: false },
+                    Products: state.Products.map(p =>
+                        p._id === updatedProductAfterReject._id ? updatedProductAfterReject : p
+                    ),
+                    errors: null,
+                    productErrors: { ...state.productErrors, [updatedProductAfterReject._id]: null }
+                };
+            } else {
+                // تحديث محلي إذا لم يتم إرجاع المنتج المحدث
+                console.log(`REDUCER: REJECT_BID_SUCCESS for key ${keyToStopLoadingReject}. Performing local bid removal.`);
+                const productsWithBidRemoved = state.Products.map(p => {
+                    if (p._id === rejectedProductId) { // استخدم productId من الـ payload الأصلي
+                        const remainingBids = (p.bids || []).filter(b => {
+                            const bidderIdFromBid = String(b.user?._id || b.user);
+                            return bidderIdFromBid !== String(rejectedBidUserId);
+                        });
+                        return { ...p, bids: remainingBids };
+                    }
+                    return p;
+                });
+                return {
+                    ...state,
+                    rejectingBid: { ...state.rejectingBid, [keyToStopLoadingReject]: false },
+                    Products: productsWithBidRemoved,
+                    errors: null,
+                    productErrors: { ...state.productErrors, [rejectedProductId]: null }
+                };
+            }
 
         case REJECT_BID_FAIL:
-            // --- *** التصحيح هنا: إعادة تعريف المفتاح *** ---
-            bidActionKey = createBidActionKey(payload.productId, payload.rejectedBidUserId);
-            // --- *** نهاية التصحيح *** ---
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تأكد أن bidUserId موجود في payload الخطأ
             return {
                 ...state,
                 rejectingBid: { ...state.rejectingBid, [bidActionKey]: false },
                 productErrors: { ...state.productErrors, [payload.productId]: payload.error }
+            };
+        // --- نهاية تعديل حالة REJECT_BID_SUCCESS ---
+
+                // --- [!!!] حالة جديدة للتحديث المحلي المتفائل [!!!] ---
+        case UPDATE_SINGLE_PRODUCT_LOCALLY:
+            if (!payload || !payload._id) {
+                console.warn("REDUCER: UPDATE_SINGLE_PRODUCT_LOCALLY - Invalid payload, cannot update product locally.");
+                return state;
+            }
+            return {
+                ...state,
+                Products: state.Products.map(p =>
+                    p._id === payload._id ? { ...p, ...payload } : p // دمج التغييرات مع الحفاظ على البيانات الأخرى للمنتج
+                ),
+            };
+
+        case UPDATE_SINGLE_PRODUCT_IN_STORE:
+            if (!payload || !payload._id) {
+                return state; // لا تفعل شيئًا إذا كان الـ payload غير صالح
+            }
+            return {
+                ...state,
+                Products: state.Products.map(product =>
+                    product._id === payload._id
+                        ? { ...product, ...payload } // دمج التغييرات مع الحفاظ على خصائص المنتج الأخرى
+                        : product
+                ),
             };
 
         default:

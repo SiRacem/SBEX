@@ -12,7 +12,7 @@ import {
   Badge,
   Pagination,
 } from "react-bootstrap";
-import { FaCheck, FaTimes, FaInfoCircle } from "react-icons/fa";
+import { FaCheck, FaTimes, FaEye, FaStar, FaMoneyBillWave } from "react-icons/fa";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import {
@@ -20,10 +20,16 @@ import {
   adminProcessMediatorApplication,
   adminResetProcessMediatorAppStatus,
 } from "../../redux/actions/userAction";
+import { Link } from "react-router-dom"; // لاستخدام الرابط للبروفايل
 
 const PAGE_LIMIT = 15;
 const formatCurrency = (amount, currencyCode = "TND") => {
-  /* ... */
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }; // Use shared helper
 
 const ReviewMediatorApplications = () => {
@@ -120,14 +126,15 @@ const ReviewMediatorApplications = () => {
       ) : (
         <>
           <div className="table-responsive">
-            <Table striped bordered hover size="sm">
+            <Table striped bordered hover size="sm" className="text-center">
               <thead className="table-light">
                 <tr>
-                  <th>Applicant</th>
-                  <th>Email</th>
-                  <th>Level</th>
-                  <th>Balance (TND)</th>
-                  <th>Applied On</th>
+                  <th className="text-center">Applicant</th>
+                  <th className="text-center">Email</th>
+                  <th className="text-center">Level</th>
+                  <th className="text-center">Balance (TND)</th>
+                  <th className="text-center">Application Basis</th>
+                  <th className="text-center">Applied On</th>
                   <th className="text-center">Actions</th>
                 </tr>
               </thead>
@@ -137,13 +144,40 @@ const ReviewMediatorApplications = () => {
                     <td>{app.fullName || "N/A"}</td>
                     <td>{app.email}</td>
                     <td>{app.level || 1}</td>
+                    {/* --- [!!!] استخدام formatCurrency للرصيد [!!!] --- */}
                     <td>{formatCurrency(app.balance, "TND")}</td>
+                    <td>
+                      {app.mediatorApplicationBasis === 'Reputation' && (
+                          <Badge bg="info" text="dark" pill><FaStar className="me-1"/> Reputation</Badge>
+                      )}
+                      {app.mediatorApplicationBasis === 'Guarantee' && (
+                            <Badge bg="success" pill><FaMoneyBillWave className="me-1"/> Guarantee</Badge>
+                      )}
+                      {app.mediatorApplicationBasis === 'Unknown' && (
+                            <Badge bg="secondary" pill>Unknown</Badge>
+                      )}
+                    </td>
+                    {/* ------------------------------------------- */}
                     <td className="small text-muted">
                       {app.updatedAt
                         ? format(new Date(app.updatedAt), "Pp")
                         : "N/A"}
                     </td>
                     <td className="text-center">
+                      {/* --- [!!!] إضافة زر التفاصيل (العين) [!!!] --- */}
+                      <Button
+                        as={Link} // جعل الزر رابطًا
+                        to={`/profile/${app._id}`} // الرابط لصفحة البروفايل
+                        target="_blank" // فتح في تبويب جديد
+                        rel="noopener noreferrer"
+                        variant="outline-info"
+                        size="sm"
+                        className="me-1"
+                        title="View User Profile"
+                      >
+                        <FaEye />
+                      </Button>
+                      {/* --------------------------------------- */}
                       <Button
                         variant="outline-success"
                         size="sm"
@@ -215,7 +249,7 @@ const ReviewMediatorApplications = () => {
         </Modal.Header>
         <Modal.Body>
           <p>
-            Provide reason for rejecting application from{" "}
+            Provide reason for rejecting application from
             <strong>{userToReject?.fullName || "user"}</strong>:
           </p>
           <Form.Control

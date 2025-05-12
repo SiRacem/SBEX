@@ -136,9 +136,18 @@ exports.addProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
     console.log("--- Controller: getProducts ---");
     try {
-        const products = await Product.find()
+        const products = await Product.find() // يمكنك إضافة فلتر هنا (مثلاً req.query)
             .sort({ date_added: -1 })
-            .populate('user', 'fullName email');
+            .populate('user', 'fullName email avatarUrl') // معلومات البائع
+            .populate('buyer', 'fullName email avatarUrl') // معلومات المشتري (إذا وجد)
+            .populate({ // معلومات طلب الوساطة الحالي (إذا وجد)
+                path: 'currentMediationRequest',
+                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency', // اختر الحقول التي تحتاجها
+                populate: { path: 'mediator', select: 'fullName avatarUrl _id' } // جلب معلومات الوسيط إذا تم تعيينه
+            })
+            .populate('buyer', 'fullName _id avatarUrl')
+            .lean(); // .lean() للأداء إذا كنت لا تحتاج إلى طرق Mongoose الكاملة
+
         console.log(`Fetched ${products.length} products.`);
         res.status(200).json(products);
     } catch (error) {
@@ -146,6 +155,7 @@ exports.getProducts = async (req, res) => {
         res.status(500).json({ errors: "Failed to retrieve products." });
     }
 };
+// --- نهاية تعديل دالة getProducts ---
 
 // --- Get ONE Product by ID ---
 exports.getOneProduct = async (req, res) => {
@@ -849,159 +859,249 @@ exports.markProductAsSold = async (req, res) => {
     }
 };
 
-// --- [!!!] تعديل دالة قبول المزايدة (Accept Bid) [!!!] ---
+// --- [!!!] تعديل كامل لدالة قبول المزايدة لتبدأ عملية اختيار الوسيط [!!!] ---
 exports.acceptBid = async (req, res) => {
     const { productId } = req.params;
-    const sellerId = req.user._id;
-    const { bidUserId, bidAmount } = req.body;
-    console.log(`--- Controller: acceptBid (Mediation Flow) START ---`);
-    console.log(`   ProductId: ${productId}, SellerId: ${sellerId}, BidUserId: ${bidUserId}, BidAmount: ${bidAmount}`);
+    const sellerId = req.user._id; // المستخدم الحالي (البائع)
+    const { bidUserId, bidAmount } = req.body; // ID المزايد والمبلغ
+
+    console.log(`--- Controller: acceptBid (Initiate Mediation) START ---`);
+    console.log(`   ProductId: ${productId}, SellerId: ${sellerId}, BidUserId (Buyer): ${bidUserId}, BidAmount: ${bidAmount}`);
+
     const numericBidAmount = Number(bidAmount);
+
+    // 1. التحقق من المدخلات
     if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(bidUserId) || !bidAmount || isNaN(numericBidAmount) || numericBidAmount <= 0) {
-        console.error("Accept Bid Error: Invalid input.");
-        return res.status(400).json({ msg: "Invalid IDs or Bid Amount." });
+        console.error("   Validation Error: Invalid input data.");
+        return res.status(400).json({ msg: "Invalid input data: Check IDs and bid amount." });
     }
-    if (sellerId.equals(bidUserId)) { console.error("Accept Bid Error: Seller cannot accept own bid."); return res.status(400).json({ msg: "Seller cannot accept their own bid." }); }
+    if (sellerId.equals(bidUserId)) {
+        console.error("   Validation Error: Seller cannot accept their own bid.");
+        return res.status(400).json({ msg: "Seller cannot accept their own bid." });
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
-    console.log("   MongoDB session started.");
+    console.log("   MongoDB session started for acceptBid.");
+
     try {
-        console.log("   Fetching data...");
-        const product = await Product.findById(productId).populate('user').populate({ path: 'bids.user', match: { _id: bidUserId }, select: 'fullName email' }).session(session);
+        // 2. جلب المنتج والمشتري والتحقق من الصلاحيات
+        console.log("   Fetching product and buyer details...");
+        const product = await Product.findById(productId).populate('user').session(session);
         const buyer = await User.findById(bidUserId).session(session);
-        const seller = product?.user;
-        console.log(`   Data fetched: Product=${!!product}, Seller=${!!seller}, Buyer=${!!buyer}`);
-        if (!product || !seller || !buyer) throw new Error("Required data not found.");
-        if (!seller._id.equals(sellerId)) throw new Error("You are not the seller.");
-        if (product.status !== 'approved') throw new Error("Product not available for bidding.");
-        console.log("   Initial validation passed.");
-        const acceptedBid = product.bids.find(bid => bid.user && bid.user._id.equals(bidUserId) && bid.amount === numericBidAmount);
-        if (!acceptedBid) throw new Error("Specified bid details not found.");
-        console.log("   Matching bid found.");
 
-        console.log("   Creating Mediation Request...");
-        const newMediationRequest = new MediationRequest({ product: product._id, seller: sellerId, buyer: buyer._id, bidAmount: numericBidAmount, bidCurrency: product.currency, status: 'PendingAssignment' });
-        await newMediationRequest.save({ session });
-        console.log(`   MediationRequest created: ${newMediationRequest._id}`);
-
-        console.log("   Updating product status to 'PendingMediation'...");
-        product.status = 'PendingMediation'; product.buyer = bidUserId; product.mediationRequest = newMediationRequest._id;
-        await product.save({ session });
-        console.log(`   Product ${productId} status updated.`);
-
-        console.log("   Creating notifications...");
-        // --- [!] هنا يتم استخدام formatCurrency [!] ---
-        const buyerMessage = `Congratulations! Your bid of ${formatCurrency(numericBidAmount, product.currency)} for "${product.title}" has been accepted. Awaiting mediator assignment.`;
-        const sellerMessage = `You accepted the bid of ${formatCurrency(numericBidAmount, product.currency)} from ${buyer.fullName || 'User'} for "${product.title}". Awaiting mediator assignment.`;
-        await Notification.create([{ user: buyer._id, type: 'BID_ACCEPTED_PENDING_MEDIATION', title: 'Bid Accepted - Awaiting Mediator', message: buyerMessage, relatedEntity: { id: product._id, modelName: 'Product' }, secondaryRelatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' } }], { session });
-        await Notification.create([{ user: sellerId, type: 'BID_ACCEPTANCE_INITIATED_MEDIATION', title: 'Mediation Initiated', message: sellerMessage, relatedEntity: { id: product._id, modelName: 'Product' }, secondaryRelatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' } }], { session });
-        const admins = await User.find({ userRole: 'Admin' }).select('_id').session(session);
-        if (admins.length > 0) {
-            const adminNotifications = admins.map(admin => ({ user: admin._id, type: 'NEW_MEDIATION_REQUEST_ASSIGNMENT', title: 'Mediator Assignment Needed', message: `Assign a mediator for the accepted bid on "${product.title}" (Price: ${formatCurrency(numericBidAmount, product.currency)}). Request ID: ${newMediationRequest._id.toString().slice(-6)}.`, relatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' } }));
-            await Notification.insertMany(adminNotifications, { session });
+        if (!product) {
+            console.error("   Error: Product not found.");
+            throw new Error("Product not found.");
         }
-        console.log("   Notifications created.");
-        // --- نهاية استخدام formatCurrency ---
+        if (!buyer) {
+            console.error("   Error: Bidder (Buyer) not found.");
+            throw new Error("Bidder (Buyer) not found.");
+        }
+        if (!product.user || !product.user._id.equals(sellerId)) {
+            console.error("   Authorization Error: User is not the seller of this product.");
+            throw new Error("You are not the seller of this product.");
+        }
+        if (product.status !== 'approved') {
+            console.error(`   Validation Error: Product status is '${product.status}', not 'approved'.`);
+            throw new Error(`Bids can only be accepted on 'approved' products. Current status: ${product.status}`);
+        }
+        console.log("   Product, buyer, and seller validation passed.");
 
-        await session.commitTransaction();
-        console.log("   Accept bid (Mediation Flow) transaction committed successfully.");
+        // 3. التحقق من وجود المزايدة بالمبلغ المحدد
+        const acceptedBidDetails = product.bids.find(
+            b => b.user && b.user.equals(bidUserId) && b.amount === numericBidAmount
+        );
+        if (!acceptedBidDetails) {
+            console.error("   Validation Error: Specified bid details do not match.");
+            throw new Error("The specified bid details (user and amount) do not match any existing bid on this product.");
+        }
+        console.log("   Matching bid found in product's bids array.");
 
-        // --- [!!!] تعديل الاستجابة لإعادة طلب الوساطة [!!!] ---
-        // 11. إرجاع استجابة ناجحة مع بيانات الوساطة
-        // لا نحتاج لإرجاع المنتج كاملاً هنا إلا إذا احتجناه فعلاً في الواجهة
-        res.status(200).json({
-            msg: "Bid accepted. Mediation process initiated.",
-            mediationRequestId: newMediationRequest._id, // <-- إعادة المعرف
-            mediationRequest: newMediationRequest.toObject(), // <-- أو الكائن كاملاً إذا احتجته
-            productId: product._id,
-            newProductStatus: 'PendingMediation' // <-- إعادة الحالة الجديدة للمنتج
+        // 4. إنشاء طلب وساطة جديد
+        console.log("   Creating new MediationRequest...");
+        const newMediationRequest = new MediationRequest({
+            product: product._id,
+            seller: sellerId,
+            buyer: buyer._id,
+            bidAmount: numericBidAmount,
+            bidCurrency: product.currency,
+            status: 'PendingMediatorSelection',
         });
+        await newMediationRequest.save({ session });
+        console.log(`   MediationRequest created successfully: ${newMediationRequest._id}`);
+
+        // 5. تحديث المنتج: الحالة، المشتري، السعر المتفق عليه، وربط طلب الوساطة
+        console.log("   Updating product status and linking MediationRequest...");
+        product.status = 'PendingMediatorSelection';
+        product.buyer = buyer._id;
+        product.agreedPrice = numericBidAmount;
+        product.currentMediationRequest = newMediationRequest._id;
         
+        await product.save({ session });
+        console.log(`   Product ${productId} updated: Status to 'PendingMediatorSelection', buyer set, agreedPrice set, currentMediationRequest linked.`);
+
+        // 6. إنشاء وإرسال الإشعارات
+        console.log("   Creating notifications for buyer and seller...");
+        const buyerNotificationMessage = `Congratulations! Your bid of ${formatCurrency(numericBidAmount, product.currency)} for "${product.title}" was accepted. The seller will now select a mediator to proceed with the transaction.`;
+        const sellerNotificationMessage = `You have accepted the bid of ${formatCurrency(numericBidAmount, product.currency)} from user "${buyer.fullName || 'Bidder'}" for your product "${product.title}". Please select a mediator to continue.`;
+
+        const notificationsForAccept = [
+            {
+                user: buyer._id,
+                type: 'BID_ACCEPTED_PENDING_MEDIATOR', // تأكد أن هذا النوع موجود في Notification model enum
+                title: 'Bid Accepted - Awaiting Mediator',
+                message: buyerNotificationMessage,
+                relatedEntity: { id: product._id, modelName: 'Product' },
+                secondaryRelatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' }
+            },
+            {
+                user: sellerId,
+                type: 'BID_ACCEPTED_SELECT_MEDIATOR', // تأكد أن هذا النوع موجود في Notification model enum
+                title: 'Action Required: Select Mediator',
+                message: sellerNotificationMessage,
+                relatedEntity: { id: product._id, modelName: 'Product' },
+                secondaryRelatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' }
+            }
+        ];
+        // --- [!!!] استخدام insertMany مع الخيارات الصحيحة داخل الجلسة [!!!] ---
+        await Notification.insertMany(notificationsForAccept, { session: session, ordered: true });
+        console.log("   Notifications created and saved successfully using insertMany.");
+
+        // 7. إتمام المعاملة
+        await session.commitTransaction();
+        console.log("   acceptBid transaction committed successfully.");
+
+        // 8. إرجاع المنتج المحدث بالكامل لـ Redux لتحديث الحالة بسهولة
+        const populatedUpdatedProduct = await Product.findById(product._id)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('buyer', 'fullName email avatarUrl')
+            .populate({
+                path: 'currentMediationRequest',
+                select: '_id status'
+            })
+            .lean();
+
+        console.log("   Returning updated product:", JSON.stringify(populatedUpdatedProduct, null, 2));
+        res.status(200).json({
+            msg: "Bid accepted successfully! Please select a mediator to proceed.",
+            updatedProduct: populatedUpdatedProduct
+        });
+
     } catch (error) {
-        if (session.inTransaction()) { await session.abortTransaction(); console.log("[ProductCtrl AcceptBid - Mediation Flow] Transaction aborted:", error.message); }
-        console.error("--- Controller: acceptBid (Mediation Flow) ERROR ---", error);
-        res.status(400).json({ msg: error.message || 'Failed to accept bid and initiate mediation.' });
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+            console.log("[ProductCtrl acceptBid] Transaction aborted due to error:", error.message);
+        }
+        console.error("--- Controller: acceptBid ERROR ---", error); // طباعة الخطأ الكامل
+        res.status(400).json({ msg: error.message || 'Failed to accept bid. Please try again.' });
     } finally {
-        if (session.endSession) { await session.endSession(); }
-        console.log("--- Controller: acceptBid (Mediation Flow) END --- Session ended.");
+        if (session && session.endSession && typeof session.endSession === 'function') {
+            await session.endSession();
+        }
+        console.log("--- Controller: acceptBid END --- Session ended.");
     }
 };
-// --- نهاية دالة قبول المزايدة المعدلة ---
+// --- نهاية دالة acceptBid ---
 
-// --- [!] طريقة بديلة لدالة rejectBid باستخدام findByIdAndUpdate ---
+// --- [!!!] دالة رفض المزايدة كاملة ومعدلة [!!!] ---
 exports.rejectBid = async (req, res) => {
     const { productId } = req.params;
-    const sellerId = req.user._id;
-    const { bidUserId, reason } = req.body;
+    const sellerId = req.user._id; // المستخدم الحالي (البائع)
+    const { bidUserId, reason } = req.body; // ID المزايد وسبب الرفض
 
-    console.log(`--- Controller: rejectBid (findByIdAndUpdate) START ---`);
-    // ... (نفس جمل التحقق الأساسية IDs + reason) ...
+    console.log(`--- Controller: rejectBid START ---`);
+    console.log(`   ProductId: ${productId}, SellerId: ${sellerId}, BidUserId (Rejected): ${bidUserId}, Reason: ${reason}`);
+
+    // 1. التحقق من المدخلات
     if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(bidUserId) || !reason || reason.trim() === '') {
-        console.error("Reject Bid Error: Invalid input.");
-        return res.status(400).json({ msg: "Invalid IDs or missing reason." });
+        console.error("   Validation Error: Invalid IDs or missing rejection reason.");
+        return res.status(400).json({ msg: "Invalid IDs or missing rejection reason." });
     }
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    console.log("   MongoDB session started for rejectBid.");
+
     try {
-        // 1. أولاً، نحتاج للعثور على المزايدة للحصول على بياناتها (مثل المبلغ واسم المزايد) للإشعارات
-        //    ونتأكد أن البائع هو المالك
-        console.log("   Fetching product to find bid details and verify owner...");
-        const productCheck = await Product.findOne(
-            { _id: productId, user: sellerId, 'bids.user': bidUserId }, // ابحث عن المنتج + البائع + مزايدة للمستخدم المحدد
-            { 'bids.$': 1, title: 1, currency: 1 } // جلب المزايدة المطابقة فقط + عنوان وعملة المنتج
-        ).populate('bids.user', 'fullName'); // جلب اسم المزايد
+        // 2. جلب المنتج والمستخدم المزايد (للحصول على اسمه للإشعار)
+        console.log("   Fetching product and rejected bidder details...");
+        const product = await Product.findById(productId).session(session);
+        const bidUser = await User.findById(bidUserId).select('fullName').session(session); // جلب اسم المزايد فقط
 
-        if (!productCheck) {
-            console.error("   Product/Seller/Bid combination not found.");
-            return res.status(404).json({ msg: "Product not found, you are not the seller, or the specified bid does not exist." });
+        if (!product) {
+            console.error("   Error: Product not found.");
+            throw new Error("Product not found.");
         }
-        const bidToReject = productCheck.bids[0]; // المزايدة موجودة في أول عنصر بالمصفوفة
-        if (!bidToReject) {
-            console.error("   Error extracting bid details."); // يجب ألا يحدث هذا إذا نجح findOne
-            return res.status(500).json({ msg: "Internal error finding bid details." });
+        if (!bidUser) {
+            console.error("   Error: Bidder (User to be rejected) not found.");
+            throw new Error("Bidder (User to be rejected) not found.");
         }
-        console.log("   Bid details found:", bidToReject);
-
-        // 2. الآن نقوم بتحديث المنتج لإزالة المزايدة باستخدام $pull
-        console.log(`   Attempting to remove bid for user ${bidUserId} using findByIdAndUpdate/$pull...`);
-        const updateResult = await Product.findByIdAndUpdate(
-            productId,
-            { $pull: { bids: { user: bidUserId } } }, // اسحب كل المزايدات لهذا المستخدم (يفترض أن يكون لديه واحدة فقط)
-            // أو إذا كان للمزايدات _id: { $pull: { bids: { _id: bidToReject._id } } }
-            { new: true } // أرجع المستند المحدث (اختياري هنا)
-        );
-
-        if (!updateResult) {
-            // هذا لا يجب أن يحدث لأننا تحققنا من المنتج سابقًا، لكن للاحتياط
-            console.error("   Product not found during update attempt!");
-            return res.status(404).json({ msg: "Product could not be updated (not found)." });
+        if (!product.user.equals(sellerId)) {
+            console.error("   Authorization Error: User is not the seller of this product.");
+            throw new Error("You are not the seller of this product.");
         }
-        console.log("   Product updated via $pull. New bid count:", updateResult.bids.length);
+        console.log("   Product and bidder validation passed.");
 
-        // 3. إنشاء وإرسال الإشعارات ...
-        // ... (نفس كود إنشاء وإرسال الإشعارات و Socket.IO كما في الطريقة السابقة، باستخدام بيانات bidToReject) ...
-        console.log(`   Creating rejection notifications for user: ${bidUserId} and seller: ${sellerId}`);
-        const bidderFullName = bidToReject.user?.fullName || 'Bidder';
-        const buyerMessage = `Unfortunately, your bid of ${bidToReject.amount.toFixed(2)} ${productCheck.currency} for "${productCheck.title}" was rejected by the seller. Reason: ${reason}`;
-        const sellerMessage = `You rejected the bid from ${bidderFullName} for "${productCheck.title}". Reason: ${reason}`;
+        // 3. التحقق من وجود المزايدة وإزالتها
+        const bidIndex = product.bids.findIndex(b => b.user && b.user.equals(bidUserId));
+        if (bidIndex === -1) {
+            console.warn(`   Warning: Bid from user ${bidUserId} not found on product ${productId}. No action taken on bids.`);
+            // يمكنك أن تقرر إما إرجاع خطأ أو المتابعة بإنشاء الإشعارات فقط
+            // throw new Error("Specified bid not found on this product.");
+        } else {
+            const rejectedBidAmount = product.bids[bidIndex].amount; // لحفظه في الإشعار
+            const bidCurrency = product.bids[bidIndex].currency; // لحفظه في الإشعار
+            product.bids.splice(bidIndex, 1); // إزالة المزايدة من المصفوفة
+            await product.save({ session });
+            console.log(`   Bid from ${bidUserId} (Amount: ${rejectedBidAmount} ${bidCurrency}) removed from product ${productId}.`);
+        }
+        
+        // 4. إنشاء وإرسال الإشعارات
+        console.log("   Creating rejection notifications...");
+        const bidderFullName = bidUser.fullName || 'Bidder';
+        const buyerMessage = `Unfortunately, your bid for "${product.title}" was rejected by the seller. Reason: ${reason}`;
+        const sellerMessage = `You rejected the bid from ${bidderFullName} for "${product.title}". Reason: ${reason}`;
 
         const notificationsToCreate = [
-            { user: bidUserId, type: 'BID_REJECTED', title: 'Bid Rejected', message: buyerMessage, relatedEntity: { id: productId, modelName: 'Product' } },
+            { user: bidUserId, type: 'BID_REJECTED', title: 'Your Bid Was Rejected', message: buyerMessage, relatedEntity: { id: productId, modelName: 'Product' } },
             { user: sellerId, type: 'BID_REJECTED_BY_YOU', title: 'You Rejected a Bid', message: sellerMessage, relatedEntity: { id: productId, modelName: 'Product' } }
         ];
-        await Notification.insertMany(notificationsToCreate);
-        console.log("   Rejection notifications created successfully.");
-        // ... (إرسال Socket.IO) ...
+        // --- [!!!] استخدام insertMany مع الخيارات الصحيحة داخل الجلسة [!!!] ---
+        await Notification.insertMany(notificationsToCreate, { session: session, ordered: true });
+        console.log("   Rejection notifications created and saved successfully using insertMany.");
 
-        // 4. إرجاع استجابة نجاح
-        res.status(200).json({ msg: "Bid rejected successfully and removed. Notifications sent." });
+        // 5. إتمام المعاملة
+        await session.commitTransaction();
+        console.log("   rejectBid transaction committed successfully.");
+
+        // 6. إرجاع المنتج المحدث (مع المزايدات المحدثة)
+        const updatedProductAfterReject = await Product.findById(productId)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('bids.user', 'fullName email avatarUrl') // Populate المزايدات المتبقية
+            .populate({ // Populate طلب الوساطة إذا كان موجودًا (قد لا يكون له علاقة مباشرة بالرفض ولكن جيد للاتساق)
+                path: 'currentMediationRequest',
+                select: '_id status'
+            })
+            .lean();
+
+        console.log("   Returning updated product after rejection:", JSON.stringify(updatedProductAfterReject, null, 2));
+        res.status(200).json({ 
+            msg: "Bid rejected successfully.",
+            updatedProduct: updatedProductAfterReject // إرجاع المنتج المحدث لـ Redux
+        });
 
     } catch (error) {
-        console.error("--- Controller: rejectBid (findByIdAndUpdate) ERROR ---", error);
-        if (!res.headersSent) {
-            res.status(500).json({ msg: error.message || "Server error rejecting bid." });
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+            console.log("[ProductCtrl rejectBid] Transaction aborted due to error:", error.message);
         }
+        console.error("--- Controller: rejectBid ERROR ---", error); // طباعة الخطأ الكامل
+        res.status(400).json({ msg: error.message || "Failed to reject bid." });
     } finally {
-        console.log("--- Controller: rejectBid (findByIdAndUpdate) END ---");
+        if (session && session.endSession && typeof session.endSession === 'function') {
+            await session.endSession();
+        }
+        console.log("--- Controller: rejectBid END --- Session ended.");
     }
 };

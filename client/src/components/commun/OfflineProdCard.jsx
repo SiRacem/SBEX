@@ -31,7 +31,6 @@ import {
 } from "react-icons/fa";
 import { BsCartPlus, BsImage } from "react-icons/bs";
 import Carousel from "react-bootstrap/Carousel";
-import { addToCart } from "../../redux/actions/shopCartActions"; // تأكد من المسار
 import {
   toggleLikeProduct,
   placeBid,
@@ -285,9 +284,6 @@ const OfflineProdCard = ({ el: product }) => {
     if (isOwner) {
       toast.warn("Cannot add your own product.");
       return;
-    }
-    if (!isOutOfStock && product?._id && !cartLoading) {
-      dispatch(addToCart(product._id, 1));
     }
   }, [
     dispatch,

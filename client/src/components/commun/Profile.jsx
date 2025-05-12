@@ -1,5 +1,5 @@
 // src/components/commun/Profile.jsx
-// *** نسخة كاملة ونهائية بدون أي اختصارات - مع تصميم احترافي محسن ***
+// *** نسخة كاملة ونهائية بدون اختصارات - مع تصميم المستوى المحسن وتباعد الإحصائيات ***
 
 import React, { useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -13,32 +13,28 @@ import {
   Badge,
   ProgressBar,
   Alert,
+  Tooltip,
+  OverlayTrigger, // Added Tooltip, OverlayTrigger
 } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { getProfile } from "../../redux/actions/userAction"; // تأكد من المسار
-import CurrencySwitcher from "./CurrencySwitcher"; // تأكد من المسار
-import useCurrencyDisplay from "../../hooks/useCurrencyDisplay"; // تأكد من المسار
-import MediatorApplication from "./MediatorApplication"; // تأكد من المسار
-import "./ProfileRedesigned.css"; // تأكد من المسار
+import { getProfile } from "../../redux/actions/userAction";
+import CurrencySwitcher from "./CurrencySwitcher";
+import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
+import MediatorApplication from "./MediatorApplication";
+import "./ProfileRedesigned.css";
 
 // Import Icons
 import {
-  FaMapMarkerAlt,
   FaCheckCircle,
-  FaTimesCircle,
   FaDollarSign,
   FaPiggyBank,
   FaUniversity,
   FaBalanceScale,
   FaHourglassHalf,
   FaStar,
-  FaThumbsUp,
-  FaThumbsDown,
-  FaShoppingBag,
-  FaTags,
-  FaChartLine,
-  FaGift, // أيقونة للمكافأة
-  FaCheckCircle as CheckCircle, // Import CheckCircle
+  FaGift,
+  FaUserShield,
+  FaCheckCircle as CheckCircle, // Added CheckCircle alias
 } from "react-icons/fa";
 import {
   Briefcase,
@@ -47,10 +43,10 @@ import {
   ThumbsDown as FeatherThumbsDown,
   Tag as FeatherTag,
   Check as FeatherCheck,
-  MapPin,
   XCircle,
-} from "react-feather"; // Example using Feather
-import { IoWalletOutline } from "react-icons/io5"; // Keep generic wallet
+  MapPin,
+} from "react-feather";
+import { IoWalletOutline } from "react-icons/io5";
 
 // --- Helper Functions ---
 const calculatePositiveFeedbackPercent = (positive, negative) => {
@@ -60,9 +56,9 @@ const calculatePositiveFeedbackPercent = (positive, negative) => {
 };
 
 const pointsForNextLevel = (currentLevel) => {
-  // مثال بسيط، قم بتعديله حسب نظام النقاط الخاص بك
   if (currentLevel < 1) return 10;
-  return ((currentLevel * (currentLevel + 1)) / 2) * 10; // Example: 1->10, 2->30, 3->60
+  // Example: 10, 30, 60, 100, 150... Adjust as needed
+  return ((currentLevel * (currentLevel + 1)) / 2) * 10;
 };
 
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -121,7 +117,7 @@ const Profile = () => {
   const pointsProgress = useMemo(
     () => Math.min(currentPoints, nextLevelPoints),
     [currentPoints, nextLevelPoints]
-  ); // Points capped at next level for progress bar
+  );
   const pointsNeeded = useMemo(
     () => Math.max(0, nextLevelPoints - currentPoints),
     [nextLevelPoints, currentPoints]
@@ -133,8 +129,8 @@ const Profile = () => {
         : 0,
     [pointsProgress, nextLevelPoints]
   );
-  const approvedProductsCount = user?.approvedProducts ?? 0; // Assume fetched with user profile
-  const soldProductsCount = user?.productsSoldCount ?? 0; // Assume fetched with user profile
+  const approvedProductsCount = user?.approvedProducts ?? 0;
+  const soldProductsCount = user?.productsSoldCount ?? 0;
 
   // --- Fetch Profile ---
   useEffect(() => {
@@ -147,15 +143,16 @@ const Profile = () => {
   if (loading && !user) {
     return (
       <Container className="d-flex justify-content-center align-items-center vh-100">
+        
         <Spinner animation="border" variant="primary" />
       </Container>
     );
   }
-
   // --- Not Authenticated or User Failed to Load ---
   if (!isAuth || !user) {
     return (
       <Container className="py-5">
+        
         <Alert variant="warning" className="text-center">
           Please <Link to="/login">login</Link> to view your profile.
         </Alert>
@@ -166,46 +163,68 @@ const Profile = () => {
   // --- Helper function to render Level Section ---
   const renderLevelSection = () => {
     const nextLevelReward =
-      currentLevel === 1 ? "2 TND" : currentLevel === 2 ? "5 TND" : "Badge"; // Example reward logic
+      currentLevel === 1
+        ? "2 TND"
+        : currentLevel === 2
+        ? "5 TND"
+        : currentLevel === 3
+        ? "Mediator Badge"
+        : "Exclusive Offer";
+    const hasReachedNextLevelGoal =
+      currentPoints >= nextLevelPoints && nextLevelPoints > 0;
+    const isMaxLevel = nextLevelPoints <= 0 || currentLevel >= 10; // Example max level check
 
     return (
-      <div className="level-section-widget mt-4 p-3 bg-light rounded">
-        <div className="d-flex justify-content-between align-items-center mb-2">
-          <div className="d-flex align-items-center">
-            <Badge pill bg="info" text="dark" className="level-badge-lg me-2">
-              <FaStar className="me-1" /> Level {currentLevel}
-            </Badge>
-            <span className="text-muted small">
-              ({currentPoints} Reputation Pts)
-            </span>
-          </div>
-          {/* Display next level target and reward */}
-          {nextLevelPoints > currentPoints && nextLevelPoints > 0 && (
-            <div
-              className="text-end text-muted small"
-              title={`Reward for reaching Level ${currentLevel + 1}`}
-            >
-              <FaGift className="text-warning me-1" /> Next: {nextLevelReward} (
-              {nextLevelPoints} pts)
-            </div>
-          )}
-        </div>
-        {/* Progress bar if not max level */}
-        {nextLevelPoints > currentPoints && nextLevelPoints > 0 ? (
-          <ProgressBar
-            className="level-progress-bar"
-            style={{ height: "10px" }}
+      <div className="level-section-widget-v2 mt-4">
+        <div className="level-info mb-2">
+          <Badge bg="info" className="level-badge-main me-2">
+            <FaStar className="me-1" />
+            Level {currentLevel}
+          </Badge>
+          <OverlayTrigger
+            placement="top"
+            overlay={
+              <Tooltip id="tooltip-reputation">
+                Reputation points earned through positive interactions and
+                successful mediations.
+              </Tooltip>
+            }
           >
+            <span className="reputation-points">{currentPoints} pts</span>
+          </OverlayTrigger>
+        </div>
+        {!isMaxLevel ? (
+          <>
             <ProgressBar
-              variant="info"
-              now={progressPercent}
-              label={`${currentPoints}/${nextLevelPoints}`}
-              // visuallyHidden={progressPercent < 15}
-            />
-          </ProgressBar>
+              className="level-progress-bar-v2 mb-1"
+              style={{ height: "12px" }}
+            >
+              <ProgressBar variant="info" now={progressPercent} />
+            </ProgressBar>
+            <div className="d-flex justify-content-between align-items-center small text-muted progress-labels">
+              <span>
+                {pointsProgress} / {nextLevelPoints} pts
+              </span>
+              <OverlayTrigger
+                placement="top"
+                overlay={
+                  <Tooltip id="tooltip-reward">
+                    Reward for reaching Level {currentLevel + 1}
+                  </Tooltip>
+                }
+              >
+                <span className="next-reward">
+                  <FaGift className="text-warning me-1" /> {nextLevelReward}
+                </span>
+              </OverlayTrigger>
+            </div>
+            {/* Optional Claim Button Logic
+                 {hasReachedNextLevelGoal && <Button size="sm" variant="outline-warning" className="mt-2 claim-reward-btn">Claim Reward!</Button>}
+                 */}
+          </>
         ) : (
-          <div className="text-center text-success small mt-2">
-            Max Level Reached!
+          <div className="text-center text-success small mt-3">
+            <FaCheckCircle className="me-1" /> Max Level Reached!
           </div>
         )}
       </div>
@@ -251,10 +270,16 @@ const Profile = () => {
                   )}
                   {user.blocked ? "Blocked" : "Active"}
                 </Badge>
-                <Badge pill bg="primary" className="role-badge-lg">
-                  <Briefcase size={14} className="me-1" />
+                <Badge pill bg="primary" className="role-badge-lg me-2">
+                  <FaUserShield size={14} className="me-1" />
                   {user.userRole}
                 </Badge>
+                {/* --- [!!!] إضافة شارة الوسيط شرطيًا [!!!] --- */}
+                {user.isMediatorQualified && (
+                <Badge pill bg="warning" text="dark" className="mediator-badge-lg mb-1">
+                    <Briefcase size={16} className="me-1" /> Mediator
+                </Badge>
+                  )}
               </div>
               {/* Render Level Section */}
               {renderLevelSection()}
@@ -267,11 +292,11 @@ const Profile = () => {
                 </h6>
                 <div className="d-flex justify-content-around align-items-center mb-2">
                   <div className="text-success small">
-                    <FeatherThumbsUp size={16} className="me-1" />{" "}
+                    <FeatherThumbsUp size={16} className="me-1" />
                     {positiveRatings}
                   </div>
                   <div className="text-danger small">
-                    <FeatherThumbsDown size={16} className="me-1" />{" "}
+                    <FeatherThumbsDown size={16} className="me-1" />
                     {negativeRatings}
                   </div>
                 </div>
@@ -311,78 +336,78 @@ const Profile = () => {
             <Card.Body className="p-4">
               <Row className="g-3 text-center">
                 <Col sm={6} md={4} className="mb-3">
-                  {" "}
+                  
                   <div className="balance-widget">
-                    {" "}
-                    <FaPiggyBank className="icon text-primary" />{" "}
-                    <span className="label">Principal</span>{" "}
+                    
+                    <FaPiggyBank className="icon text-primary" />
+                    <span className="label">Principal</span>
                     <span className="value">
                       {principalBalanceDisplay.displayValue}
-                    </span>{" "}
+                    </span>
                     <span className="approx">
                       {principalBalanceDisplay.approxValue}
-                    </span>{" "}
-                  </div>{" "}
+                    </span>
+                  </div>
                 </Col>
                 <Col sm={6} md={4} className="mb-3">
-                  {" "}
+                  
                   <div className="balance-widget">
-                    {" "}
-                    <FaUniversity className="icon text-info" />{" "}
-                    <span className="label">Deposit</span>{" "}
+                    
+                    <FaUniversity className="icon text-info" />
+                    <span className="label">Deposit</span>
                     <span className="value">
                       {depositBalanceDisplay.displayValue}
-                    </span>{" "}
+                    </span>
                     <span className="approx">
                       {depositBalanceDisplay.approxValue}
-                    </span>{" "}
-                  </div>{" "}
+                    </span>
+                  </div>
                 </Col>
                 <Col sm={6} md={4} className="mb-3">
-                  {" "}
+                  
                   <div className="balance-widget">
-                    {" "}
-                    <FaDollarSign className="icon text-danger" />{" "}
-                    <span className="label">Withdrawal</span>{" "}
+                    
+                    <FaDollarSign className="icon text-danger" />
+                    <span className="label">Withdrawal</span>
                     <span className="value">
                       {withdrawalBalanceDisplay.displayValue}
-                    </span>{" "}
+                    </span>
                     <span className="approx">
                       {withdrawalBalanceDisplay.approxValue}
-                    </span>{" "}
-                  </div>{" "}
+                    </span>
+                  </div>
                 </Col>
                 {(user.userRole === "Vendor" || user.userRole === "Admin") && (
                   <>
-                    {" "}
+                    
                     <Col sm={6} md={6} className="mb-3 mb-md-0">
-                      {" "}
+                      
                       <div className="balance-widget">
-                        {" "}
-                        <FaBalanceScale className="icon text-success" />{" "}
-                        <span className="label">Seller Available</span>{" "}
+                        
+                        <FaBalanceScale className="icon text-success" />
+                        <span className="label">Seller Available</span>
                         <span className="value">
                           {sellerAvailableBalanceDisplay.displayValue}
-                        </span>{" "}
+                        </span>
                         <span className="approx">
                           {sellerAvailableBalanceDisplay.approxValue}
-                        </span>{" "}
-                      </div>{" "}
-                    </Col>{" "}
+                        </span>
+                      </div>
+                    </Col>
                     <Col sm={6} md={6}>
-                      {" "}
+                      
                       <div className="balance-widget">
-                        {" "}
-                        <FaHourglassHalf className="icon text-warning" />{" "}
-                        <span className="label">Seller On Hold</span>{" "}
+                        
+                        <FaHourglassHalf className="icon text-warning" />
+                        <span className="label">Seller On Hold</span>
                         <span className="value">
                           {sellerPendingBalanceDisplay.displayValue}
-                        </span>{" "}
+                        </span>
                         <span className="approx">
                           {sellerPendingBalanceDisplay.approxValue}
-                        </span>{" "}
-                      </div>{" "}
-                    </Col>{" "}
+                        </span>
+                      </div>
+                    </Col>
                   </>
                 )}
               </Row>
@@ -398,11 +423,9 @@ const Profile = () => {
             </Card.Header>
             <Card.Body className="p-4">
               <Row className="g-3">
-                {" "}
-                {/* Added g-3 for spacing */}
+                {/* Use g-3 for spacing */}
                 <Col md={6} className="statistic-entry-col">
-                  {" "}
-                  {/* Use md={6} for two columns */}
+                  {/* Use md={6} */}
                   <div className="statistic-entry">
                     <FeatherTag size={20} className="me-2 text-info" />
                     <div>
@@ -414,8 +437,7 @@ const Profile = () => {
                   </div>
                 </Col>
                 <Col md={6} className="statistic-entry-col">
-                  {" "}
-                  {/* Use md={6} for two columns */}
+                  {/* Use md={6} */}
                   <div className="statistic-entry">
                     <FeatherCheck size={20} className="me-2 text-success" />
                     <div>
@@ -424,14 +446,13 @@ const Profile = () => {
                     </div>
                   </div>
                 </Col>
-                {/* Add more Col md={6} here for additional stats */}
               </Row>
             </Card.Body>
           </Card>
 
-          {/* --- Mediator Application Card (Conditional) --- */}
+          {/* --- Mediator Application Card --- */}
           {!user.blocked && <MediatorApplication />}
-          {/* --------------------------------------------- */}
+          {/* ----------------------------- */}
         </Col>
       </Row>
     </Container>

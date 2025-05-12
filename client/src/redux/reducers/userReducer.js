@@ -1,4 +1,4 @@
-// src/redux/reducers/userReducer.js (مثال افتراضي)
+// src/redux/reducers/userReducer.js
 import {
   REGISTER_REQUEST, REGISTER_SUCCESS, REGISTER_FAIL, CLEAR_REGISTRATION_STATUS,
   LOGIN_REQUEST, LOGIN_SUCCESS, LOGIN_FAIL,
@@ -7,7 +7,11 @@ import {
   APPLY_MEDIATOR_REQUEST, APPLY_MEDIATOR_SUCCESS, APPLY_MEDIATOR_FAIL, APPLY_MEDIATOR_RESET,
   ADMIN_GET_MEDIATOR_APPS_REQUEST, ADMIN_GET_MEDIATOR_APPS_SUCCESS, ADMIN_GET_MEDIATOR_APPS_FAIL,
   ADMIN_PROCESS_MEDIATOR_APP_REQUEST, ADMIN_PROCESS_MEDIATOR_APP_SUCCESS, ADMIN_PROCESS_MEDIATOR_APP_FAIL,
-  ADMIN_PROCESS_MEDIATOR_APP_RESET, ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL
+  ADMIN_PROCESS_MEDIATOR_APP_RESET, ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL,
+  UPDATE_MEDIATOR_STATUS_REQUEST,
+  UPDATE_MEDIATOR_STATUS_SUCCESS,
+  UPDATE_MEDIATOR_STATUS_FAIL,
+  UPDATE_USER_BALANCE,
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -33,7 +37,8 @@ const initialState = {
   processingApp: {}, // { userId: true }
   errorProcessApp: null,
   successProcessApp: false,
-  // -----------------------------------------------
+  loadingUpdateMediatorStatus: false,
+  errorUpdateMediatorStatus: null,
 };
 
 const userReducer = (state = initialState, { type, payload }) => {
@@ -156,9 +161,36 @@ const userReducer = (state = initialState, { type, payload }) => {
       };
     case ADMIN_PROCESS_MEDIATOR_APP_FAIL: return { ...state, processingApp: { ...state.processingApp, [payload.userId]: false }, errorProcessApp: payload.error, successProcessApp: false };
     case ADMIN_PROCESS_MEDIATOR_APP_RESET: return { ...state, successProcessApp: false, errorProcessApp: null };
-    // ------------------------
 
+    case UPDATE_MEDIATOR_STATUS_REQUEST:
+      return { ...state, loadingUpdateMediatorStatus: true, errorUpdateMediatorStatus: null };
+
+    case UPDATE_MEDIATOR_STATUS_SUCCESS:
+      return {
+        ...state,
+        loadingUpdateMediatorStatus: false,
+        // تحديث حالة الوسيط في كائن المستخدم
+        user: state.user ? { ...state.user, mediatorStatus: payload.newStatus } : null
+      };
+
+    case UPDATE_MEDIATOR_STATUS_FAIL:
+      return { ...state, loadingUpdateMediatorStatus: false, errorUpdateMediatorStatus: payload };
+
+        // --- [!!!] حالة جديدة لتحديث رصيد المستخدم [!!!] ---
+    case UPDATE_USER_BALANCE:
+      if (state.user && payload && typeof payload.balance === 'number') { // تحقق من أن payload.balance هو رقم
+        return {
+          ...state,
+          user: {
+            ...state.user,
+            balance: payload.balance // تحديث الرصيد
+          }
+        };
+      }
+      return state; // إذا لم يكن المستخدم موجودًا أو الـ payload غير صالح، لا تغير الحالة
+      
     default: return state;
   }
 };
+
 export default userReducer;

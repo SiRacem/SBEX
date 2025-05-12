@@ -1,52 +1,76 @@
+// server/models/MediationRequest.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-// --- [!!!] تأكد من وجود هذا الاستيراد [!!!] ---
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const MediationRequestSchema = new Schema({
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
-    seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // البائع
-    buyer: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },  // المشتري الذي تم قبول مزايدته
-    bidAmount: { type: Number, required: true }, // قيمة المزايدة المقبولة
-    bidCurrency: { type: String, required: true, enum: ['TND', 'USD'] }, // عملة المزايدة المقبولة
-    mediator: { type: Schema.Types.ObjectId, ref: 'User', index: true }, // الوسيط المعين (اختياري مبدئيًا)
+    seller: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    buyer: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    bidAmount: { type: Number, required: true },
+    bidCurrency: { type: String, required: true, enum: ['TND', 'USD'] },
+    mediator: { type: Schema.Types.ObjectId, ref: 'User', index: true, default: null },
     status: {
         type: String,
         required: true,
         enum: [
-            'PendingAssignment',    // في انتظار تعيين وسيط
-            'MediatorAssigned',     // تم تعيين وسيط، في انتظار قبوله
-            'MediationOfferAccepted', // الوسيط قبل المهمة، في انتظار تأكيد الأطراف
-            'PartiesConfirmed',     // الأطراف أكدت، في انتظار تجميد الرصيد (أو يتم التجميد هنا)
-            'EscrowFunded',         // تم تجميد الأرصدة (مبلغ الصفقة + رسوم الوساطة)
-            'InProgress',           // الوساطة جارية (المحادثة مفتوحة)
-            'PendingSellerAction',  // الوسيط ينتظر إجراء من البائع (مثلاً تسليم المنتج)
-            'PendingBuyerAction',   // الوسيط ينتظر إجراء من المشتري (مثلاً تأكيد الاستلام)
-            'ResolutionProposed',   // الوسيط اقترح حلاً
-            'Completed',            // تمت الوساطة بنجاح
-            'CancelledBySeller',
-            'CancelledByBuyer',
-            'CancelledByMediator',
-            'Disputed',             // تم فتح نزاع (تصعيد للأدمن)
+            'PendingMediatorSelection',
+            'MediatorAssigned',
+            'MediationOfferAccepted',
+            'PartiesConfirmed',
+            'EscrowFunded',
+            'InProgress',
+            'PendingSellerAction',
+            'PendingBuyerAction',
+            'ResolutionProposed',
+            'Completed',
+            'Cancelled',
+            'Disputed',
             'AdminResolved'
         ],
-        default: 'PendingAssignment'
+        default: 'PendingMediatorSelection'
     },
-    mediationFee: { type: Number, default: 0 }, // إجمالي رسوم الوساطة المحسوبة (بالدينار)
-    mediationFeeCurrency: { type: String, default: 'TND' }, // عملة رسوم الوساطة
+    mediationFee: { type: Number, default: 0 },
+    mediationFeeCurrency: { type: String, default: 'TND' },
+    history: { // سجل أحداث للوساطة
+        type: [{ // تأكد من أن type هو مصفوفة من الكائنات
+            event: String,
+            userId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+            timestamp: { type: Date, default: Date.now },
+            details: Schema.Types.Mixed
+        }],
+        default: [] // القيمة الافتراضية كمصفوفة فارغة
+    },
+    // --- [!!!] إضافة الحقل الجديد هنا [!!!] ---
+    previouslySuggestedMediators: {
+        type: [{ // يجب أن يكون نوعه مصفوفة من ObjectIds
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }],
+        default: [] // القيمة الافتراضية هي مصفوفة فارغة
+    },
+    suggestionRefreshCount: { // لتتبع عدد مرات طلب اقتراحات جديدة (إذا أردت تحديد حد أقصى)
+        type: Number,
+        default: 0
+    },
+    // ---------------------------------------
     sellerMediationFeePaid: { type: Boolean, default: false },
     buyerMediationFeePaid: { type: Boolean, default: false },
-    // حقول لتتبع تأكيد الأطراف
     sellerConfirmedStart: { type: Boolean, default: false },
     buyerConfirmedStart: { type: Boolean, default: false },
-    chatId: { type: String }, // لتحديد المحادثة المرتبطة (اختياري)
-    resolutionDetails: { type: String }, // تفاصيل الحل إذا كان هناك نزاع
-    adminNotes: { type: String } // ملاحظات الأدمن على طلب الوساطة
+    escrowedAmount: { type: Number, default: 0 }, // المبلغ الذي جمده المشتري
+    escrowedCurrency: { type: String },
+
+    // تفاصيل عمولة الوسيط المحسوبة
+    calculatedMediatorFee: { type: Number, default: 0 },
+    calculatedBuyerFeeShare: { type: Number, default: 0 },
+    calculatedSellerFeeShare: { type: Number, default: 0 },
+    chatId: { type: String },
+    resolutionDetails: { type: String },
+    adminNotes: { type: String }
 }, { timestamps: true });
 
-MediationRequestSchema.index({ status: 1, mediator: 1 }); // لتحسين البحث عن طلبات وسيط معين أو بحالة معينة
-
-// --- [!!!] تأكد من وجود هذا السطر لإضافة الـ Plugin [!!!] ---
+MediationRequestSchema.index({ status: 1, mediator: 1 });
 MediationRequestSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model("MediationRequest", MediationRequestSchema);

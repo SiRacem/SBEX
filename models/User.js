@@ -52,6 +52,8 @@ const UserSchema = new Schema({
         enum: ['None', 'Pending', 'Approved', 'Rejected'],
         default: 'None'
     },
+    // --- [!!!] إضافة حقل جديد لأساس الطلب [!!!] ---
+    mediatorApplicationBasis: { type: String, enum: ['Reputation', 'Guarantee', 'Unknown'], default: 'Unknown' }, // نوع التأهيل
     mediatorApplicationNotes: { // ملاحظات الأدمن على طلب الانضمام
         type: String,
         trim: true

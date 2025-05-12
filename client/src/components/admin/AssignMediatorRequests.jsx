@@ -174,16 +174,16 @@ const AssignMediatorRequests = () => {
               className="admin-requests-table"
             >
               <thead className="table-light">
-                <tr>
+                <tr className="text-center">
                   <th>Req. Date</th>
                   <th>Product</th>
                   <th>Seller</th>
                   <th>Buyer</th>
                   <th>Bid Amount</th>
-                  <th className="text-center">Actions</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-center">
                 {pendingAssignments.requests.map((req) => (
                   <tr key={req._id}>
                     <td className="small text-muted align-middle">

@@ -16,6 +16,7 @@ import {
   FaGavel,
   FaUserCheck,
   FaClipboardCheck,
+  FaClipboardList,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { Form } from "react-bootstrap";
@@ -105,8 +106,7 @@ const Sidebar = ({ onSearchChange }) => {
               <FaImages className="icon" />
               <span className="link-text">My Accounts & Bids</span>
             </NavLink>
-            {/* <NavLink className="sidebar-link" to="/dashboard/vendor/orders" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink> */}
-          </>
+            <NavLink className="sidebar-link" to="/my-mediation-requests" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink>          </>
         )}
 
         {/* --- روابط الأدمن --- */}
@@ -167,7 +167,7 @@ const Sidebar = ({ onSearchChange }) => {
         {/* --- روابط المستخدم العادي --- */}
         {userRole === "User" && (
           <>
-            {/* <NavLink className="sidebar-link" to="/dashboard/orders" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink> */}
+            <NavLink className="sidebar-link" to="/my-mediation-requests" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink>
           </>
         )}
       </nav>
