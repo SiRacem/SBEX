@@ -12,6 +12,7 @@ import {
     SELLER_CONFIRM_READINESS_REQUEST, SELLER_CONFIRM_READINESS_SUCCESS, SELLER_CONFIRM_READINESS_FAIL,
     BUYER_CONFIRM_READINESS_ESCROW_REQUEST, BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, BUYER_CONFIRM_READINESS_ESCROW_FAIL,
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
+    BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
     } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
 
 // Helper للحصول على التوكن (يمكن استيراده من ملف مشترك)
@@ -324,6 +325,40 @@ export const getBuyerMediationRequestsAction = (page = 1, limit = 10, statusFilt
         const message = error.response?.data?.msg || error.message || "Failed to fetch your mediation requests.";
         dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: message });
         toast.error(message);
+        return Promise.reject({ error: message });
+    }
+};
+
+// --- [!!!] Action لرفض المشتري للوساطة [!!!] ---
+export const buyerRejectMediationAction = (mediationRequestId, reason) => async (dispatch) => {
+    dispatch({ type: BUYER_REJECT_MEDIATION_REQUEST, payload: { mediationRequestId } });
+    const config = getTokenConfig();
+
+    if (!config) {
+        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
+        toast.error("Authorization required.");
+        return Promise.reject({ error: "Not authorized." });
+    }
+
+    if (!reason || reason.trim() === "") {
+        const errorMsg = "Rejection reason is required.";
+        dispatch({ type: BUYER_REJECT_MEDIATION_FAIL, payload: { mediationRequestId, error: errorMsg } });
+        toast.warn(errorMsg);
+        return Promise.reject({ error: errorMsg });
+    }
+
+    try {
+        const { data } = await axios.put(`/mediation/buyer/reject-mediation/${mediationRequestId}`, { reason }, config);
+        dispatch({
+            type: BUYER_REJECT_MEDIATION_SUCCESS,
+            payload: { mediationRequestId, responseData: data }
+        });
+        toast.info(data.msg || "Mediation has been cancelled.");
+        return Promise.resolve(data);
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to cancel mediation.';
+        dispatch({ type: BUYER_REJECT_MEDIATION_FAIL, payload: { mediationRequestId, error: message } });
+        toast.error(`Cancellation failed: ${message}`);
         return Promise.reject({ error: message });
     }
 };

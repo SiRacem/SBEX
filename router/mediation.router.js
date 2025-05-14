@@ -1,9 +1,12 @@
+console.log('<<<<< MEDIATION.ROUTER.JS LOADED - CHECKING CONTROLLER PATH >>>>>');
 // server/router/mediation.router.js
 const express = require('express');
 const router = express.Router();
 const { verifyAuth } = require('../middlewares/verifyAuth');
 const { isAdmin, isAssignedMediator } = require('../middlewares/roleCheck');
 const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck'); // Middleware جديد
+const mediationController = require('../controllers/mediation.controller');
+console.log('<<<<< mediationController.sellerConfirmReadiness EXISTS:', !!mediationController.sellerConfirmReadiness, ' >>>>>');
 const {
     adminGetPendingAssignmentRequests,
     adminAssignMediator,
@@ -15,7 +18,9 @@ const {
     getMediatorAcceptedAwaitingParties,
     sellerConfirmReadiness,
     buyerConfirmReadinessAndEscrow,
-    getBuyerMediationRequests
+    getBuyerMediationRequests,
+    buyerRejectMediation,
+    getMediationChatHistory
 } = require('../controllers/mediation.controller');
 
 // --- مسارات الأدمن ---
@@ -90,6 +95,22 @@ router.get(
     '/buyer/my-requests', // أو اسم آخر مثل /buyer/active-mediations
     verifyAuth, // يجب أن يكون المشتري مسجلاً
     getBuyerMediationRequests // دالة جديدة في الـ controller
+);
+
+// --- [!!!] ROUTE جديد لرفض المشتري للوساطة [!!!] ---
+router.put(
+    '/buyer/reject-mediation/:mediationRequestId',
+    verifyAuth,
+    isBuyerOfMediation, // Middleware للتحقق من أن المستخدم هو مشتري هذا الطلب
+    buyerRejectMediation // دالة جديدة في الـ controller
+);
+
+// --- [!!!] ROUTE جديد لجلب سجل محادثة الوساطة [!!!] ---
+router.get(
+    '/chat/:mediationRequestId/history',
+    verifyAuth,
+    // يمكنك إضافة middleware للتحقق من أن المستخدم طرف في هذه الوساطة
+    getMediationChatHistory // دالة جديدة
 );
 
 // POST /mediation/complete/:requestId (للوسيط لإتمام الصفقة)

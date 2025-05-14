@@ -43,9 +43,9 @@ import {
   rejectBid,
 } from "../../redux/actions/productAction";
 import {
-  assignSelectedMediator, // لتعيين الوسيط
-  sellerConfirmReadinessAction, // لتأكيد استعداد البائع
-} from "../../redux/actions/mediationAction"; // تأكد من المسار الصحيح
+  assignSelectedMediator,
+  sellerConfirmReadinessAction,
+} from "../../redux/actions/mediationAction";
 import { getProfile } from "../../redux/actions/userAction";
 import SelectMediatorModal from "./SelectMediatorModal";
 import MediationDetailsModal from "./MediationDetailsModal";
@@ -121,7 +121,7 @@ const CommandsListVendor = () => {
     if (userId) {
       dispatch(getProducts());
     }
-  }, [dispatch, userId]);
+  }, [dispatch, userId, activeTab]);
 
   const myProducts = useMemo(() => {
     if (!userId || !Array.isArray(allProducts)) return [];
@@ -135,7 +135,10 @@ const CommandsListVendor = () => {
   }, [allProducts, userId]);
 
   const approvedProducts = useMemo(
-    () => myProducts.filter((p) => p && p.status === "approved"),
+    () =>
+      myProducts.filter(
+        (p) => p && p.status === "approved" && !p.currentMediationRequest
+      ),
     [myProducts]
   );
   const pendingProducts = useMemo(
@@ -145,14 +148,16 @@ const CommandsListVendor = () => {
   const mediationProducts = useMemo(() => {
     if (!myProducts || myProducts.length === 0) return [];
     return myProducts.filter((p) => {
-      if (!p || !p.status) return false;
-      const statusValue = String(p.status).trim();
-      const mediationRequestStatus = p.currentMediationRequest?.status; // حالة طلب الوساطة
+      if (!p) return false;
+      const productStatus = String(p.status).trim();
+      const mediationRequestStatus = p.currentMediationRequest?.status;
+      // يشمل المنتجات التي في أي مرحلة من مراحل الوساطة أو تنتظر إجراء متعلق بالوساطة
       return (
-        statusValue === "PendingMediatorSelection" ||
-        statusValue === "MediatorAssigned" ||
-        mediationRequestStatus === "MediationOfferAccepted" || // تحقق من حالة طلب الوساطة أيضًا
-        statusValue === "InProgress" ||
+        productStatus === "PendingMediatorSelection" ||
+        productStatus === "MediatorAssigned" ||
+        mediationRequestStatus === "MediationOfferAccepted" ||
+        mediationRequestStatus === "EscrowFunded" ||
+        productStatus === "InProgress" ||
         mediationRequestStatus === "InProgress"
       );
     });
@@ -175,7 +180,6 @@ const CommandsListVendor = () => {
     setRejectReason("");
     setShowRejectReasonModal(true);
   }, []);
-
   const handleConfirmReject = useCallback(() => {
     if (bidToReject) {
       const bidderId = bidToReject.bid.user?._id || bidToReject.bid.user;
@@ -184,38 +188,24 @@ const CommandsListVendor = () => {
           toast.warn("Please provide a rejection reason.");
           return;
         }
-        dispatch(rejectBid(bidToReject.productId, bidderId, rejectReason))
-          .then(() => {
-            /* toast handled by action */
-          })
-          .catch(() => {
-            /* toast handled by action */
-          });
+        dispatch(rejectBid(bidToReject.productId, bidderId, rejectReason));
         setShowRejectReasonModal(false);
       } else {
         toast.error("Could not identify bidder ID.");
       }
     }
   }, [dispatch, bidToReject, rejectReason]);
-
   const handleDeleteProduct = useCallback(
     (productId) => {
       if (
         productId &&
         window.confirm("Are you sure you want to delete this product?")
       ) {
-        dispatch(deleteProduct(productId))
-          .then(() => {
-            /* toast handled by action */
-          })
-          .catch(() => {
-            /* toast handled by action */
-          });
+        dispatch(deleteProduct(productId));
       }
     },
     [dispatch]
   );
-
   const handleAcceptBid = useCallback(
     (productId, bid) => {
       const bidderId = bid.user?._id || bid.user;
@@ -234,18 +224,15 @@ const CommandsListVendor = () => {
         dispatch(acceptBid(productId, bidderId, bidAmount))
           .then(() => {
             setActiveTab("mediation");
-          })
+            dispatch(getProducts());
+          }) //  إعادة جلب المنتجات بعد القبول
           .catch((err) => {
-            console.error(
-              "Accept bid failed in component:",
-              err
-            ); /* toast handled by action */
+            console.error("Accept bid failed in component:", err);
           });
       }
     },
     [dispatch, setActiveTab]
   );
-
   const handleOpenViewMediationDetails = useCallback((product) => {
     if (!product || (!product.agreedPrice && !product.price)) {
       toast.error("Product details or price is missing.");
@@ -254,19 +241,18 @@ const CommandsListVendor = () => {
     setProductForMediationAction(product);
     setShowMediationDetailsModal(true);
   }, []);
-
   const fetchRandomMediators = useCallback(
     async (currentProductData, isRefresh = false) => {
       const mediationRequestId =
         currentProductData?.currentMediationRequest?._id;
       if (!mediationRequestId) {
-        toast.error("Mediation request ID is missing. Cannot fetch mediators.");
-        setAvailableMediators([]);
+        toast.error("Mediation request ID is missing.");
         setLoadingMediators(false);
+        setAvailableMediators([]);
         return;
       }
       setLoadingMediators(true);
-      let url = `/api/mediation/available-random/${mediationRequestId}`; // تأكد أن /api/ موجود إذا كنت تستخدمه في server.js
+      let url = `/mediation/available-random/${mediationRequestId}`;
       const params = new URLSearchParams();
       if (isRefresh) {
         params.append("refresh", "true");
@@ -281,7 +267,7 @@ const CommandsListVendor = () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          toast.error("Authentication token not found. Please log in.");
+          toast.error("Not authenticated.");
           setLoadingMediators(false);
           return;
         }
@@ -297,21 +283,15 @@ const CommandsListVendor = () => {
             if (response.data.mediators.length === 0 && response.data.message)
               toast.info(response.data.message);
             else if (response.data.mediators.length > 0)
-              toast.success("New mediator suggestions loaded!");
+              toast.success("New suggestions loaded!");
           }
         } else {
           setAvailableMediators([]);
           setRefreshCountRemaining(0);
-          toast.info(
-            response.data.message ||
-              "No mediators found or unexpected response."
-          );
+          toast.info(response.data.message || "No mediators found.");
         }
       } catch (error) {
-        toast.error(
-          error.response?.data?.msg ||
-            "Could not load mediators. Please try again."
-        );
+        toast.error(error.response?.data?.msg || "Could not load mediators.");
         setAvailableMediators([]);
         setRefreshCountRemaining(0);
       } finally {
@@ -320,13 +300,10 @@ const CommandsListVendor = () => {
     },
     [availableMediators]
   );
-
   const handleOpenSelectMediatorModal = useCallback(
     (product) => {
       if (!product || !product.currentMediationRequest?._id) {
-        toast.error(
-          "Cannot open mediator selection: Mediation request ID is missing. Please ensure product data is up-to-date."
-        );
+        toast.error("Mediation ID missing.");
         dispatch(getProducts());
         return;
       }
@@ -338,7 +315,6 @@ const CommandsListVendor = () => {
     },
     [dispatch, fetchRandomMediators]
   );
-
   const handleRequestReturnToSale = useCallback((product) => {
     const mediationRequestId =
       product.currentMediationRequest?._id || product._id;
@@ -352,7 +328,6 @@ const CommandsListVendor = () => {
       );
     }
   }, []);
-
   const handleRequestNewMediatorSuggestions = useCallback(() => {
     if (
       productForMediationAction &&
@@ -371,20 +346,14 @@ const CommandsListVendor = () => {
     refreshCountRemaining,
     fetchRandomMediators,
   ]);
-
   const handleAssignMediator = useCallback(
     async (mediatorIdToAssign) => {
       if (
         !productForMediationAction ||
-        !productForMediationAction.currentMediationRequest?._id
+        !productForMediationAction.currentMediationRequest?._id ||
+        !mediatorIdToAssign
       ) {
-        toast.error(
-          "Cannot assign mediator: Product or Mediation Request details are missing."
-        );
-        return;
-      }
-      if (!mediatorIdToAssign) {
-        toast.error("Cannot assign mediator: No mediator ID provided.");
+        toast.error("Missing data for assignment.");
         return;
       }
       const currentProduct = productForMediationAction;
@@ -394,93 +363,54 @@ const CommandsListVendor = () => {
         .then((actionResponse) => {
           setShowSelectMediatorModal(false);
           setAvailableMediators([]);
-          const updatedMediationApiRequest = actionResponse?.mediationRequest; // الـ mediationRequest المحدث من الـ API
-          const productFromApi = updatedMediationApiRequest?.product; // المنتج داخل الـ mediationRequest المحدث
-
-          dispatch({
-            type: "UPDATE_SINGLE_PRODUCT_IN_STORE",
-            payload: {
-              _id: currentProduct._id, // استخدم معرف المنتج الأصلي
-              status: productFromApi?.status || "MediatorAssigned", // تحديث حالة المنتج الرئيسية
-              currentMediationRequest: updatedMediationApiRequest
-                ? {
-                    _id: updatedMediationApiRequest._id,
-                    status: updatedMediationApiRequest.status,
-                    mediator: updatedMediationApiRequest.mediator,
-                    sellerConfirmedStart:
-                      updatedMediationApiRequest.sellerConfirmedStart,
-                    buyerConfirmedStart:
-                      updatedMediationApiRequest.buyerConfirmedStart,
-                  }
-                : {
-                    ...(currentProduct.currentMediationRequest || {}),
-                    status: "MediatorAssigned",
-                  },
-            },
-          });
+          dispatch(getProducts()); // تحديث القائمة بالكامل لضمان جلب أحدث حالة
           setActiveTab("mediation");
         })
         .catch(() => {})
         .finally(() => {
           setLoadingMediators(false);
-          dispatch(getProducts());
         });
     },
     [dispatch, productForMediationAction, setActiveTab]
   );
-
   const handleSellerConfirmReadiness = useCallback(
     (mediationRequestId, productId) => {
       if (!mediationRequestId) {
-        toast.error("Mediation Request ID is missing for confirmation.");
+        toast.error("Mediation Request ID is missing.");
         return;
       }
       if (confirmingSellerReadiness[mediationRequestId]) return;
+
+      console.log(`[FRONTEND LOG] Calling sellerConfirmReadinessAction for mediationRequestId: ${mediationRequestId}`); // <--- أضف هذا السطر
+      
       setConfirmingSellerReadiness((prev) => ({
         ...prev,
         [mediationRequestId]: true,
       }));
-      dispatch(sellerConfirmReadinessAction(mediationRequestId))
-        .then((actionResponse) => {
-          const updatedApiMediationRequest = actionResponse?.mediationRequest;
-          const productInState = allProducts.find((p) => p._id === productId);
 
-          if (productInState) {
-            dispatch({
-              type: "UPDATE_SINGLE_PRODUCT_IN_STORE",
-              payload: {
-                _id: productId,
-                currentMediationRequest: updatedApiMediationRequest
-                  ? {
-                      _id: updatedApiMediationRequest._id,
-                      status: updatedApiMediationRequest.status,
-                      sellerConfirmedStart:
-                        updatedApiMediationRequest.sellerConfirmedStart,
-                      buyerConfirmedStart:
-                        updatedApiMediationRequest.buyerConfirmedStart,
-                      mediator: updatedApiMediationRequest.mediator,
-                    }
-                  : {
-                      ...(productInState.currentMediationRequest || {}),
-                      sellerConfirmedStart: true,
-                    },
-                status:
-                  updatedApiMediationRequest?.product?.status ||
-                  productInState.status,
-              },
-            });
+      dispatch(sellerConfirmReadinessAction(mediationRequestId))
+        .then((response) => {
+          if (response?.error) {
+            toast.error(response.error || "Failed to confirm readiness");
+            return;
           }
+          toast.success("Successfully confirmed readiness");
+          dispatch(getProducts());
         })
-        .catch(() => {})
+        .catch((error) => {
+          console.error("Error confirming readiness:", error);
+          toast.error(
+            error?.response?.data?.message || "Failed to confirm readiness"
+          );
+        })
         .finally(() => {
           setConfirmingSellerReadiness((prev) => ({
             ...prev,
             [mediationRequestId]: false,
           }));
-          dispatch(getProducts());
         });
     },
-    [dispatch, confirmingSellerReadiness, allProducts]
+    [dispatch, confirmingSellerReadiness]
   );
 
   const renderProductEntry = useCallback(
@@ -492,16 +422,19 @@ const CommandsListVendor = () => {
       const productLoadingDelete = loadingDelete[product._id] ?? false;
 
       const productStatus = product.status;
-      const mediationRequestData = product.currentMediationRequest; // قد يكون null أو كائن
+      const mediationRequestData = product.currentMediationRequest;
       const mediationRequestStatus = mediationRequestData?.status;
 
       const isPendingMediatorSelection =
-        productStatus === "PendingMediatorSelection";
-      const isMediatorAssigned =
+        productStatus === "PendingMediatorSelection" &&
+        (!mediationRequestStatus ||
+          mediationRequestStatus === "PendingMediatorSelection");
+      const isMediatorAssignedBySeller =
         productStatus === "MediatorAssigned" &&
         mediationRequestStatus === "MediatorAssigned";
-      const isMediationOfferAccepted =
+      const isMediationOfferAcceptedByMediator =
         mediationRequestStatus === "MediationOfferAccepted";
+      const isEscrowFundedByBuyer = mediationRequestStatus === "EscrowFunded";
       const isActualMediationInProgress =
         productStatus === "InProgress" ||
         mediationRequestStatus === "InProgress";
@@ -516,8 +449,9 @@ const CommandsListVendor = () => {
       const canEditOrDelete =
         isApproved &&
         !isPendingMediatorSelection &&
-        !isMediatorAssigned &&
-        !isMediationOfferAccepted &&
+        !isMediatorAssignedBySeller &&
+        !isMediationOfferAcceptedByMediator &&
+        !isEscrowFundedByBuyer &&
         !isActualMediationInProgress &&
         !isSold &&
         !isCompleted;
@@ -533,32 +467,36 @@ const CommandsListVendor = () => {
         : "Unknown";
       let statusBadgeBg = "secondary";
 
-      if (
-        isApproved &&
-        !isPendingMediatorSelection &&
-        !isMediatorAssigned &&
-        !isMediationOfferAccepted &&
-        !isActualMediationInProgress
-      )
+      if (isApproved && !currentMediationRequestId && !isSold && !isCompleted) {
         statusBadgeBg = "success";
-      else if (isPendingMediatorSelection) {
+        statusBadgeText = "Approved";
+      } else if (isPendingMediatorSelection) {
         statusBadgeText = "Pending Mediator Selection";
         statusBadgeBg = "info text-dark";
-      } else if (isMediatorAssigned) {
-        statusBadgeText = "Mediator Assigned";
+      } else if (isMediatorAssignedBySeller) {
+        statusBadgeText = "Awaiting Mediator's Response";
         statusBadgeBg = "primary";
-      } else if (isMediationOfferAccepted) {
+      } else if (isMediationOfferAcceptedByMediator) {
         statusBadgeText = "Awaiting Party Confirmations";
+        statusBadgeBg = "warning text-dark";
+      } else if (isEscrowFundedByBuyer && !sellerHasConfirmed) {
+        statusBadgeText = "Buyer Confirmed - Awaiting Your Confirmation";
         statusBadgeBg = "info";
-      } // لون مختلف
-      else if (isActualMediationInProgress) {
+      } else if (
+        isEscrowFundedByBuyer &&
+        sellerHasConfirmed &&
+        !isActualMediationInProgress
+      ) {
+        statusBadgeText = "All Confirmed - Starting Soon";
+        statusBadgeBg = "primary";
+      } else if (isActualMediationInProgress) {
         statusBadgeText = "Mediation In Progress";
         statusBadgeBg = "success";
       } else if (isCompleted) {
         statusBadgeText = "Completed";
         statusBadgeBg = "dark";
-      } else if (isSold) {
-        statusBadgeText = "Sold";
+      } else if (isSold && !isCompleted) {
+        statusBadgeText = "Sold (Legacy)";
         statusBadgeBg = "secondary";
       } else if (productStatus === "pending") {
         statusBadgeText = "Pending Admin Approval";
@@ -573,8 +511,9 @@ const CommandsListVendor = () => {
           key={product._id}
           className={`mb-3 product-entry shadow-sm ${
             isPendingMediatorSelection ||
-            isMediatorAssigned ||
-            isMediationOfferAccepted ||
+            isMediatorAssignedBySeller ||
+            isMediationOfferAcceptedByMediator ||
+            isEscrowFundedByBuyer ||
             isActualMediationInProgress
               ? "border-primary"
               : ""
@@ -611,9 +550,10 @@ const CommandsListVendor = () => {
                         {formatCurrency(product.price, product.currency)}
                       </small>
                       {(isPendingMediatorSelection ||
-                        isMediatorAssigned ||
-                        isMediationOfferAccepted ||
-                        isActualMediationInProgress) &&
+                        isMediatorAssignedBySeller ||
+                        isMediationOfferAcceptedByMediator ||
+                        isActualMediationInProgress ||
+                        isEscrowFundedByBuyer) &&
                         agreedPriceForDisplay != null && (
                           <small className="text-primary ms-2 fw-bold">
                             Agreed:
@@ -624,98 +564,93 @@ const CommandsListVendor = () => {
                           </small>
                         )}
                     </div>
-                    {isPendingMediatorSelection && !isMediatorAssigned && (
-                      <Alert
-                        variant="info"
-                        className="p-1 px-2 small mt-1 d-inline-block"
-                      >
-                        <FaHandshake size={12} className="me-1" /> Please Select
-                        a Mediator
-                      </Alert>
-                    )}
-                    {isMediatorAssigned &&
-                      !isMediationOfferAccepted &&
-                      !isActualMediationInProgress && (
+                    {isPendingMediatorSelection &&
+                      !isMediatorAssignedBySeller && (
                         <Alert
-                          variant="primary"
+                          variant="info"
                           className="p-1 px-2 small mt-1 d-inline-block"
                         >
-                          <FaHourglassHalf size={12} className="me-1" />
-                          Mediator Assigned. Waiting for their response.
+                          <FaHandshake size={12} className="me-1" /> Please
+                          Select a Mediator
                         </Alert>
                       )}
-                    {isMediationOfferAccepted &&
+                    {isMediatorAssignedBySeller && (
+                      <Alert
+                        variant="primary"
+                        className="p-1 px-2 small mt-1 d-inline-block"
+                      >
+                        <FaHourglassHalf size={12} className="me-1" /> Mediator
+                        Assigned. Waiting for their response.
+                      </Alert>
+                    )}
+
+                    {!sellerHasConfirmed &&
+                      (isMediationOfferAcceptedByMediator ||
+                        isEscrowFundedByBuyer) &&
                       !isActualMediationInProgress && (
                         <div className="mt-2">
                           <Alert variant="info" className="p-2 small d-block">
-                            Mediator
-                            <strong>
-                              {mediationRequestData?.mediator?.fullName ||
-                                "N/A"}
-                            </strong>
-                            has accepted.
+                            <strong>Action Required:</strong> Please confirm
+                            your readiness to proceed with the mediation.
                             <br />
-                            {sellerHasConfirmed &&
-                            buyerHasConfirmed &&
-                            mediationRequestStatus === "EscrowFunded" ? (
-                              <span className="text-success fw-bold d-block mt-1">
-                                <FaCheck /> All parties confirmed, funds
-                                secured. Mediation will start soon.
-                              </span>
-                            ) : sellerHasConfirmed ? (
-                              <span className="text-success fw-bold d-block mt-1">
-                                <FaCheck /> You've confirmed. Waiting for buyer
-                                to confirm & deposit funds.
-                              </span>
-                            ) : (
-                              <span className="text-warning fw-bold d-block mt-1">
-                                Action Required: Confirm your readiness.
-                              </span>
-                            )}
-                            {!buyerHasConfirmed && (
-                              <span className="d-block mt-1 text-muted small">
-                                Buyer needs to confirm and deposit funds.
-                              </span>
-                            )}
+                            <small className="text-muted">
+                              {isMediationOfferAcceptedByMediator &&
+                              !isEscrowFundedByBuyer
+                                ? "After your confirmation, the buyer will need to confirm and deposit funds."
+                                : isEscrowFundedByBuyer
+                                ? "The buyer has already confirmed and deposited funds. Please confirm your readiness to proceed."
+                                : null}
+                            </small>
                           </Alert>
-                          {!sellerHasConfirmed && currentMediationRequestId && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="mt-1"
-                              onClick={() =>
-                                handleSellerConfirmReadiness(
-                                  currentMediationRequestId,
-                                  product._id
-                                )
-                              }
-                              disabled={isLoadingThisSellerConfirm}
-                            >
-                              {isLoadingThisSellerConfirm ? (
-                                <Spinner
-                                  as="span"
-                                  animation="border"
-                                  size="sm"
-                                />
-                              ) : (
-                                "Confirm My Readiness"
-                              )}
-                            </Button>
-                          )}
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="mt-1"
+                            onClick={() =>
+                              handleSellerConfirmReadiness(
+                                currentMediationRequestId,
+                                product._id
+                              )
+                            }
+                            disabled={isLoadingThisSellerConfirm}
+                          >
+                            {isLoadingThisSellerConfirm ? (
+                              <Spinner as="span" animation="border" size="sm" />
+                            ) : (
+                              "Confirm My Readiness"
+                            )}
+                          </Button>
                         </div>
                       )}
+
+                    {sellerHasConfirmed && !isActualMediationInProgress && (
+                      <Alert variant="success" className="p-2 small mt-2">
+                        <FaCheck className="me-1" /> You have confirmed your
+                        readiness.
+                        <br />
+                        <small className="text-muted">
+                          {isEscrowFundedByBuyer
+                            ? "All parties have confirmed and funds are secured. The mediator will start the process soon."
+                            : "Waiting for the buyer to confirm and deposit funds."}
+                        </small>
+                      </Alert>
+                    )}
+
                     {isActualMediationInProgress && (
-                      <Alert
-                        variant="success"
-                        className="p-1 px-2 small mt-1 d-inline-block"
-                      >
-                        <FaHandshake size={12} className="me-1" /> Mediation In
-                        Progress.
+                      <Alert variant="success" className="p-2 small mt-2">
+                        <FaHandshake className="me-1" /> Mediation is in
+                        progress.
+                        <br />
+                        <small className="text-muted">
+                          You can communicate with the buyer and mediator
+                          through the chat.
+                        </small>
                       </Alert>
                     )}
                   </div>
                   <div className="product-entry-actions">
-                    {isPendingMediatorSelection && !isMediatorAssigned ? (
+                    {isPendingMediatorSelection &&
+                    !isMediatorAssignedBySeller ? (
                       <>
                         <OverlayTrigger
                           placement="top"
@@ -761,8 +696,9 @@ const CommandsListVendor = () => {
                           </Button>
                         </OverlayTrigger>
                       </>
-                    ) : isMediatorAssigned ||
-                      isMediationOfferAccepted ||
+                    ) : isMediatorAssignedBySeller ||
+                      isMediationOfferAcceptedByMediator ||
+                      isEscrowFundedByBuyer ||
                       isActualMediationInProgress ? (
                       <OverlayTrigger
                         placement="top"
@@ -820,9 +756,10 @@ const CommandsListVendor = () => {
                 </div>
                 {isApproved &&
                   !isPendingMediatorSelection &&
-                  !isMediatorAssigned &&
-                  !isMediationOfferAccepted &&
-                  !isActualMediationInProgress && (
+                  !isMediatorAssignedBySeller &&
+                  !isMediationOfferAcceptedByMediator &&
+                  !isActualMediationInProgress &&
+                  !isEscrowFundedByBuyer && (
                     <div className="bids-section-vendor mt-3">
                       <h6 className="bids-title small text-muted">
                         Received Bids ({sortedBids.length})
@@ -1001,7 +938,9 @@ const CommandsListVendor = () => {
       <Tabs
         id="product-status-tabs"
         activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k || "approved")}
+        onSelect={(k) => {
+          setActiveTab(k || "approved");
+        }}
         className="mb-3 product-tabs"
         fill
       >

@@ -1,3 +1,4 @@
+console.log('<<<<< MEDIATION.CONTROLLER.JS LOADED - VERSION XYZ >>>>>'); // استبدل XYZ بتاريخ اليوم أو رقم نسخة
 // server/controllers/mediation.controller.js
 // *** نسخة كاملة ومعدلة لدالة adminAssignMediator بدون اختصارات ***
 
@@ -853,8 +854,8 @@ exports.getMediatorAcceptedAwaitingParties = async (req, res) => {
 
 // --- [!!!] دالة جديدة للمشتري لجلب طلبات الوساطة الخاصة به [!!!] ---
 exports.getBuyerMediationRequests = async (req, res) => {
-    const buyerId = req.user._id; 
-    const { page = 1, limit = 10, status: statusFilterFromQuery } = req.query; 
+    const buyerId = req.user._id;
+    const { page = 1, limit = 10, status: statusFilterFromQuery } = req.query;
 
     console.log(`BACKEND CONSOLE - getBuyerMediationRequests - CALLED BY BUYER ID: ${buyerId}, Page: ${page}, Status Filter: ${statusFilterFromQuery}`); // <--- سجل 1
 
@@ -863,10 +864,12 @@ exports.getBuyerMediationRequests = async (req, res) => {
         if (statusFilterFromQuery) {
             query.status = statusFilterFromQuery;
         } else {
-            query.status = { $in: [
-                'PendingMediatorSelection', 'MediatorAssigned', 'MediationOfferAccepted',
-                'EscrowFunded', 'InProgress', 'PendingBuyerAction', 'PartiesConfirmed'
-            ] };
+            query.status = {
+                $in: [
+                    'PendingMediatorSelection', 'MediatorAssigned', 'MediationOfferAccepted',
+                    'EscrowFunded', 'InProgress', 'PendingBuyerAction', 'PartiesConfirmed'
+                ]
+            };
         }
         console.log("BACKEND CONSOLE - getBuyerMediationRequests - MongoDB Query being executed:", JSON.stringify(query)); // <--- سجل 2
 
@@ -889,7 +892,7 @@ exports.getBuyerMediationRequests = async (req, res) => {
         if (result.totalDocs > 0) {
             console.log("BACKEND CONSOLE - getBuyerMediationRequests - First request found (from result.docs[0]):", JSON.stringify(result.docs[0], null, 2)); // <--- سجل 4
         }
-        
+
         res.status(200).json({
             requests: result.docs,
             totalPages: result.totalPages,
@@ -912,38 +915,62 @@ exports.sellerConfirmReadiness = async (req, res) => {
 
     console.log(`--- Controller: sellerConfirmReadiness for MediationRequest: ${mediationRequestId} by Seller: ${sellerId} ---`);
 
+    // التحقق من صحة معرف طلب الوساطة
     if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
         return res.status(400).json({ msg: "Invalid Mediation Request ID." });
     }
 
+    // بدء جلسة قاعدة البيانات للتعامل مع المعاملات
     const session = await mongoose.startSession();
     session.startTransaction();
     console.log("   MongoDB session started for sellerConfirmReadiness.");
 
     try {
+        // استرداد طلب الوساطة مع الت populated相关数据
         const mediationRequest = await MediationRequest.findById(mediationRequestId)
             .populate('product', 'title _id')
             .populate('buyer', '_id fullName')
             .populate('mediator', '_id fullName') // نحتاج الوسيط للإشعار
+            .populate('seller', '_id fullName') // تأكيد أن البائع هو نفس المحدد في الطلب
             .session(session);
 
-        if (!mediationRequest) throw new Error("Mediation request not found.");
-        if (!mediationRequest.seller.equals(sellerId)) throw new Error("Forbidden: You are not the seller for this request.");
-        
-        // اسمح بالتأكيد فقط إذا كانت الحالة مناسبة ولم يؤكد البائع بعد
-        if (mediationRequest.status !== 'MediationOfferAccepted') {
-            if(mediationRequest.sellerConfirmedStart && (mediationRequest.status === 'EscrowFunded' || mediationRequest.status === 'InProgress')){
-                 // إذا كان قد أكد بالفعل والعملية متقدمة، لا تفعل شيئًا أو أرجع رسالة
-                 // هذا الشرط قد لا يكون ضروريًا إذا كانت الواجهة تمنع الزر
-            } else if (mediationRequest.sellerConfirmedStart) {
-                 throw new Error("You have already confirmed your readiness.");
-            } else {
-                throw new Error(`Action not allowed. Request status is '${mediationRequest.status}', expected 'MediationOfferAccepted'.`);
-            }
+        if (!mediationRequest) {
+            console.log(`[SERVER LOG - sellerConfirmReadiness] Mediation request NOT FOUND: ${mediationRequestId}`);
+            throw new Error("Mediation request not found.");
         }
-        
+
+        console.log(`[SERVER LOG - sellerConfirmReadiness] Request ID: ${mediationRequestId}`);
+        console.log(`[SERVER LOG - sellerConfirmReadiness] Seller ID attempting: ${sellerId}`);
+        console.log(`[SERVER LOG - sellerConfirmReadiness] Fetched MediationRequest Status: ${mediationRequest.status}`); // <--- مهم جداً
+        console.log(`[SERVER LOG - sellerConfirmReadiness] Seller confirmed start (current): ${mediationRequest.sellerConfirmedStart}`);
+        console.log(`[SERVER LOG - sellerConfirmReadiness] Buyer confirmed start (current): ${mediationRequest.buyerConfirmedStart}`);
+
+        // التحقق من أن البائع هو作者本人 من الطلب
+        if (!mediationRequest.seller.equals(sellerId)) {
+            console.error(`[sellerConfirmReadiness] FORBIDDEN: Seller ${sellerId} is not the seller of request ${mediationRequestId}. Actual seller: ${mediationRequest.seller._id}`);
+            throw new Error("Forbidden: You are not the seller for this request.");
+        }
+
+        // التحقق من أن الحالة هي إما MediationOfferAccepted أو EscrowFunded
+        console.log(`[SERVER LOG - sellerConfirmReadiness] VALIDATING STATUS: Current is '${mediationRequest.status}'. Allowed in code are 'MediationOfferAccepted', 'EscrowFunded'.`);
+        if (!['MediationOfferAccepted', 'EscrowFunded'].includes(mediationRequest.status)) {
+            console.error(`[SERVER LOG - sellerConfirmReadiness] STATUS VALIDATION FAILED: Status is '${mediationRequest.status}'. Code expected 'MediationOfferAccepted' or 'EscrowFunded'.`);
+            // إذا كنت متأكداً أن الكود على الخادم هو ['MediationOfferAccepted', 'EscrowFunded']
+            // فمن الأفضل تعديل رسالة الخطأ الفعلية هنا لتعكس ذلك:
+            throw new Error(`Action not allowed. Request status is '${mediationRequest.status}', expected 'MediationOfferAccepted' or 'EscrowFunded'.`);
+        }
+        console.log(`[SERVER LOG - sellerConfirmReadiness] STATUS VALIDATION PASSED (according to code allowing 'MediationOfferAccepted' or 'EscrowFunded').`);
+
+        // التحقق من أن البائع لم يؤكد من قبل
+        if (mediationRequest.sellerConfirmedStart) {
+            console.warn(`[sellerConfirmReadiness] Seller ${sellerId} has ALREADY confirmed readiness for ${mediationRequestId}.`);
+            throw new Error("You have already confirmed your readiness.");
+        }
+        // --- نهاية التحقق من الحالة والتأكيد السابق ---
+
         console.log("   Seller and request status validations passed for seller confirmation.");
 
+        // تحديث حالة التأكيد وتاريخ التاكيد
         mediationRequest.sellerConfirmedStart = true;
         if (!Array.isArray(mediationRequest.history)) mediationRequest.history = [];
         mediationRequest.history.push({ event: "Seller confirmed readiness", userId: sellerId, timestamp: new Date() });
@@ -952,57 +979,101 @@ exports.sellerConfirmReadiness = async (req, res) => {
         let mediationStarted = false;
         let sellerConfirmedMsg = "Your readiness has been confirmed. Waiting for the buyer.";
 
-
-        if (mediationRequest.buyerConfirmedStart && mediationRequest.status === 'EscrowFunded') { // يجب أن تكون الحالة EscrowFunded هنا
+        // --- [!!!] منطق بدء عملية الوساطة [!!!] ---
+        // التحقق مما إذا كان المشتري قد أكد بالفعل وتم التمويل المؤقت
+        if (mediationRequest.buyerConfirmedStart && mediationRequest.status === 'EscrowFunded') {
             console.log("   Buyer has also confirmed and funds are escrowed. Initiating mediation...");
+
+            // تحديث الحالة إلى InProgress
             mediationRequest.status = 'InProgress';
             mediationStarted = true;
             sellerConfirmedMsg = "Readiness confirmed. Mediation process has started!";
 
+            // تحديث حالة المنتج إذا كان موجودًا
             if (mediationRequest.product && mediationRequest.product._id) {
                 await Product.findByIdAndUpdate(mediationRequest.product._id, { $set: { status: 'InProgress' } }, { session });
                 console.log(`   Product ${mediationRequest.product._id} status updated to 'InProgress'.`);
             }
+
+            // تحديث حالة الوسيط إذا كان موجودًا
             if (mediationRequest.mediator && mediationRequest.mediator._id) {
                 await User.findByIdAndUpdate(mediationRequest.mediator._id, { $set: { mediatorStatus: 'Busy' } }, { session });
                 console.log(`   Mediator ${mediationRequest.mediator._id} status updated to 'Busy'.`);
             }
-            
+
+            // إرسال إشعارات لجميع الأطراف
             const productTitle = mediationRequest.product?.title || 'the transaction';
             const mediatorName = mediationRequest.mediator?.fullName || 'The Mediator';
             const commonMessage = `All parties have confirmed for "${productTitle}". The mediation process has now started with ${mediatorName}. You can now access the chat (feature coming soon).`;
             const notificationTypeStart = 'MEDIATION_STARTED';
 
             await Notification.create([
-                { user: mediationRequest.seller, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} },
-                { user: mediationRequest.buyer._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} },
-                { user: mediationRequest.mediator._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} }
+                {
+                    user: mediationRequest.seller,
+                    type: notificationTypeStart,
+                    title: "Mediation Started!",
+                    message: commonMessage,
+                    relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                },
+                {
+                    user: mediationRequest.buyer._id,
+                    type: notificationTypeStart,
+                    title: "Mediation Started!",
+                    message: commonMessage,
+                    relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                },
+                {
+                    user: mediationRequest.mediator._id,
+                    type: notificationTypeStart,
+                    title: "Mediation Started!",
+                    message: commonMessage,
+                    relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                }
             ], { session, ordered: true });
             console.log(`   Mediation started notifications sent to all parties for request ${mediationRequest._id}.`);
 
         } else if (mediationRequest.buyerConfirmedStart) {
-            // هذا السيناريو يعني أن المشتري أكد، لكن لسبب ما حالة الطلب ليست 'EscrowFunded' (ربما خطأ سابق أو تدفق مختلف)
+            // المشتري قد أكد ولكن الحالة ليست EscrowFunded
             console.log(`   Seller confirmed. Buyer also confirmed, but request status is '${mediationRequest.status}'. Waiting for escrow or next step by system.`);
+
+            // إرسال إشعار للمشتري
             const buyerNotificationMsg = `The seller for "${mediationRequest.product?.title || 'the transaction'}" has also confirmed readiness. The mediation process is pending finalization.`;
             await Notification.create([{
-                user: mediationRequest.buyer._id, type: 'SELLER_CONFIRMED_AWAITING_FINALIZATION', title: 'Seller Confirmed - Mediation Pending',
-                message: buyerNotificationMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                user: mediationRequest.buyer._id,
+                type: 'SELLER_CONFIRMED_AWAITING_FINALIZATION',
+                title: 'Seller Confirmed - Mediation Pending',
+                message: buyerNotificationMsg,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             }], { session, ordered: true });
-            if (mediationRequest.mediator && mediationRequest.mediator._id){ // إعلام الوسيط إذا كان المشتري قد أكد بالفعل
-                 const mediatorNotificationMsg = `Seller (${req.user.fullName}) has confirmed readiness for "${mediationRequest.product?.title}". Buyer has also previously confirmed. Mediation is pending system finalization.`;
-                 await Notification.create([{ user: mediationRequest.mediator._id, type: 'BOTH_PARTIES_CONFIRMED_PENDING_START', title: 'Parties Confirmed - Awaiting Start', message: mediatorNotificationMsg, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} }], { session, ordered: true });
+
+            // إرسال إشعار للوسيط إذا كان المشتري قد أكد بالفعل
+            if (mediationRequest.mediator && mediationRequest.mediator._id) {
+                const mediatorNotificationMsg = `Seller (${req.user.fullName}) has confirmed readiness for "${mediationRequest.product?.title}". Buyer has also previously confirmed. Mediation is pending system finalization.`;
+                await Notification.create([{
+                    user: mediationRequest.mediator._id,
+                    type: 'BOTH_PARTIES_CONFIRMED_PENDING_START',
+                    title: 'Parties Confirmed - Awaiting Start',
+                    message: mediatorNotificationMsg,
+                    relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                }], { session, ordered: true });
             }
+
         } else {
-            // البائع أكد، المشتري لم يؤكد بعد
-            console.log(`   Seller confirmed readiness. Waiting for buyer's confirmation and fund escrow.`);
+            // البائع أكد ولكن المشتري لم يؤكد بعد
+            console.log("   Seller confirmed readiness. Waiting for buyer's confirmation and fund escrow.");
+
+            // إرسال إشعار للمشتري
             const buyerAwaitingNotificationMsg = `The seller for "${mediationRequest.product?.title || 'the transaction'}" has confirmed their readiness to proceed with mediation. Please confirm your readiness and ensure funds are available.`;
             await Notification.create([{
-                user: mediationRequest.buyer._id, type: 'SELLER_CONFIRMED_AWAITING_YOUR_ACTION', title: 'Action Required: Seller Confirmed Readiness',
-                message: buyerAwaitingNotificationMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+                user: mediationRequest.buyer._id,
+                type: 'SELLER_CONFIRMED_AWAITING_YOUR_ACTION',
+                title: 'Action Required: Seller Confirmed Readiness',
+                message: buyerAwaitingNotificationMsg,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             }], { session, ordered: true });
             console.log(`   Notification sent to buyer ${mediationRequest.buyer._id} to confirm readiness.`);
 
-            // --- [!!!] إرسال إشعار للوسيط بأن البائع قد أكد [!!!] ---
+            // إرسال إشعار للوسيط
             if (mediationRequest.mediator && mediationRequest.mediator._id) {
                 const mediatorNotificationMsg = `Seller (${req.user.fullName || 'The Seller'}) has confirmed readiness for the mediation regarding "${mediationRequest.product?.title || 'the transaction'}". Waiting for buyer's confirmation and fund escrow.`;
                 await Notification.create([{
@@ -1014,32 +1085,44 @@ exports.sellerConfirmReadiness = async (req, res) => {
                 }], { session, ordered: true });
                 console.log(`   Notification sent to mediator ${mediationRequest.mediator._id} about seller confirmation.`);
             }
-            // ---------------------------------------------------------
         }
+        // --- نهاية منطق بدء عملية الوساطة ---
 
+        // حفظ التغييرات في قاعدة البيانات
         await mediationRequest.save({ session });
         await session.commitTransaction();
         console.log("   sellerConfirmReadiness transaction committed.");
 
+        // إعادة استرداد طلب الوساطة مع جميع التفاصيل المطلوبة للعرض
         const finalResponseRequest = await MediationRequest.findById(mediationRequest._id)
-            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency user') // أضفت user هنا
+            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency user')
             .populate('seller', 'fullName avatarUrl')
             .populate('buyer', 'fullName avatarUrl')
             .populate('mediator', 'fullName avatarUrl')
             .populate('history.userId', 'fullName')
             .lean();
 
-        res.status(200).json({ 
-            msg: sellerConfirmedMsg, 
+        // إرسال رد للعميل
+        res.status(200).json({
+            msg: sellerConfirmedMsg,
             mediationRequest: finalResponseRequest
         });
 
     } catch (error) {
+        // معالجة الأخطاء
         if (session.inTransaction()) await session.abortTransaction();
         console.error("--- Controller: sellerConfirmReadiness ERROR ---", error);
-        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Action not allowed") || error.message.includes("already confirmed") ? 400 : 500;
+
+        // تحديد رمز الحالة المناسب
+        const statusCode = error.message.includes("Forbidden") ||
+            error.message.includes("not found") ||
+            error.message.includes("Action not allowed") ||
+            error.message.includes("already confirmed") ? 400 : 500;
+
+        // إرسال رد بالخطأ
         res.status(statusCode).json({ msg: error.message || "Failed to confirm seller readiness." });
     } finally {
+        // إنهاء جلسة قاعدة البيانات
         if (session && session.endSession && typeof session.endSession === 'function') await session.endSession();
         console.log("--- Controller: sellerConfirmReadiness END ---");
     }
@@ -1056,7 +1139,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
         return res.status(400).json({ msg: "Invalid Mediation Request ID." });
     }
-    
+
     const session = await mongoose.startSession();
     session.startTransaction();
     console.log("   MongoDB session started for buyerConfirmReadinessAndEscrow.");
@@ -1068,7 +1151,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
             .populate('seller', '_id fullName')
             .populate('mediator', '_id fullName')
             .session(session);
-            
+
         const buyerUser = await User.findById(buyerId).session(session); // جلب كائن المستخدم المشتري بالكامل
 
         if (!mediationRequest) {
@@ -1104,7 +1187,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
         }
 
         // totalForBuyerAfterFee هو المبلغ الإجمالي الذي يجب على المشتري دفعه (بعملة الطلب الأصلية)
-        const amountToEscrowInRequestCurrency = feeDetails.totalForBuyerAfterFee; 
+        const amountToEscrowInRequestCurrency = feeDetails.totalForBuyerAfterFee;
         console.log(`   Original agreed price: ${mediationRequest.bidAmount} ${requestCurrency}`);
         console.log(`   Calculated fee for mediator (in ${requestCurrency}): ${feeDetails.fee}`);
         console.log(`   Buyer's share of fee (in ${requestCurrency}): ${feeDetails.buyerShare}`);
@@ -1122,12 +1205,12 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
             } else if (requestCurrency === 'TND' && platformBaseCurrency === 'USD') {
                 // حالة عكسية إذا كان الرصيد بالدولار والطلب بالدينار
                 amountToDeductFromBalance = amountToEscrowInRequestCurrency / TND_USD_EXCHANGE_RATE;
-                 console.log(`   Converted escrow amount to platform base currency (USD): ${amountToDeductFromBalance.toFixed(3)} USD`);
+                console.log(`   Converted escrow amount to platform base currency (USD): ${amountToDeductFromBalance.toFixed(3)} USD`);
             } else {
                 // حالة عملات أخرى غير مدعومة أو نفس العملة
                 console.warn(`   Currency conversion for escrow: Request is ${requestCurrency}, user balance is assumed ${platformBaseCurrency}. No direct conversion rule or same currency.`);
                 // إذا كانت العملات مختلفة ولا يوجد سعر صرف، يجب رمي خطأ
-                if(requestCurrency !== platformBaseCurrency) {
+                if (requestCurrency !== platformBaseCurrency) {
                     throw new Error(`Currency mismatch for escrow: Request is ${requestCurrency}, platform base currency is ${platformBaseCurrency}. Conversion rule needed.`);
                 }
             }
@@ -1149,19 +1232,19 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
         mediationRequest.calculatedBuyerFeeShare = feeDetails.buyerShare; // حصة المشتري بعملة الطلب
         mediationRequest.calculatedSellerFeeShare = feeDetails.sellerShare; // حصة البائع بعملة الطلب
         mediationRequest.mediationFeeCurrency = feeDetails.currencyUsed; // تأكيد عملة حساب الرسوم
-        
+
         mediationRequest.buyerConfirmedStart = true;
         mediationRequest.status = 'EscrowFunded'; // تم تجميد الرصيد بنجاح
-        
+
         if (!Array.isArray(mediationRequest.history)) mediationRequest.history = [];
-        mediationRequest.history.push({ 
-            event: "Buyer confirmed readiness and funds escrowed", 
-            userId: buyerId, 
+        mediationRequest.history.push({
+            event: "Buyer confirmed readiness and funds escrowed",
+            userId: buyerId,
             details: { amount: amountToEscrowInRequestCurrency, currency: requestCurrency },
-            timestamp: new Date() 
+            timestamp: new Date()
         });
         console.log(`   MediationRequest ${mediationRequest._id} updated. Status: 'EscrowFunded', Escrowed: ${amountToEscrowInRequestCurrency} ${requestCurrency}.`);
-        
+
         let mediationStarted = false;
 
         // تحقق مما إذا كان البائع قد أكد أيضًا
@@ -1178,16 +1261,16 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
                 await User.findByIdAndUpdate(mediationRequest.mediator._id, { $set: { mediatorStatus: 'Busy' } }, { session });
                 console.log(`   Mediator ${mediationRequest.mediator._id} status updated to 'Busy'.`);
             }
-            
+
             const productTitle = mediationRequest.product?.title || 'the transaction';
             const mediatorName = mediationRequest.mediator?.fullName || 'The Mediator';
             const commonMessage = `All parties have confirmed for "${productTitle}". The mediation process has now started with ${mediatorName}. You can now access the chat (feature coming soon).`;
             const notificationTypeStart = 'MEDIATION_STARTED'; // تأكد أن هذا النوع موجود في Notification enum
 
             await Notification.create([
-                { user: mediationRequest.seller._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} },
-                { user: mediationRequest.buyer._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} },
-                { user: mediationRequest.mediator._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: {id: mediationRequest._id, modelName: 'MediationRequest'} }
+                { user: mediationRequest.seller._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
+                { user: mediationRequest.buyer._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
+                { user: mediationRequest.mediator._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } }
             ], { session, ordered: true });
             console.log(`   Mediation started notifications sent for request ${mediationRequest._id}.`);
         } else {
@@ -1215,8 +1298,8 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
             .populate('history.userId', 'fullName')
             .lean();
 
-        res.status(200).json({ 
-            msg: mediationStarted ? "Readiness confirmed and funds escrowed. Mediation process has started!" : "Your readiness has been confirmed and funds are now in escrow. Waiting for the seller.", 
+        res.status(200).json({
+            msg: mediationStarted ? "Readiness confirmed and funds escrowed. Mediation process has started!" : "Your readiness has been confirmed and funds are now in escrow. Waiting for the seller.",
             mediationRequest: finalResponseRequest,
             updatedBuyerBalance: buyerUser.balance // إرجاع الرصيد المحدث للمشتري
         });
@@ -1237,3 +1320,189 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
     }
 };
 // --- نهاية buyerConfirmReadinessAndEscrow ---
+
+// --- [!!!] دالة لرفض المشتري للمتابعة في الوساطة [!!!] ---
+exports.buyerRejectMediation = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    const buyerId = req.user._id;
+    const { reason } = req.body;
+
+    console.log(`--- Controller: buyerRejectMediation ---`);
+    console.log(`   MediationRequestID: ${mediationRequestId}, BuyerID: ${buyerId}, Reason: ${reason}`);
+
+    if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        return res.status(400).json({ msg: "Invalid Mediation Request ID." });
+    }
+    if (!reason || reason.trim() === "") {
+        return res.status(400).json({ msg: "Rejection reason is required from buyer." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    console.log("   MongoDB session started for buyerRejectMediation.");
+
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .populate('product', 'title _id user') // نحتاج لمعرف المنتج ومالكه (البائع)
+            .populate('seller', 'fullName _id')
+            .populate('mediator', 'fullName _id') // الوسيط إذا تم تعيينه
+            .session(session);
+
+        if (!mediationRequest) {
+            throw new Error("Mediation request not found.");
+        }
+        if (!mediationRequest.buyer.equals(buyerId)) {
+            throw new Error("Forbidden: You are not the buyer for this request.");
+        }
+
+        // الحالات التي يمكن للمشتري فيها الرفض (مثال)
+        const allowedStatusesForRejection = ['MediatorAssigned', 'MediationOfferAccepted'];
+        if (!allowedStatusesForRejection.includes(mediationRequest.status)) {
+            throw new Error(`Action not allowed. Request status is '${mediationRequest.status}'. Buyer can typically reject if status is one of: ${allowedStatusesForRejection.join(', ')}.`);
+        }
+
+        const originalStatus = mediationRequest.status;
+        mediationRequest.status = 'Cancelled'; // أو 'CancelledByBuyer'
+        // يمكنك إضافة حقل لتخزين سبب الإلغاء ومن قام به
+        // mediationRequest.cancellationReason = reason;
+        // mediationRequest.cancelledByRole = 'Buyer';
+
+        if (!Array.isArray(mediationRequest.history)) mediationRequest.history = [];
+        mediationRequest.history.push({
+            event: "Buyer rejected/cancelled mediation",
+            userId: buyerId,
+            details: { reason: reason, previousStatus: originalStatus },
+            timestamp: new Date()
+        });
+
+        const updatedRequest = await mediationRequest.save({ session });
+        console.log(`   MediationRequest ${updatedRequest._id} status updated to '${updatedRequest.status}' due to buyer rejection.`);
+
+        // إعادة المنتج إلى حالة "approved" إذا لم يتم بيعه بعد
+        // هذا يعتمد على ما إذا كنت تريد السماح بإعادة بيعه فورًا
+        if (mediationRequest.product && mediationRequest.product._id) {
+            const productDoc = await Product.findById(mediationRequest.product._id).session(session);
+            if (productDoc && productDoc.status !== 'sold' && productDoc.status !== 'Completed') {
+                productDoc.status = 'approved'; // أو الحالة التي كان عليها قبل الوساطة
+                // مسح بيانات الوساطة من المنتج إذا أردت
+                productDoc.currentMediationRequest = null;
+                // productDoc.buyer = null; // قد ترغب في الاحتفاظ بمعرف المشتري الذي رفض
+                // productDoc.agreedPrice = null;
+                await productDoc.save({ session });
+                console.log(`   Product ${productDoc._id} status reset to 'approved'.`);
+            }
+        }
+
+        // إذا كان هناك وسيط معين، أعد حالته إلى Available إذا لم يكن لديه مهام أخرى
+        if (mediationRequest.mediator && mediationRequest.mediator._id) {
+            const otherActiveAssignments = await MediationRequest.countDocuments({
+                mediator: mediationRequest.mediator._id,
+                status: { $in: ['MediatorAssigned', 'MediationOfferAccepted', 'InProgress'] }
+            });
+            if (otherActiveAssignments === 0) { // إذا لم يعد لديه مهام أخرى بعد إلغاء هذه
+                await User.findByIdAndUpdate(mediationRequest.mediator._id, { $set: { mediatorStatus: 'Available' } }, { session });
+                console.log(`   Mediator ${mediationRequest.mediator._id} status updated to 'Available'.`);
+            }
+        }
+
+
+        // إرسال الإشعارات
+        const productTitle = mediationRequest.product?.title || 'the transaction';
+        const buyerFullName = req.user.fullName || 'The Buyer';
+
+        // إشعار للبائع
+        const sellerMessage = `The buyer, ${buyerFullName}, has rejected/cancelled the mediation for "${productTitle}". Reason: "${reason}". The product may be available for bidding again.`;
+        await Notification.create([{
+            user: mediationRequest.seller._id,
+            type: 'MEDIATION_REJECTED_BY_BUYER', // نوع جديد
+            title: 'Mediation Cancelled by Buyer',
+            message: sellerMessage,
+            relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' }
+        }], { session, ordered: true });
+        console.log(`   Notification sent to seller ${mediationRequest.seller._id}`);
+
+        // إشعار للوسيط (إذا كان معينًا)
+        if (mediationRequest.mediator && mediationRequest.mediator._id) {
+            const mediatorMessage = `The mediation for "${productTitle}" (between ${mediationRequest.seller.fullName} and ${buyerFullName}) has been cancelled by the buyer. Reason: "${reason}". This task has been removed from your assignments.`;
+            await Notification.create([{
+                user: mediationRequest.mediator._id,
+                type: 'MEDIATION_CANCELLED_BY_PARTY', // نوع جديد
+                title: 'Mediation Cancelled by Buyer',
+                message: mediatorMessage,
+                relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' }
+            }], { session, ordered: true });
+            console.log(`   Notification sent to mediator ${mediationRequest.mediator._id}`);
+        }
+
+        // إشعار للمشتري (تأكيد)
+        const buyerConfirmationMsg = `You have successfully cancelled the mediation for "${productTitle}". Reason: "${reason}".`;
+        await Notification.create([{
+            user: buyerId,
+            type: 'MEDIATION_CANCELLATION_CONFIRMED', // نوع جديد
+            title: 'Mediation Cancellation Confirmed',
+            message: buyerConfirmationMsg,
+            relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' }
+        }], { session, ordered: true });
+        console.log(`   Cancellation confirmation sent to buyer ${buyerId}`);
+
+
+        await session.commitTransaction();
+        console.log("   buyerRejectMediation transaction committed.");
+
+        res.status(200).json({
+            msg: "Mediation has been successfully cancelled.",
+            mediationRequest: await MediationRequest.findById(updatedRequest._id).populate('product seller buyer mediator').lean() // إرجاع الطلب المحدث
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        console.error("--- Controller: buyerRejectMediation ERROR ---", error);
+        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Action not allowed") ? 400 : 500;
+        res.status(statusCode).json({ msg: error.message || "Failed to reject/cancel mediation." });
+    } finally {
+        if (session && session.endSession && typeof session.endSession === 'function') await session.endSession();
+        console.log("--- Controller: buyerRejectMediation END ---");
+    }
+};
+// --- نهاية buyerRejectMediation ---
+
+// --- [!!!] دالة لجلب سجل محادثة وساطة معينة [!!!] ---
+exports.getMediationChatHistory = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    const userId = req.user._id;
+
+    console.log(`--- Controller: getMediationChatHistory for Request: ${mediationRequestId} by User: ${userId} ---`);
+    if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        return res.status(400).json({ msg: "Invalid Mediation Request ID." });
+    }
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .select('seller buyer mediator status chatMessages') // حدد الحقول المطلوبة
+            .populate('chatMessages.sender', 'fullName avatarUrl _id'); // Populate معلومات مرسل الرسالة
+
+        if (!mediationRequest) {
+            return res.status(404).json({ msg: "Mediation request not found." });
+        }
+
+        // التحقق من أن المستخدم الحالي هو طرف في هذه الوساطة
+        const isSeller = mediationRequest.seller.equals(userId);
+        const isBuyer = mediationRequest.buyer.equals(userId);
+        const isMediator = mediationRequest.mediator && mediationRequest.mediator.equals(userId);
+
+        if (!(isSeller || isBuyer || isMediator)) {
+            return res.status(403).json({ msg: "Forbidden: You are not a party to this mediation." });
+        }
+        // يمكنك أيضًا التحقق من أن حالة الوساطة تسمح بعرض المحادثة (مثلاً InProgress أو Completed)
+        // if (mediationRequest.status !== 'InProgress' && mediationRequest.status !== 'Completed') {
+        //    return res.status(400).json({ msg: "Chat history is not available for this mediation status." });
+        // }
+
+        res.status(200).json(mediationRequest.chatMessages || []);
+
+    } catch (error) {
+        console.error("--- Controller: getMediationChatHistory ERROR ---", error);
+        res.status(500).json({ msg: "Server error fetching chat history.", errorDetails: error.message });
+    } finally {
+        console.log("--- Controller: getMediationChatHistory END ---");
+    }
+};

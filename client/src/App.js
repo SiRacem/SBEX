@@ -309,9 +309,6 @@ function App() {
           <Route path="/dashboard/admin/products" element={<AdminRoute>{renderComponentWithSearch(ProductListAdmin)}</AdminRoute>} />
           <Route path="/dashboard/admin/users" element={<AdminRoute><UserListAd search={search} /></AdminRoute>} />
           <Route path="/dashboard/admin/deposit-requests" element={<AdminRoute>{renderComponentWithSearch(AdminTransactionRequests)}</AdminRoute>} />
-          {/* مثال لمسار محمي للأدمن */}
-          <Route path="/dashboard/admin/mediators" element={<AdminRoute>{renderComponentWithSearch(AssignMediatorRequests)}</AdminRoute>
-          } />
           <Route path="/dashboard/admin/mediator-review" element={<AdminRoute>{renderComponentWithSearch(ReviewMediatorApplications)}</AdminRoute>
           } />
 

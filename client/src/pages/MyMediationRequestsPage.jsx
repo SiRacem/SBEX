@@ -14,17 +14,20 @@ import {
   Badge,
   Modal,
   Carousel,
-} from "react-bootstrap";
+  Form,
+} from "react-bootstrap"; // Form مضافة
 import {
   getBuyerMediationRequestsAction,
   buyerConfirmReadinessAndEscrowAction,
-} from "../redux/actions/mediationAction"; // تأكد من المسار الصحيح
+  buyerRejectMediationAction, // Action جديد لرفض المشتري
+} from "../redux/actions/mediationAction";
 import { getProfile } from "../redux/actions/userAction";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { BsImage } from "react-icons/bs";
 import { FaCheck, FaHourglassHalf, FaHandshake } from "react-icons/fa";
-import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator"; // تأكد من المسار الصحيح
+import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator";
+import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal";
 
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -55,7 +58,8 @@ const MyMediationRequestsPage = () => {
     buyerRequests,
     loadingBuyerRequests,
     errorBuyerRequests,
-    confirmingReadiness, // حالة التحميل من mediationReducer لعملية التأكيد
+    confirmingReadiness, // حالة تحميل من mediationReducer لعملية تأكيد المشتري
+    actionLoading, // حالة تحميل عامة لعمليات الوسيط/المشتري (مثل الرفض)
   } = useSelector(
     (state) =>
       state.mediationReducer || {
@@ -69,7 +73,6 @@ const MyMediationRequestsPage = () => {
   );
 
   const currentUser = useSelector((state) => state.userReducer.user);
-  // استخدام القيمة من Redux مباشرة أو قيمة افتراضية إذا لم تكن موجودة بعد
   const [currentPageLocal, setCurrentPageLocal] = useState(
     buyerRequests?.currentPage || 1
   );
@@ -80,14 +83,17 @@ const MyMediationRequestsPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRequestImages, setSelectedRequestImages] = useState([]);
 
+  // State لمودال رفض المشتري
+  const [showBuyerRejectModal, setShowBuyerRejectModal] = useState(false);
+  const [selectedRequestToRejectByBuyer, setSelectedRequestToRejectByBuyer] =
+    useState(null);
+
   useEffect(() => {
     if (currentUser?._id) {
-      // جلب البيانات للصفحة الحالية (المحلية)
       dispatch(getBuyerMediationRequestsAction(currentPageLocal, 10, null));
     }
-  }, [dispatch, currentUser, currentPageLocal]); // يعتمد على currentPageLocal
+  }, [dispatch, currentUser, currentPageLocal]);
 
-  // تحديث currentPageLocal إذا تغيرت من Redux (مثلاً عند تحميل الصفحة لأول مرة)
   useEffect(() => {
     if (buyerRequests?.currentPage) {
       setCurrentPageLocal(buyerRequests.currentPage);
@@ -96,9 +102,11 @@ const MyMediationRequestsPage = () => {
 
   const handleConfirmAndEscrow = useCallback(
     (mediationRequestId) => {
+      // استخدام confirmingReadiness إذا كان مخصصًا لهذه العملية، أو actionLoading إذا كان عامًا
       if (
-        confirmingReadiness &&
-        selectedRequestIdForAction === mediationRequestId
+        (confirmingReadiness &&
+          selectedRequestIdForAction === mediationRequestId) ||
+        actionLoading
       )
         return;
 
@@ -111,19 +119,22 @@ const MyMediationRequestsPage = () => {
           ) {
             dispatch(getProfile());
           }
-          // بعد النجاح، أعد جلب بيانات الصفحة الحالية لطلبات المشتري
-          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
+          // الـ reducer يجب أن يحدّث الطلب في القائمة.
+          // dispatch(getBuyerMediationRequestsAction(currentPageLocal)); // أعد الجلب إذا لم يقم الـ reducer بالتحديث الكافي
         })
         .catch(() => {
           /* toast error handled by action */
         })
         .finally(() => {
           setSelectedRequestIdForAction(null);
+          // ضمان تحديث القائمة لإظهار التغيير في الحالة
+          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
         });
     },
     [
       dispatch,
       confirmingReadiness,
+      actionLoading,
       selectedRequestIdForAction,
       currentPageLocal,
     ]
@@ -132,7 +143,7 @@ const MyMediationRequestsPage = () => {
   const handlePageChange = useCallback(
     (pageNumber) => {
       if (currentUser?._id && pageNumber !== currentPageLocal) {
-        setCurrentPageLocal(pageNumber); // هذا سيؤدي إلى إعادة تشغيل useEffect لجلب البيانات
+        setCurrentPageLocal(pageNumber);
       }
     },
     [currentUser, currentPageLocal]
@@ -153,16 +164,56 @@ const MyMediationRequestsPage = () => {
     }
   }, []);
 
+  const openBuyerRejectModal = useCallback((request) => {
+    setSelectedRequestToRejectByBuyer(request);
+    setShowBuyerRejectModal(true);
+  }, []);
+
+  const handleConfirmBuyerReject = useCallback(
+    (mediationRequestId, reason) => {
+      if (actionLoading && selectedRequestIdForAction === mediationRequestId)
+        return;
+      setSelectedRequestIdForAction(mediationRequestId); // لتتبع التحميل على هذا الطلب
+      dispatch(buyerRejectMediationAction(mediationRequestId, reason))
+        .then(() => {
+          setShowBuyerRejectModal(false);
+          setSelectedRequestToRejectByBuyer(null);
+          // تحديث القائمة (الـ reducer يجب أن يزيل الطلب)
+          // أو أعد جلب البيانات
+          if (
+            buyerRequests.list.length === 1 &&
+            currentPageLocal > 1 &&
+            buyerRequests.totalCount > 1
+          ) {
+            setCurrentPageLocal((prev) => prev - 1);
+          } else {
+            dispatch(getBuyerMediationRequestsAction(currentPageLocal));
+          }
+        })
+        .catch(() => {
+          /* toast handled by action */
+        })
+        .finally(() => {
+          setSelectedRequestIdForAction(null);
+        });
+    },
+    [
+      dispatch,
+      actionLoading,
+      buyerRequests.list,
+      currentPageLocal,
+      buyerRequests.totalCount,
+    ]
+  );
+
   if (!currentUser) {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2">Loading user data...</p>
+        <p>Loading user data...</p>
       </Container>
     );
   }
-
-  // عرض التحميل الأولي إذا لم يتم جلب أي بيانات بعد
   if (
     loadingBuyerRequests &&
     (!buyerRequests || buyerRequests.list.length === 0)
@@ -176,13 +227,12 @@ const MyMediationRequestsPage = () => {
         </Row>
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Loading your mediation requests...</p>
+          <p>Loading your mediation requests...</p>
         </div>
       </Container>
     );
   }
 
-  // عرض الخطأ إذا حدث أثناء الجلب الأولي
   if (
     errorBuyerRequests &&
     !loadingBuyerRequests &&
@@ -215,7 +265,7 @@ const MyMediationRequestsPage = () => {
           <h2>My Mediation Requests</h2>
           <p className="text-muted">
             {loadingBuyerRequests && buyerRequests.list.length > 0
-              ? "Updating request list..."
+              ? "Updating..."
               : `You have ${
                   buyerRequests.totalCount || 0
                 } mediation request(s).`}
@@ -223,14 +273,12 @@ const MyMediationRequestsPage = () => {
         </Col>
       </Row>
 
-      {/* Spinner إذا كان هناك تحديث والقائمة ليست فارغة */}
       {loadingBuyerRequests && buyerRequests.list.length > 0 && (
         <div className="text-center mb-3">
           <Spinner animation="border" size="sm" variant="primary" />
         </div>
       )}
 
-      {/* رسالة إذا لم تكن هناك طلبات بعد انتهاء التحميل وعدم وجود أخطاء */}
       {!loadingBuyerRequests &&
         buyerRequests.list.length === 0 &&
         !errorBuyerRequests && (
@@ -244,8 +292,9 @@ const MyMediationRequestsPage = () => {
           const product = request.product;
           const seller = request.seller;
           const mediator = request.mediator;
-          const isConfirmingThisRequest =
-            confirmingReadiness && selectedRequestIdForAction === request._id;
+          const isProcessingThisRequest =
+            (confirmingReadiness || actionLoading) &&
+            selectedRequestIdForAction === request._id;
           const feeDisplayDetails = calculateMediatorFeeDetails(
             request.bidAmount,
             request.bidCurrency
@@ -279,6 +328,9 @@ const MyMediationRequestsPage = () => {
           } else if (request.status === "Completed") {
             statusBadgeText = "Completed";
             statusBadgeBg = "dark";
+          } else if (request.status === "Cancelled") {
+            statusBadgeText = "Cancelled";
+            statusBadgeBg = "danger";
           }
 
           return (
@@ -420,12 +472,11 @@ const MyMediationRequestsPage = () => {
                           </Alert>
                           <Button
                             variant="success"
+                            className="me-2"
                             onClick={() => handleConfirmAndEscrow(request._id)}
-                            disabled={
-                              isConfirmingThisRequest || confirmingReadiness
-                            }
+                            disabled={isProcessingThisRequest}
                           >
-                            {isConfirmingThisRequest ? (
+                            {isProcessingThisRequest ? (
                               <>
                                 <Spinner
                                   as="span"
@@ -437,6 +488,13 @@ const MyMediationRequestsPage = () => {
                             ) : (
                               "Confirm Readiness & Deposit Funds"
                             )}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => openBuyerRejectModal(request)}
+                            disabled={isProcessingThisRequest}
+                          >
+                            Cancel Mediation
                           </Button>
                         </div>
                       )}
@@ -476,6 +534,11 @@ const MyMediationRequestsPage = () => {
                       <Alert variant="secondary" className="small p-2 mt-3">
                         <FaCheck className="me-1" /> This mediation has been
                         completed.
+                      </Alert>
+                    )}
+                    {request.status === "Cancelled" && (
+                      <Alert variant="danger" className="small p-2 mt-3">
+                        This mediation has been cancelled.
                       </Alert>
                     )}
                   </Col>
@@ -545,6 +608,22 @@ const MyMediationRequestsPage = () => {
           </Button>
         </Modal.Body>
       </Modal>
+
+      {selectedRequestToRejectByBuyer && (
+        <RejectMediationByBuyerModal
+          show={showBuyerRejectModal}
+          onHide={() => {
+            setShowBuyerRejectModal(false);
+            setSelectedRequestToRejectByBuyer(null);
+          }}
+          request={selectedRequestToRejectByBuyer}
+          onConfirmReject={handleConfirmBuyerReject}
+          loading={
+            actionLoading &&
+            selectedRequestIdForAction === selectedRequestToRejectByBuyer._id
+          }
+        />
+      )}
     </Container>
   );
 };

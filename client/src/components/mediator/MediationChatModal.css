@@ -1,0 +1,87 @@
+/* client/src/components/mediation/MediationChatModal.css */
+.mediation-chat-modal .modal-body {
+    max-height: 60vh;
+    /* أو الارتفاع الذي تراه مناسبًا */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-list {
+    flex-grow: 1;
+    /* لجعل قائمة الرسائل تملأ المساحة المتاحة */
+}
+
+.message-item {
+    border: none;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.message-item.sent {
+    background-color: #dcf8c6;
+    /* أخضر فاتح للرسائل المرسلة */
+    align-self: flex-end;
+    /* محاذاة لليمين */
+    margin-left: auto;
+    /* لدفعها لليمين */
+}
+
+.message-item.received {
+    background-color: #f0f0f0;
+    /* رمادي فاتح للرسائل المستلمة */
+    align-self: flex-start;
+    /* محاذاة لليسار */
+    margin-right: auto;
+    /* لدفعها لليسار */
+}
+
+.chat-avatar {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+}
+
+.message-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.message-sender-name {
+    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+    color: #555;
+}
+
+.message-item.sent .message-sender-name {
+    /* يمكنك إخفاء اسم المرسل لرسائلك إذا أردت */
+    /* display: none; */
+    text-align: right;
+}
+
+.message-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.timestamp {
+    font-size: 0.7rem;
+}
+
+.chat-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 0.75rem 1rem;
+}
+
+.lightbox-image {
+    /* نمط لمودال عرض الصور إذا كنت تستخدمه */
+    max-width: 100%;
+    max-height: 80vh;
+    /* أو 90vh */
+    object-fit: contain;
+    display: block;
+    margin: auto;
+}

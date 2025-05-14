@@ -11,6 +11,7 @@ import {
     SELLER_CONFIRM_READINESS_REQUEST, SELLER_CONFIRM_READINESS_SUCCESS, SELLER_CONFIRM_READINESS_FAIL, 
     BUYER_CONFIRM_READINESS_ESCROW_REQUEST, BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, BUYER_CONFIRM_READINESS_ESCROW_FAIL, 
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
+    BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -249,6 +250,24 @@ const mediationReducer = (state = initialState, action) => {
                 errorBuyerRequests: payload, 
                 buyerRequests: { ...initialState.buyerRequests } // إعادة للقيم الأولية عند الفشل
             };
+
+                // --- Buyer Reject Mediation ---
+        case BUYER_REJECT_MEDIATION_REQUEST:
+            return { ...state, actionLoading: true, actionError: null, actionSuccess: false }; // استخدام actionLoading العام
+        case BUYER_REJECT_MEDIATION_SUCCESS:
+            return {
+                ...state,
+                actionLoading: false,
+                actionSuccess: true, // للإشارة إلى نجاح عملية الرفض
+                // إزالة الطلب الملغى من قائمة المشتري
+                buyerRequests: {
+                    ...state.buyerRequests,
+                    list: state.buyerRequests.list.filter(req => req._id !== payload.mediationRequestId),
+                    totalCount: Math.max(0, state.buyerRequests.totalCount - 1),
+                }
+            };
+        case BUYER_REJECT_MEDIATION_FAIL:
+            return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 
         default:
             return state;

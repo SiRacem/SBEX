@@ -41,6 +41,14 @@ const MediationRequestSchema = new Schema({
         }],
         default: [] // القيمة الافتراضية كمصفوفة فارغة
     },
+    chatMessages: [
+        {
+            sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+            message: { type: String, required: true, trim: true },
+            timestamp: { type: Date, default: Date.now },
+            // يمكنك إضافة isReadBy: [{ type: Schema.Types.ObjectId, ref: 'User' }] لاحقًا
+        }
+    ],
     // --- [!!!] إضافة الحقل الجديد هنا [!!!] ---
     previouslySuggestedMediators: {
         type: [{ // يجب أن يكون نوعه مصفوفة من ObjectIds

@@ -146,20 +146,11 @@ const Sidebar = ({ onSearchChange }) => {
             </NavLink>
             <NavLink
               className="sidebar-link"
-              to="/dashboard/admin/mediators"
+              to="/dashboard/admin/mediator-review"
               title="Manage Mediators"
             >
               <FaUserCheck className="icon" />
               <span className="link-text">Manage Mediators</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/mediator-review" // <-- المسار الجديد
-              title="Review Mediator"
-            >
-              <FaClipboardCheck className="icon" />
-              {/* أو أيقونة أخرى مثل FaClipboardCheck */}
-              <span className="link-text">Review Mediator</span>
             </NavLink>
           </>
         )}
