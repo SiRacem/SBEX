@@ -31,7 +31,7 @@ import "./UserProfilePage.css"; // تأكد من وجود هذا الملف
 
 // Default avatar SVG
 const defaultAvatar =
-  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="55%" fill="%23ffffff" font-size="50" font-family="sans-serif" text-anchor="middle">?</text></svg>';
+  'https://bootdey.com/img/Content/avatar/avatar7.png';
 
 // Helper function to format currency (يمكن نقلها لملف helpers)
 const formatCurrencyInternal = (amount, currencyCode = "TND") => {

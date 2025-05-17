@@ -1,7 +1,5 @@
 // src/components/commun/Profile.jsx
-// *** نسخة كاملة ونهائية بدون اختصارات - مع تصميم المستوى المحسن وتباعد الإحصائيات ***
-
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Container,
@@ -14,16 +12,21 @@ import {
   ProgressBar,
   Alert,
   Tooltip,
-  OverlayTrigger, // Added Tooltip, OverlayTrigger
+  OverlayTrigger,
+  Modal,
+  Button,
+  Form,
 } from "react-bootstrap";
 import { Link } from "react-router-dom";
-import { getProfile } from "../../redux/actions/userAction";
+import {
+  getProfile,
+  updateProfilePicture,
+} from "../../redux/actions/userAction";
 import CurrencySwitcher from "./CurrencySwitcher";
 import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
 import MediatorApplication from "./MediatorApplication";
 import "./ProfileRedesigned.css";
-
-// Import Icons
+import { toast } from "react-toastify";
 import {
   FaCheckCircle,
   FaDollarSign,
@@ -34,7 +37,7 @@ import {
   FaStar,
   FaGift,
   FaUserShield,
-  FaCheckCircle as CheckCircle, // Added CheckCircle alias
+  FaCamera,
 } from "react-icons/fa";
 import {
   Briefcase,
@@ -48,7 +51,7 @@ import {
 } from "react-feather";
 import { IoWalletOutline } from "react-icons/io5";
 
-// --- Helper Functions ---
+// --- Helper Functions (Keep them as they were) ---
 const calculatePositiveFeedbackPercent = (positive, negative) => {
   const total = positive + negative;
   if (total === 0) return 0;
@@ -57,7 +60,6 @@ const calculatePositiveFeedbackPercent = (positive, negative) => {
 
 const pointsForNextLevel = (currentLevel) => {
   if (currentLevel < 1) return 10;
-  // Example: 10, 30, 60, 100, 150... Adjust as needed
   return ((currentLevel * (currentLevel + 1)) / 2) * 10;
 };
 
@@ -83,14 +85,21 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     return `${num.toFixed(2)} ${safeCurrencyCode}`;
   }
 };
-// -----------------------
+// --- End Helper Functions ---
 
-// --- Main Component ---
+// --- Define Backend URL ---
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+
 const Profile = () => {
   const dispatch = useDispatch();
-  const { user, loading, isAuth } = useSelector((state) => state.userReducer);
+  const { user, loading, isAuth, errorUpdateAvatar, loadingUpdateAvatar } =
+    useSelector((state) => state.userReducer);
 
-  // --- Use Currency Display Hooks ---
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+
   const principalBalanceDisplay = useCurrencyDisplay(user?.balance);
   const depositBalanceDisplay = useCurrencyDisplay(user?.depositBalance);
   const withdrawalBalanceDisplay = useCurrencyDisplay(user?.withdrawalBalance);
@@ -101,7 +110,6 @@ const Profile = () => {
     user?.sellerPendingBalance
   );
 
-  // --- Calculate Derived Data ---
   const positiveRatings = user?.positiveRatings ?? 0;
   const negativeRatings = user?.negativeRatings ?? 0;
   const positiveFeedbackPercent = useMemo(
@@ -118,10 +126,6 @@ const Profile = () => {
     () => Math.min(currentPoints, nextLevelPoints),
     [currentPoints, nextLevelPoints]
   );
-  const pointsNeeded = useMemo(
-    () => Math.max(0, nextLevelPoints - currentPoints),
-    [nextLevelPoints, currentPoints]
-  );
   const progressPercent = useMemo(
     () =>
       nextLevelPoints > 0
@@ -132,35 +136,98 @@ const Profile = () => {
   const approvedProductsCount = user?.approvedProducts ?? 0;
   const soldProductsCount = user?.productsSoldCount ?? 0;
 
-  // --- Fetch Profile ---
   useEffect(() => {
     if (isAuth && !user && !loading) {
       dispatch(getProfile());
     }
   }, [dispatch, isAuth, user, loading]);
 
-  // --- Loading State ---
-  if (loading && !user) {
+  const handleOpenAvatarModal = () => {
+    setPreviewImage(
+      user?.avatarUrl
+        ? `${BACKEND_URL}/${user.avatarUrl}`
+        : "https://bootdey.com/img/Content/avatar/avatar7.png"
+    );
+    setSelectedFile(null);
+    setShowAvatarModal(true);
+  };
+
+  const handleCloseAvatarModal = () => {
+    setShowAvatarModal(false);
+    setPreviewImage(null);
+    setSelectedFile(null);
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("File is too large. Maximum size is 2MB.");
+        return;
+      }
+      if (
+        !["image/jpeg", "image/png", "image/gif", "image/webp"].includes(
+          file.type
+        )
+      ) {
+        toast.error(
+          "Invalid file type. Please upload a JPG, PNG, GIF or WEBP image."
+        );
+        return;
+      }
+      setSelectedFile(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUploadAvatar = () => {
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append("avatar", selectedFile);
+      dispatch(updateProfilePicture(formData))
+        .then((actionResponse) => {
+          // Check if the action was successful (no error in payload or not rejected)
+          // The action itself now returns a promise, so we can check its resolution.
+          if (actionResponse && !actionResponse.error) {
+            // Assuming action returns { error: ... } on failure
+            handleCloseAvatarModal();
+            // getProfile is dispatched within updateProfilePicture action on success
+          }
+        })
+        .catch((error) => {
+          // Errors are handled by toast in the action, but you can add more here if needed
+          console.error("Avatar upload failed in component:", error);
+        });
+    } else {
+      toast.info("Please select an image file first.");
+    }
+  };
+
+  const avatarSrc = useMemo(() => {
+    if (user?.avatarUrl) {
+      if (user.avatarUrl.startsWith("http")) {
+        return user.avatarUrl;
+      }
+      return `${BACKEND_URL}/${user.avatarUrl}`;
+    }
+    return "https://bootdey.com/img/Content/avatar/avatar7.png";
+  }, [user?.avatarUrl]);
+
+  if (loading && !user)
     return (
       <Container className="d-flex justify-content-center align-items-center vh-100">
-        
         <Spinner animation="border" variant="primary" />
       </Container>
     );
-  }
-  // --- Not Authenticated or User Failed to Load ---
-  if (!isAuth || !user) {
+  if (!isAuth || !user)
     return (
       <Container className="py-5">
-        
         <Alert variant="warning" className="text-center">
           Please <Link to="/login">login</Link> to view your profile.
         </Alert>
       </Container>
     );
-  }
 
-  // --- Helper function to render Level Section ---
   const renderLevelSection = () => {
     const nextLevelReward =
       currentLevel === 1
@@ -170,9 +237,7 @@ const Profile = () => {
         : currentLevel === 3
         ? "Mediator Badge"
         : "Exclusive Offer";
-    const hasReachedNextLevelGoal =
-      currentPoints >= nextLevelPoints && nextLevelPoints > 0;
-    const isMaxLevel = nextLevelPoints <= 0 || currentLevel >= 10; // Example max level check
+    const isMaxLevel = nextLevelPoints <= 0 || currentLevel >= 10;
 
     return (
       <div className="level-section-widget-v2 mt-4">
@@ -185,8 +250,7 @@ const Profile = () => {
             placement="top"
             overlay={
               <Tooltip id="tooltip-reputation">
-                Reputation points earned through positive interactions and
-                successful mediations.
+                Reputation points earned...
               </Tooltip>
             }
           >
@@ -218,9 +282,6 @@ const Profile = () => {
                 </span>
               </OverlayTrigger>
             </div>
-            {/* Optional Claim Button Logic
-                 {hasReachedNextLevelGoal && <Button size="sm" variant="outline-warning" className="mt-2 claim-reward-btn">Claim Reward!</Button>}
-                 */}
           </>
         ) : (
           <div className="text-center text-success small mt-3">
@@ -230,27 +291,30 @@ const Profile = () => {
       </div>
     );
   };
-  // ------------------------------------------------
 
-  // --- Main Render ---
   return (
     <Container fluid className="profile-page-professional py-4 px-md-4">
       <Row>
-        {/* --- Left Column: Basic Info, Rating, Level --- */}
         <Col lg={4} className="mb-4">
           <Card className="h-100 shadow-sm border-0 profile-widget">
             <Card.Body className="p-4 text-center">
-              <Image
-                src={
-                  user.avatarUrl ||
-                  "https://bootdey.com/img/Content/avatar/avatar7.png"
-                }
-                roundedCircle
-                width={120}
-                height={120}
-                className="profile-avatar-lg mb-3"
-                alt={`${user.fullName || "User"}'s avatar`}
-              />
+              <div
+                className="profile-avatar-container position-relative mx-auto mb-3"
+                style={{ width: 120, height: 120 }}
+                onClick={handleOpenAvatarModal}
+              >
+                <Image
+                  src={avatarSrc}
+                  roundedCircle
+                  width={120}
+                  height={120}
+                  className="profile-avatar-lg"
+                  alt={`${user.fullName || "User"}'s avatar`}
+                />
+                <div className="profile-avatar-overlay rounded-circle d-flex justify-content-center align-items-center">
+                  <FaCamera size={24} color="white" />
+                </div>
+              </div>
               <h3 className="profile-name-lg mb-1">{user.fullName || "N/A"}</h3>
               <p className="text-muted mb-2">{user.email}</p>
               <p className="text-muted small mb-3">
@@ -266,7 +330,7 @@ const Profile = () => {
                   {user.blocked ? (
                     <XCircle size={14} className="me-1" />
                   ) : (
-                    <CheckCircle size={14} className="me-1" />
+                    <FaCheckCircle size={14} className="me-1" />
                   )}
                   {user.blocked ? "Blocked" : "Active"}
                 </Badge>
@@ -274,17 +338,19 @@ const Profile = () => {
                   <FaUserShield size={14} className="me-1" />
                   {user.userRole}
                 </Badge>
-                {/* --- [!!!] إضافة شارة الوسيط شرطيًا [!!!] --- */}
                 {user.isMediatorQualified && (
-                <Badge pill bg="warning" text="dark" className="mediator-badge-lg mb-1">
+                  <Badge
+                    pill
+                    bg="warning"
+                    text="dark"
+                    className="mediator-badge-lg mb-1"
+                  >
                     <Briefcase size={16} className="me-1" /> Mediator
-                </Badge>
-                  )}
+                  </Badge>
+                )}
               </div>
-              {/* Render Level Section */}
               {renderLevelSection()}
             </Card.Body>
-            {/* Seller Rating Section Footer */}
             {positiveRatings > 0 || negativeRatings > 0 ? (
               <Card.Footer className="bg-light p-3 border-0">
                 <h6 className="text-muted small mb-2 text-center">
@@ -321,10 +387,7 @@ const Profile = () => {
             )}
           </Card>
         </Col>
-
-        {/* --- Right Column: Balances, Stats, Mediator App --- */}
         <Col lg={8}>
-          {/* --- Balances Card --- */}
           <Card className="shadow-sm border-0 mb-4">
             <Card.Header className="bg-white p-3 border-0 d-flex justify-content-between align-items-center">
               <h5 className="mb-0 section-title-modern">
@@ -336,9 +399,7 @@ const Profile = () => {
             <Card.Body className="p-4">
               <Row className="g-3 text-center">
                 <Col sm={6} md={4} className="mb-3">
-                  
                   <div className="balance-widget">
-                    
                     <FaPiggyBank className="icon text-primary" />
                     <span className="label">Principal</span>
                     <span className="value">
@@ -350,9 +411,7 @@ const Profile = () => {
                   </div>
                 </Col>
                 <Col sm={6} md={4} className="mb-3">
-                  
                   <div className="balance-widget">
-                    
                     <FaUniversity className="icon text-info" />
                     <span className="label">Deposit</span>
                     <span className="value">
@@ -364,9 +423,7 @@ const Profile = () => {
                   </div>
                 </Col>
                 <Col sm={6} md={4} className="mb-3">
-                  
                   <div className="balance-widget">
-                    
                     <FaDollarSign className="icon text-danger" />
                     <span className="label">Withdrawal</span>
                     <span className="value">
@@ -379,11 +436,8 @@ const Profile = () => {
                 </Col>
                 {(user.userRole === "Vendor" || user.userRole === "Admin") && (
                   <>
-                    
                     <Col sm={6} md={6} className="mb-3 mb-md-0">
-                      
                       <div className="balance-widget">
-                        
                         <FaBalanceScale className="icon text-success" />
                         <span className="label">Seller Available</span>
                         <span className="value">
@@ -395,9 +449,7 @@ const Profile = () => {
                       </div>
                     </Col>
                     <Col sm={6} md={6}>
-                      
                       <div className="balance-widget">
-                        
                         <FaHourglassHalf className="icon text-warning" />
                         <span className="label">Seller On Hold</span>
                         <span className="value">
@@ -413,8 +465,6 @@ const Profile = () => {
               </Row>
             </Card.Body>
           </Card>
-
-          {/* --- User Statistics Card --- */}
           <Card className="shadow-sm border-0 mb-4">
             <Card.Header className="bg-white p-3 border-0">
               <h5 className="mb-0 section-title-modern">
@@ -423,9 +473,7 @@ const Profile = () => {
             </Card.Header>
             <Card.Body className="p-4">
               <Row className="g-3">
-                {/* Use g-3 for spacing */}
                 <Col md={6} className="statistic-entry-col">
-                  {/* Use md={6} */}
                   <div className="statistic-entry">
                     <FeatherTag size={20} className="me-2 text-info" />
                     <div>
@@ -437,7 +485,6 @@ const Profile = () => {
                   </div>
                 </Col>
                 <Col md={6} className="statistic-entry-col">
-                  {/* Use md={6} */}
                   <div className="statistic-entry">
                     <FeatherCheck size={20} className="me-2 text-success" />
                     <div>
@@ -449,12 +496,70 @@ const Profile = () => {
               </Row>
             </Card.Body>
           </Card>
-
-          {/* --- Mediator Application Card --- */}
           {!user.blocked && <MediatorApplication />}
-          {/* ----------------------------- */}
         </Col>
       </Row>
+
+      <Modal show={showAvatarModal} onHide={handleCloseAvatarModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Update Profile Picture</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="text-center">
+          {previewImage && (
+            <Image
+              src={previewImage}
+              roundedCircle
+              width={180}
+              height={180}
+              className="mb-3 d-block mx-auto"
+              alt="Avatar preview"
+              onError={(e) => {
+                e.target.src =
+                  "https://bootdey.com/img/Content/avatar/avatar7.png";
+              }}
+            />
+          )}
+          <Form.Group controlId="formFile" className="mb-3">
+            <Form.Label>
+              Select new image (JPG, PNG, GIF, WEBP - Max 2MB)
+            </Form.Label>
+            <Form.Control
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleFileChange}
+            />
+          </Form.Group>
+          {errorUpdateAvatar && (
+            <Alert variant="danger" className="mt-2">
+              {typeof errorUpdateAvatar === "string"
+                ? errorUpdateAvatar
+                : JSON.stringify(errorUpdateAvatar)}
+            </Alert>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseAvatarModal}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleUploadAvatar}
+            disabled={!selectedFile || loadingUpdateAvatar}
+          >
+            {loadingUpdateAvatar ? (
+              <Spinner
+                as="span"
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+              />
+            ) : (
+              "Upload Picture"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

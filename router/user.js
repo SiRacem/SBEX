@@ -9,7 +9,7 @@ const {
     adminGetAvailableMediators, // <-- استيراد الدالة الجديدة
     // --- [!!!] استيراد الدوال الجديدة [!!!] ---
     applyForMediator, adminGetPendingMediatorApplications,
-    adminApproveMediatorApplication, adminRejectMediatorApplication,updateMyMediatorStatus
+    adminApproveMediatorApplication, adminRejectMediatorApplication,updateMyMediatorStatus,updateUserProfilePicture,
     // ------------------------------------
 } = require('../controllers/user.controller'); // <-- تأكد من المسار الصحيح
 // -------------------------------------------
@@ -17,6 +17,7 @@ const { registerRules, validatorMiddleware } = require('../middlewares/validator
 const { verifyAuth } = require('../middlewares/verifyAuth');
 const { isAdmin } = require('../middlewares/roleCheck');
 const { isMediator } = require('../middlewares/roleCheck'); // قد تحتاج لـ middleware جديد للتحقق من isMediatorQualified
+const uploadAvatar = require('../middlewares/uploadAvatar');
 // -------------------------------------------
 
 const router = express.Router();
@@ -51,5 +52,7 @@ router.put('/admin/mediator-application/:userId/approve', verifyAuth, isAdmin, a
 router.put('/admin/mediator-application/:userId/reject', verifyAuth, isAdmin, adminRejectMediatorApplication);
 // ------------------------------------------------------
 router.put('/mediator/status', verifyAuth, /* isMediator, */ updateMyMediatorStatus);
+
+router.put('/profile/avatar', verifyAuth, uploadAvatar.single('avatar'), updateUserProfilePicture);
 
 module.exports = router;

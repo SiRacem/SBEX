@@ -65,6 +65,7 @@ const NotificationSchema = new Schema({
             'MEDIATION_REJECTED_BY_BUYER',
             'MEDIATION_CANCELLED_BY_PARTY',
             'MEDIATION_CANCELLATION_CONFIRMED',
+            'PARTIES_CONFIRMED_AWAITING_CHAT',
 
             // General/Other
             'NEW_MESSAGE',

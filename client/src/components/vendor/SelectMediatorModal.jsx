@@ -1,5 +1,4 @@
 // src/components/vendor/SelectMediatorModal.jsx
-import React from "react";
 import {
   Modal,
   Button,
@@ -7,25 +6,43 @@ import {
   Row,
   Col,
   Image,
-  Badge,
   Spinner,
   Alert,
 } from "react-bootstrap";
+import React, { useMemo } from "react";
 import {
-  FaUserCircle,
   FaStar,
   FaCheckCircle,
   FaExclamationTriangle,
   FaRedo,
-} from "react-icons/fa"; // FaRedo for refresh
+} from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const noMediatorImageUrl =
-  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="%23aaaaaa">?</text></svg>';
+  'https://bootdey.com/img/Content/avatar/avatar7.png';
+
+// --- أضف BACKEND_URL هنا ---
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
-      console.log("MediatorCard - received mediator:", mediator);
-  if (!mediator) return null;
+  console.log("MediatorCard - received mediator:", mediator);
   const calculatedRating = mediator.calculatedRating;
+
+  // --- بناء رابط الصورة بشكل صحيح ---
+  const mediatorAvatarSrc = useMemo(() => {
+    if (mediator?.avatarUrl) {
+      if (mediator.avatarUrl.startsWith("http")) {
+        // إذا كان الرابط كاملاً بالفعل
+        return mediator.avatarUrl;
+      }
+      return `${BACKEND_URL}/${mediator.avatarUrl}`; // افترض أنه مسار نسبي
+    }
+    return noMediatorImageUrl; // صورة افتراضية إذا لم يكن هناك avatarUrl
+  }, [mediator?.avatarUrl]);
+
+  if (!mediator) return null;
+
   return (
     <Card
       className={`mb-3 mediator-card shadow-sm ${
@@ -36,7 +53,7 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
         <Row className="align-items-center">
           <Col xs="auto">
             <Image
-              src={mediator.image || noMediatorImageUrl}
+              src={mediatorAvatarSrc || noMediatorImageUrl}
               roundedCircle
               style={{ width: "50px", height: "50px", objectFit: "cover" }}
               alt={mediator.name}
@@ -46,32 +63,49 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
             />
           </Col>
           <Col>
-            <h6 className="mb-0">{mediator.fullName || "N/A"}</h6>
+            <Link
+              to={`/profile/${mediator._id}`}
+              target="_blank" // يفتح في تبويب جديد (اختياري)
+              rel="noopener noreferrer" // للأمان عند استخدام target="_blank"
+              style={{ textDecoration: "none", color: "inherit" }} // لإزالة التسطير الافتراضي للرابط
+            >
+              <h6 className="mb-0 mediator-name-link">
+                {mediator.fullName || "N/A"}
+              </h6>
+            </Link>
             <small className="text-muted">
-              Level: {mediator.level || "N/A"} | Rep: {mediator.reputation || 0}{" "}
+              Level: {mediator.level || "N/A"} | Rep:{" "}
+              {mediator.reputationPoints || 0} {/* استخدام reputationPoints */}
               pts
             </small>
             <div>
-<FaStar className="text-warning me-1" /> {calculatedRating != null ? calculatedRating.toFixed(1) : "0.0"}
-
+              <FaStar className="text-warning me-1" />{" "}
+              {/* --- التعديل هنا --- */}
+              {typeof calculatedRating === "number"
+                ? calculatedRating.toFixed(1)
+                : "0.0"}{" "}
+              {/* إذا كان الرقم موجوداً، قم بتنسيقه، وإلا اعرض 0.0 */}
+              {/* -------------------- */}
               <FaCheckCircle className="text-success ms-2 me-1" />{" "}
-              {mediator.successfulMediations || 0} successful
+              {mediator.successfulMediationsCount || 0} successful
             </div>
           </Col>
-<Col xs="auto">
-    <Button
-        variant="outline-primary"
-        size="sm"
-        onClick={() => {
-            console.log("Select button clicked for mediator:", mediator); // للتأكد من أن الوسيط صحيح
-            if (mediator && mediator._id) {
-                onSelect(mediator._id); // تأكد من أن onSelect هي onSelectMediator
-            } else {
-                console.error("Mediator ID is missing for selection.");
-            }
-        }}
-        disabled={loadingSelection || mediator.mediatorStatus !== 'Available'}
-    >
+          <Col xs="auto">
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => {
+                console.log("Select button clicked for mediator:", mediator); // للتأكد من أن الوسيط صحيح
+                if (mediator && mediator._id) {
+                  onSelect(mediator._id); // تأكد من أن onSelect هي onSelectMediator
+                } else {
+                  console.error("Mediator ID is missing for selection.");
+                }
+              }}
+              disabled={
+                loadingSelection || mediator.mediatorStatus !== "Available"
+              }
+            >
               {loadingSelection && isSelected ? (
                 <Spinner
                   as="span"

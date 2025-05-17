@@ -26,7 +26,8 @@ const MediationRequestSchema = new Schema({
             'Completed',
             'Cancelled',
             'Disputed',
-            'AdminResolved'
+            'AdminResolved',
+            'PartiesConfirmed',
         ],
         default: 'PendingMediatorSelection'
     },

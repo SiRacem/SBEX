@@ -17,6 +17,7 @@ import {
   FaUserCheck,
   FaClipboardCheck,
   FaClipboardList,
+  FaChalkboardTeacher,
 } from "react-icons/fa";
 import { useSelector, useDispatch } from "react-redux";
 import { Form } from "react-bootstrap";
@@ -29,7 +30,10 @@ const logoUrl =
 const Sidebar = ({ onSearchChange }) => {
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
-  const userRole = useSelector((state) => state.userReducer.user?.userRole);
+  const user = useSelector((state) => state.userReducer.user);
+  const userRole = user?.userRole;
+  const isMediatorQualified = user?.isMediatorQualified;
+  
 
   const handleLogout = useCallback(() => {
     dispatch(logoutUser());
@@ -95,71 +99,34 @@ const Sidebar = ({ onSearchChange }) => {
           <span className="link-text">Support</span>
         </NavLink>
 
+        {isMediatorQualified && (
+          <NavLink className="sidebar-link" to="/dashboard/mediator/assignments" title="Mediator Dashboard">
+            <FaChalkboardTeacher className="icon" /> {/* أو FaGavel أو أي أيقونة تراها مناسبة */}
+            <span className="link-text">Mediator Hub</span>
+          </NavLink>
+        )}
+
         {/* --- روابط البائع --- */}
         {userRole === "Vendor" && (
           <>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/comptes_bids"
-              title="My Accounts"
-            >
-              <FaImages className="icon" />
-              <span className="link-text">My Accounts & Bids</span>
-            </NavLink>
-            <NavLink className="sidebar-link" to="/my-mediation-requests" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink>          </>
+            <NavLink className="sidebar-link" to="/dashboard/comptes_bids" title="My Accounts & Bids"><FaImages className="icon" /><span className="link-text">My Accounts & Bids</span></NavLink>
+          </>
         )}
 
         {/* --- روابط الأدمن --- */}
         {userRole === "Admin" && (
           <>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/products"
-              title="Manage Products"
-            >
-              <FaTasks className="icon" />
-              <span className="link-text">Products</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/users"
-              title="Manage Users"
-            >
-              <FaUsers className="icon" />
-              <span className="link-text">Users</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/payment-methods"
-              title="Manage Users"
-            >
-              <FaMoneyCheckAlt className="icon" />
-              <span className="link-text">Payment Methods</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/deposit-requests"
-              title="Manage Users"
-            >
-              <FaGavel className="icon" />
-              <span className="link-text">Manage Orders</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
-              to="/dashboard/admin/mediator-review"
-              title="Manage Mediators"
-            >
-              <FaUserCheck className="icon" />
-              <span className="link-text">Manage Mediators</span>
-            </NavLink>
+            <NavLink className="sidebar-link" to="/dashboard/admin/products" title="Manage Products"><FaTasks className="icon" /><span className="link-text">Products</span></NavLink>
+            <NavLink className="sidebar-link" to="/dashboard/admin/users" title="Manage Users"><FaUsers className="icon" /><span className="link-text">Users</span></NavLink>
+            <NavLink className="sidebar-link" to="/dashboard/admin/payment-methods" title="Payment Methods"><FaMoneyCheckAlt className="icon" /><span className="link-text">Payment Methods</span></NavLink>
+            <NavLink className="sidebar-link" to="/dashboard/admin/deposits" title="Manage Deposits"><FaGavel className="icon" /> {/* غير الأيقونة إذا أردت */} <span className="link-text">Manage Deposits</span></NavLink> {/* غيرت النص ليناسب الأيقونة */}
+            <NavLink className="sidebar-link" to="/dashboard/admin/mediator-review" title="Mediator Applications"><FaUserCheck className="icon" /><span className="link-text">Mediator Apps</span></NavLink> {/* غيرت النص */}
           </>
         )}
-
-        {/* --- روابط المستخدم العادي --- */}
-        {userRole === "User" && (
-          <>
+        
+         {/* أو إذا كان المستخدم العادي (المشتري) والبائع يمكن أن يكون لديهم "My Orders" */}
+        {(userRole === "User" || userRole === "Vendor") && (
             <NavLink className="sidebar-link" to="/my-mediation-requests" title="My Orders"> <FaClipboardList className="icon" /> <span className="link-text">My Orders</span> </NavLink>
-          </>
         )}
       </nav>
       {/* Logout Button (on larger screens) */}

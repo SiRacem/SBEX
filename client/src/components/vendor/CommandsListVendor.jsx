@@ -154,11 +154,12 @@ const CommandsListVendor = () => {
       // يشمل المنتجات التي في أي مرحلة من مراحل الوساطة أو تنتظر إجراء متعلق بالوساطة
       return (
         productStatus === "PendingMediatorSelection" ||
-        productStatus === "MediatorAssigned" ||
-        mediationRequestStatus === "MediationOfferAccepted" ||
-        mediationRequestStatus === "EscrowFunded" ||
-        productStatus === "InProgress" ||
-        mediationRequestStatus === "InProgress"
+      productStatus === "MediatorAssigned" ||
+      mediationRequestStatus === "MediationOfferAccepted" ||
+      mediationRequestStatus === "EscrowFunded" ||
+      mediationRequestStatus === "PartiesConfirmed" || // <--- أضف هذه
+      productStatus === "InProgress" ||
+      mediationRequestStatus === "InProgress"
       );
     });
   }, [myProducts]);

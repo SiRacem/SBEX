@@ -46,15 +46,17 @@ const ProductSchema = new Schema({
             'pending',
             'approved',
             'rejected',
+            'sold',
+            'Completed',                // تمت الصفقة بنجاح
             'PendingMediatorSelection', // تم قبول مزايدة، البائع يختار وسيطًا
             'MediatorAssigned',         // تم اختيار الوسيط، ينتظر قبول الوسيط
+            'PartiesConfirmedForMediation', // تم تاكيد الأطراف للوساطة
+            'InProgress',               // الوساطة جارية
             'MediationOfferAccepted',   // الوسيط قبل، ينتظر تأكيد الأطراف
             'EscrowFunded',             // تم تجميد الأرصدة
-            'InProgress',               // الوساطة جارية
-            'Completed',                // تمت الصفقة بنجاح
             'Cancelled',                // تم إلغاء الصفقة/الوساطة
             'Disputed',                 // تم فتح نزاع
-            'Archived'                  // تمت الأرشفة
+            'Archived',               // تمت الأرشفة
         ],
         default: 'pending',
         index: true

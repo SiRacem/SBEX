@@ -12,6 +12,10 @@ import {
   UPDATE_MEDIATOR_STATUS_SUCCESS,
   UPDATE_MEDIATOR_STATUS_FAIL,
   UPDATE_USER_BALANCE,
+  UPDATE_AVATAR_REQUEST,     // --- NEW ---
+  UPDATE_AVATAR_SUCCESS,     // --- NEW ---
+  UPDATE_AVATAR_FAIL,        // --- NEW ---
+  UPDATE_AVATAR_RESET,       // --- NEW (Optional) ---
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -39,6 +43,9 @@ const initialState = {
   successProcessApp: false,
   loadingUpdateMediatorStatus: false,
   errorUpdateMediatorStatus: null,
+  loadingUpdateAvatar: false, // --- NEW ---
+  errorUpdateAvatar: null,    // --- NEW ---
+  successUpdateAvatar: false, // --- NEW (Optional) ---
 };
 
 const userReducer = (state = initialState, { type, payload }) => {
@@ -188,6 +195,41 @@ const userReducer = (state = initialState, { type, payload }) => {
         };
       }
       return state; // إذا لم يكن المستخدم موجودًا أو الـ payload غير صالح، لا تغير الحالة
+      
+        // --- NEW CASES for Avatar Update ---
+    case UPDATE_AVATAR_REQUEST:
+      return { 
+        ...state, 
+        loadingUpdateAvatar: true, 
+        errorUpdateAvatar: null, 
+        successUpdateAvatar: false 
+      };
+    case UPDATE_AVATAR_SUCCESS:
+      // payload should be the updated user object or at least { avatarUrl: 'new_url' }
+      // If backend returns the full user object in payload:
+      // return { ...state, loadingUpdateAvatar: false, user: payload, successUpdateAvatar: true, errorUpdateAvatar: null };
+      // If backend returns just { avatarUrl: 'new_url' } or { user: { avatarUrl: '...' } }:
+      return {
+        ...state,
+        loadingUpdateAvatar: false,
+        user: state.user ? { ...state.user, avatarUrl: payload.avatarUrl || payload } : null, // Update avatarUrl in user object
+        successUpdateAvatar: true,
+        errorUpdateAvatar: null,
+      };
+    case UPDATE_AVATAR_FAIL:
+      return { 
+        ...state, 
+        loadingUpdateAvatar: false, 
+        errorUpdateAvatar: payload, 
+        successUpdateAvatar: false 
+      };
+    case UPDATE_AVATAR_RESET: // Optional
+      return {
+        ...state,
+        loadingUpdateAvatar: false,
+        errorUpdateAvatar: null,
+        successUpdateAvatar: false,
+      };
       
     default: return state;
   }

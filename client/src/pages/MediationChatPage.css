@@ -1,0 +1,222 @@
+/* src/pages/MediationChatPage.css */
+.mediation-chat-page-redesigned {
+    height: calc(100vh - 56px);
+    /* Adjust 56px based on your actual Navbar height */
+    overflow: hidden;
+    display: flex;
+}
+
+.mediation-chat-page-redesigned .row {
+    flex-grow: 1;
+}
+
+.chat-main-area,
+.chat-sidebar-area {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-main-area .card {
+    border-radius: 0 !important;
+    box-shadow: none;
+}
+
+.chat-messages-area {
+    background-color: #ffffff;
+}
+
+.chat-sidebar-area {
+    background-color: #f8f9fa;
+    overflow-y: auto;
+    /* Make only the inner div scrollable */
+}
+
+.chat-sidebar-area>.flex-grow-1 {
+    /* Target the inner scrollable div */
+    overflow-y: auto;
+}
+
+
+.participant-list .list-group-item {
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.participant-list .list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+.participant-list img {
+    object-fit: cover;
+    /* Ensure avatar images cover their space */
+}
+
+.transaction-details-widget {
+    font-size: 0.875rem;
+    /* Slightly smaller for details */
+}
+
+.transaction-details-widget p {
+    color: #495057;
+    line-height: 1.5;
+    margin-bottom: 0.4rem;
+}
+
+.transaction-details-widget strong {
+    color: #212529;
+    margin-right: 0.3rem;
+}
+
+.message-item {
+    border: none !important;
+    padding: 0.6rem 0 !important;
+    display: flex;
+    align-items: flex-end;
+}
+
+.message-item.sent {
+    justify-content: flex-end;
+}
+
+.message-item.sent .message-content {
+    align-items: flex-end;
+}
+
+.message-item.sent .message-bubble {
+    background-color: #0d6efd;
+    /* Bootstrap primary blue */
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+}
+
+.message-item.sent .message-bubble strong {
+    display: none;
+}
+
+
+.message-item.received {
+    justify-content: flex-start;
+}
+
+.message-item.received .message-content {
+    align-items: flex-start;
+}
+
+.message-item.received .message-bubble {
+    background-color: #e9ecef;
+    color: #212529;
+    border-radius: 18px 18px 18px 4px;
+}
+
+.message-item.received .message-bubble strong {
+    color: #0a58ca;
+    /* Darker blue for sender name */
+    font-weight: 500;
+    /* Slightly less bold */
+}
+
+
+.message-content {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+}
+
+.message-bubble {
+    padding: 8px 12px;
+    /* Adjusted padding */
+    border-radius: 18px;
+    word-wrap: break-word;
+    box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.08);
+    line-height: 1.45;
+}
+
+.message-bubble p {
+    margin-bottom: 0;
+    /* Remove bottom margin from p inside bubble */
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+}
+
+.message-timestamp {
+    font-size: 0.68rem;
+    /* Smaller timestamp */
+    color: #6c757d !important;
+    margin-top: 3px;
+    padding: 0 5px;
+}
+
+.message-item.sent .message-timestamp {
+    text-align: right;
+}
+
+.message-item.received .message-timestamp {
+    text-align: left;
+}
+
+
+.chat-input-area {
+    border-top: 1px solid #dee2e6 !important;
+    background-color: #f8f9fa;
+    padding: 0.75rem 1rem;
+}
+
+.chat-input-area .form-control {
+    border-radius: 20px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-color: #ced4da;
+}
+
+.chat-input-area .form-control:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.chat-input-area .btn {
+    border-radius: 20px;
+}
+
+.chat-input-area .btn-light {
+    background-color: transparent;
+    border: none;
+    color: #495057;
+    font-size: 1.2rem;
+    /* Larger icons */
+    padding: 0.375rem 0.5rem;
+}
+
+.chat-input-area .btn-light:hover {
+    color: #007bff;
+}
+
+.chat-input-area .btn-primary {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.chat-input-area .btn-primary .fa-paper-plane {
+    margin-right: 0.3rem;
+}
+
+
+/* Responsive Sidebar in Offcanvas */
+.offcanvas-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.offcanvas-body .participant-list,
+.offcanvas-body .transaction-details-widget,
+.offcanvas-body .action-buttons-footer {
+    padding-left: 0.25rem;
+    /* Reduced padding inside offcanvas */
+    padding-right: 0.25rem;
+}
+
+.offcanvas-body .action-buttons-footer {
+    background-color: #fff;
+    /* Ensure buttons have a background if needed */
+    margin-top: auto;
+    /* Push to bottom */
+}

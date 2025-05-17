@@ -1,4 +1,3 @@
-console.log('<<<<< MEDIATION.ROUTER.JS LOADED - CHECKING CONTROLLER PATH >>>>>');
 // server/router/mediation.router.js
 const express = require('express');
 const router = express.Router();
@@ -6,7 +5,6 @@ const { verifyAuth } = require('../middlewares/verifyAuth');
 const { isAdmin, isAssignedMediator } = require('../middlewares/roleCheck');
 const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck'); // Middleware جديد
 const mediationController = require('../controllers/mediation.controller');
-console.log('<<<<< mediationController.sellerConfirmReadiness EXISTS:', !!mediationController.sellerConfirmReadiness, ' >>>>>');
 const {
     adminGetPendingAssignmentRequests,
     adminAssignMediator,
@@ -20,7 +18,8 @@ const {
     buyerConfirmReadinessAndEscrow,
     getBuyerMediationRequests,
     buyerRejectMediation,
-    getMediationChatHistory
+    getMediationChatHistory,
+    getMediationRequestDetailsController
 } = require('../controllers/mediation.controller');
 
 // --- مسارات الأدمن ---
@@ -105,6 +104,8 @@ router.put(
     buyerRejectMediation // دالة جديدة في الـ controller
 );
 
+router.get('/request-details/:mediationRequestId', verifyAuth, /* mediationController. */getMediationRequestDetailsController); 
+
 // --- [!!!] ROUTE جديد لجلب سجل محادثة الوساطة [!!!] ---
 router.get(
     '/chat/:mediationRequestId/history',
@@ -112,6 +113,7 @@ router.get(
     // يمكنك إضافة middleware للتحقق من أن المستخدم طرف في هذه الوساطة
     getMediationChatHistory // دالة جديدة
 );
+
 
 // POST /mediation/complete/:requestId (للوسيط لإتمام الصفقة)
 // ... والمزيد ...

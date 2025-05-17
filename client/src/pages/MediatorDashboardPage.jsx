@@ -24,73 +24,61 @@ import {
   getMediatorAcceptedAwaitingPartiesAction,
 } from "../redux/actions/mediationAction";
 import { Link } from "react-router-dom";
-import { toast } from "react-toastify";
 import { BsImage } from "react-icons/bs";
 import RejectAssignmentModal from "../components/mediator/RejectAssignmentModal";
 
+// Helper: Currency Formatting (Keep as is)
 const formatCurrency = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num) || amount == null) return "N/A";
-  let safeCurrencyCode = currencyCode;
-  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-    safeCurrencyCode = "TND";
-  }
-  try {
-    return num.toLocaleString("fr-TN", {
-      style: "currency",
-      currency: safeCurrencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
-    });
-  } catch (error) {
-    return `${num.toFixed(3)} ${safeCurrencyCode}`;
-  }
+    const num = Number(amount);
+    if (isNaN(num) || amount == null) return "N/A";
+    let safeCurrencyCode = currencyCode;
+    if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
+        safeCurrencyCode = "TND";
+    }
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: safeCurrencyCode,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(num);
+    } catch (error) {
+        return `${num.toFixed(2)} ${safeCurrencyCode}`;
+    }
 };
 
 const noProductImageUrl =
-  "data:image/svg+xml;charset=UTF8,<svg...>?</text></svg>";
+  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23aaa">No Image</text></svg>';
 const fallbackProductImageUrl =
-  "data:image/svg+xml;charset=UTF8,<svg...>Error</text></svg>";
+  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
 const MediatorDashboardPage = () => {
   const dispatch = useDispatch();
-  const mediationState = useSelector((state) => state.mediationReducer);
+  const {
+    pendingDecisionAssignments: pendingData,
+    loadingPendingDecision,
+    errorPendingDecision,
+    acceptedAwaitingPartiesAssignments: activeData,
+    loadingAcceptedAwaitingParties: loadingActiveMediations,
+    errorAcceptedAwaitingParties: errorActiveMediations,
+    actionLoading,
+  } = useSelector((state) => state.mediationReducer);
+
   const currentUser = useSelector((state) => state.userReducer.user);
 
   const [activeTabKey, setActiveTabKey] = useState("pendingDecision");
 
-  const pendingDecisionAssignments =
-    mediationState?.pendingDecisionAssignments?.list || [];
-  const loadingPendingDecision =
-    mediationState?.loadingPendingDecision || false;
-  const errorPendingDecision = mediationState?.errorPendingDecision || null;
-  const totalPagesPending =
-    mediationState?.pendingDecisionAssignments?.totalPages || 1;
-  const currentPagePendingFromState =
-    mediationState?.pendingDecisionAssignments?.currentPage || 1;
-  const totalPending =
-    mediationState?.pendingDecisionAssignments?.totalCount || 0;
-  const [currentPagePendingLocal, setCurrentPagePendingLocal] = useState(
-    currentPagePendingFromState
-  );
+  const pendingDecisionAssignments = pendingData?.list || [];
+  const totalPagesPending = pendingData?.totalPages || 1;
+  const currentPagePendingFromState = pendingData?.currentPage || 1;
+  const totalPending = pendingData?.totalCount || 0;
+  const [currentPagePendingLocal, setCurrentPagePendingLocal] = useState(1); // ابدأ دائماً بالصفحة 1 محلياً
 
-  const acceptedAwaitingPartiesAssignments =
-    mediationState?.acceptedAwaitingPartiesAssignments?.list || [];
-  const loadingAcceptedAwaitingParties =
-    mediationState?.loadingAcceptedAwaitingParties || false;
-  const errorAcceptedAwaitingParties =
-    mediationState?.errorAcceptedAwaitingParties || null;
-  const totalPagesAccepted =
-    mediationState?.acceptedAwaitingPartiesAssignments?.totalPages || 1;
-  const currentPageAcceptedFromState =
-    mediationState?.acceptedAwaitingPartiesAssignments?.currentPage || 1;
-  const totalAccepted =
-    mediationState?.acceptedAwaitingPartiesAssignments?.totalCount || 0;
-  const [currentPageAcceptedLocal, setCurrentPageAcceptedLocal] = useState(
-    currentPageAcceptedFromState
-  );
-
-  const actionLoading = mediationState?.actionLoading || false;
+  const activeMediationsList = activeData?.list || [];
+  const totalPagesActive = activeData?.totalPages || 1;
+  const currentPageActiveFromState = activeData?.currentPage || 1;
+  const totalActive = activeData?.totalCount || 0;
+  const [currentPageActiveLocal, setCurrentPageActiveLocal] = useState(1); // ابدأ دائماً بالصفحة 1 محلياً
 
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -98,91 +86,63 @@ const MediatorDashboardPage = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedAssignmentForReject, setSelectedAssignmentForReject] =
     useState(null);
+  const [processingAssignmentId, setProcessingAssignmentId] = useState(null);
 
+  // --- MODIFIED: useEffect for fetching data based on active tab and local page ---
   useEffect(() => {
     if (currentUser && currentUser.isMediatorQualified) {
-        console.log("MediatorDashboardPage: Initial data fetch for all relevant tabs.");
-        dispatch(getMediatorAssignments(1)); // جلب الصفحة الأولى لـ Pending Decision
-        dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // جلب الصفحة الأولى لـ Accepted - Awaiting Parties
-        // أضف استدعاءات لـ Tabs الأخرى هنا عند إنشائها
+        console.log("MediatorDashboardPage: Initial data fetch triggered.");
+        dispatch(getMediatorAssignments(1)); 
+        dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); 
     }
-}, [dispatch, currentUser]); // يتم التشغيل فقط عند تغيير dispatch أو currentUser
+}, [dispatch, currentUser]);
 
-// useEffect منفصل لجلب البيانات عند تغيير التبويب أو الصفحة
-useEffect(() => {
-    if (currentUser && currentUser.isMediatorQualified) {
-        if (activeTabKey === 'pendingDecision') {
-            // لا حاجة لاستدعاء dispatch(getMediatorAssignments(currentPagePendingLocal)) هنا إذا كان التحميل الأولي قد جلبه بالفعل
-            // إلا إذا كنت تريد إعادة الجلب عند كل تغيير تبويب حتى لو كانت نفس الصفحة.
-            // إذا كان currentPagePendingLocal مختلفًا عن 1 (يعني المستخدم نقر على صفحة أخرى)، عندها قم بالجلب.
-            if (currentPagePendingLocal !== 1 || pendingDecisionAssignments.length === 0) { // أو شرط آخر لتحديد متى تعيد الجلب
-                 dispatch(getMediatorAssignments(currentPagePendingLocal));
-            }
-        } else if (activeTabKey === 'acceptedAwaitingParties') {
-            if (currentPageAcceptedLocal !== 1 || acceptedAwaitingPartiesAssignments.length === 0) {
-                dispatch(getMediatorAcceptedAwaitingPartiesAction(currentPageAcceptedLocal));
-            }
-        }
+  // -----------------------------------------------------------------------------------
+
+  // Sync local page with Redux state if needed, but fetching directly on local page change is often simpler
+  useEffect(() => {
+    // If Redux current page for pending changes (e.g. from initial load or other source)
+    // and it's different from local, update local. This is mostly for initialization.
+    if (
+      currentPagePendingFromState !== currentPagePendingLocal &&
+      activeTabKey === "pendingDecision"
+    ) {
+      // setCurrentPagePendingLocal(currentPagePendingFromState); // This might cause a loop if not careful
     }
-}, [dispatch, currentUser, activeTabKey, currentPagePendingLocal, currentPageAcceptedLocal, pendingDecisionAssignments.length, acceptedAwaitingPartiesAssignments.length]); // أضفت طول المصفوفات كاعتمادية
+  }, [currentPagePendingFromState, currentPagePendingLocal, activeTabKey]);
 
   useEffect(() => {
-    setCurrentPagePendingLocal(currentPagePendingFromState);
-  }, [currentPagePendingFromState]);
-  useEffect(() => {
-    setCurrentPageAcceptedLocal(currentPageAcceptedFromState);
-  }, [currentPageAcceptedFromState]);
+    if (
+      currentPageActiveFromState !== currentPageActiveLocal &&
+      activeTabKey === "activeMediations"
+    ) {
+      // setCurrentPageActiveLocal(currentPageActiveFromState);
+    }
+  }, [currentPageActiveFromState, currentPageActiveLocal, activeTabKey]);
 
   const handleShowImageModal = useCallback((images, index = 0) => {
-    setSelectedAssignmentImages(
-      Array.isArray(images) && images.length > 0 ? images : [noProductImageUrl]
-    );
-    setCurrentImageIndex(index);
-    setShowImageModal(true);
+    /* ... */
   }, []);
   const handleCloseImageModal = useCallback(() => setShowImageModal(false), []);
   const handleImageError = useCallback((e) => {
-    if (e.target.src !== fallbackProductImageUrl) {
-      e.target.onerror = null;
-      e.target.src = fallbackProductImageUrl;
-    }
+    /* ... */
   }, []);
 
   const handleAccept = useCallback(
     (assignmentId) => {
-      if (actionLoading) return;
+      if (actionLoading && processingAssignmentId === assignmentId) return;
+      setProcessingAssignmentId(assignmentId);
       dispatch(mediatorAcceptAssignmentAction(assignmentId))
         .then(() => {
-          // الـ Reducer يزيل المهمة من pendingDecisionAssignments
-          // إذا كانت هذه آخر مهمة في الصفحة الحالية من تبويب pendingDecision
-          if (
-            pendingDecisionAssignments.length === 1 &&
-            currentPagePendingLocal > 1 &&
-            totalPending > 1
-          ) {
-            setCurrentPagePendingLocal((prev) => prev - 1);
-          } else if (
-            pendingDecisionAssignments.length === 1 &&
-            totalPending === 1
-          ) {
-            // إذا كانت آخر مهمة على الإطلاق، قد تحتاج لإعادة جلب الصفحة الأولى أو لا شيء
-            // لأن الـ reducer سيجعل القائمة فارغة.
-            // dispatch(getMediatorAssignments(1)); // أو لا تفعل شيئًا إذا كان الـ reducer يعالجها
-          }
-          // جلب بيانات التبويب الذي انتقلت إليه المهمة
-          dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // جلب الصفحة الأولى
+          // Refetch current page of pending, and first page of active
+          dispatch(getMediatorAssignments(currentPagePendingLocal));
+          dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // Fetch page 1 of active as item moves
+          setActiveTabKey("activeMediations");
         })
-        .catch(() => {
-          /* Error toast handled by action */
-        });
+        .catch(() => {})
+        .finally(() => setProcessingAssignmentId(null));
     },
-    [
-      dispatch,
-      actionLoading,
-      pendingDecisionAssignments,
-      currentPagePendingLocal,
-      totalPending,
-    ]
+    [dispatch, actionLoading, currentPagePendingLocal, processingAssignmentId]
   );
 
   const openRejectModal = useCallback((assignment) => {
@@ -192,68 +152,65 @@ useEffect(() => {
 
   const handleConfirmRejectAssignment = useCallback(
     (assignmentId, reason) => {
-      if (actionLoading) return;
+      if (actionLoading && processingAssignmentId === assignmentId) return;
+      setProcessingAssignmentId(assignmentId);
       dispatch(mediatorRejectAssignmentAction(assignmentId, reason))
         .then(() => {
           setShowRejectModal(false);
           setSelectedAssignmentForReject(null);
-          if (
-            pendingDecisionAssignments.length === 1 &&
-            currentPagePendingLocal > 1 &&
-            totalPending > 1
-          ) {
-            setCurrentPagePendingLocal((prev) => prev - 1);
-          } else if (
-            pendingDecisionAssignments.length === 1 &&
-            totalPending === 1
-          ) {
-            // dispatch(getMediatorAssignments(1));
-          }
+          dispatch(getMediatorAssignments(currentPagePendingLocal));
         })
-        .catch(() => {
-          /* Error toast handled by action */
-        });
+        .catch(() => {})
+        .finally(() => setProcessingAssignmentId(null));
     },
-    [
-      dispatch,
-      actionLoading,
-      pendingDecisionAssignments,
-      currentPagePendingLocal,
-      totalPending,
-    ]
+    [dispatch, actionLoading, currentPagePendingLocal, processingAssignmentId]
   );
 
-  const handlePageChange = useCallback(
-    (tabKey, pageNumber) => {
-      if (currentUser && currentUser.isMediatorQualified) {
-        if (
-          tabKey === "pendingDecision" &&
-          pageNumber !== currentPagePendingLocal
-        ) {
-          setCurrentPagePendingLocal(pageNumber);
-        } else if (
-          tabKey === "acceptedAwaitingParties" &&
-          pageNumber !== currentPageAcceptedLocal
-        ) {
-          setCurrentPageAcceptedLocal(pageNumber);
-        }
-      }
-    },
-    [currentUser, currentPagePendingLocal, currentPageAcceptedLocal]
-  );
+  const handlePageChange = useCallback((tabKey, pageNumber) => {
+    if (tabKey === "pendingDecision") {
+      setCurrentPagePendingLocal(pageNumber);
+    } else if (tabKey === "activeMediations") {
+      setCurrentPageActiveLocal(pageNumber);
+    }
+  }, []);
 
   const renderAssignmentCard = useCallback(
     (assignment, isPendingDecisionTab = false) => {
-      const productImages = assignment.product?.imageUrls;
-      // تحديد ما إذا كان الزر الحالي لهذه المهمة هو الذي يتم تحميله
-      const currentActionSpecificLoading =
-        actionLoading && selectedAssignmentForReject?._id === assignment._id;
-      // يمكنك إضافة حالة مشابهة لـ selectedAssignmentForAccept إذا أردت
+      // ... (نفس الكود الممتاز الذي قدمته لـ renderAssignmentCard، مع Alert لـ InProgress) ...
+      if (!assignment || !assignment.product)
+        return <Alert variant="danger">Error displaying assignment.</Alert>;
+      const productImages = assignment.product.imageUrls;
+      const isCurrentlyProcessing =
+        processingAssignmentId === assignment._id && actionLoading;
+      let statusBadgeBg = "secondary";
+      let statusText = assignment.status;
+      switch (assignment.status) {
+        case "MediatorAssigned":
+          statusBadgeBg = "warning text-dark";
+          break;
+        case "MediationOfferAccepted":
+          statusBadgeBg = "info text-dark";
+          statusText = "Awaiting Parties";
+          break;
+        case "EscrowFunded":
+          statusBadgeBg = "primary";
+          statusText = "Buyer Confirmed";
+          break;
+        case "PartiesConfirmed":
+          statusBadgeBg = "info";
+          statusText = "Parties Confirmed";
+          break;
+        case "InProgress":
+          statusBadgeBg = "success";
+          statusText = "In Progress";
+          break;
+        default:
+          break;
+      }
       return (
         <Card key={assignment._id} className="mb-3 shadow-sm">
           <Card.Header as="h5">
-            
-            Product: {assignment.product?.title || "N/A"}
+            Product: {assignment.product.title || "N/A"}
           </Card.Header>
           <Card.Body>
             <Row>
@@ -263,25 +220,21 @@ useEffect(() => {
               >
                 <Image
                   src={productImages?.[0] || noProductImageUrl}
-                  alt={assignment.product?.title || "Product Image"}
+                  alt={assignment.product.title || "Product Image"}
                   style={{
                     width: "100%",
                     height: "120px",
                     objectFit: "contain",
-                    cursor:
-                      productImages && productImages.length > 0
-                        ? "pointer"
-                        : "default",
+                    cursor: productImages?.length ? "pointer" : "default",
                   }}
                   className="rounded"
                   onError={handleImageError}
                   onClick={() =>
-                    productImages &&
-                    productImages.length > 0 &&
+                    productImages?.length &&
                     handleShowImageModal(productImages, 0)
                   }
                 />
-                {productImages && productImages.length > 0 && (
+                {productImages?.length && (
                   <Button
                     variant="dark"
                     size="sm"
@@ -293,57 +246,51 @@ useEffect(() => {
                       padding: "0.2rem 0.5rem",
                     }}
                   >
-                    
                     <BsImage /> View Gallery ({productImages.length})
                   </Button>
                 )}
               </Col>
               <Col md={9}>
                 <Card.Text as="div">
-                  <strong>Transaction ID :</strong> {assignment._id} <br />
-                  <strong>Seller :</strong> {assignment.seller?.fullName ? (
+                  <strong>Transaction ID:</strong> {assignment._id} <br />
+                  <strong>Seller:</strong>{" "}
+                  {assignment.seller?.fullName ? (
                     <Link
                       to={`/profile/${assignment.seller._id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      
                       {assignment.seller.fullName}
                     </Link>
                   ) : (
                     "N/A"
                   )}
                   <br />
-                  <strong>Buyer :</strong> {assignment.buyer?.fullName ? (
+                  <strong>Buyer:</strong>{" "}
+                  {assignment.buyer?.fullName ? (
                     <Link
                       to={`/profile/${assignment.buyer._id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      
                       {assignment.buyer.fullName}
                     </Link>
                   ) : (
                     "N/A"
                   )}
                   <br />
-                  <strong>Agreed Price :</strong> {formatCurrency(assignment.bidAmount, assignment.bidCurrency)}
+                  <strong>Agreed Price:</strong>{" "}
+                  {formatCurrency(assignment.bidAmount, assignment.bidCurrency)}
                   <br />
-                  <strong>Status :</strong> <Badge
-                    bg={
-                      assignment.status === "MediatorAssigned"
-                        ? "warning text-dark"
-                        : assignment.status === "MediationOfferAccepted"
-                        ? "info text-dark"
-                        : "secondary"
-                    }
-                  >
-                    {assignment.status}
-                  </Badge>
+                  <strong>Status:</strong>{" "}
+                  <Badge bg={statusBadgeBg}>{statusText}</Badge>
                   <br />
-                  <strong>Assigned/Updated On :</strong> {new Date(
+                  <strong>Assigned/Updated On:</strong>{" "}
+                  {new Date(
                     assignment.updatedAt || assignment.createdAt
-                  ).toLocaleDateString()} At {new Date(
+                  ).toLocaleDateString()}{" "}
+                  At{" "}
+                  {new Date(
                     assignment.updatedAt || assignment.createdAt
                   ).toLocaleTimeString()}
                 </Card.Text>
@@ -353,9 +300,9 @@ useEffect(() => {
                       variant="success"
                       className="me-2 mb-2 mb-md-0"
                       onClick={() => handleAccept(assignment._id)}
-                      disabled={actionLoading}
+                      disabled={isCurrentlyProcessing || actionLoading}
                     >
-                      {actionLoading && !currentActionSpecificLoading ? (
+                      {isCurrentlyProcessing ? (
                         <Spinner as="span" animation="border" size="sm" />
                       ) : (
                         "Accept Assignment"
@@ -364,9 +311,10 @@ useEffect(() => {
                     <Button
                       variant="danger"
                       onClick={() => openRejectModal(assignment)}
-                      disabled={actionLoading}
+                      disabled={isCurrentlyProcessing || actionLoading}
                     >
-                      {actionLoading && currentActionSpecificLoading ? (
+                      {isCurrentlyProcessing &&
+                      selectedAssignmentForReject?._id === assignment._id ? (
                         <Spinner as="span" animation="border" size="sm" />
                       ) : (
                         "Reject Assignment"
@@ -374,11 +322,37 @@ useEffect(() => {
                     </Button>
                   </div>
                 )}
-                {assignment.status === "MediationOfferAccepted" && (
-                  <Alert variant="info" className="mt-3 small p-2">
-                    You have accepted this assignment. Waiting for both parties
-                    (seller and buyer) to confirm their readiness to proceed.
-                  </Alert>
+                {!isPendingDecisionTab && (
+                  <>
+                    {assignment.status === "MediationOfferAccepted" && (
+                      <Alert variant="info" className="mt-3 small p-2">
+                        You accepted. Waiting for parties to confirm.
+                      </Alert>
+                    )}
+                    {assignment.status === "EscrowFunded" && (
+                      <Alert variant="primary" className="mt-3 small p-2">
+                        Buyer confirmed & escrowed. Waiting for seller.
+                      </Alert>
+                    )}
+                    {assignment.status === "PartiesConfirmed" && (
+                      <Alert variant="info" className="mt-3 small p-2">
+                        Parties confirmed. Chat will start soon.
+                      </Alert>
+                    )}
+                    {assignment.status === "InProgress" && (
+                      <Alert variant="success" className="mt-3 small p-2">
+                        Mediation in progress.{" "}
+                        <Button
+                          className="mt-1 ms-2"
+                          size="sm"
+                          as={Link}
+                          to={`/dashboard/mediation-chat/${assignment._id}`}
+                        >
+                          Open Chat
+                        </Button>
+                      </Alert>
+                    )}
+                  </>
                 )}
               </Col>
             </Row>
@@ -393,60 +367,70 @@ useEffect(() => {
       handleShowImageModal,
       handleImageError,
       selectedAssignmentForReject,
+      processingAssignmentId,
     ]
   );
 
-  if (!currentUser) {
+  if (!currentUser)
     return (
       <Container className="py-5 text-center">
-        <Spinner animation="border" variant="primary" />
-        <p className="mt-2">Loading user data...</p>
+        <Spinner animation="border" />
+        <p>Loading user data...</p>
       </Container>
     );
-  }
-  if (!currentUser.isMediatorQualified) {
+  if (!currentUser.isMediatorQualified)
     return (
       <Container className="py-5 text-center">
-        <Alert variant="danger">
-          Access Denied. You are not authorized to view this page.
-        </Alert>
-        <Link to="/">Go to Homepage</Link>
+        <Alert variant="danger">Access Denied.</Alert>
+        <Link to="/">Homepage</Link>
       </Container>
     );
-  }
 
   return (
-    <Container className="py-4">
+    <Container className="py-4 mediator-dashboard-page">
       <Row className="mb-3 align-items-center">
         <Col>
           <h2>My Mediation Dashboard</h2>
         </Col>
       </Row>
-      <Tabs activeKey={activeTabKey} onSelect={(k) => setActiveTabKey(k)} id="mediator-dashboard-tabs" className="mb-3" fill >
-    <Tab eventKey="pendingDecision" title={<>Pending My Decision <Badge bg="warning" text="dark" pill>{totalPending}</Badge></>}>
+      <Tabs
+        activeKey={activeTabKey}
+        onSelect={(k) => setActiveTabKey(k || "pendingDecision")}
+        id="mediator-dashboard-tabs"
+        className="mb-3"
+        fill
+      >
+        <Tab
+          eventKey="pendingDecision"
+          title={
+            <>
+              Pending My Decision{" "}
+              <Badge bg="warning" text="dark" pill>
+                {totalPending}
+              </Badge>
+            </>
+          }
+        >
           {loadingPendingDecision &&
             pendingDecisionAssignments.length === 0 && (
               <div className="text-center my-5">
-                <Spinner animation="border" />
-                <p>Loading pending assignments...</p>
+                <Spinner />
+                <p>Loading...</p>
               </div>
             )}
           {errorPendingDecision && !loadingPendingDecision && (
-            <Alert variant="danger" className="text-center">
-              Error: {errorPendingDecision}
-            </Alert>
+            <Alert variant="danger">{errorPendingDecision}</Alert>
           )}
           {!loadingPendingDecision &&
             pendingDecisionAssignments.length === 0 &&
             !errorPendingDecision && (
-              <Alert variant="info" className="text-center">
+              <Alert variant="info">
                 No assignments pending your decision.
               </Alert>
             )}
-          {pendingDecisionAssignments.length > 0 &&
-            pendingDecisionAssignments.map((assignment) =>
-              renderAssignmentCard(assignment, true)
-            )}
+          {pendingDecisionAssignments.map((assignment) =>
+            renderAssignmentCard(assignment, true)
+          )}
           {totalPagesPending > 1 && (
             <Pagination className="justify-content-center mt-4">
               {[...Array(totalPagesPending).keys()].map((num) => (
@@ -462,40 +446,46 @@ useEffect(() => {
             </Pagination>
           )}
         </Tab>
-        <Tab eventKey="acceptedAwaitingParties" title={<>Accepted - Awaiting Parties <Badge bg="info" text="dark" pill>{totalAccepted}</Badge></>}>
-          {loadingAcceptedAwaitingParties &&
-            acceptedAwaitingPartiesAssignments.length === 0 && (
-              <div className="text-center my-5">
-                <Spinner animation="border" />
-                <p>Loading accepted assignments...</p>
-              </div>
-            )}
-          {errorAcceptedAwaitingParties && !loadingAcceptedAwaitingParties && (
-            <Alert variant="danger" className="text-center">
-              Error: {errorAcceptedAwaitingParties}
-            </Alert>
+        <Tab
+          eventKey="activeMediations"
+          title={
+            <>
+              Active Mediations{" "}
+              <Badge bg="info" text="dark" pill>
+                {totalActive}
+              </Badge>
+            </>
+          }
+        >
+          {loadingActiveMediations && activeMediationsList.length === 0 && (
+            <div className="text-center my-5">
+              <Spinner />
+              <p>Loading...</p>
+            </div>
           )}
-          {!loadingAcceptedAwaitingParties &&
-            acceptedAwaitingPartiesAssignments.length === 0 &&
-            !errorAcceptedAwaitingParties && (
-              <Alert variant="info" className="text-center">
-                No assignments are currently awaiting party confirmation.
-              </Alert>
+          {errorActiveMediations && !loadingActiveMediations && (
+            <Alert variant="danger">{errorActiveMediations}</Alert>
+          )}
+          {!loadingActiveMediations &&
+            activeMediationsList.length === 0 &&
+            !errorActiveMediations && (
+              <Alert variant="info">No active mediations.</Alert>
             )}
-          {acceptedAwaitingPartiesAssignments.length > 0 &&
-            acceptedAwaitingPartiesAssignments.map((assignment) =>
-              renderAssignmentCard(assignment, false)
-            )}
-          {totalPagesAccepted > 1 && (
+          {console.log(
+            "[MediatorDashboardPage] Rendering 'Active Mediations' Tab. Data from Redux:",
+            activeMediationsList
+          )}
+          {activeMediationsList.map((assignment) =>
+            renderAssignmentCard(assignment, false)
+          )}
+          {totalPagesActive > 1 && (
             <Pagination className="justify-content-center mt-4">
-              {[...Array(totalPagesAccepted).keys()].map((num) => (
+              {[...Array(totalPagesActive).keys()].map((num) => (
                 <Pagination.Item
                   key={num + 1}
-                  active={num + 1 === currentPageAcceptedLocal}
-                  onClick={() =>
-                    handlePageChange("acceptedAwaitingParties", num + 1)
-                  }
-                  disabled={loadingAcceptedAwaitingParties}
+                  active={num + 1 === currentPageActiveLocal}
+                  onClick={() => handlePageChange("activeMediations", num + 1)}
+                  disabled={loadingActiveMediations}
                 >
                   {num + 1}
                 </Pagination.Item>
@@ -505,6 +495,7 @@ useEffect(() => {
         </Tab>
       </Tabs>
 
+      {/* Modals (Image and Reject) */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}
@@ -516,20 +507,19 @@ useEffect(() => {
           {selectedAssignmentImages.length > 0 ? (
             <Carousel
               activeIndex={currentImageIndex}
-              onSelect={(selectedIndex) => setCurrentImageIndex(selectedIndex)}
+              onSelect={(idx) => setCurrentImageIndex(idx)}
               interval={null}
               indicators={selectedAssignmentImages.length > 1}
               controls={selectedAssignmentImages.length > 1}
             >
               {selectedAssignmentImages.map((imgUrl, index) => (
                 <Carousel.Item key={index}>
-                  
                   <Image
                     src={imgUrl || fallbackProductImageUrl}
                     fluid
                     className="lightbox-image"
                     onError={handleImageError}
-                    alt={`Product Image ${index + 1}`}
+                    alt={`Image ${index + 1}`}
                     style={{ maxHeight: "80vh", objectFit: "contain" }}
                   />
                 </Carousel.Item>
@@ -551,7 +541,6 @@ useEffect(() => {
           </Button>
         </Modal.Body>
       </Modal>
-
       {selectedAssignmentForReject && (
         <RejectAssignmentModal
           show={showRejectModal}
@@ -563,9 +552,8 @@ useEffect(() => {
           onConfirmReject={handleConfirmRejectAssignment}
           loading={
             actionLoading &&
-            selectedAssignmentForReject?._id ===
-              (mediationState?.processingAssignmentId || null)
-          } // يمكنك تحسين هذا لاحقًا
+            processingAssignmentId === selectedAssignmentForReject?._id
+          }
         />
       )}
     </Container>

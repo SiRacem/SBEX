@@ -5,6 +5,8 @@ const mongoose = require('mongoose'); // <-- تأكد من استدعائه إذ
 const bcrypt = require("bcryptjs")
 var jwt = require('jsonwebtoken');
 const config = require("config")
+const fs = require('fs');
+const path = require('path');
 
 // --- [!!!] إضافة ثوابت الشروط (يمكن نقلها لملف config) [!!!] ---
 const MEDIATOR_REQUIRED_LEVEL = 3; // المستوى المطلوب للتأهيل عبر السمعة
@@ -394,7 +396,7 @@ exports.adminGetAvailableMediators = async (req, res) => {
             blocked: false,
             mediatorStatus: 'Available' // <-- إضافة شرط الحالة "متاح"
         })
-            .select('_id fullName email avatarUrl reputationPoints level mediatorStatus') // إضافة حالة الوسيط
+            .select('_id fullName email avatarUrl reputationPoints level mediatorStatus successfulMediationsCount') // إضافة حالة الوسيط
             .sort({ fullName: 1 });
         // ---------------------------------------------------------
 
@@ -668,5 +670,87 @@ exports.updateMyMediatorStatus = async (req, res) => {
         res.status(400).json({ msg: error.message || 'Failed to update mediator status.' });
     } finally {
         console.log("--- Controller: updateMyMediatorStatus END ---");
+    }
+};
+
+// --- NEW Controller function to update profile picture ---
+exports.updateUserProfilePicture = async (req, res) => {
+    const userId = req.user._id;
+    console.log(`--- Controller: updateUserProfilePicture for User ID: ${userId} ---`);
+
+    if (!req.file) {
+        console.warn("No file uploaded for avatar update.");
+        return res.status(400).json({ msg: "No image file provided." });
+    }
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            // نظف الملف المرفوع إذا لم يتم العثور على المستخدم
+            if (req.file && req.file.path) {
+                fs.unlink(req.file.path, (err) => {
+                    if (err) console.error("Error deleting orphaned uploaded avatar:", err);
+                });
+            }
+            return res.status(404).json({ msg: "User not found." });
+        }
+
+        // (اختياري) حذف صورة البروفايل القديمة إذا كانت موجودة وليست الصورة الافتراضية
+        if (user.avatarUrl && user.avatarUrl !== 'URL_TO_DEFAULT_AVATAR_IF_ANY') {
+            // استخرج اسم الملف القديم من الرابط (بافتراض أن avatarUrl يخزن المسار النسبي)
+            // هذا الجزء يعتمد على كيفية تخزينك لـ avatarUrl
+            // إذا كان avatarUrl يخزن المسار الكامل مع اسم المضيف، ستحتاج إلى تعديل هذا.
+            // إذا كان يخزن فقط المسار النسبي مثل 'uploads/avatars/filename.jpg'
+            const oldAvatarPath = path.join(__dirname, '../..', user.avatarUrl); // ../.. للعودة من controllers إلى جذر المشروع
+            
+            // تحقق مما إذا كان الملف القديم موجودًا قبل محاولة حذفه
+            if (fs.existsSync(oldAvatarPath)) {
+                fs.unlink(oldAvatarPath, (err) => {
+                    if (err) {
+                        console.error("Error deleting old avatar:", oldAvatarPath, err);
+                    } else {
+                        console.log("Old avatar deleted:", oldAvatarPath);
+                    }
+                });
+            } else {
+                console.log("Old avatar path not found or already deleted:", oldAvatarPath);
+            }
+        }
+
+        // تحديث رابط صورة البروفايل للمستخدم
+        // req.file.path هو المسار الكامل للصورة المحفوظة بواسطة multer
+        // قد ترغب في تخزين مسار نسبي يمكن الوصول إليه من الواجهة الأمامية
+        const relativePath = req.file.path.replace(/\\/g, '/').split('uploads/')[1]; // الحصول على المسار بعد 'uploads/'
+        user.avatarUrl = `uploads/${relativePath}`; // مثال: 'uploads/avatars/userId-timestamp.jpg'
+
+        await user.save();
+
+        // إرجاع المستخدم المحدث (أو على الأقل رابط الصورة الجديد)
+        const userToReturn = user.toObject();
+        delete userToReturn.password; // تأكد من عدم إرجاع كلمة المرور
+
+        console.log(`Avatar updated successfully for user ${userId}. New URL: ${user.avatarUrl}`);
+        res.status(200).json({ 
+            msg: "Profile picture updated successfully!", 
+            user: userToReturn // إرجاع المستخدم المحدث بالكامل
+            // أو يمكنك إرجاع avatarUrl فقط: avatarUrl: user.avatarUrl 
+        });
+
+    } catch (error) {
+        console.error("Error updating profile picture in controller:", error);
+        // إذا حدث خطأ، احذف الملف المرفوع حديثًا إذا تم حفظه
+        if (req.file && req.file.path) {
+            fs.unlink(req.file.path, (errUnlink) => {
+                if (errUnlink) console.error("Error deleting uploaded avatar after controller error:", errUnlink);
+            });
+        }
+        // التعامل مع أخطاء multer (مثل حجم الملف كبير جداً) التي قد لا يتم التقاطها بواسطة fileFilter إذا لم يتم إعدادها لرمي خطأ
+        if (error instanceof multer.MulterError) {
+            if (error.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ msg: 'File too large. Max 2MB allowed.' });
+            }
+            return res.status(400).json({ msg: `File upload error: ${error.message}` });
+        }
+        res.status(500).json({ msg: "Server error while updating profile picture.", details: error.message });
     }
 };

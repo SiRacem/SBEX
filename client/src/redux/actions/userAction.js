@@ -10,14 +10,23 @@ import {
     ADMIN_PROCESS_MEDIATOR_APP_RESET,
     // الأنواع الخاصة بجلب الوسطاء المتاحين (التي أضفناها سابقًا يجب أن تكون هنا أيضًا)
     ADMIN_GET_MEDIATORS_REQUEST, ADMIN_GET_MEDIATORS_SUCCESS, ADMIN_GET_MEDIATORS_FAIL,
-    UPDATE_MEDIATOR_STATUS_REQUEST, UPDATE_MEDIATOR_STATUS_SUCCESS, UPDATE_MEDIATOR_STATUS_FAIL,
+    UPDATE_AVATAR_REQUEST, // --- NEW ---
+    UPDATE_AVATAR_SUCCESS, // --- NEW ---
+    UPDATE_AVATAR_FAIL,    // --- NEW ---
+    UPDATE_AVATAR_RESET, // --- NEW (Optional) ---
 } from "../actionTypes/userActionType";
 import { toast } from 'react-toastify';
 
-const getTokenConfig = () => {
+const getTokenConfig = (isFormData = false) => { // --- MODIFIED ---: Added isFormData
     const token = localStorage.getItem("token");
     if (!token || token === 'null' || token === 'undefined') return null;
-    return { headers: { 'Authorization': `Bearer ${token}` } };
+    
+    const headers = { 'Authorization': `Bearer ${token}` };
+    if (!isFormData) { // --- MODIFIED ---: Set Content-Type only if not FormData
+        headers['Content-Type'] = 'application/json';
+    }
+    // For FormData, axios will set the correct Content-Type (multipart/form-data) with boundary
+    return { headers };
 };
 
 export const registerUser = (newUser) => async (dispatch) => {
@@ -206,3 +215,38 @@ export const updateMediatorStatus = (newStatus) => async (dispatch) => {
         toast.error(`Status update failed: ${message}`);
     }
 };
+
+// --- NEW ACTION: Update Profile Picture ---
+export const updateProfilePicture = (formData) => async (dispatch) => {
+    dispatch({ type: UPDATE_AVATAR_REQUEST });
+    const config = getTokenConfig(true); // --- MODIFIED ---: Pass true for FormData
+
+    if (!config) {
+        const errorMsg = "Authorization Error: Please login.";
+        dispatch({ type: UPDATE_AVATAR_FAIL, payload: errorMsg });
+        toast.error(errorMsg);
+        return Promise.reject({ error: errorMsg }); // Return a rejected promise
+    }
+
+    try {
+        // The backend route will be something like '/user/profile/avatar'
+        // Ensure this route exists and is configured to handle file uploads (e.g., using Multer)
+        const { data } = await axios.put("/user/profile/avatar", formData, config); 
+        // The backend should return the updated user object or at least the new avatarUrl
+
+        dispatch({ 
+            type: UPDATE_AVATAR_SUCCESS, 
+            payload: data.user // Assuming backend returns { user: { ..., avatarUrl: 'new_url' } } or data.avatarUrl
+        });
+        toast.success(data.msg || "Profile picture updated successfully!");
+        dispatch(getProfile()); // --- ADDED ---: Re-fetch profile to ensure all user data is fresh
+        return Promise.resolve(data); // Return a resolved promise
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to update profile picture.';
+        dispatch({ type: UPDATE_AVATAR_FAIL, payload: message });
+        toast.error(`Update failed: ${message}`);
+        return Promise.reject({ error: message }); // Return a rejected promise
+    }
+};
+
+export const resetUpdateAvatarStatus = () => ({ type: UPDATE_AVATAR_RESET });

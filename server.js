@@ -1,4 +1,3 @@
-console.log('<<<<< SERVER.JS IS STARTING - VERSION NEWEST >>>>>');
 // server.js
 // *** نسخة كاملة ومعدلة مع أحداث Socket.IO للمحادثة ***
 
@@ -34,8 +33,6 @@ const uploadRoute = require('./router/upload.router');
 const withdrawalRoute = require('./router/withdrawal.router');
 const mediationRoute = require('./router/mediation.router');
 
-console.log('<<<<< mediationRoute imported into server.js >>>>>');
-
 // --- [!!!] استيراد الموديلات اللازمة لـ Socket.IO [!!!] ---
 const MediationRequest = require('./models/MediationRequest');
 const User = require('./models/User'); // لجلب معلومات مرسل الرسالة
@@ -61,58 +58,59 @@ io.on('connection', (socket) => {
     let currentSocketUserId = null; // لتخزين ID المستخدم لهذا الاتصال
 
     socket.on('addUser', (userId) => {
-        if (userId) { // التحقق من أن userId ليس null أو undefined
-            onlineUsers[userId] = socket.id;
-            currentSocketUserId = userId; // حفظ ID المستخدم للعمليات اللاحقة لهذا الـ socket
-            socket.userIdForChat = userId; // طريقة أخرى لربط userId بالـ socket instance إذا احتجت
-            console.log(`User ${userId} mapped to socket ${socket.id}. Online users: ${Object.keys(onlineUsers).length}`);
-            io.emit("getUsers", Object.keys(onlineUsers));
-        } else {
-            console.warn(`Socket ${socket.id} tried to addUser without a userId.`);
-        }
-    });
+    console.log(`[Socket Event - addUser] Received for userId: ${userId} from socket: ${socket.id}`);
+    if (userId) {
+        onlineUsers[userId] = socket.id; // هذا لتتبع المستخدمين المتصلين
+        socket.userIdForChat = userId;   // <--- هذه هي القيمة التي يستخدمها joinMediationChat
+        console.log(`[Socket Event - addUser] User ${userId} mapped. socket.userIdForChat for socket ${socket.id} is now: ${socket.userIdForChat}`);
+        io.emit("getUsers", Object.keys(onlineUsers));
+    } else {
+        console.warn(`[Socket Event - addUser] userId is null or undefined for socket ${socket.id}`);
+    }
+});
 
     // --- [!!!] أحداث المحادثة الخاصة بالوساطة [!!!] ---
-    socket.on('joinMediationChat', async ({ mediationRequestId, userRole }) => {
-        const userIdJoining = socket.userIdForChat || currentSocketUserId; // استخدام المعرف المخزن
-        if (!userIdJoining || !mediationRequestId) {
-            console.warn(`Socket: joinMediationChat - Missing userId (${userIdJoining}) or mediationRequestId (${mediationRequestId}) for socket ${socket.id}`);
-            socket.emit('mediationChatError', { message: "Required information missing to join chat." });
+    socket.on('joinMediationChat', async ({ mediationRequestId, userRole, userId }) => { // <--- استقبل userId هنا
+    // const userIdJoining = socket.userIdForChat; // لا تعتمد على هذا مبدئياً للتشخيص
+    const userIdJoining = userId; // <--- استخدم الـ userId المرسل مباشرة
+    
+    console.log(`[Socket Event - joinMediationChat] Received. mediationRequestId: ${mediationRequestId}, userRole: ${userRole}, userIdFromPayload (userIdJoining): ${userIdJoining}, socket.id: ${socket.id}`);
+
+    if (!userIdJoining || !mediationRequestId) {
+        console.warn(`[Socket Event - joinMediationChat] VALIDATION FAILED: Missing userIdJoining from payload (${userIdJoining}) or mediationRequestId (${mediationRequestId})`);
+        socket.emit('mediationChatError', { message: "Required information missing to join chat (userId or mediationId from payload)." });
+        return;
+    }
+
+    // --- يمكنك الآن تعيين userIdForChat لهذا الـ socket instance إذا أردت ---
+    socket.userIdForChat = userIdJoining; 
+    console.log(`[Socket Event - joinMediationChat] Assigned socket.userIdForChat = ${socket.userIdForChat} for socket ${socket.id}`);
+        try {
+        const request = await MediationRequest.findById(mediationRequestId).select('seller buyer mediator status');
+        if (!request) {
+            socket.emit('mediationChatError', { message: "Mediation request not found for chat." });
             return;
         }
-        try {
-            const request = await MediationRequest.findById(mediationRequestId).select('seller buyer mediator status');
-            if (!request) {
-                socket.emit('mediationChatError', { message: "Mediation request not found." });
-                return;
-            }
 
-            const isSeller = request.seller.equals(userIdJoining);
-            const isBuyer = request.buyer.equals(userIdJoining);
-            const isMediator = request.mediator && request.mediator.equals(userIdJoining);
+        const isSeller = request.seller.equals(userIdJoining);
+        const isBuyer = request.buyer.equals(userIdJoining);
+        const isMediator = request.mediator && request.mediator.equals(userIdJoining);
 
-            // السماح بالانضمام إذا كان طرفًا وكانت الحالة 'InProgress' أو حالة أخرى تسمح بالدردشة
-            if (!(isSeller || isBuyer || isMediator) || request.status !== 'InProgress') {
-                // يمكنك تعديل هذا الشرط لاحقًا إذا أردت السماح بالدردشة في حالات أخرى
-                console.warn(`Socket: User ${userIdJoining} not authorized or chat not active for mediation ${mediationRequestId}. Status: ${request.status}`);
-                socket.emit('mediationChatError', { message: "You are not authorized to join this chat or the chat is not active." });
-                return;
-            }
-
-            socket.join(mediationRequestId);
-            console.log(`Socket: User ${userIdJoining} (Role: ${userRole || 'Unknown'}) joined chat room for mediation ${mediationRequestId}`);
-
-            // (اختياري) إعلام العميل بنجاح الانضمام
-            socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined chat for mediation: ${mediationRequestId}` });
-
-            // (اختياري) إعلام الآخرين في الغرفة بانضمام مستخدم جديد
-            // socket.to(mediationRequestId).emit('userJoinedChat', { userId: userIdJoining, fullName: req.user.fullName }); // ستحتاج لجلب fullName إذا أردت
-
-        } catch (error) {
-            console.error(`Socket: Error in joinMediationChat for mediation ${mediationRequestId}, user ${userIdJoining}:`, error);
-            socket.emit('mediationChatError', { message: "Server error occurred while trying to join the chat." });
+        if (!(isSeller || isBuyer || isMediator) /* || request.status !== 'InProgress' */) { // يمكنك إزالة التحقق من الحالة مؤقتاً للتشخيص
+            console.warn(`[Socket Event - joinMediationChat] User ${userIdJoining} not authorized for mediation ${mediationRequestId}. Seller: ${request.seller}, Buyer: ${request.buyer}, Mediator: ${request.mediator}, Status: ${request.status}`);
+            socket.emit('mediationChatError', { message: "You are not authorized to join this chat or the chat is not active." });
+            return;
         }
-    });
+
+        socket.join(mediationRequestId); // الانضمام للغرفة
+        console.log(`[Socket Event - joinMediationChat] User ${userIdJoining} (Role: ${userRole}) joined chat room: ${mediationRequestId}`);
+        socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined chat for mediation: ${mediationRequestId}` });
+
+    } catch (error) {
+        console.error(`[Socket Event - joinMediationChat] Error in joinMediationChat for mediation ${mediationRequestId}, user ${userIdJoining}:`, error);
+        socket.emit('mediationChatError', { message: "Server error occurred while trying to join the chat." });
+    }
+});
 
     socket.on('sendMediationMessage', async ({ mediationRequestId, messageText }) => {
         const senderId = socket.userIdForChat || currentSocketUserId;
@@ -221,8 +219,6 @@ app.use('/deposits', depositRoute);
 app.use('/uploads', uploadRoute);
 app.use('/withdrawals', withdrawalRoute);
 app.use('/mediation', mediationRoute); // <--- تأكد أن هذا يتطابق مع استدعاءات API من الواجهة الأمامية
-
-console.log('<<<<< /mediation route setup in server.js >>>>>');
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to SBEX API!' }));
 
