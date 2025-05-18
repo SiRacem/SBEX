@@ -47,7 +47,16 @@ const MediationRequestSchema = new Schema({
             sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
             message: { type: String, required: true, trim: true },
             timestamp: { type: Date, default: Date.now },
-            // يمكنك إضافة isReadBy: [{ type: Schema.Types.ObjectId, ref: 'User' }] لاحقًا
+            type: { type: String, enum: ['text', 'image', 'file'], default: 'text' }, // <--- أضف هذا
+            imageUrl: { type: String, default: null },
+            // --- [!!! NEW FIELD FOR READ RECEIPTS !!!] ---
+            readBy: {
+                type: [{
+                    readerId: { type: Schema.Types.ObjectId, ref: 'User' },
+                    readAt: { type: Date, default: Date.now }
+                }],
+                default: [] // يبدأ فارغاً
+            }
         }
     ],
     // --- [!!!] إضافة الحقل الجديد هنا [!!!] ---

@@ -3,8 +3,8 @@ const express = require('express');
 const router = express.Router();
 const { verifyAuth } = require('../middlewares/verifyAuth');
 const { isAdmin, isAssignedMediator } = require('../middlewares/roleCheck');
+const uploadChatImage = require('../middlewares/uploadChatImage');
 const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck'); // Middleware جديد
-const mediationController = require('../controllers/mediation.controller');
 const {
     adminGetPendingAssignmentRequests,
     adminAssignMediator,
@@ -19,7 +19,8 @@ const {
     getBuyerMediationRequests,
     buyerRejectMediation,
     getMediationChatHistory,
-    getMediationRequestDetailsController
+    getMediationRequestDetailsController,
+    handleChatImageUpload,
 } = require('../controllers/mediation.controller');
 
 // --- مسارات الأدمن ---
@@ -104,7 +105,7 @@ router.put(
     buyerRejectMediation // دالة جديدة في الـ controller
 );
 
-router.get('/request-details/:mediationRequestId', verifyAuth, /* mediationController. */getMediationRequestDetailsController); 
+router.get('/request-details/:mediationRequestId', verifyAuth, getMediationRequestDetailsController);
 
 // --- [!!!] ROUTE جديد لجلب سجل محادثة الوساطة [!!!] ---
 router.get(
@@ -114,6 +115,13 @@ router.get(
     getMediationChatHistory // دالة جديدة
 );
 
+// --- [!!! NEW ROUTE FOR UPLOADING CHAT IMAGES !!!] ---
+router.post(
+    '/chat/upload-image', // المسار الذي تستدعيه الواجهة الأمامية
+    verifyAuth,           // تأكد أن المستخدم مسجل دخوله
+    uploadChatImage.single('chatImage'), // استخدم middleware الرفع، 'chatImage' هو اسم الحقل من FormData
+    handleChatImageUpload  // دالة الـ controller الجديدة
+);
 
 // POST /mediation/complete/:requestId (للوسيط لإتمام الصفقة)
 // ... والمزيد ...

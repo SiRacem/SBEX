@@ -15,20 +15,26 @@ import {
   Modal,
   Carousel,
   Form,
-} from "react-bootstrap"; // Form مضافة
+} from "react-bootstrap";
 import {
   getBuyerMediationRequestsAction,
   buyerConfirmReadinessAndEscrowAction,
-  buyerRejectMediationAction, // Action جديد لرفض المشتري
+  buyerRejectMediationAction,
 } from "../redux/actions/mediationAction";
 import { getProfile } from "../redux/actions/userAction";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // useNavigate مضافة
 import { toast } from "react-toastify";
 import { BsImage } from "react-icons/bs";
-import { FaCheck, FaHourglassHalf, FaHandshake } from "react-icons/fa";
-import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator";
-import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal";
+import {
+  FaCheck,
+  FaHourglassHalf,
+  FaHandshake,
+  FaCommentDots,
+} from "react-icons/fa";
+import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator"; // تأكد من صحة هذا المسار
+import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal"; // تأكد من وجود هذا المكون
 
+// Helper: Currency Formatting
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
@@ -54,12 +60,13 @@ const fallbackProductImageUrl =
 
 const MyMediationRequestsPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const {
     buyerRequests,
     loadingBuyerRequests,
     errorBuyerRequests,
-    confirmingReadiness, // حالة تحميل من mediationReducer لعملية تأكيد المشتري
-    actionLoading, // حالة تحميل عامة لعمليات الوسيط/المشتري (مثل الرفض)
+    confirmingReadiness,
+    actionLoading,
   } = useSelector(
     (state) =>
       state.mediationReducer || {
@@ -69,6 +76,10 @@ const MyMediationRequestsPage = () => {
           currentPage: 1,
           totalCount: 0,
         },
+        loadingBuyerRequests: false,
+        errorBuyerRequests: null,
+        confirmingReadiness: false,
+        actionLoading: false,
       }
   );
 
@@ -82,53 +93,51 @@ const MyMediationRequestsPage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRequestImages, setSelectedRequestImages] = useState([]);
-
-  // State لمودال رفض المشتري
   const [showBuyerRejectModal, setShowBuyerRejectModal] = useState(false);
   const [selectedRequestToRejectByBuyer, setSelectedRequestToRejectByBuyer] =
     useState(null);
 
   useEffect(() => {
     if (currentUser?._id) {
-      dispatch(getBuyerMediationRequestsAction(currentPageLocal, 10, null));
+      dispatch(getBuyerMediationRequestsAction(currentPageLocal, 10)); // افترض limit 10
     }
   }, [dispatch, currentUser, currentPageLocal]);
 
   useEffect(() => {
-    if (buyerRequests?.currentPage) {
+    if (
+      buyerRequests?.currentPage &&
+      buyerRequests.currentPage !== currentPageLocal
+    ) {
       setCurrentPageLocal(buyerRequests.currentPage);
     }
-  }, [buyerRequests?.currentPage]);
+  }, [buyerRequests?.currentPage, currentPageLocal]);
 
   const handleConfirmAndEscrow = useCallback(
     (mediationRequestId) => {
-      // استخدام confirmingReadiness إذا كان مخصصًا لهذه العملية، أو actionLoading إذا كان عامًا
       if (
         (confirmingReadiness &&
           selectedRequestIdForAction === mediationRequestId) ||
         actionLoading
       )
         return;
-
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerConfirmReadinessAndEscrowAction(mediationRequestId))
         .then((actionResponse) => {
           if (
             actionResponse &&
-            actionResponse.updatedBuyerBalance !== undefined
+            actionResponse.responseData?.updatedBuyerBalance !== undefined
           ) {
+            // Check inside responseData
             dispatch(getProfile());
           }
-          // الـ reducer يجب أن يحدّث الطلب في القائمة.
-          // dispatch(getBuyerMediationRequestsAction(currentPageLocal)); // أعد الجلب إذا لم يقم الـ reducer بالتحديث الكافي
+          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
         })
-        .catch(() => {
-          /* toast error handled by action */
+        .catch((err) => {
+          // toast error is usually handled in action, log if needed
+          console.error("Error confirming and escrowing:", err);
         })
         .finally(() => {
           setSelectedRequestIdForAction(null);
-          // ضمان تحديث القائمة لإظهار التغيير في الحالة
-          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
         });
     },
     [
@@ -173,112 +182,68 @@ const MyMediationRequestsPage = () => {
     (mediationRequestId, reason) => {
       if (actionLoading && selectedRequestIdForAction === mediationRequestId)
         return;
-      setSelectedRequestIdForAction(mediationRequestId); // لتتبع التحميل على هذا الطلب
+      setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerRejectMediationAction(mediationRequestId, reason))
         .then(() => {
           setShowBuyerRejectModal(false);
           setSelectedRequestToRejectByBuyer(null);
-          // تحديث القائمة (الـ reducer يجب أن يزيل الطلب)
-          // أو أعد جلب البيانات
-          if (
-            buyerRequests.list.length === 1 &&
-            currentPageLocal > 1 &&
-            buyerRequests.totalCount > 1
-          ) {
-            setCurrentPageLocal((prev) => prev - 1);
-          } else {
-            dispatch(getBuyerMediationRequestsAction(currentPageLocal));
-          }
+          // Refresh the list
+          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
         })
-        .catch(() => {
-          /* toast handled by action */
-        })
+        .catch(() => {})
         .finally(() => {
           setSelectedRequestIdForAction(null);
         });
     },
-    [
-      dispatch,
-      actionLoading,
-      buyerRequests.list,
-      currentPageLocal,
-      buyerRequests.totalCount,
-    ]
-  );
+    [dispatch, actionLoading, currentPageLocal]
+  ); // Removed buyerRequests dependencies, rely on refetch
 
-  if (!currentUser) {
+  if (!currentUser)
     return (
       <Container className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-        <p>Loading user data...</p>
+        <Spinner animation="border" />
+        <p>Loading user...</p>
       </Container>
     );
-  }
   if (
     loadingBuyerRequests &&
-    (!buyerRequests || buyerRequests.list.length === 0)
-  ) {
+    buyerRequests.list.length === 0 &&
+    !errorBuyerRequests
+  )
     return (
-      <Container className="py-4">
-        <Row className="mb-3">
-          <Col>
-            <h2>My Mediation Requests</h2>
-          </Col>
-        </Row>
-        <div className="text-center my-5">
-          <Spinner animation="border" variant="primary" />
-          <p>Loading your mediation requests...</p>
-        </div>
+      <Container className="text-center py-5">
+        <Spinner animation="border" />
+        <p>Loading requests...</p>
       </Container>
     );
-  }
-
-  if (
-    errorBuyerRequests &&
-    !loadingBuyerRequests &&
-    (!buyerRequests || buyerRequests.list.length === 0)
-  ) {
-    let errorMessage =
-      "An unknown error occurred while fetching your requests.";
-    if (typeof errorBuyerRequests === "string")
-      errorMessage = errorBuyerRequests;
-    else if (errorBuyerRequests && errorBuyerRequests.message)
-      errorMessage = errorBuyerRequests.message;
+  if (errorBuyerRequests && buyerRequests.list.length === 0)
     return (
-      <Container className="py-4">
-        <Row className="mb-3">
-          <Col>
-            <h2>My Mediation Requests</h2>
-          </Col>
-        </Row>
-        <Alert variant="danger" className="text-center">
-          Error: {errorMessage}
+      <Container className="py-5">
+        <Alert variant="danger">
+          Error:
+          {typeof errorBuyerRequests === "string"
+            ? errorBuyerRequests
+            : errorBuyerRequests.message || "Could not load requests."}
         </Alert>
       </Container>
     );
-  }
 
   return (
     <Container className="py-4">
-      <Row className="mb-3">
+      <Row className="mb-3 align-items-center">
         <Col>
           <h2>My Mediation Requests</h2>
           <p className="text-muted">
-            {loadingBuyerRequests && buyerRequests.list.length > 0
-              ? "Updating..."
-              : `You have ${
-                  buyerRequests.totalCount || 0
-                } mediation request(s).`}
+            You have {buyerRequests.totalCount || 0} mediation request(s).
           </p>
         </Col>
       </Row>
 
       {loadingBuyerRequests && buyerRequests.list.length > 0 && (
         <div className="text-center mb-3">
-          <Spinner animation="border" size="sm" variant="primary" />
+          <Spinner animation="border" size="sm" variant="primary" /> Updating...
         </div>
       )}
-
       {!loadingBuyerRequests &&
         buyerRequests.list.length === 0 &&
         !errorBuyerRequests && (
@@ -287,266 +252,264 @@ const MyMediationRequestsPage = () => {
           </Alert>
         )}
 
-      {buyerRequests.list.length > 0 &&
-        buyerRequests.list.map((request) => {
-          const product = request.product;
-          const seller = request.seller;
-          const mediator = request.mediator;
-          const isProcessingThisRequest =
-            (confirmingReadiness || actionLoading) &&
-            selectedRequestIdForAction === request._id;
-          const feeDisplayDetails = calculateMediatorFeeDetails(
-            request.bidAmount,
-            request.bidCurrency
-          );
-          const productImages = product?.imageUrls;
+      {buyerRequests.list.map((request) => {
+        if (!request || !request.product) return null;
+        const product = request.product;
+        const seller = request.seller;
+        const mediator = request.mediator;
+        const isProcessingThisRequest =
+          (confirmingReadiness || actionLoading) &&
+          selectedRequestIdForAction === request._id;
+        const feeDisplayDetails = calculateMediatorFeeDetails(
+          request.bidAmount,
+          request.bidCurrency
+        );
+        const productImages = product?.imageUrls;
 
-          let statusBadgeText = request.status
-            ? request.status.replace(/([A-Z])/g, " $1").trim()
-            : "Unknown";
-          let statusBadgeBg = "light text-dark";
+        let statusBadgeText = request.status
+          ? request.status.replace(/([A-Z])/g, " $1").trim()
+          : "Unknown";
+        let statusBadgeBg = "light text-dark";
 
-          if (request.status === "PendingMediatorSelection") {
-            statusBadgeText = "Awaiting Mediator Selection by Seller";
-            statusBadgeBg = "secondary";
-          } else if (request.status === "MediatorAssigned") {
-            statusBadgeText = `Mediator ${
-              mediator?.fullName || "N/A"
-            } Assigned - Awaiting their response`;
-            statusBadgeBg = "info text-dark";
-          } else if (request.status === "MediationOfferAccepted") {
-            statusBadgeText = `Mediator ${
-              mediator?.fullName || "N/A"
-            } Accepted - Awaiting Parties Confirmation`;
-            statusBadgeBg = "warning text-dark";
-          } else if (request.status === "EscrowFunded") {
-            statusBadgeText = "Funds Escrowed - Awaiting Seller / Start";
-            statusBadgeBg = "primary";
-          } else if (request.status === "InProgress") {
-            statusBadgeText = "Mediation In Progress";
-            statusBadgeBg = "success";
-          } else if (request.status === "Completed") {
-            statusBadgeText = "Completed";
-            statusBadgeBg = "dark";
-          } else if (request.status === "Cancelled") {
-            statusBadgeText = "Cancelled";
-            statusBadgeBg = "danger";
-          }
+        if (request.status === "PendingMediatorSelection") {
+          statusBadgeText = "Awaiting Mediator Selection";
+          statusBadgeBg = "secondary";
+        } else if (request.status === "MediatorAssigned") {
+          statusBadgeText = `Mediator Assigned`;
+          statusBadgeBg = "info text-dark";
+        } else if (request.status === "MediationOfferAccepted") {
+          statusBadgeText = `Mediator Accepted - Awaiting Confirmations`;
+          statusBadgeBg = "warning text-dark";
+        } else if (request.status === "EscrowFunded") {
+          statusBadgeText = "Funds Escrowed - Awaiting Seller";
+          statusBadgeBg = "primary";
+        } else if (request.status === "PartiesConfirmed") {
+          statusBadgeText = "Parties Confirmed";
+          statusBadgeBg = "info";
+        } else if (request.status === "InProgress") {
+          statusBadgeText = "Mediation In Progress";
+          statusBadgeBg = "success";
+        } else if (request.status === "Completed") {
+          statusBadgeText = "Completed";
+          statusBadgeBg = "dark";
+        } else if (request.status === "Cancelled") {
+          statusBadgeText = "Cancelled";
+          statusBadgeBg = "danger";
+        }
 
-          return (
-            <Card key={request._id} className="mb-3 shadow-sm">
-              <Card.Header as="h5">
-                Product : {product?.title || "N/A"}
-              </Card.Header>
-              <Card.Body>
-                <Row>
-                  <Col
-                    md={3}
-                    className="text-center mb-3 mb-md-0 position-relative"
-                  >
-                    <Image
-                      src={productImages?.[0] || noProductImageUrl}
-                      alt={product?.title || "Product Image"}
-                      fluid
-                      rounded
+        return (
+          <Card key={request._id} className="mb-3 shadow-sm">
+            <Card.Header as="h5">Product: {product.title || "N/A"}</Card.Header>
+            <Card.Body>
+              <Row>
+                <Col
+                  md={3}
+                  className="text-center mb-3 mb-md-0 position-relative"
+                >
+                  <Image
+                    src={productImages?.[0] || noProductImageUrl}
+                    alt={product.title || "Product"}
+                    fluid
+                    rounded
+                    style={{
+                      maxHeight: "150px",
+                      objectFit: "contain",
+                      cursor: productImages?.length ? "pointer" : "default",
+                    }}
+                    onError={handleImageError}
+                    onClick={() =>
+                      productImages?.length &&
+                      handleShowImageModal(productImages, 0)
+                    }
+                  />
+                  {productImages?.length && (
+                    <Button
+                      variant="dark"
+                      size="sm"
+                      onClick={() => handleShowImageModal(productImages, 0)}
+                      className="position-absolute bottom-0 start-50 translate-middle-x mb-2"
                       style={{
-                        maxHeight: "150px",
-                        objectFit: "contain",
-                        cursor:
-                          productImages && productImages.length > 0
-                            ? "pointer"
-                            : "default",
+                        opacity: 0.8,
+                        fontSize: "0.8rem",
+                        padding: "0.2rem 0.5rem",
                       }}
-                      onError={handleImageError}
-                      onClick={() =>
-                        productImages &&
-                        productImages.length > 0 &&
-                        handleShowImageModal(productImages, 0)
-                      }
-                    />
-                    {productImages && productImages.length > 0 && (
-                      <Button
-                        variant="dark"
-                        size="sm"
-                        onClick={() => handleShowImageModal(productImages, 0)}
-                        className="position-absolute bottom-0 start-50 translate-middle-x mb-2"
-                        style={{
-                          opacity: 0.8,
-                          fontSize: "0.8rem",
-                          padding: "0.2rem 0.5rem",
-                        }}
+                    >
+                      <BsImage /> View ({productImages.length})
+                    </Button>
+                  )}
+                </Col>
+                <Col md={9}>
+                  <p>
+                    <strong>Transaction ID:</strong> {request._id}
+                  </p>
+                  <p>
+                    <strong>Seller:</strong>
+                    {seller?.fullName ? (
+                      <Link
+                        to={`/profile/${seller._id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        <BsImage /> View Gallery ({productImages.length})
-                      </Button>
+                        {seller.fullName}
+                      </Link>
+                    ) : (
+                      "N/A"
                     )}
-                  </Col>
-                  <Col md={9}>
+                  </p>
+                  {mediator && (
                     <p>
-                      <strong>Transaction ID :</strong> {request._id}
-                    </p>
-                    <p>
-                      <strong>Seller :</strong> {seller?.fullName ? (
+                      <strong>Mediator:</strong>
+                      {mediator.fullName ? (
                         <Link
-                          to={`/profile/${seller._id}`}
+                          to={`/profile/${mediator._id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          {seller.fullName}
+                          {mediator.fullName}
                         </Link>
                       ) : (
                         "N/A"
                       )}
                     </p>
-                    {mediator && (
-                      <p>
-                        <strong>Mediator :</strong> {mediator.fullName ? (
-                          <Link
-                            to={`/profile/${mediator._id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {mediator.fullName}
-                          </Link>
-                        ) : (
-                          "N/A"
-                        )}
-                      </p>
-                    )}
-                    <p>
-                      <strong>Agreed Price :</strong> {formatCurrency(request.bidAmount, request.bidCurrency)}
-                    </p>
-
-                    {request.status === "MediationOfferAccepted" &&
-                      !request.buyerConfirmedStart &&
-                      feeDisplayDetails &&
-                      !feeDisplayDetails.error && (
-                        <Alert
-                          variant="light"
-                          className="small p-2 mt-2 mb-3 border"
-                        >
-                          <div>
-                            <strong>Estimated Cost Breakdown :</strong>
-                          </div>
-                          <div>
-                            Agreed Price : {formatCurrency(
-                              feeDisplayDetails.priceOriginal,
-                              feeDisplayDetails.currencyUsed
-                            )}
-                          </div>
-                          <div>
-                            Your Share of Mediator Fee : + {formatCurrency(
-                              feeDisplayDetails.buyerShare,
-                              feeDisplayDetails.currencyUsed
-                            )}
-                          </div>
-                          <hr className="my-1" />
-                          <div>
-                            <strong>
-                              Estimated Total to Escrow : {formatCurrency(
-                                feeDisplayDetails.totalForBuyer,
-                                feeDisplayDetails.currencyUsed
-                              )}
-                            </strong>
-                          </div>
-                        </Alert>
-                      )}
-
-                    <p>
-                      <strong>Status :</strong> <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
-                    </p>
-                    <p>
-                      <strong>Last Updated :</strong> {new Date(
-                        request.updatedAt || request.createdAt
-                      ).toLocaleString()}
-                    </p>
-
-                    {request.status === "MediationOfferAccepted" &&
-                      !request.buyerConfirmedStart && (
-                        <div className="mt-3">
-                          <Alert variant="warning" className="small p-2">
-                            <FaHourglassHalf className="me-1" /> Action
-                            Required: The mediator (
-                            <strong>{mediator?.fullName || "N/A"}</strong>) has
-                            accepted the assignment. Please confirm your
-                            readiness and deposit funds to proceed.
-                          </Alert>
-                          <Button
-                            variant="success"
-                            className="me-2"
-                            onClick={() => handleConfirmAndEscrow(request._id)}
-                            disabled={isProcessingThisRequest}
-                          >
-                            {isProcessingThisRequest ? (
-                              <>
-                                <Spinner
-                                  as="span"
-                                  size="sm"
-                                  animation="border"
-                                />
-                                Processing...
-                              </>
-                            ) : (
-                              "Confirm Readiness & Deposit Funds"
-                            )}
-                          </Button>
-                          <Button
-                            variant="danger"
-                            onClick={() => openBuyerRejectModal(request)}
-                            disabled={isProcessingThisRequest}
-                          >
-                            Cancel Mediation
-                          </Button>
+                  )}
+                  <p>
+                    <strong>Agreed Price:</strong>
+                    {formatCurrency(request.bidAmount, request.bidCurrency)}
+                  </p>
+                  {request.status === "MediationOfferAccepted" &&
+                    !request.buyerConfirmedStart &&
+                    feeDisplayDetails &&
+                    !feeDisplayDetails.error && (
+                      <Alert
+                        variant="light"
+                        className="small p-2 mt-2 mb-3 border"
+                      >
+                        <div>
+                          <strong>Estimated Cost:</strong>
                         </div>
-                      )}
-                    {request.status === "MediationOfferAccepted" &&
-                      request.buyerConfirmedStart &&
-                      !request.sellerConfirmedStart && (
-                        <Alert variant="info" className="small p-2 mt-3">
-                          <FaCheck className="me-1 text-success" /> You have
-                          confirmed. Waiting for the seller to confirm their
-                          readiness.
-                        </Alert>
-                      )}
-                    {request.status === "EscrowFunded" &&
-                      !request.sellerConfirmedStart && (
-                        <Alert variant="info" className="small p-2 mt-3">
-                          <FaCheck className="me-1 text-success" /> Funds are in
-                          escrow. Waiting for the seller to confirm their
-                          readiness to start mediation.
-                        </Alert>
-                      )}
-                    {request.status === "EscrowFunded" &&
-                      request.sellerConfirmedStart &&
-                      request.status !== "InProgress" && (
-                        <Alert variant="primary" className="small p-2 mt-3">
-                          <FaCheck className="me-1 text-success" /> All parties
-                          confirmed and funds are in escrow. Mediation will
-                          start shortly.
-                        </Alert>
-                      )}
-                    {request.status === "InProgress" && (
-                      <Alert variant="success" className="small p-2 mt-3">
-                        <FaHandshake className="me-1" /> Mediation is in
-                        progress.
+                        <div>
+                          Agreed:
+                          {formatCurrency(
+                            feeDisplayDetails.priceOriginal,
+                            feeDisplayDetails.currencyUsed
+                          )}
+                        </div>
+                        <div>
+                          Your Fee Share: +
+                          {formatCurrency(
+                            feeDisplayDetails.buyerShare,
+                            feeDisplayDetails.currencyUsed
+                          )}
+                        </div>
+                        <hr className="my-1" />
+                        <div>
+                          <strong>
+                            Total to Escrow:
+                            {formatCurrency(
+                              feeDisplayDetails.totalForBuyerAfterFee,
+                              feeDisplayDetails.currencyUsed
+                            )}
+                          </strong>
+                        </div>
                       </Alert>
                     )}
-                    {request.status === "Completed" && (
-                      <Alert variant="secondary" className="small p-2 mt-3">
-                        <FaCheck className="me-1" /> This mediation has been
-                        completed.
+                  <p>
+                    <strong>Status:</strong>
+                    <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
+                  </p>
+                  <p>
+                    <strong>Last Updated:</strong>
+                    {new Date(
+                      request.updatedAt || request.createdAt
+                    ).toLocaleString()}
+                  </p>
+
+                  {request.status === "MediationOfferAccepted" &&
+                    !request.buyerConfirmedStart && (
+                      <div className="mt-3">
+                        <Alert variant="warning" className="small p-2">
+                          <FaHourglassHalf className="me-1" /> Action Required:
+                          Mediator
+                          <strong>{mediator?.fullName || "N/A"}</strong>
+                          accepted. Confirm & deposit funds.
+                        </Alert>
+                        <Button
+                          variant="success"
+                          className="me-2"
+                          onClick={() => handleConfirmAndEscrow(request._id)}
+                          disabled={isProcessingThisRequest}
+                        >
+                          {isProcessingThisRequest ? (
+                            <>
+                              <Spinner size="sm" /> Processing...
+                            </>
+                          ) : (
+                            "Confirm & Deposit"
+                          )}
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => openBuyerRejectModal(request)}
+                          disabled={isProcessingThisRequest}
+                        >
+                          Cancel Mediation
+                        </Button>
+                      </div>
+                    )}
+                  {request.buyerConfirmedStart &&
+                    request.status === "EscrowFunded" &&
+                    !request.sellerConfirmedStart && (
+                      <Alert variant="info" className="small p-2 mt-3">
+                        <FaCheck className="me-1 text-success" /> Funds
+                        escrowed. Waiting for seller.
                       </Alert>
                     )}
-                    {request.status === "Cancelled" && (
-                      <Alert variant="danger" className="small p-2 mt-3">
-                        This mediation has been cancelled.
+
+                  {(request.status === "PartiesConfirmed" ||
+                    request.status === "InProgress") && (
+                    <div className="mt-3">
+                      <Alert
+                        variant={
+                          request.status === "InProgress" ? "success" : "info"
+                        }
+                        className="p-2 small d-flex justify-content-between align-items-center"
+                      >
+                        <span>
+                          <FaHandshake className="me-1" />
+                          {request.status === "PartiesConfirmed"
+                            ? "Parties confirmed. Chat starting."
+                            : "Mediation is in progress."}
+                        </span>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          as={Link}
+                          to={`/dashboard/mediation-chat/${request._id}`}
+                          title="Open Mediation Chat"
+                        >
+                          <FaCommentDots className="me-1 d-none d-sm-inline" />
+                          Open Chat
+                        </Button>
                       </Alert>
-                    )}
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Card>
-          );
-        })}
+                    </div>
+                  )}
+
+                  {request.status === "Completed" && (
+                    <Alert variant="secondary" className="small p-2 mt-3">
+                      <FaCheck className="me-1" /> Mediation completed.
+                    </Alert>
+                  )}
+                  {request.status === "Cancelled" && (
+                    <Alert variant="danger" className="small p-2 mt-3">
+                      Mediation cancelled.
+                    </Alert>
+                  )}
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        );
+      })}
 
       {buyerRequests.totalPages > 1 && (
         <Pagination className="justify-content-center mt-4">

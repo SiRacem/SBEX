@@ -1,0 +1,82 @@
+/* src/components/chat/TypingIndicator.css */
+.typing-indicator-area-placeholder {
+    /* للحفاظ على ارتفاع ثابت إذا لم يكن هناك أحد يكتب */
+    height: 20px;
+    margin-bottom: 0.25rem;
+}
+
+.typing-indicator-area {
+    min-height: 20px;
+    /* لضمان وجود ارتفاع حتى لو لم يكن هناك نص */
+    font-size: 0.75rem;
+    /* خط أصغر قليلاً */
+    color: #6c757d;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+    padding-left: 0.5rem;
+    /* مسافة من الحافة اليسرى لمنطقة الإدخال */
+}
+
+.typing-avatar-indicator {
+    object-fit: cover;
+}
+
+.typing-user-name-indicator {
+    font-weight: 500;
+    /* جعل الاسم أثقل قليلاً */
+    color: #495057;
+    /* لون أغمق للاسم */
+}
+
+.is-typing-text-indicator {
+    /* أنماط لنص "is/are typing..." */
+}
+
+.typing-dots-indicator {
+    /* تم تغيير الاسم ليكون خاصاً بهذا المكون */
+    display: flex;
+    align-items: center;
+    margin-left: 3px;
+}
+
+.typing-dots-indicator span {
+    height: 5px;
+    /* نقاط أصغر */
+    width: 5px;
+    margin: 0 1px;
+    background-color: #adb5bd;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: typingAnimation 1.2s infinite ease-in-out;
+}
+
+.typing-dots-indicator span:nth-of-type(1) {
+    animation-delay: -0.20s;
+}
+
+.typing-dots-indicator span:nth-of-type(2) {
+    animation-delay: -0.10s;
+}
+
+.typing-dots-indicator span:nth-of-type(3) {
+    animation-delay: 0s;
+}
+
+@keyframes typingAnimation {
+
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+
+    30% {
+        transform: translateY(-2px);
+        opacity: 1;
+    }
+
+    /* قفزة أصغر */
+}

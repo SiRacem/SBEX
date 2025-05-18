@@ -129,7 +129,7 @@ exports.getMediationRequestDetailsController = async (req, res) => {
             console.warn(`[getMediationDetails] Forbidden access for user ${userId} to mediation ${mediationRequestId}`);
             return res.status(403).json({ msg: "Forbidden: You are not authorized to view these details." });
         }
-        
+
         console.log(`[getMediationDetails] Details found and authorized for mediation: ${mediationRequestId}`);
         res.status(200).json({ mediationRequest: request }); // أرسل الكائن تحت مفتاح mediationRequest
 
@@ -704,11 +704,11 @@ exports.getMediatorAcceptedAwaitingParties = async (req, res) => {
         if (!req.user.isMediatorQualified) {
             return res.status(403).json({ msg: "Access denied. You are not a qualified mediator." });
         }
-        
+
         // --- [!!!] النقطة الحاسمة هنا [!!!] ---
         const query = {
             mediator: mediatorId,
-            status: { 
+            status: {
                 $in: [
                     'MediationOfferAccepted',
                     'EscrowFunded',
@@ -722,8 +722,8 @@ exports.getMediatorAcceptedAwaitingParties = async (req, res) => {
         console.log("[getMediatorAcceptedAwaitingParties] Query being executed:", JSON.stringify(query)); // <--- أضف هذا الـ log
 
         const options = {
-            page: parseInt(page, 10), 
-            limit: parseInt(limit, 10), 
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
             sort: { updatedAt: -1 },
             populate: [
                 { path: 'product', select: 'title imageUrls agreedPrice currency' },
@@ -734,7 +734,7 @@ exports.getMediatorAcceptedAwaitingParties = async (req, res) => {
         };
 
         console.log("[getMediatorAcceptedAwaitingParties] Query being executed:", JSON.stringify(query)); // تأكد من وجود هذا
-        
+
         const result = await MediationRequest.paginate(query, options);
 
         console.log(`[getMediatorAcceptedAwaitingParties] Found ${result.docs?.length || 0} assignments for query.`); // تأكد من وجود هذا
@@ -780,7 +780,6 @@ exports.getBuyerMediationRequests = async (req, res) => {
         res.status(500).json({ msg: "Server error fetching requests.", errorDetails: error.message });
     }
 };
-
 
 // --- Seller: Confirm Readiness (MODIFIED with PartiesConfirmed) ---
 exports.sellerConfirmReadiness = async (req, res) => {
@@ -848,7 +847,6 @@ exports.sellerConfirmReadiness = async (req, res) => {
 
 // --- Buyer: Confirm Readiness and Escrow (MODIFIED with PartiesConfirmed) ---
 // server/controllers/mediation.controller.js
-
 exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
     const { mediationRequestId } = req.params;
     const buyerId = req.user._id;
@@ -1073,5 +1071,101 @@ exports.getMediationChatHistory = async (req, res) => {
     } catch (error) {
         console.error("Error fetching chat history:", error);
         res.status(500).json({ msg: "Server error.", errorDetails: error.message });
+    }
+};
+
+exports.handleChatImageUpload = async (req, res) => {
+    const senderId = req.user._id;
+    const { mediationRequestId } = req.body;
+    console.log(`--- Controller: handleChatImageUpload for MedReq: ${mediationRequestId}, Sender: ${senderId} ---`);
+
+    if (!req.file) return res.status(400).json({ msg: "No image file provided." });
+    if (!mediationRequestId || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.status(400).json({ msg: "Invalid or missing mediationRequestId." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    console.log("   [handleChatImageUpload] Session started.");
+
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId).session(session);
+        if (!mediationRequest) {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            throw new Error("Mediation request not found.");
+        }
+
+        const isParty = (mediationRequest.seller.equals(senderId) || mediationRequest.buyer.equals(senderId) || (mediationRequest.mediator && mediationRequest.mediator.equals(senderId)));
+        if (!isParty) {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            throw new Error("Forbidden: You are not a party to this mediation chat.");
+        }
+        if (mediationRequest.status !== 'InProgress') {
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            throw new Error("Forbidden: Mediation chat is not currently active.");
+        }
+
+        let relativeImagePath = req.file.path.replace(/\\/g, '/').split('uploads/')[1];
+        if (!relativeImagePath) { // التحقق إذا كان split لم يعمل بشكل صحيح
+            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+            throw new Error("Error processing uploaded file path structure after split.");
+        }
+        relativeImagePath = `uploads/${relativeImagePath}`; // التأكد من أن 'uploads/' موجودة في البداية
+
+        const imageMessageObject = {
+            sender: senderId,
+            message: `[Image: ${req.file.originalname}]`,
+            type: 'image', // تعيين النوع بشكل صريح
+            imageUrl: relativeImagePath, // تعيين رابط الصورة بشكل صريح
+            timestamp: new Date()
+        };
+
+        if (!Array.isArray(mediationRequest.chatMessages)) mediationRequest.chatMessages = [];
+        mediationRequest.chatMessages.push(imageMessageObject);
+        await mediationRequest.save({ session });
+
+        // --- الحصول على الرسالة المحفوظة (مع _id) ---
+        const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1];
+
+        await session.commitTransaction();
+        console.log(`   Image message saved. Image URL: ${savedMessageFromDb.imageUrl}, Type: ${savedMessageFromDb.type}`);
+
+        const senderDetails = await User.findById(senderId).select('fullName avatarUrl').lean();
+
+        // --- بناء الكائن للبث بشكل صريح ---
+        const messageToBroadcast = {
+            _id: savedMessageFromDb._id, // الـ ID من قاعدة البيانات
+            sender: senderDetails,       // كائن المرسل المعبأ
+            message: savedMessageFromDb.message, // النص البديل
+            type: savedMessageFromDb.type,       // يجب أن يكون 'image'
+            imageUrl: savedMessageFromDb.imageUrl, // المسار النسبي للصورة
+            timestamp: savedMessageFromDb.timestamp
+        };
+        // ------------------------------------
+
+        console.log("[handleChatImageUpload] Message object FINALIZED and being broadcasted:", messageToBroadcast);
+
+        if (req.io) {
+            req.io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
+            console.log(`   Image message broadcasted to room ${mediationRequestId}`);
+        }
+
+        res.status(201).json({
+            msg: "Image uploaded and message sent successfully.",
+            message: messageToBroadcast
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        console.error("[handleChatImageUpload] Error:", error.message, error.stack);
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlink(req.file.path, (errUnlink) => { // استخدم unlink غير متزامن هنا
+                if (errUnlink) console.error("Error deleting uploaded chat image after controller error:", errUnlink);
+            });
+        }
+        res.status(error.message.includes("Forbidden") ? 403 : 400).json({ msg: error.message || "Failed to upload image." });
+    } finally {
+        if (session.endSession) await session.endSession();
     }
 };

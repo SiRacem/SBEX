@@ -1,6 +1,4 @@
 // client/src/components/vendor/CommandsListVendor.jsx
-// *** نسخة كاملة مع كل التعديلات الأخيرة للبائع ***
-
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -34,6 +32,7 @@ import {
   FaEye,
   FaUserFriends,
   FaUndo,
+  FaCommentDots,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
@@ -46,10 +45,10 @@ import {
   assignSelectedMediator,
   sellerConfirmReadinessAction,
 } from "../../redux/actions/mediationAction";
-import { getProfile } from "../../redux/actions/userAction";
+// import { getProfile } from "../../redux/actions/userAction"; // Assuming not directly used
 import SelectMediatorModal from "./SelectMediatorModal";
 import MediationDetailsModal from "./MediationDetailsModal";
-import { calculateMediatorFeeDetails } from "./feeCalculator";
+import { calculateMediatorFeeDetails } from "./feeCalculator"; // Assuming this path is correct
 import axios from "axios";
 
 const fallbackImageUrl =
@@ -80,7 +79,7 @@ const CommandsListVendor = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const userId = useSelector((state) => state.userReducer?.user?._id);
+  const userId = useSelector((state) => state.userReducer.user?._id);
   const allProducts = useSelector(
     (state) => state.productReducer?.Products ?? []
   );
@@ -101,7 +100,7 @@ const CommandsListVendor = () => {
   const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
   const [bidToReject, setBidToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [activeTab, setActiveTab] = useState("approved");
+  const [activeTab, setActiveTab] = useState("approved"); // Default tab
 
   const [showSelectMediatorModal, setShowSelectMediatorModal] = useState(false);
   const [showMediationDetailsModal, setShowMediationDetailsModal] =
@@ -112,28 +111,24 @@ const CommandsListVendor = () => {
   const [loadingMediators, setLoadingMediators] = useState(false);
   const [mediatorSuggestionsUsedOnce, setMediatorSuggestionsUsedOnce] =
     useState(false);
-  const [refreshCountRemaining, setRefreshCountRemaining] = useState(1);
-  const [confirmingSellerReadiness, setConfirmingSellerReadiness] = useState(
-    {}
-  );
+  const [refreshCountRemaining, setRefreshCountRemaining] = useState(1); // Max 1 refresh for example
+  const [sellerConfirmLoading, setSellerConfirmLoading] = useState({});
 
   useEffect(() => {
     if (userId) {
-      dispatch(getProducts());
+      dispatch(getProducts()); // Fetch all products initially or when userId changes
     }
-  }, [dispatch, userId, activeTab]);
+  }, [dispatch, userId]);
 
+  // Filter products based on current user and sort them
   const myProducts = useMemo(() => {
     if (!userId || !Array.isArray(allProducts)) return [];
     return allProducts
       .filter((p) => String(p.user?._id || p.user) === userId)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || b.date_added || 0) -
-          new Date(a.createdAt || a.date_added || 0)
-      );
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }, [allProducts, userId]);
 
+  // Memoized lists for different tabs
   const approvedProducts = useMemo(
     () =>
       myProducts.filter(
@@ -146,20 +141,18 @@ const CommandsListVendor = () => {
     [myProducts]
   );
   const mediationProducts = useMemo(() => {
-    if (!myProducts || myProducts.length === 0) return [];
     return myProducts.filter((p) => {
       if (!p) return false;
       const productStatus = String(p.status).trim();
       const mediationRequestStatus = p.currentMediationRequest?.status;
-      // يشمل المنتجات التي في أي مرحلة من مراحل الوساطة أو تنتظر إجراء متعلق بالوساطة
       return (
         productStatus === "PendingMediatorSelection" ||
-      productStatus === "MediatorAssigned" ||
-      mediationRequestStatus === "MediationOfferAccepted" ||
-      mediationRequestStatus === "EscrowFunded" ||
-      mediationRequestStatus === "PartiesConfirmed" || // <--- أضف هذه
-      productStatus === "InProgress" ||
-      mediationRequestStatus === "InProgress"
+        productStatus === "MediatorAssigned" ||
+        mediationRequestStatus === "MediationOfferAccepted" ||
+        mediationRequestStatus === "EscrowFunded" ||
+        mediationRequestStatus === "PartiesConfirmed" ||
+        productStatus === "InProgress" ||
+        mediationRequestStatus === "InProgress"
       );
     });
   }, [myProducts]);
@@ -170,7 +163,7 @@ const CommandsListVendor = () => {
   const completedProducts = useMemo(
     () => myProducts.filter((p) => p && p.status === "Completed"),
     [myProducts]
-  );
+  ); // Assuming 'Completed' is a final state post-mediation
   const rejectedProducts = useMemo(
     () => myProducts.filter((p) => p && p.status === "rejected"),
     [myProducts]
@@ -181,21 +174,23 @@ const CommandsListVendor = () => {
     setRejectReason("");
     setShowRejectReasonModal(true);
   }, []);
+
   const handleConfirmReject = useCallback(() => {
     if (bidToReject) {
       const bidderId = bidToReject.bid.user?._id || bidToReject.bid.user;
-      if (bidderId) {
-        if (!rejectReason.trim()) {
-          toast.warn("Please provide a rejection reason.");
-          return;
-        }
-        dispatch(rejectBid(bidToReject.productId, bidderId, rejectReason));
-        setShowRejectReasonModal(false);
-      } else {
+      if (!bidderId) {
         toast.error("Could not identify bidder ID.");
+        return;
       }
+      if (!rejectReason.trim()) {
+        toast.warn("Please provide a rejection reason.");
+        return;
+      }
+      dispatch(rejectBid(bidToReject.productId, bidderId, rejectReason));
+      setShowRejectReasonModal(false);
     }
   }, [dispatch, bidToReject, rejectReason]);
+
   const handleDeleteProduct = useCallback(
     (productId) => {
       if (
@@ -207,6 +202,7 @@ const CommandsListVendor = () => {
     },
     [dispatch]
   );
+
   const handleAcceptBid = useCallback(
     (productId, bid) => {
       const bidderId = bid.user?._id || bid.user;
@@ -224,16 +220,17 @@ const CommandsListVendor = () => {
       ) {
         dispatch(acceptBid(productId, bidderId, bidAmount))
           .then(() => {
-            setActiveTab("mediation");
-            dispatch(getProducts());
-          }) //  إعادة جلب المنتجات بعد القبول
-          .catch((err) => {
-            console.error("Accept bid failed in component:", err);
-          });
+            setActiveTab("mediation"); // Switch to mediation tab
+            dispatch(getProducts()); // getProducts will be called by useEffect if needed, or by successful action reducing state
+          })
+          .catch((err) =>
+            console.error("Accept bid failed in component:", err)
+          );
       }
     },
     [dispatch, setActiveTab]
   );
+
   const handleOpenViewMediationDetails = useCallback((product) => {
     if (!product || (!product.agreedPrice && !product.price)) {
       toast.error("Product details or price is missing.");
@@ -242,6 +239,7 @@ const CommandsListVendor = () => {
     setProductForMediationAction(product);
     setShowMediationDetailsModal(true);
   }, []);
+
   const fetchRandomMediators = useCallback(
     async (currentProductData, isRefresh = false) => {
       const mediationRequestId =
@@ -257,12 +255,11 @@ const CommandsListVendor = () => {
       const params = new URLSearchParams();
       if (isRefresh) {
         params.append("refresh", "true");
-        if (availableMediators.length > 0) {
+        if (availableMediators.length > 0)
           params.append(
             "exclude",
             availableMediators.map((m) => m._id).join(",")
           );
-        }
       }
       if (params.toString()) url += `?${params.toString()}`;
       try {
@@ -276,7 +273,7 @@ const CommandsListVendor = () => {
         const response = await axios.get(url, config);
         if (response.data && Array.isArray(response.data.mediators)) {
           setAvailableMediators(response.data.mediators);
-          setRefreshCountRemaining(response.data.refreshCountRemaining || 0);
+          setRefreshCountRemaining(response.data.refreshCountRemaining ?? 0);
           if (isRefresh) {
             setMediatorSuggestionsUsedOnce(
               response.data.refreshCountRemaining <= 0
@@ -300,12 +297,12 @@ const CommandsListVendor = () => {
       }
     },
     [availableMediators]
-  );
+  ); // Added availableMediators as dependency
+
   const handleOpenSelectMediatorModal = useCallback(
     (product) => {
       if (!product || !product.currentMediationRequest?._id) {
         toast.error("Mediation ID missing.");
-        dispatch(getProducts());
         return;
       }
       setProductForMediationAction(product);
@@ -314,21 +311,20 @@ const CommandsListVendor = () => {
       setRefreshCountRemaining(1);
       fetchRandomMediators(product, false);
     },
-    [dispatch, fetchRandomMediators]
+    [fetchRandomMediators]
   );
+
   const handleRequestReturnToSale = useCallback((product) => {
-    const mediationRequestId =
-      product.currentMediationRequest?._id || product._id;
+    // const mediationRequestId = product.currentMediationRequest?._id || product._id; // Not used directly in toast
     if (
       window.confirm(
-        "Are you sure you want to request to return this product to sale? This can be used if the buyer is unresponsive. The request will be reviewed by administration."
+        "Request admin to return product to sale? (e.g., buyer unresponsive)"
       )
     ) {
-      toast.info(
-        "Your request to return the product to sale has been submitted for review (Feature in development)."
-      );
+      toast.info("Request submitted for review (Feature in development).");
     }
   }, []);
+
   const handleRequestNewMediatorSuggestions = useCallback(() => {
     if (
       productForMediationAction &&
@@ -336,17 +332,16 @@ const CommandsListVendor = () => {
       !mediatorSuggestionsUsedOnce
     ) {
       fetchRandomMediators(productForMediationAction, true);
-    } else if (mediatorSuggestionsUsedOnce || refreshCountRemaining <= 0) {
-      toast.warn(
-        "You have already used the new suggestions option, or no more suggestions are allowed for this item."
-      );
+    } else {
+      toast.warn("New suggestions option already used or not available.");
     }
   }, [
     productForMediationAction,
-    mediatorSuggestionsUsedOnce,
     refreshCountRemaining,
+    mediatorSuggestionsUsedOnce,
     fetchRandomMediators,
   ]);
+
   const handleAssignMediator = useCallback(
     async (mediatorIdToAssign) => {
       if (
@@ -357,61 +352,54 @@ const CommandsListVendor = () => {
         toast.error("Missing data for assignment.");
         return;
       }
-      const currentProduct = productForMediationAction;
-      const mediationRequestId = currentProduct.currentMediationRequest._id;
-      setLoadingMediators(true);
+      const mediationRequestId =
+        productForMediationAction.currentMediationRequest._id;
+      setLoadingMediators(true); // Consider a more specific loading state for this action
       dispatch(assignSelectedMediator(mediationRequestId, mediatorIdToAssign))
-        .then((actionResponse) => {
+        .then(() => {
+          // Assuming assignSelectedMediator returns a promise
           setShowSelectMediatorModal(false);
           setAvailableMediators([]);
-          dispatch(getProducts()); // تحديث القائمة بالكامل لضمان جلب أحدث حالة
+          dispatch(getProducts()); // Data will be updated via Redux state changes from the action
           setActiveTab("mediation");
         })
-        .catch(() => {})
-        .finally(() => {
-          setLoadingMediators(false);
-        });
+        .catch(() => {
+          /* Error is handled by toast in action */
+        })
+        .finally(() => setLoadingMediators(false));
     },
     [dispatch, productForMediationAction, setActiveTab]
   );
+
   const handleSellerConfirmReadiness = useCallback(
-    (mediationRequestId, productId) => {
+    (mediationRequestId) => {
       if (!mediationRequestId) {
         toast.error("Mediation Request ID is missing.");
         return;
       }
-      if (confirmingSellerReadiness[mediationRequestId]) return;
+      if (sellerConfirmLoading[mediationRequestId]) return;
 
-      console.log(`[FRONTEND LOG] Calling sellerConfirmReadinessAction for mediationRequestId: ${mediationRequestId}`); // <--- أضف هذا السطر
-      
-      setConfirmingSellerReadiness((prev) => ({
+      setSellerConfirmLoading((prev) => ({
         ...prev,
         [mediationRequestId]: true,
       }));
-
       dispatch(sellerConfirmReadinessAction(mediationRequestId))
-        .then((response) => {
-          if (response?.error) {
-            toast.error(response.error || "Failed to confirm readiness");
-            return;
-          }
-          toast.success("Successfully confirmed readiness");
-          dispatch(getProducts());
+        .then(() => {
+          // toast.success("Readiness confirmed successfully!"); // Toast from action is usually enough
+          dispatch(getProducts()); // Let Redux update handle the product list re-render
         })
         .catch((error) => {
-          console.error("Error confirming readiness:", error);
-          toast.error(
-            error?.response?.data?.message || "Failed to confirm readiness"
-          );
+          // Toast is already handled in the action for failure
+          // console.error("Error confirming readiness in component:", error);
         })
         .finally(() => {
-          setConfirmingSellerReadiness((prev) => ({
+          setSellerConfirmLoading((prev) => ({
             ...prev,
             [mediationRequestId]: false,
           }));
         });
     },
-    [dispatch, confirmingSellerReadiness]
+    [dispatch, sellerConfirmLoading]
   );
 
   const renderProductEntry = useCallback(
@@ -420,11 +408,12 @@ const CommandsListVendor = () => {
       const sortedBids = [...(product.bids || [])].sort(
         (a, b) => b.amount - a.amount
       );
-      const productLoadingDelete = loadingDelete[product._id] ?? false;
+      const productLoadingDeleteState = loadingDelete[product._id] || false;
 
       const productStatus = product.status;
       const mediationRequestData = product.currentMediationRequest;
       const mediationRequestStatus = mediationRequestData?.status;
+      const currentMediationRequestId = mediationRequestData?._id;
 
       const isPendingMediatorSelection =
         productStatus === "PendingMediatorSelection" &&
@@ -436,74 +425,57 @@ const CommandsListVendor = () => {
       const isMediationOfferAcceptedByMediator =
         mediationRequestStatus === "MediationOfferAccepted";
       const isEscrowFundedByBuyer = mediationRequestStatus === "EscrowFunded";
+      const isPartiesConfirmed = mediationRequestStatus === "PartiesConfirmed";
       const isActualMediationInProgress =
         productStatus === "InProgress" ||
         mediationRequestStatus === "InProgress";
 
       const sellerHasConfirmed = mediationRequestData?.sellerConfirmedStart;
-      const buyerHasConfirmed = mediationRequestData?.buyerConfirmedStart;
-
-      const isSold = productStatus === "sold";
-      const isCompleted = productStatus === "Completed";
       const isApproved = productStatus === "approved";
-
       const canEditOrDelete =
-        isApproved &&
-        !isPendingMediatorSelection &&
-        !isMediatorAssignedBySeller &&
-        !isMediationOfferAcceptedByMediator &&
-        !isEscrowFundedByBuyer &&
-        !isActualMediationInProgress &&
-        !isSold &&
-        !isCompleted;
+        isApproved && !mediationRequestData && product.bids?.length === 0; // Can only edit/delete if no bids and not in mediation
 
       const agreedPriceForDisplay = product.agreedPrice;
-      const currentMediationRequestId = mediationRequestData?._id;
-      const isLoadingThisSellerConfirm = currentMediationRequestId
-        ? confirmingSellerReadiness[currentMediationRequestId]
-        : false;
+      const isLoadingThisSellerConfirmButton =
+        sellerConfirmLoading[currentMediationRequestId] || false;
 
       let statusBadgeText = productStatus
         ? productStatus.charAt(0).toUpperCase() + productStatus.slice(1)
         : "Unknown";
       let statusBadgeBg = "secondary";
 
-      if (isApproved && !currentMediationRequestId && !isSold && !isCompleted) {
+      if (isApproved && !mediationRequestData) {
         statusBadgeBg = "success";
         statusBadgeText = "Approved";
       } else if (isPendingMediatorSelection) {
-        statusBadgeText = "Pending Mediator Selection";
-        statusBadgeBg = "info text-dark";
+        statusBadgeText = "Select Mediator";
+        statusBadgeBg = "info";
       } else if (isMediatorAssignedBySeller) {
-        statusBadgeText = "Awaiting Mediator's Response";
+        statusBadgeText = "Awaiting Mediator";
         statusBadgeBg = "primary";
       } else if (isMediationOfferAcceptedByMediator) {
-        statusBadgeText = "Awaiting Party Confirmations";
+        statusBadgeText = "Awaiting Confirmations";
         statusBadgeBg = "warning text-dark";
       } else if (isEscrowFundedByBuyer && !sellerHasConfirmed) {
-        statusBadgeText = "Buyer Confirmed - Awaiting Your Confirmation";
+        statusBadgeText = "Buyer Confirmed";
         statusBadgeBg = "info";
-      } else if (
-        isEscrowFundedByBuyer &&
-        sellerHasConfirmed &&
-        !isActualMediationInProgress
-      ) {
-        statusBadgeText = "All Confirmed - Starting Soon";
-        statusBadgeBg = "primary";
+      } else if (isPartiesConfirmed) {
+        statusBadgeText = "Parties Confirmed";
+        statusBadgeBg = "info";
       } else if (isActualMediationInProgress) {
-        statusBadgeText = "Mediation In Progress";
+        statusBadgeText = "In Progress";
         statusBadgeBg = "success";
-      } else if (isCompleted) {
+      } else if (product.status === "sold") {
+        statusBadgeText = "Sold";
+        statusBadgeBg = "dark";
+      } else if (product.status === "Completed") {
         statusBadgeText = "Completed";
         statusBadgeBg = "dark";
-      } else if (isSold && !isCompleted) {
-        statusBadgeText = "Sold (Legacy)";
-        statusBadgeBg = "secondary";
-      } else if (productStatus === "pending") {
-        statusBadgeText = "Pending Admin Approval";
+      } else if (product.status === "pending") {
+        statusBadgeText = "Pending Approval";
         statusBadgeBg = "warning text-dark";
-      } else if (productStatus === "rejected") {
-        statusBadgeText = "Rejected by Admin";
+      } else if (product.status === "rejected") {
+        statusBadgeText = "Admin Rejected";
         statusBadgeBg = "danger";
       }
 
@@ -511,11 +483,9 @@ const CommandsListVendor = () => {
         <Card
           key={product._id}
           className={`mb-3 product-entry shadow-sm ${
-            isPendingMediatorSelection ||
-            isMediatorAssignedBySeller ||
-            isMediationOfferAcceptedByMediator ||
-            isEscrowFundedByBuyer ||
-            isActualMediationInProgress
+            isPartiesConfirmed || isActualMediationInProgress
+              ? "border-success"
+              : mediationRequestData
               ? "border-primary"
               : ""
           }`}
@@ -547,17 +517,13 @@ const CommandsListVendor = () => {
                     <div className="mb-1">
                       <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
                       <small className="text-muted ms-2">
-                        Listed Price:
+                        List Price:{" "}
                         {formatCurrency(product.price, product.currency)}
                       </small>
-                      {(isPendingMediatorSelection ||
-                        isMediatorAssignedBySeller ||
-                        isMediationOfferAcceptedByMediator ||
-                        isActualMediationInProgress ||
-                        isEscrowFundedByBuyer) &&
-                        agreedPriceForDisplay != null && (
+                      {agreedPriceForDisplay != null &&
+                        mediationRequestData && (
                           <small className="text-primary ms-2 fw-bold">
-                            Agreed:
+                            Agreed:{" "}
                             {formatCurrency(
                               agreedPriceForDisplay,
                               product.currency
@@ -565,6 +531,7 @@ const CommandsListVendor = () => {
                           </small>
                         )}
                     </div>
+
                     {isPendingMediatorSelection &&
                       !isMediatorAssignedBySeller && (
                         <Alert
@@ -580,27 +547,25 @@ const CommandsListVendor = () => {
                         variant="primary"
                         className="p-1 px-2 small mt-1 d-inline-block"
                       >
-                        <FaHourglassHalf size={12} className="me-1" /> Mediator
-                        Assigned. Waiting for their response.
+                        <FaHourglassHalf size={12} className="me-1" /> Awaiting
+                        Mediator's Response.
                       </Alert>
                     )}
 
                     {!sellerHasConfirmed &&
                       (isMediationOfferAcceptedByMediator ||
                         isEscrowFundedByBuyer) &&
+                      !isPartiesConfirmed &&
                       !isActualMediationInProgress && (
                         <div className="mt-2">
                           <Alert variant="info" className="p-2 small d-block">
-                            <strong>Action Required:</strong> Please confirm
-                            your readiness to proceed with the mediation.
+                            <strong>Action Required:</strong> Confirm your
+                            readiness.
                             <br />
                             <small className="text-muted">
-                              {isMediationOfferAcceptedByMediator &&
-                              !isEscrowFundedByBuyer
-                                ? "After your confirmation, the buyer will need to confirm and deposit funds."
-                                : isEscrowFundedByBuyer
-                                ? "The buyer has already confirmed and deposited funds. Please confirm your readiness to proceed."
-                                : null}
+                              {isEscrowFundedByBuyer
+                                ? "Buyer confirmed & paid."
+                                : "After you confirm, buyer will confirm & pay."}
                             </small>
                           </Alert>
                           <Button
@@ -609,13 +574,12 @@ const CommandsListVendor = () => {
                             className="mt-1"
                             onClick={() =>
                               handleSellerConfirmReadiness(
-                                currentMediationRequestId,
-                                product._id
+                                currentMediationRequestId
                               )
                             }
-                            disabled={isLoadingThisSellerConfirm}
+                            disabled={isLoadingThisSellerConfirmButton}
                           >
-                            {isLoadingThisSellerConfirm ? (
+                            {isLoadingThisSellerConfirmButton ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
                               "Confirm My Readiness"
@@ -624,34 +588,58 @@ const CommandsListVendor = () => {
                         </div>
                       )}
 
-                    {sellerHasConfirmed && !isActualMediationInProgress && (
-                      <Alert variant="success" className="p-2 small mt-2">
-                        <FaCheck className="me-1" /> You have confirmed your
-                        readiness.
-                        <br />
-                        <small className="text-muted">
-                          {isEscrowFundedByBuyer
-                            ? "All parties have confirmed and funds are secured. The mediator will start the process soon."
-                            : "Waiting for the buyer to confirm and deposit funds."}
-                        </small>
-                      </Alert>
-                    )}
+                    {sellerHasConfirmed &&
+                      !isActualMediationInProgress &&
+                      !isPartiesConfirmed && (
+                        <Alert variant="success" className="p-2 small mt-2">
+                          <FaCheck className="me-1" /> You confirmed.{" "}
+                          <small className="text-muted">
+                            Waiting for buyer.
+                          </small>
+                        </Alert>
+                      )}
 
-                    {isActualMediationInProgress && (
-                      <Alert variant="success" className="p-2 small mt-2">
-                        <FaHandshake className="me-1" /> Mediation is in
-                        progress.
-                        <br />
-                        <small className="text-muted">
-                          You can communicate with the buyer and mediator
-                          through the chat.
-                        </small>
-                      </Alert>
-                    )}
+                    {(isPartiesConfirmed || isActualMediationInProgress) &&
+                      currentMediationRequestId && (
+                        <div className="mt-2">
+                          <Alert
+                            variant={
+                              isActualMediationInProgress ? "success" : "info"
+                            }
+                            className="p-2 small d-flex justify-content-between align-items-center"
+                          >
+                            <span>
+                              <FaHandshake className="me-1" />
+                              {isActualMediationInProgress
+                                ? "Mediation is in progress."
+                                : "Parties confirmed. Chat starting."}
+                              <br />
+                              <small className="text-muted">
+                                Communicate with buyer and mediator.
+                              </small>
+                            </span>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              as={Link}
+                              to={`/dashboard/mediation-chat/${currentMediationRequestId}`}
+                              title="Open Mediation Chat"
+                            >
+                              <FaCommentDots className="me-1 d-none d-sm-inline" />
+                              Open Chat
+                            </Button>
+                          </Alert>
+                        </div>
+                      )}
                   </div>
                   <div className="product-entry-actions">
-                    {isPendingMediatorSelection &&
-                    !isMediatorAssignedBySeller ? (
+                    {(isPendingMediatorSelection &&
+                      !isMediatorAssignedBySeller) ||
+                    isMediatorAssignedBySeller ||
+                    isMediationOfferAcceptedByMediator ||
+                    isEscrowFundedByBuyer ||
+                    isPartiesConfirmed ||
+                    isActualMediationInProgress ? (
                       <>
                         <OverlayTrigger
                           placement="top"
@@ -668,54 +656,45 @@ const CommandsListVendor = () => {
                             <FaEye />
                           </Button>
                         </OverlayTrigger>
-                        <OverlayTrigger
-                          placement="top"
-                          overlay={<Tooltip>Select Mediator</Tooltip>}
-                        >
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="p-1 text-success"
-                            onClick={() =>
-                              handleOpenSelectMediatorModal(product)
-                            }
-                          >
-                            <FaUserFriends />
-                          </Button>
-                        </OverlayTrigger>
-                        <OverlayTrigger
-                          placement="top"
-                          overlay={<Tooltip> Request Return to Sale </Tooltip>}
-                        >
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="p-1 text-warning"
-                            onClick={() => handleRequestReturnToSale(product)}
-                          >
-                            <FaUndo />
-                          </Button>
-                        </OverlayTrigger>
+                        {isPendingMediatorSelection &&
+                          !isMediatorAssignedBySeller && (
+                            <OverlayTrigger
+                              placement="top"
+                              overlay={<Tooltip>Select Mediator</Tooltip>}
+                            >
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-1 text-success"
+                                onClick={() =>
+                                  handleOpenSelectMediatorModal(product)
+                                }
+                              >
+                                <FaUserFriends />
+                              </Button>
+                            </OverlayTrigger>
+                          )}
+                        {isPendingMediatorSelection &&
+                          !isMediatorAssignedBySeller && (
+                            <OverlayTrigger
+                              placement="top"
+                              overlay={
+                                <Tooltip>Request Return to Sale</Tooltip>
+                              }
+                            >
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-1 text-warning"
+                                onClick={() =>
+                                  handleRequestReturnToSale(product)
+                                }
+                              >
+                                <FaUndo />
+                              </Button>
+                            </OverlayTrigger>
+                          )}
                       </>
-                    ) : isMediatorAssignedBySeller ||
-                      isMediationOfferAcceptedByMediator ||
-                      isEscrowFundedByBuyer ||
-                      isActualMediationInProgress ? (
-                      <OverlayTrigger
-                        placement="top"
-                        overlay={<Tooltip>View Mediation Details</Tooltip>}
-                      >
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="p-1 text-info"
-                          onClick={() =>
-                            handleOpenViewMediationDetails(product)
-                          }
-                        >
-                          <FaEye />
-                        </Button>
-                      </OverlayTrigger>
                     ) : canEditOrDelete ? (
                       <>
                         <OverlayTrigger
@@ -742,10 +721,10 @@ const CommandsListVendor = () => {
                             size="sm"
                             className="p-1 text-danger"
                             onClick={() => handleDeleteProduct(product._id)}
-                            disabled={productLoadingDelete}
+                            disabled={productLoadingDeleteState}
                           >
-                            {productLoadingDelete ? (
-                              <Spinner size="sm" animation="border" />
+                            {productLoadingDeleteState ? (
+                              <Spinner size="sm" />
                             ) : (
                               <FaTrashAlt />
                             )}
@@ -755,124 +734,121 @@ const CommandsListVendor = () => {
                     ) : null}
                   </div>
                 </div>
-                {isApproved &&
-                  !isPendingMediatorSelection &&
-                  !isMediatorAssignedBySeller &&
-                  !isMediationOfferAcceptedByMediator &&
-                  !isActualMediationInProgress &&
-                  !isEscrowFundedByBuyer && (
-                    <div className="bids-section-vendor mt-3">
-                      <h6 className="bids-title small text-muted">
-                        Received Bids ({sortedBids.length})
-                      </h6>
-                      {sortedBids.length > 0 ? (
-                        <ListGroup variant="flush" className="bids-list-vendor">
-                          {sortedBids.slice(0, 5).map((bid, index) => {
-                            const bidderId = bid.user?._id || bid.user;
-                            const uniqueBidKey = `${product._id}-${
-                              bidderId || "unknown"
-                            }-${bid.amount}-${index}`;
-                            const bidActionKey = `${product._id}_${bidderId}`;
-                            const isAcceptingCurrent =
-                              acceptingBid[bidActionKey] ?? false;
-                            const isRejectingCurrent =
-                              rejectingBid[bidActionKey] ?? false;
-                            const isProcessing =
-                              isAcceptingCurrent || isRejectingCurrent;
-                            return (
-                              <ListGroup.Item
-                                key={uniqueBidKey}
-                                className="d-flex justify-content-between align-items-center px-0 py-1 bid-list-item-vendor"
-                              >
-                                <div>
-                                  <Link
-                                    to={`/profile/${bidderId}`}
-                                    className="text-decoration-none me-2 bidder-name"
-                                    target="_blank"
-                                    title="View Profile"
+                {isApproved && !mediationRequestData && (
+                  <div className="bids-section-vendor mt-3">
+                    <h6 className="bids-title small text-muted">
+                      Received Bids ({sortedBids.length})
+                    </h6>
+                    {sortedBids.length > 0 ? (
+                      <ListGroup variant="flush" className="bids-list-vendor">
+                        {sortedBids.slice(0, 5).map((bid, index) => {
+                          const bidderId = bid.user?._id || bid.user;
+                          const uniqueBidKey = `${product._id}-${
+                            bidderId || "unknown"
+                          }-${bid.amount}-${index}`;
+                          const bidActionKey = `${product._id}_${bidderId}`;
+                          const isAcceptingCurrent =
+                            acceptingBid[bidActionKey] || false;
+                          const isRejectingCurrent =
+                            rejectingBid[bidActionKey] || false;
+                          const isProcessing =
+                            isAcceptingCurrent || isRejectingCurrent;
+                          return (
+                            <ListGroup.Item
+                              key={uniqueBidKey}
+                              className="d-flex justify-content-between align-items-center px-0 py-1 bid-list-item-vendor"
+                            >
+                              <div>
+                                <Link
+                                  to={`/profile/${bidderId}`}
+                                  className="text-decoration-none me-2 bidder-name"
+                                  target="_blank"
+                                  title="View Profile"
+                                >
+                                  {bid.user?.fullName || "Bidder"}
+                                </Link>
+                                <Badge bg="primary" pill>
+                                  {formatCurrency(bid.amount, bid.currency)}
+                                </Badge>
+                              </div>
+                              <div className="bid-actions-vendor">
+                                <OverlayTrigger
+                                  placement="top"
+                                  overlay={<Tooltip>Accept Bid</Tooltip>}
+                                >
+                                  <Button
+                                    variant="outline-success"
+                                    size="sm"
+                                    className="me-1 action-btn-vendor"
+                                    onClick={() =>
+                                      handleAcceptBid(product._id, bid)
+                                    }
+                                    disabled={isProcessing}
                                   >
-                                    {bid.user?.fullName || "Bidder"}
-                                  </Link>
-                                  <Badge bg="primary" pill>
-                                    {formatCurrency(bid.amount, bid.currency)}
-                                  </Badge>
-                                </div>
-                                <div className="bid-actions-vendor">
-                                  <OverlayTrigger
-                                    placement="top"
-                                    overlay={<Tooltip>Accept Bid</Tooltip>}
+                                    {isAcceptingCurrent ? (
+                                      <Spinner size="sm" />
+                                    ) : (
+                                      <FaCheck />
+                                    )}
+                                  </Button>
+                                </OverlayTrigger>
+                                <OverlayTrigger
+                                  placement="top"
+                                  overlay={<Tooltip>Reject Bid</Tooltip>}
+                                >
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    className="action-btn-vendor"
+                                    onClick={() =>
+                                      openRejectModal(product._id, bid)
+                                    }
+                                    disabled={isProcessing}
                                   >
-                                    <Button
-                                      variant="outline-success"
-                                      size="sm"
-                                      className="me-1 action-btn-vendor"
-                                      onClick={() =>
-                                        handleAcceptBid(product._id, bid)
-                                      }
-                                      disabled={isProcessing}
-                                    >
-                                      {isAcceptingCurrent ? (
-                                        <Spinner size="sm" animation="border" />
-                                      ) : (
-                                        <FaCheck />
-                                      )}
-                                    </Button>
-                                  </OverlayTrigger>
-                                  <OverlayTrigger
-                                    placement="top"
-                                    overlay={<Tooltip>Reject Bid</Tooltip>}
-                                  >
-                                    <Button
-                                      variant="outline-danger"
-                                      size="sm"
-                                      className="action-btn-vendor"
-                                      onClick={() =>
-                                        openRejectModal(product._id, bid)
-                                      }
-                                      disabled={isProcessing}
-                                    >
-                                      {isRejectingCurrent ? (
-                                        <Spinner size="sm" animation="border" />
-                                      ) : (
-                                        <FaTimes />
-                                      )}
-                                    </Button>
-                                  </OverlayTrigger>
-                                </div>
-                              </ListGroup.Item>
-                            );
-                          })}
-                          {sortedBids.length > 5 && (
-                            <small className="text-muted d-block mt-1">
-                              ...and {sortedBids.length - 5} more bids.
-                            </small>
-                          )}
-                        </ListGroup>
-                      ) : (
-                        <p className="text-muted small mb-0">
-                          No bids received yet.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                {(isSold || isCompleted) && product.buyer && (
-                  <Alert variant="info" className="mt-3 p-2 small">
-                    {isCompleted
-                      ? "Transaction Completed with Buyer: "
-                      : "Sold to "}
-                    <Link
-                      to={`/profile/${product.buyer._id || product.buyer}`}
-                      className="fw-bold"
-                    >
-                      {product.buyer.fullName || "a user"}
-                    </Link>
-                    on
-                    {new Date(
-                      product.soldAt || product.updatedAt
-                    ).toLocaleDateString()}
-                    .
-                  </Alert>
+                                    {isRejectingCurrent ? (
+                                      <Spinner size="sm" />
+                                    ) : (
+                                      <FaTimes />
+                                    )}
+                                  </Button>
+                                </OverlayTrigger>
+                              </div>
+                            </ListGroup.Item>
+                          );
+                        })}
+                        {sortedBids.length > 5 && (
+                          <small className="text-muted d-block mt-1">
+                            ...and {sortedBids.length - 5} more bids.
+                          </small>
+                        )}
+                      </ListGroup>
+                    ) : (
+                      <p className="text-muted small mb-0">
+                        No bids received yet.
+                      </p>
+                    )}
+                  </div>
                 )}
+                {(product.status === "sold" ||
+                  product.status === "Completed") &&
+                  product.buyer && (
+                    <Alert variant="info" className="mt-3 p-2 small">
+                      {product.status === "Completed"
+                        ? "Transaction Completed with Buyer: "
+                        : "Sold to "}
+                      <Link
+                        to={`/profile/${product.buyer._id || product.buyer}`}
+                        className="fw-bold"
+                      >
+                        {product.buyer.fullName || "a user"}
+                      </Link>
+                      on{" "}
+                      {new Date(
+                        product.soldAt || product.updatedAt
+                      ).toLocaleDateString()}
+                      .
+                    </Alert>
+                  )}
               </Card.Body>
             </Col>
           </Row>
@@ -880,37 +856,30 @@ const CommandsListVendor = () => {
       );
     },
     [
+      navigate,
+      dispatch,
       loadingDelete,
       acceptingBid,
       rejectingBid,
-      navigate,
-      dispatch,
       handleAcceptBid,
       openRejectModal,
       handleOpenViewMediationDetails,
       handleOpenSelectMediatorModal,
       handleRequestReturnToSale,
       handleDeleteProduct,
-      setActiveTab,
-      confirmingSellerReadiness,
+      sellerConfirmLoading,
       handleSellerConfirmReadiness,
-      allProducts,
     ]
   );
 
-  if (loadingProducts && myProducts.length === 0 && !userId) {
+  if (loadingProducts && myProducts.length === 0 && !userId)
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">Loading your products...</p>
+        <p>Loading...</p>
       </Container>
     );
-  }
-  if (errors) {
-    const messageToDisplay =
-      typeof errors === "string"
-        ? errors
-        : errors.msg || errors.message || "An error occurred";
+  if (errors)
     return (
       <Container className="py-5">
         <Alert
@@ -918,11 +887,13 @@ const CommandsListVendor = () => {
           dismissible
           onClose={() => dispatch({ type: "CLEAR_PRODUCT_ERRORS" })}
         >
-          Error: {messageToDisplay}
+          Error:{" "}
+          {typeof errors === "string"
+            ? errors
+            : errors.msg || "An error occurred"}
         </Alert>
       </Container>
     );
-  }
 
   return (
     <Container fluid className="py-4 commands-list-vendor-page">
@@ -937,11 +908,8 @@ const CommandsListVendor = () => {
         </Col>
       </Row>
       <Tabs
-        id="product-status-tabs"
         activeKey={activeTab}
-        onSelect={(k) => {
-          setActiveTab(k || "approved");
-        }}
+        onSelect={(k) => setActiveTab(k || "approved")}
         className="mb-3 product-tabs"
         fill
       >
@@ -949,16 +917,16 @@ const CommandsListVendor = () => {
           eventKey="approved"
           title={
             <>
-              <FaCheck className="me-1" /> Approved
+              <FaCheck className="me-1" /> Approved{" "}
               <Badge pill bg="success" className="ms-1">
                 {approvedProducts.length}
               </Badge>
             </>
           }
         >
-          {loadingProducts && approvedProducts.length === 0 ? (
+          {loadingProducts && !approvedProducts.length ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" /> Loading...
+              <Spinner size="sm" /> Loading...
             </div>
           ) : approvedProducts.length > 0 ? (
             approvedProducts.map(renderProductEntry)
@@ -972,22 +940,22 @@ const CommandsListVendor = () => {
           eventKey="mediation"
           title={
             <>
-              <FaHandshake className="me-1" /> In Mediation
+              <FaHandshake className="me-1" /> In Mediation{" "}
               <Badge pill bg="primary" className="ms-1">
                 {mediationProducts.length}
               </Badge>
             </>
           }
         >
-          {loadingProducts && mediationProducts.length === 0 ? (
+          {loadingProducts && !mediationProducts.length ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" /> Loading...
+              <Spinner size="sm" /> Loading...
             </div>
           ) : mediationProducts.length > 0 ? (
             mediationProducts.map(renderProductEntry)
           ) : (
             <Alert variant="light" className="text-center py-4">
-              No products currently in mediation process.
+              No products in mediation process.
             </Alert>
           )}
         </Tab>
@@ -995,16 +963,16 @@ const CommandsListVendor = () => {
           eventKey="pending"
           title={
             <>
-              <FaHourglassHalf className="me-1" /> Pending
+              <FaHourglassHalf className="me-1" /> Pending{" "}
               <Badge pill bg="warning" text="dark" className="ms-1">
                 {pendingProducts.length}
               </Badge>
             </>
           }
         >
-          {loadingProducts && pendingProducts.length === 0 ? (
+          {loadingProducts && !pendingProducts.length ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" /> Loading...
+              <Spinner size="sm" /> Loading...
             </div>
           ) : pendingProducts.length > 0 ? (
             pendingProducts.map(renderProductEntry)
@@ -1018,7 +986,7 @@ const CommandsListVendor = () => {
           eventKey="sold"
           title={
             <>
-              <FaDollarSign className="me-1" /> Sold
+              <FaDollarSign className="me-1" /> Sold{" "}
               <Badge pill bg="secondary" className="ms-1">
                 {soldProducts.length + completedProducts.length}
               </Badge>
@@ -1026,9 +994,9 @@ const CommandsListVendor = () => {
           }
         >
           {loadingProducts &&
-          soldProducts.length + completedProducts.length === 0 ? (
+          !(soldProducts.length + completedProducts.length) ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" /> Loading...
+              <Spinner size="sm" /> Loading...
             </div>
           ) : soldProducts.length + completedProducts.length > 0 ? (
             [...soldProducts, ...completedProducts]
@@ -1048,16 +1016,16 @@ const CommandsListVendor = () => {
           eventKey="rejected"
           title={
             <>
-              <FaTimesCircle className="me-1" /> Rejected
+              <FaTimesCircle className="me-1" /> Rejected{" "}
               <Badge pill bg="danger" className="ms-1">
                 {rejectedProducts.length}
               </Badge>
             </>
           }
         >
-          {loadingProducts && rejectedProducts.length === 0 ? (
+          {loadingProducts && !rejectedProducts.length ? (
             <div className="text-center py-4">
-              <Spinner animation="border" size="sm" /> Loading...
+              <Spinner size="sm" /> Loading...
             </div>
           ) : rejectedProducts.length > 0 ? (
             rejectedProducts.map(renderProductEntry)
@@ -1105,8 +1073,8 @@ const CommandsListVendor = () => {
         </Modal.Header>
         <Modal.Body>
           <p>
-            Reason for rejecting bid from
-            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for
+            Reason for rejecting bid from{" "}
+            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for{" "}
             <strong>
               {formatCurrency(
                 bidToReject?.bid?.amount,
@@ -1144,7 +1112,7 @@ const CommandsListVendor = () => {
             {rejectingBid[
               `${bidToReject?.productId}_${bidToReject?.bid?.user?._id}`
             ] ? (
-              <Spinner size="sm" animation="border" />
+              <Spinner size="sm" />
             ) : (
               "Confirm Rejection"
             )}
