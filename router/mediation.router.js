@@ -21,6 +21,7 @@ const {
     getMediationChatHistory,
     getMediationRequestDetailsController,
     handleChatImageUpload,
+    getMyMediationSummariesController,
 } = require('../controllers/mediation.controller');
 
 // --- مسارات الأدمن ---
@@ -122,6 +123,9 @@ router.post(
     uploadChatImage.single('chatImage'), // استخدم middleware الرفع، 'chatImage' هو اسم الحقل من FormData
     handleChatImageUpload  // دالة الـ controller الجديدة
 );
+
+// --- المسار الجديد لجلب ملخصات الوساطات للمستخدم ---
+router.get('/my-summaries', verifyAuth, getMyMediationSummariesController);
 
 // POST /mediation/complete/:requestId (للوسيط لإتمام الصفقة)
 // ... والمزيد ...

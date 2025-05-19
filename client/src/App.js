@@ -30,6 +30,7 @@ import ReviewMediatorApplications from './components/admin/ReviewMediatorApplica
 import MediatorDashboardPage from './pages/MediatorDashboardPage'; // لوحة تحكم الوسيط
 import MyMediationRequestsPage from './pages/MyMediationRequestsPage'; // طلبات الوساطة للمشتري
 import MediationChatPage from './pages/MediationChatPage'; // --- صفحة المحادثة الجديدة ---
+import { updateUnreadCountFromSocket, getMyMediationSummaries } from './redux/actions/mediationAction'; // تأكد أن getMyMediationSummaries مستوردة إذا أردت استخدامها كـ fallback
 
 // --- استيراد ملفات CSS ---
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -37,6 +38,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import './components/layout/Sidebar.css';
 import './pages/MainDashboard.css';
+import MediationsListPage from './pages/MediationsListPage';
+import { FaComments } from 'react-icons/fa';
 // يمكنك إضافة CSS خاص بـ MediationChatPage.css إذا أنشأته
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -120,15 +123,57 @@ function App() {
           dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification }); // افترض أن لديك هذا النوع في notificationReducer
         });
 
-        // --- مستمع لرسائل المحادثة الجديدة (إذا أردت تحديثاً فورياً خارج صفحة المحادثة) ---
-        // socketRef.current.on('newMediationMessage', (message) => {
-        //   console.log('Global: New mediation message received via socket:', message);
-        //   // يمكنك عرض تنبيه toast أو تحديث شارة الرسائل غير المقروءة
-        //   if (message.sender?._id !== user?._id) { // لا تعرض toast لرسائلك الخاصة
-        //      toast.success(`New chat message in mediation: ${message.mediationRequestId}`, { autoClose: 3000});
-        //   }
-        //   // يمكنك عمل dispatch لـ action يضيف الرسالة إلى مخزن عام للرسائل غير المقروءة
-        // });
+        // --- [!!!] مستمع جديد لتحديث ملخصات الوساطة [!!!] ---
+        socketRef.current.on('update_unread_summary', (data) => {
+          console.log('[App Socket] Received "update_unread_summary" EVENT AND DATA:', data);
+
+          // احصل على المسار الحالي
+          const currentPath = window.location.pathname; // أو استخدم useLocation إذا كنت داخل مكون يستخدمه
+
+          // لا تقم بتحديث العداد أو عرض toast إذا كان المستخدم بالفعل داخل صفحة الدردشة لهذه الوساطة
+          if (currentPath === `/dashboard/mediation-chat/${data.mediationId}`) {
+            console.log(`[App Socket] User is currently in chat for mediation ${data.mediationId}. Skipping global unread update.`);
+            return;
+          }
+
+          // عرض Toast (اختياري)
+          toast.info(
+            <div>
+              <FaComments className="me-2" />
+              New message in chat: <strong>{data.productTitle || data.mediationId}</strong>
+              {data.otherPartyForRecipient?.fullName && (
+                <div className="small text-muted">From: {data.otherPartyForRecipient.fullName}</div>
+              )}
+            </div>,
+            {
+              position: "bottom-right",
+              autoClose: 4000,
+              onClick: () => {
+                // يمكنك توجيه المستخدم إلى قائمة الوساطات أو الدردشة المحددة
+                // navigate(`/dashboard/mediation-chat/${data.mediationId}`); // ستحتاج لـ navigate
+              }
+            }
+          );
+
+          // تحديث حالة Redux
+          dispatch(updateUnreadCountFromSocket(data.mediationId, data.newUnreadCount));
+
+          // (اختياري) يمكنك أيضًا تحديث بيانات أخرى مثل lastMessageTimestamp إذا كان ذلك مفيدًا
+          // dispatch({ 
+          //   type: 'UPDATE_MEDIATION_SUMMARY_DETAILS', 
+          //   payload: { 
+          //     mediationId: data.mediationId, 
+          //     lastMessageTimestamp: data.lastMessageTimestamp,
+          //     // إذا كانت الوساطة جديدة تمامًا ولم تكن في القائمة، قد تحتاج لإعادة جلب الكل
+          //     // أو إضافة الوساطة الجديدة إذا كان الـ payload يحتوي على معلومات كافية
+          //   }
+          // });
+
+          // (بديل) إذا كان من الأسهل، يمكنك ببساطة إعادة جلب جميع الملخصات
+          // dispatch(getMyMediationSummaries()); 
+          // لكن هذا أقل كفاءة من تحديث وساطة معينة فقط
+        });
+        // --- [!!!] نهاية المستمع الجديد [!!!] ---
         // --------------------------------------------------------------------------------
 
         socketRef.current.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
@@ -143,12 +188,10 @@ function App() {
     return () => {
       if (socketRef.current) {
         console.log("App Cleanup: Disconnecting Socket.IO and removing listeners...");
-        socketRef.current.off('connect');
-        socketRef.current.off('new_notification');
-        // socketRef.current.off('newMediationMessage'); // إذا أضفته
-        socketRef.current.off('disconnect');
-        socketRef.current.off('connect_error');
+        socketRef.current.off('update_unread_summary'); // <-- لا تنس إزالة المستمع الجديد
+        socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
   }, [isAuth, user?._id, dispatch]);
@@ -165,7 +208,6 @@ function App() {
   const handleSearchChange = (newSearchTerm) => setSearch(newSearchTerm);
 
   return (
-    // تم إزالة <Router> من هنا لأنها يجب أن تكون في index.js أو أعلى مستوى
     <div className={`app-container ${isAuth ? 'layout-authenticated' : 'layout-public'}`}>
       <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
       {isAuth && <Sidebar onSearchChange={handleSearchChange} />}
@@ -184,8 +226,15 @@ function App() {
           <Route path="/dashboard/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
           <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
           <Route path="/my-mediation-requests" element={<ProtectedRoute><MyMediationRequestsPage /></ProtectedRoute>} /> {/* للمشتري */}
-          {/* <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} />  // إذا كانت MyOrdersPage مختلفة */}
 
+          <Route
+            path="/dashboard/mediations"
+            element={
+              <ProtectedRoute>
+                <MediationsListPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Vendor Specific Routes */}
           <Route path="/dashboard/comptes_bids" element={<ProtectedRoute requiredRole="Vendor"><CommandsListVendor search={search} /></ProtectedRoute>} />

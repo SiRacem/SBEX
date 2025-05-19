@@ -13,7 +13,12 @@ import {
     BUYER_CONFIRM_READINESS_ESCROW_REQUEST, BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, BUYER_CONFIRM_READINESS_ESCROW_FAIL,
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
+    GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
+    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,
     } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
+
+// تأكد من أن لديك axios مثبتًا في مشروعك
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"; // <-- أضف هذا إذا لم يكن موجودًا
 
 // Helper للحصول على التوكن (يمكن استيراده من ملف مشترك)
 const getTokenConfig = () => {
@@ -361,4 +366,74 @@ export const buyerRejectMediationAction = (mediationRequestId, reason) => async 
         toast.error(`Cancellation failed: ${message}`);
         return Promise.reject({ error: message });
     }
+};
+
+/**
+ * Action لجلب ملخصات الوساطات للمستخدم الحالي
+ */
+export const getMyMediationSummaries = () => async (dispatch, getState) => {
+    try {
+        dispatch({ type: GET_MY_MEDIATION_SUMMARIES_REQUEST });
+
+        // يمكنك استخدام getTokenConfig أو الحصول على التوكن مباشرة
+        const tokenFromState = getState().userReducer?.token; // افتراض أن التوكن مخزن في userReducer
+        const tokenFromStorage = localStorage.getItem('token');
+        const token = tokenFromState || tokenFromStorage;
+
+        if (!token) {
+            // يمكنك التعامل مع هذا بشكل أفضل، ربما dispatch لـ LOGOUT_USER
+            dispatch({
+                type: GET_MY_MEDIATION_SUMMARIES_FAIL,
+                payload: "User not authenticated for fetching mediation summaries.",
+            });
+            toast.error("Authentication required.");
+            return; // إنهاء التنفيذ إذا لم يكن هناك توكن
+        }
+
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        };
+
+        // Endpoint جديد سنقوم بإنشائه في الخادم
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/my-summaries`, config);
+        // نتوقع أن data يكون كائنًا يحتوي على:
+        // data.requests: مصفوفة من ملخصات الوساطات
+        // data.totalUnreadMessages: العدد الإجمالي للرسائل غير المقروءة عبر جميع الوساطات
+
+        dispatch({
+            type: GET_MY_MEDIATION_SUMMARIES_SUCCESS,
+            payload: data, // data = { requests: [], totalUnreadMessages: 0 }
+        });
+
+    } catch (error) {
+        const errorMessage = error.response && error.response.data && error.response.data.msg
+            ? error.response.data.msg
+            : error.message;
+        console.error("Error fetching mediation summaries:", errorMessage, error.response || error);
+        dispatch({
+            type: GET_MY_MEDIATION_SUMMARIES_FAIL,
+            payload: errorMessage,
+        });
+        // لا تعرض toast هنا بالضرورة، يمكن للمكون الذي يستدعي هذا الـ action التعامل مع الخطأ
+    }
+};
+// --- [!!!] نهاية الدالة المضافة [!!!] ---
+
+// Action (اختياري) لتحديث واجهة المستخدم عند فتح محادثة من القائمة
+// (لجعل عدد الرسائل غير المقروءة لتلك المحادثة = 0 فورًا في القائمة)
+export const markMediationAsReadInList = (mediationId) => (dispatch) => {
+    dispatch({
+        type: MARK_MEDIATION_AS_READ_IN_LIST,
+        payload: { mediationId },
+    });
+};
+
+// Action (اختياري) لتحديث عدد الرسائل غير المقروءة عند استقبال رسالة جديدة عبر socket
+export const updateUnreadCountFromSocket = (mediationId, newUnreadCount) => (dispatch) => {
+    dispatch({
+        type: UPDATE_UNREAD_COUNT_FROM_SOCKET,
+        payload: { mediationId, unreadCount: newUnreadCount }
+    });
 };

@@ -213,3 +213,21 @@ body {
     margin-left: 0;
   }
 }
+
+.mediation-list-item .status-indicator-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.mediation-list-item .status-indicator-dot.unread {
+  background-color: var(--bs-danger); /* لون أحمر للإشارة لرسائل غير مقروءة */
+}
+
+.mediation-list-item .status-indicator-dot.read {
+  background-color: var(--bs-gray-400); /* لون رمادي إذا كانت مقروءة أو لا يوجد جديد */
+}
+/* يمكنك تعديل الألوان لتناسب تصميمك */

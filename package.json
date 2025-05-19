@@ -27,6 +27,7 @@
     "multer": "^1.4.5-lts.2",
     "nodemon": "^3.1.9",
     "react-toastify": "^11.0.5",
+    "react-window": "^1.8.11",
     "socket.io": "^4.8.1",
     "yet-another-react-lightbox": "^3.23.0"
   },

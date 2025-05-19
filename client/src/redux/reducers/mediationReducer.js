@@ -2,16 +2,18 @@
 import {
     ADMIN_GET_PENDING_ASSIGNMENTS_REQUEST, ADMIN_GET_PENDING_ASSIGNMENTS_SUCCESS, ADMIN_GET_PENDING_ASSIGNMENTS_FAIL,
     ADMIN_ASSIGN_MEDIATOR_REQUEST, ADMIN_ASSIGN_MEDIATOR_SUCCESS, ADMIN_ASSIGN_MEDIATOR_FAIL,
-    ADMIN_ASSIGN_MEDIATOR_RESET, ADMIN_CLEAR_MEDIATION_ERRORS, ASSIGN_MEDIATOR_REQUEST, 
-    ASSIGN_MEDIATOR_SUCCESS, ASSIGN_MEDIATOR_FAIL, GET_MEDIATOR_ASSIGNMENTS_REQUEST, GET_MEDIATOR_ASSIGNMENTS_SUCCESS, 
-    GET_MEDIATOR_ASSIGNMENTS_FAIL, MEDIATOR_ACCEPT_ASSIGNMENT_REQUEST, MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS, 
-    MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, MEDIATOR_REJECT_ASSIGNMENT_REQUEST, MEDIATOR_REJECT_ASSIGNMENT_SUCCESS, 
-    MEDIATOR_REJECT_ASSIGNMENT_FAIL, GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_REQUEST, 
-    GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_SUCCESS,GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL, 
-    SELLER_CONFIRM_READINESS_REQUEST, SELLER_CONFIRM_READINESS_SUCCESS, SELLER_CONFIRM_READINESS_FAIL, 
-    BUYER_CONFIRM_READINESS_ESCROW_REQUEST, BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, BUYER_CONFIRM_READINESS_ESCROW_FAIL, 
+    ADMIN_ASSIGN_MEDIATOR_RESET, ADMIN_CLEAR_MEDIATION_ERRORS, ASSIGN_MEDIATOR_REQUEST,
+    ASSIGN_MEDIATOR_SUCCESS, ASSIGN_MEDIATOR_FAIL, GET_MEDIATOR_ASSIGNMENTS_REQUEST, GET_MEDIATOR_ASSIGNMENTS_SUCCESS,
+    GET_MEDIATOR_ASSIGNMENTS_FAIL, MEDIATOR_ACCEPT_ASSIGNMENT_REQUEST, MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS,
+    MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, MEDIATOR_REJECT_ASSIGNMENT_REQUEST, MEDIATOR_REJECT_ASSIGNMENT_SUCCESS,
+    MEDIATOR_REJECT_ASSIGNMENT_FAIL, GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_REQUEST,
+    GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_SUCCESS, GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL,
+    SELLER_CONFIRM_READINESS_REQUEST, SELLER_CONFIRM_READINESS_SUCCESS, SELLER_CONFIRM_READINESS_FAIL,
+    BUYER_CONFIRM_READINESS_ESCROW_REQUEST, BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, BUYER_CONFIRM_READINESS_ESCROW_FAIL,
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
+    GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
+    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -66,6 +68,13 @@ const initialState = {
 
     confirmingReadiness: false, // مثال لحالة تحميل عامة لتأكيد الاستعداد
     confirmReadinessError: null,
+
+    myMediationSummaries: {
+        requests: [], // كان اسمه mediationRequests، تم توحيده مع payload
+        loading: false,
+        error: null,
+        totalUnreadMessagesCount: 0,
+    },
 };
 
 const mediationReducer = (state = initialState, action) => {
@@ -236,7 +245,7 @@ const mediationReducer = (state = initialState, action) => {
                 ...state,
                 loadingBuyerRequests: false,
                 buyerRequests: {
-                    list: payload.requests || [], 
+                    list: payload.requests || [],
                     totalPages: payload.totalPages || 1,
                     currentPage: payload.currentPage || 1,
                     totalCount: payload.totalRequests || 0,
@@ -244,14 +253,14 @@ const mediationReducer = (state = initialState, action) => {
                 errorBuyerRequests: null, // مسح أي خطأ سابق عند النجاح
             };
         case GET_BUYER_MEDIATION_REQUESTS_FAIL:
-            return { 
-                ...state, 
-                loadingBuyerRequests: false, 
-                errorBuyerRequests: payload, 
+            return {
+                ...state,
+                loadingBuyerRequests: false,
+                errorBuyerRequests: payload,
                 buyerRequests: { ...initialState.buyerRequests } // إعادة للقيم الأولية عند الفشل
             };
 
-                // --- Buyer Reject Mediation ---
+        // --- Buyer Reject Mediation ---
         case BUYER_REJECT_MEDIATION_REQUEST:
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false }; // استخدام actionLoading العام
         case BUYER_REJECT_MEDIATION_SUCCESS:
@@ -268,6 +277,117 @@ const mediationReducer = (state = initialState, action) => {
             };
         case BUYER_REJECT_MEDIATION_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
+
+        // --- Get My Mediation Summaries (for messages/chats list) ---
+        case GET_MY_MEDIATION_SUMMARIES_REQUEST:
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries, // الحفاظ على البيانات القديمة أثناء التحميل
+                    loading: true,
+                    error: null,
+                },
+            };
+        case GET_MY_MEDIATION_SUMMARIES_SUCCESS:
+            return {
+                ...state,
+                myMediationSummaries: {
+                    requests: payload.requests || [],
+                    loading: false,
+                    error: null,
+                    // payload.totalUnreadMessagesCount هو الاسم الذي تستخدمه في MainDashboard
+                    // payload.totalUnreadMessages هو الاسم الذي استخدمته في مثال سابق للخادم
+                    // تأكد من تطابق هذا الاسم مع ما يرسله الخادم getMyMediationSummariesController
+                    totalUnreadMessagesCount: payload.totalUnreadMessagesCount || payload.totalUnreadMessages || 0,
+                },
+            };
+        case GET_MY_MEDIATION_SUMMARIES_FAIL:
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries, // الحفاظ على البيانات القديمة عند الخطأ
+                    requests: [], // أو الحفاظ على البيانات القديمة
+                    loading: false,
+                    error: payload,
+                    totalUnreadMessagesCount: 0, // أو الحفاظ على القيمة القديمة
+                },
+            };
+        case MARK_MEDIATION_AS_READ_IN_LIST:
+            // payload: { mediationId }
+            const updatedRequestsMarkRead = state.myMediationSummaries.requests.map(med =>
+                med._id === payload.mediationId
+                    ? { ...med, unreadMessagesCount: 0 } // تصفير العداد لهذه الوساطة
+                    : med
+            );
+            const newTotalUnreadMarkRead = updatedRequestsMarkRead.reduce((total, med) => {
+                return total + (med.unreadMessagesCount || 0);
+            }, 0);
+
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries,
+                    requests: updatedRequestsMarkRead,
+                    totalUnreadMessagesCount: newTotalUnreadMarkRead
+                }
+            };
+        case UPDATE_UNREAD_COUNT_FROM_SOCKET:
+            // payload: { mediationId, unreadCount, lastMessageTimestamp, productTitle, otherPartyForRecipient }
+            let foundMediation = false;
+            const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
+                if (med._id === payload.mediationId) {
+                    foundMediation = true;
+                    // تحديث العداد ووقت آخر رسالة
+                    return {
+                        ...med,
+                        unreadMessagesCount: payload.unreadCount, // العدد الجديد من الخادم
+                        lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp
+                    };
+                }
+                return med;
+            });
+
+            let finalRequests = updatedRequestsSocket;
+
+            // إذا لم يتم العثور على الوساطة (قد تكون وساطة جديدة بدأها طرف آخر للتو)
+            if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
+                // إضافة الوساطة الجديدة إلى بداية القائمة
+                // تأكد أن payload يحتوي على كل الحقول الأساسية اللازمة للعرض
+                const newMediationSummary = {
+                    _id: payload.mediationId,
+                    product: { title: payload.productTitle, imageUrl: null }, // قد تحتاج لتفاصيل أكثر
+                    status: 'InProgress', // أو حالة افتراضية أخرى
+                    otherParty: payload.otherPartyForRecipient,
+                    unreadMessagesCount: payload.unreadCount,
+                    lastMessageTimestamp: payload.lastMessageTimestamp,
+                    updatedAt: payload.lastMessageTimestamp, // قيمة افتراضية
+                };
+                finalRequests = [newMediationSummary, ...updatedRequestsSocket];
+                console.log("UPDATE_UNREAD_COUNT_FROM_SOCKET: Added new mediation summary to list", newMediationSummary);
+            }
+
+            // إعادة ترتيب القائمة لجعل الوساطة المحدثة (التي بها رسائل جديدة) في الأعلى
+            finalRequests.sort((a, b) => {
+                if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1; // المحدثة أولاً
+                if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
+                if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
+                if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
+                return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
+            });
+
+
+            const newTotalUnreadSocket = finalRequests.reduce((total, med) => {
+                return total + (med.unreadMessagesCount || 0);
+            }, 0);
+
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries,
+                    requests: finalRequests,
+                    totalUnreadMessagesCount: newTotalUnreadSocket
+                }
+            };
 
         default:
             return state;

@@ -53,6 +53,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     return `${num.toFixed(3)} ${safeCurrencyCode}`;
   }
 };
+
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="120" viewBox="0 0 150 120"><rect width="150" height="120" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
 const fallbackProductImageUrl =
@@ -254,6 +255,7 @@ const MyMediationRequestsPage = () => {
 
       {buyerRequests.list.map((request) => {
         if (!request || !request.product) return null;
+        console.log("Current request status from DB:", request.status);
         const product = request.product;
         const seller = request.seller;
         const mediator = request.mediator;
@@ -264,6 +266,9 @@ const MyMediationRequestsPage = () => {
           request.bidAmount,
           request.bidCurrency
         );
+        console.log("Request bidAmount:", request.bidAmount, "bidCurrency:", request.bidCurrency);
+        console.log("Calculated feeDisplayDetails:", feeDisplayDetails); // <--- اطبع هذا
+
         const productImages = product?.imageUrls;
 
         let statusBadgeText = request.status
@@ -340,11 +345,10 @@ const MyMediationRequestsPage = () => {
                 </Col>
                 <Col md={9}>
                   <p>
-                    <strong>Transaction ID:</strong> {request._id}
+                    <strong>Transaction ID :</strong> {request._id}
                   </p>
                   <p>
-                    <strong>Seller:</strong>
-                    {seller?.fullName ? (
+                    <strong>Seller :</strong> {seller?.fullName ? (
                       <Link
                         to={`/profile/${seller._id}`}
                         target="_blank"
@@ -358,8 +362,7 @@ const MyMediationRequestsPage = () => {
                   </p>
                   {mediator && (
                     <p>
-                      <strong>Mediator:</strong>
-                      {mediator.fullName ? (
+                      <strong>Mediator :</strong> {mediator.fullName ? (
                         <Link
                           to={`/profile/${mediator._id}`}
                           target="_blank"
@@ -373,8 +376,7 @@ const MyMediationRequestsPage = () => {
                     </p>
                   )}
                   <p>
-                    <strong>Agreed Price:</strong>
-                    {formatCurrency(request.bidAmount, request.bidCurrency)}
+                    <strong>Agreed Price :</strong> {formatCurrency(request.bidAmount, request.bidCurrency)}
                   </p>
                   {request.status === "MediationOfferAccepted" &&
                     !request.buyerConfirmedStart &&
@@ -385,18 +387,16 @@ const MyMediationRequestsPage = () => {
                         className="small p-2 mt-2 mb-3 border"
                       >
                         <div>
-                          <strong>Estimated Cost:</strong>
+                          <strong>Estimated Cost of Escrow :</strong>
                         </div>
                         <div>
-                          Agreed:
-                          {formatCurrency(
+                          Agreed Price : + {formatCurrency(
                             feeDisplayDetails.priceOriginal,
                             feeDisplayDetails.currencyUsed
                           )}
                         </div>
                         <div>
-                          Your Fee Share: +
-                          {formatCurrency(
+                          Your Fee Share : + {formatCurrency(
                             feeDisplayDetails.buyerShare,
                             feeDisplayDetails.currencyUsed
                           )}
@@ -404,9 +404,8 @@ const MyMediationRequestsPage = () => {
                         <hr className="my-1" />
                         <div>
                           <strong>
-                            Total to Escrow:
-                            {formatCurrency(
-                              feeDisplayDetails.totalForBuyerAfterFee,
+                            Total to Escrow : {formatCurrency(
+                              feeDisplayDetails.totalForBuyer,
                               feeDisplayDetails.currencyUsed
                             )}
                           </strong>
@@ -414,12 +413,10 @@ const MyMediationRequestsPage = () => {
                       </Alert>
                     )}
                   <p>
-                    <strong>Status:</strong>
-                    <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
+                    <strong>Status :</strong> <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
                   </p>
                   <p>
-                    <strong>Last Updated:</strong>
-                    {new Date(
+                    <strong>Last Updated :</strong> {new Date(
                       request.updatedAt || request.createdAt
                     ).toLocaleString()}
                   </p>
@@ -428,10 +425,8 @@ const MyMediationRequestsPage = () => {
                     !request.buyerConfirmedStart && (
                       <div className="mt-3">
                         <Alert variant="warning" className="small p-2">
-                          <FaHourglassHalf className="me-1" /> Action Required:
-                          Mediator
-                          <strong>{mediator?.fullName || "N/A"}</strong>
-                          accepted. Confirm & deposit funds.
+                          <FaHourglassHalf className="me-1" /> Action Required : Mediator
+                          <strong> {mediator?.fullName || "N/A"} </strong> accepted. Confirm & deposit funds.
                         </Alert>
                         <Button
                           variant="success"

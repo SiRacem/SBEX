@@ -46,16 +46,15 @@ const MediationRequestSchema = new Schema({
         {
             sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
             message: { type: String, required: true, trim: true },
-            timestamp: { type: Date, default: Date.now },
-            type: { type: String, enum: ['text', 'image', 'file'], default: 'text' }, // <--- أضف هذا
+            timestamp: { type: Date, default: Date.now, index: true },
+            type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
             imageUrl: { type: String, default: null },
-            // --- [!!! NEW FIELD FOR READ RECEIPTS !!!] ---
-            readBy: {
+            readBy: { // <--- هذا الحقل مهم
                 type: [{
                     readerId: { type: Schema.Types.ObjectId, ref: 'User' },
                     readAt: { type: Date, default: Date.now }
                 }],
-                default: [] // يبدأ فارغاً
+                default: []
             }
         }
     ],

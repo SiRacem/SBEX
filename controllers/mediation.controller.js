@@ -6,6 +6,8 @@ const Product = require('../models/Product');
 const Notification = require('../models/Notification');
 const { calculateMediatorFeeDetails } = require('../utils/feeCalculator');
 const mongoose = require('mongoose');
+const fs = require('fs'); // تأكد من وجود هذا إذا كنت تستخدمه في handleChatImageUpload
+const path = require('path'); // تأكد من وجود هذا
 
 // --- Helper: Currency Formatting ---
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -97,41 +99,40 @@ async function initiateMediationChat(mediationRequestId, callingFunctionName = "
 }
 
 exports.getMediationRequestDetailsController = async (req, res) => {
-    console.log("--- Controller: getMediationRequestDetailsController ---"); // أضف log للتحقق
+    console.log("--- Controller: getMediationRequestDetailsController ---");
     try {
         const { mediationRequestId } = req.params;
-        const userId = req.user._id; // المستخدم الذي يقوم بالطلب
+        const userId = req.user._id;
 
         if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
-            console.warn(`[getMediationDetails] Invalid ID format: ${mediationRequestId}`);
             return res.status(400).json({ msg: "Invalid Mediation Request ID." });
         }
-        console.log(`[getMediationDetails] Fetching details for ID: ${mediationRequestId} by User: ${userId}`);
 
         const request = await MediationRequest.findById(mediationRequestId)
-            .populate('product', 'title imageUrls currency agreedPrice') // اختر الحقول التي تحتاجها للمنتج
-            .populate('seller', '_id fullName avatarUrl userRole') // للحقول المعروضة في الشريط الجانبي
+            .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency') // أضفت bidAmount و bidCurrency
+            .populate('seller', '_id fullName avatarUrl userRole')
             .populate('buyer', '_id fullName avatarUrl userRole')
-            .populate('mediator', '_id fullName avatarUrl userRole isMediatorQualified');
+            .populate('mediator', '_id fullName avatarUrl userRole isMediatorQualified')
+            .populate({ // Populate sender details within each chat message's readBy array
+                path: 'chatMessages.readBy.readerId',
+                select: 'fullName avatarUrl _id'
+            })
+            .populate('chatMessages.sender', 'fullName avatarUrl _id'); // Populate sender of messages
 
         if (!request) {
-            console.warn(`[getMediationDetails] Mediation request not found: ${mediationRequestId}`);
             return res.status(404).json({ msg: "Mediation request not found." });
         }
 
-        // التحقق من أن المستخدم الحالي هو طرف في هذه الوساطة أو أدمن
         const isSeller = request.seller && request.seller._id.equals(userId);
         const isBuyer = request.buyer && request.buyer._id.equals(userId);
         const isMediator = request.mediator && request.mediator._id.equals(userId);
         const isAdminUser = req.user.userRole === 'Admin';
 
         if (!(isSeller || isBuyer || isMediator || isAdminUser)) {
-            console.warn(`[getMediationDetails] Forbidden access for user ${userId} to mediation ${mediationRequestId}`);
             return res.status(403).json({ msg: "Forbidden: You are not authorized to view these details." });
         }
 
-        console.log(`[getMediationDetails] Details found and authorized for mediation: ${mediationRequestId}`);
-        res.status(200).json({ mediationRequest: request }); // أرسل الكائن تحت مفتاح mediationRequest
+        res.status(200).json({ mediationRequest: request });
 
     } catch (error) {
         console.error("[getMediationDetails] Error fetching mediation request details:", error);
@@ -846,7 +847,6 @@ exports.sellerConfirmReadiness = async (req, res) => {
 };
 
 // --- Buyer: Confirm Readiness and Escrow (MODIFIED with PartiesConfirmed) ---
-// server/controllers/mediation.controller.js
 exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
     const { mediationRequestId } = req.params;
     const buyerId = req.user._id;
@@ -1087,85 +1087,220 @@ exports.handleChatImageUpload = async (req, res) => {
 
     const session = await mongoose.startSession();
     session.startTransaction();
-    console.log("   [handleChatImageUpload] Session started.");
-
     try {
-        const mediationRequest = await MediationRequest.findById(mediationRequestId).session(session);
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .populate('product', 'title') // For notification
+            .populate('seller', '_id')    // For notification recipients
+            .populate('buyer', '_id')
+            .populate('mediator', '_id')
+            .session(session);
         if (!mediationRequest) {
             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
             throw new Error("Mediation request not found.");
         }
-
         const isParty = (mediationRequest.seller.equals(senderId) || mediationRequest.buyer.equals(senderId) || (mediationRequest.mediator && mediationRequest.mediator.equals(senderId)));
-        if (!isParty) {
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Forbidden: You are not a party to this mediation chat.");
-        }
-        if (mediationRequest.status !== 'InProgress') {
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Forbidden: Mediation chat is not currently active.");
-        }
+        if (!isParty) { if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); throw new Error("Forbidden: Not a party."); }
+        if (mediationRequest.status !== 'InProgress') { if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); throw new Error("Forbidden: Chat not active."); }
 
         let relativeImagePath = req.file.path.replace(/\\/g, '/').split('uploads/')[1];
-        if (!relativeImagePath) { // التحقق إذا كان split لم يعمل بشكل صحيح
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Error processing uploaded file path structure after split.");
-        }
-        relativeImagePath = `uploads/${relativeImagePath}`; // التأكد من أن 'uploads/' موجودة في البداية
+        if (!relativeImagePath) { if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); throw new Error("Error processing file path."); }
+        relativeImagePath = `uploads/${relativeImagePath}`;
 
         const imageMessageObject = {
             sender: senderId,
             message: `[Image: ${req.file.originalname}]`,
-            type: 'image', // تعيين النوع بشكل صريح
-            imageUrl: relativeImagePath, // تعيين رابط الصورة بشكل صريح
-            timestamp: new Date()
+            type: 'image',
+            imageUrl: relativeImagePath,
+            timestamp: new Date(),
+            readBy: [] // يبدأ فارغاً
         };
-
         if (!Array.isArray(mediationRequest.chatMessages)) mediationRequest.chatMessages = [];
         mediationRequest.chatMessages.push(imageMessageObject);
         await mediationRequest.save({ session });
-
-        // --- الحصول على الرسالة المحفوظة (مع _id) ---
-        const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1];
-
         await session.commitTransaction();
-        console.log(`   Image message saved. Image URL: ${savedMessageFromDb.imageUrl}, Type: ${savedMessageFromDb.type}`);
 
         const senderDetails = await User.findById(senderId).select('fullName avatarUrl').lean();
+        const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1].toObject();
+        const messageToBroadcast = { ...savedMessageFromDb, sender: senderDetails };
 
-        // --- بناء الكائن للبث بشكل صريح ---
-        const messageToBroadcast = {
-            _id: savedMessageFromDb._id, // الـ ID من قاعدة البيانات
-            sender: senderDetails,       // كائن المرسل المعبأ
-            message: savedMessageFromDb.message, // النص البديل
-            type: savedMessageFromDb.type,       // يجب أن يكون 'image'
-            imageUrl: savedMessageFromDb.imageUrl, // المسار النسبي للصورة
-            timestamp: savedMessageFromDb.timestamp
-        };
-        // ------------------------------------
+        console.log("[handleChatImageUpload] Broadcasting image message:", messageToBroadcast);
+        if (req.io) req.io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
 
-        console.log("[handleChatImageUpload] Message object FINALIZED and being broadcasted:", messageToBroadcast);
+        // --- [!!!] الجزء الجديد: إرسال تحديث للرسائل غير المقروءة للمستلمين [!!!] ---
+        const senderIdString = senderId.toString();
+        const participantsToNotifyAboutUnread = [];
 
-        if (req.io) {
-            req.io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
-            console.log(`   Image message broadcasted to room ${mediationRequestId}`);
+        if (mediationRequest.seller && mediationRequest.seller._id.toString() !== senderIdString) {
+            participantsToNotifyAboutUnread.push(mediationRequest.seller._id.toString());
+        }
+        if (mediationRequest.buyer && mediationRequest.buyer._id.toString() !== senderIdString) {
+            participantsToNotifyAboutUnread.push(mediationRequest.buyer._id.toString());
+        }
+        if (mediationRequest.mediator && mediationRequest.mediator._id.toString() !== senderIdString) {
+            participantsToNotifyAboutUnread.push(mediationRequest.mediator._id.toString());
         }
 
-        res.status(201).json({
-            msg: "Image uploaded and message sent successfully.",
-            message: messageToBroadcast
-        });
+        // إزالة أي تكرار (احتياطي)
+        const uniqueRecipients = [...new Set(participantsToNotifyAboutUnread)];
 
+        uniqueRecipients.forEach(recipientId => {
+            const recipientSocketId = onlineUsers[recipientId]; // onlineUsers هو الكائن الذي يخزن { userId: socketId }
+            if (recipientSocketId) {
+                // نحتاج لحساب عدد الرسائل غير المقروءة لهذا المستلم في هذه الوساطة
+                // هذا يمكن أن يكون مكلفًا إذا تم حسابه عند كل رسالة.
+                // طريقة أفضل قد تكون إرسال إشارة فقط، والعميل يزيد العداد،
+                // أو الخادم يحسبها بشكل غير متزامن.
+
+                // للتبسيط الآن، سنرسل فقط معرف الوساطة ومعلومات أساسية.
+                // العميل يمكنه زيادة العداد أو جلب الملخصات مرة أخرى.
+                // ولكن الطريقة الأفضل هي أن يحسب الخادم العدد الجديد ويرسله.
+
+                // --- طريقة محسنة: حساب العدد الجديد للرسائل غير المقروءة للمستلم ---
+                let unreadCountForRecipientInThisMediation = 0;
+                mediationRequest.chatMessages.forEach(msg => {
+                    if (msg.sender && !msg.sender.equals(recipientId) &&
+                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(recipientId)))) {
+                        unreadCountForRecipientInThisMediation++;
+                    }
+                });
+                // -------------------------------------------------------------
+
+                console.log(`   [sendMediationMessage] Emitting 'update_unread_summary' to user ${recipientId} (socket ${recipientSocketId}) for mediation ${mediationRequestId} with unread count ${unreadCountForRecipientInThisMediation}`);
+                io.to(recipientSocketId).emit('update_unread_summary', {
+                    mediationId: mediationRequestId.toString(),
+                    // senderName: senderDetailsForBroadcast.fullName, // اسم مرسل الرسالة الجديدة
+                    // messageSnippet: messageToBroadcast.message.substring(0, 50), // مقتطف من الرسالة
+                    newUnreadCount: unreadCountForRecipientInThisMediation, // العدد الجديد للرسائل غير المقروءة لهذه الوساطة لهذا المستلم
+                    lastMessageTimestamp: messageToBroadcast.timestamp, // وقت آخر رسالة
+                    productTitle: mediationRequest.product?.title || 'Mediation Chat', // عنوان المنتج
+                    otherPartyForRecipient: senderDetailsForBroadcast, // مرسل الرسالة هو "الطرف الآخر" بالنسبة للمستلم الآن
+                });
+            } else {
+                console.log(`   [sendMediationMessage] User ${recipientId} is not online to receive unread summary update.`);
+                // هنا يمكنك تخزين علامة في قاعدة البيانات أن المستخدم لديه رسائل غير مقروءة ليراها عند تسجيل الدخول التالي
+                // أو الاعتماد على الحساب الديناميكي عند getMyMediationSummaries
+            }
+        });
+        // --- [!!!] نهاية الجزء الجديد [!!!] ---
+
+        res.status(201).json({ msg: "Image uploaded successfully.", message: messageToBroadcast });
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
-        console.error("[handleChatImageUpload] Error:", error.message, error.stack);
-        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-            fs.unlink(req.file.path, (errUnlink) => { // استخدم unlink غير متزامن هنا
-                if (errUnlink) console.error("Error deleting uploaded chat image after controller error:", errUnlink);
-            });
-        }
-        res.status(error.message.includes("Forbidden") ? 403 : 400).json({ msg: error.message || "Failed to upload image." });
+        console.error("[handleChatImageUpload] Error:", error.message);
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(400).json({ msg: error.message || "Failed to upload image." });
     } finally {
         if (session.endSession) await session.endSession();
+    }
+};
+
+exports.getMyMediationSummariesController = async (req, res) => {
+    console.log("--- Controller: getMyMediationSummariesController ---");
+    try {
+        const userId = req.user._id; // ID المستخدم الحالي من middleware المصادقة
+
+        // جلب جميع طلبات الوساطة التي يكون المستخدم طرفًا فيها
+        const mediationRequests = await MediationRequest.find({
+            $or: [
+                { seller: userId },
+                { buyer: userId },
+                { mediator: userId }
+            ],
+            // يمكنك إضافة فلتر للحالة إذا أردت، مثلاً لاستبعاد الحالات المنتهية تمامًا
+            // status: { $in: ['InProgress', 'PendingBuyerAction', ... ] }
+        })
+            .populate('product', 'title imageUrls') // جلب عنوان المنتج وصورة (اختياري)
+            .populate('seller', '_id fullName avatarUrl userRole')
+            .populate('buyer', '_id fullName avatarUrl userRole')
+            .populate('mediator', '_id fullName avatarUrl userRole')
+            .sort({ 'chatMessages.timestamp': -1, updatedAt: -1 }) // ترتيب حسب آخر رسالة أو آخر تحديث
+            .lean(); // .lean() للأداء الأفضل عند القراءة فقط
+
+        if (!mediationRequests) {
+            return res.status(200).json({ requests: [], totalUnreadMessages: 0 });
+        }
+
+        let totalUnreadMessagesOverall = 0;
+
+        const summaries = mediationRequests.map(request => {
+            let unreadMessagesCount = 0;
+            if (request.chatMessages && request.chatMessages.length > 0) {
+                request.chatMessages.forEach(msg => {
+                    // تحقق أن الرسالة ليست من المستخدم الحالي
+                    // وأنه لم يقرأها بعد (لا يوجد سجل قراءة له)
+                    if (msg.sender && !msg.sender.equals(userId) &&
+                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(userId)))) {
+                        unreadMessagesCount++;
+                    }
+                });
+            }
+            totalUnreadMessagesOverall += unreadMessagesCount;
+
+            // تحديد الطرف الآخر
+            let otherParty = null;
+            let otherPartyRole = '';
+            if (request.seller?._id.equals(userId)) {
+                otherParty = request.buyer;
+                otherPartyRole = 'Buyer';
+            } else if (request.buyer?._id.equals(userId)) {
+                otherParty = request.seller;
+                otherPartyRole = 'Seller';
+            } else if (request.mediator?._id.equals(userId)) {
+                // إذا كان المستخدم هو الوسيط، يمكنك اختيار عرض البائع أو المشتري كـ "الطرف الآخر"
+                // أو ربما عرض "Seller & Buyer"
+                // للتبسيط الآن، سنأخذ البائع
+                otherParty = request.seller;
+                otherPartyRole = 'Seller (Mediating)';
+                if (!otherParty && request.buyer) { // Fallback if seller is null for some reason
+                    otherParty = request.buyer;
+                    otherPartyRole = 'Buyer (Mediating)';
+                }
+            }
+
+
+            // الحصول على timestamp آخر رسالة
+            let lastMessageTimestamp = request.updatedAt; // قيمة افتراضية
+            if (request.chatMessages && request.chatMessages.length > 0) {
+                // نفترض أن الرسائل مرتبة، آخر رسالة هي الأخيرة في المصفوفة
+                // ولكن يجب التأكد من الترتيب عند الإضافة أو الاعتماد على sort
+                const sortedMessages = [...request.chatMessages].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                if (sortedMessages.length > 0) {
+                    lastMessageTimestamp = sortedMessages[0].timestamp;
+                }
+            }
+
+
+            return {
+                _id: request._id,
+                product: request.product ? { title: request.product.title, imageUrl: request.product.imageUrls?.[0] } : { title: 'N/A' },
+                status: request.status,
+                otherParty: otherParty ? {
+                    _id: otherParty._id,
+                    fullName: otherParty.fullName,
+                    avatarUrl: otherParty.avatarUrl,
+                    roleLabel: otherPartyRole
+                } : { fullName: 'N/A', roleLabel: 'Participant' },
+                unreadMessagesCount: unreadMessagesCount,
+                lastMessageTimestamp: lastMessageTimestamp,
+                updatedAt: request.updatedAt, // قد يكون مفيدًا للترتيب الإضافي
+            };
+        });
+
+        // ترتيب الملخصات: التي بها رسائل غير مقروءة أولاً، ثم حسب آخر نشاط رسالة
+        summaries.sort((a, b) => {
+            if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
+            if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
+            return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
+        });
+
+
+        res.status(200).json({
+    requests: summaries,
+    totalUnreadMessagesCount: totalUnreadMessagesOverall // <--- هذا الاسم صحيح ويتطابق مع التصحيح المقترح للـ reducer
+});
+
+    } catch (error) {
+        console.error("[getMyMediationSummariesController] Error:", error);
+        res.status(500).json({ msg: "Server error fetching mediation summaries.", errorDetails: error.message });
     }
 };

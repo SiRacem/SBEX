@@ -182,7 +182,7 @@ const NotificationsPage = () => {
             // أو يجب جلب MediationRequest من الـ backend لتحديد دور المستخدم.
             // كحل أبسط حالياً، سنوجه بناءً على الدور العام:
             if (currentUserRole === "Vendor") {
-              path = "/dashboard/comptes_bids";
+              path = "/dashboard/mediations";
             } else if (currentUserRole === "User") {
               // Assuming buyer is 'User'
               path = "/my-mediation-requests";

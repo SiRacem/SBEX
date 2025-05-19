@@ -1,9 +1,8 @@
 // src/pages/MainDashboard.jsx
-// *** نسخة كاملة ومصححة بدون اختصارات ***
 
 import React, { useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link } from "react-router-dom"; // استيراد Link للتنقل
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaWallet,
   FaUserCircle,
@@ -30,10 +29,11 @@ import {
   ListGroup,
 } from "react-bootstrap"; // استيراد مكونات الواجهة من React Bootstrap
 import useCurrencyDisplay from "../hooks/useCurrencyDisplay"; // <-- استيراد الهوك المخصص للعملات
+import { getMyMediationSummaries } from "../redux/actions/mediationAction"; // تأكد من المسار الصحيح
 
-// مكون لوحة التحكم الرئيسية
 const MainDashboard = () => {
-  const dispatch = useDispatch(); // للوصول إلى dispatch في Redux
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   // --- استخدام Selectors لجلب البيانات من حالة Redux ---
   const user = useSelector((state) => state.userReducer?.user); // بيانات المستخدم المسجل
@@ -56,6 +56,12 @@ const MainDashboard = () => {
   const transactionsError = useSelector(
     (state) => state.transactionReducer?.error ?? null
   );
+const totalUnreadMediationMessages = useSelector(
+  (state) => state.mediationReducer?.myMediationSummaries?.totalUnreadMessagesCount ?? 0 // <--- تصحيح المسار
+);
+const mediationSummariesLoading = useSelector(
+  (state) => state.mediationReducer?.myMediationSummaries?.loading ?? false // <--- تصحيح المسار
+);
   const recentTransactions = []; // placeholder - لا توجد معاملات حاليًا
 
   // --- استخدام الهوك المخصص لعرض الأرصدة بالعملة المختارة ---
@@ -70,20 +76,20 @@ const MainDashboard = () => {
 
   // --- دالة تسجيل الخروج ---
   const handleLogout = useCallback(() => {
-    // عرض رسالة تأكيد قبل الخروج
     if (window.confirm("Are you sure you want to logout?")) {
-      dispatch(logoutUser()); // استدعاء action تسجيل الخروج
+      dispatch(logoutUser());
+      navigate('/login'); // توجيه المستخدم لصفحة تسجيل الدخول بعد الخروج
     }
-  }, [dispatch]); // الاعتمادية هي dispatch
+  }, [dispatch, navigate]);
 
   // --- useEffect لجلب الإشعارات عند تحميل المكون أو تغير حالة المصادقة ---
   useEffect(() => {
-    // جلب الإشعارات فقط إذا كان المستخدم مسجلاً
-    if (isAuth) {
-      // console.log("[MainDashboard Effect] Fetching notifications..."); // لإزالة التعليق عند الحاجة للتتبع
-      dispatch(getNotifications()); // استدعاء action جلب الإشعارات
-    }
-  }, [dispatch, isAuth]); // الاعتماديات هي dispatch و isAuth
+  if (isAuth && user?._id) { // إضافة user?._id كشرط للتأكد من أن المستخدم قد تم تحميله
+    console.log("[MainDashboard Effect] Fetching initial data...");
+    dispatch(getNotifications());
+    dispatch(getMyMediationSummaries()); // <--- إلغاء التعليق
+  }
+}, [dispatch, isAuth, user?._id]); // إضافة user?._id إلى الاعتماديات
 
   // --- التحقق من تحميل بيانات المستخدم ---
   // إذا لم يتم تحميل المستخدم بعد (قد يحدث للحظات قليلة بعد المصادقة)
@@ -229,13 +235,25 @@ const MainDashboard = () => {
               <hr className="my-2" />
               {/* رابط الرسائل (المسار يحتاج للتأكيد) */}
               <Link
-                to="/dashboard/messages" // <-- تأكد من أن هذا المسار موجود ومعرّف في App.js
-                className="comms-link d-flex align-items-center text-decoration-none mt-3"
+                to="/dashboard/mediations" // المسار الجديد لصفحة قائمة الوساطات
+                className="comms-link d-flex align-items-center text-decoration-none mt-3 position-relative"
               >
                 <FaComments size={22} className="me-3 text-success icon" />
-                {/* أيقونة التعليقات */}
                 <span className="link-text">Messages</span>
-                {/* يمكن إضافة شارة لعدد الرسائل غير المقروءة هنا بنفس الطريقة */}
+                {/* عرض عدد الرسائل غير المقروءة في الوساطات */}
+                {!mediationSummariesLoading && totalUnreadMediationMessages > 0 && (
+                  <Badge pill bg="success" className="notification-link-badge">
+                    {totalUnreadMediationMessages > 99 ? "99+" : totalUnreadMediationMessages}
+                  </Badge>
+                )}
+                {mediationSummariesLoading && (
+                    <Spinner
+                        animation="border"
+                        size="sm"
+                        variant="secondary"
+                        className="ms-2"
+                    />
+                )}
               </Link>
             </Card.Body>
           </Card>
@@ -352,15 +370,3 @@ const MainDashboard = () => {
 
 // تصدير المكون
 export default MainDashboard;
-
-// CSS المقترح لـ approx-value-maindash (أضفه لـ MainDashboard.css أو App.css)
-/*
-.balance-box .approx-value-maindash,
-.seller-box .approx-value-maindash {
-    font-size: 0.9rem;
-    opacity: 0.8;
-    font-weight: 300;
-    margin-top: -8px; // تعديل المسافة العلوية حسب الحاجة
-    display: block; // تأكد من أنه يأخذ سطرًا جديدًا
-}
-*/
