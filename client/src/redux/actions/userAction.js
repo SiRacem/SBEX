@@ -14,13 +14,15 @@ import {
     UPDATE_AVATAR_SUCCESS, // --- NEW ---
     UPDATE_AVATAR_FAIL,    // --- NEW ---
     UPDATE_AVATAR_RESET, // --- NEW (Optional) ---
+    SET_ONLINE_USERS, // --- NEW ---
+    SET_USER_BALANCES // --- NEW ---
 } from "../actionTypes/userActionType";
 import { toast } from 'react-toastify';
 
 const getTokenConfig = (isFormData = false) => { // --- MODIFIED ---: Added isFormData
     const token = localStorage.getItem("token");
     if (!token || token === 'null' || token === 'undefined') return null;
-    
+
     const headers = { 'Authorization': `Bearer ${token}` };
     if (!isFormData) { // --- MODIFIED ---: Set Content-Type only if not FormData
         headers['Content-Type'] = 'application/json';
@@ -231,11 +233,11 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
     try {
         // The backend route will be something like '/user/profile/avatar'
         // Ensure this route exists and is configured to handle file uploads (e.g., using Multer)
-        const { data } = await axios.put("/user/profile/avatar", formData, config); 
+        const { data } = await axios.put("/user/profile/avatar", formData, config);
         // The backend should return the updated user object or at least the new avatarUrl
 
-        dispatch({ 
-            type: UPDATE_AVATAR_SUCCESS, 
+        dispatch({
+            type: UPDATE_AVATAR_SUCCESS,
             payload: data.user // Assuming backend returns { user: { ..., avatarUrl: 'new_url' } } or data.avatarUrl
         });
         toast.success(data.msg || "Profile picture updated successfully!");
@@ -250,3 +252,13 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
 };
 
 export const resetUpdateAvatarStatus = () => ({ type: UPDATE_AVATAR_RESET });
+
+export const setOnlineUsers = (onlineUserIds) => ({
+    type: SET_ONLINE_USERS,
+    payload: onlineUserIds,
+});
+
+export const updateUserBalances = (balances) => ({
+    type: SET_USER_BALANCES,
+    payload: balances
+});

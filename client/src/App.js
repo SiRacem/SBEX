@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'; // استخدم BrowserRouter هنا
 import { useSelector, useDispatch } from 'react-redux';
 import io from 'socket.io-client';
-import { getProfile, logoutUser } from './redux/actions/userAction';
+import { getProfile, setOnlineUsers, updateUserBalances } from './redux/actions/userAction';
 import { Alert, Spinner } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 
@@ -25,12 +25,11 @@ import Sidebar from './components/layout/Sidebar';
 import AdminPaymentMethods from './components/admin/AdminPaymentMethods';
 import AdminTransactionRequests from './components/admin/AdminTransactionRequests'; // للودائع/السحوبات
 import CommandsListVendor from './components/vendor/CommandsListVendor'; // صفحة البائع (My Accounts & Bids)
-// import AssignMediatorRequests from './components/admin/AssignMediatorRequests'; // يبدو أن هذا لم يعد مستخدماً بشكل مباشر كصفحة
 import ReviewMediatorApplications from './components/admin/ReviewMediatorApplications'; // للأدمن لمراجعة طلبات الوسطاء
 import MediatorDashboardPage from './pages/MediatorDashboardPage'; // لوحة تحكم الوسيط
 import MyMediationRequestsPage from './pages/MyMediationRequestsPage'; // طلبات الوساطة للمشتري
 import MediationChatPage from './pages/MediationChatPage'; // --- صفحة المحادثة الجديدة ---
-import { updateUnreadCountFromSocket, getMyMediationSummaries } from './redux/actions/mediationAction'; // تأكد أن getMyMediationSummaries مستوردة إذا أردت استخدامها كـ fallback
+import { updateUnreadCountFromSocket } from './redux/actions/mediationAction'; // تأكد أن getMyMediationSummaries مستوردة إذا أردت استخدامها كـ fallback
 
 // --- استيراد ملفات CSS ---
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -117,6 +116,22 @@ function App() {
           socketRef.current.emit('addUser', user._id); // استخدم 'addUser' كما في server.js
         });
 
+      // --- [!!!] أضف أو ألغِ تعليق هذا الجزء [!!!] ---
+      socketRef.current.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
+        console.log('[App Socket] Received "onlineUsersListUpdated":', onlineUserIdsFromServer);
+        if (Array.isArray(onlineUserIdsFromServer)) {
+          dispatch(setOnlineUsers(onlineUserIdsFromServer));
+        } else {
+          console.warn('[App Socket] "onlineUsersListUpdated" did not receive an array:', onlineUserIdsFromServer);
+        }
+      });
+      // --- نهاية الجزء المضاف/المعدل ---
+
+        socketRef.current.on('balance_updated', (newBalances) => {
+          console.log('[App Socket] Received "balance_updated":', newBalances);
+          dispatch(updateUserBalances(newBalances)); // Action لتحديث الأرصدة في userReducer
+        });
+
         socketRef.current.on('new_notification', (notification) => {
           console.log('Socket event received: new_notification', notification);
           toast.info(`🔔 ${notification.title || 'New Notification!'}`, { /* ...toast options... */ });
@@ -189,6 +204,7 @@ function App() {
       if (socketRef.current) {
         console.log("App Cleanup: Disconnecting Socket.IO and removing listeners...");
         socketRef.current.off('update_unread_summary'); // <-- لا تنس إزالة المستمع الجديد
+        socketRef.current.off('onlineUsersListUpdated');
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
         socketRef.current = null;

@@ -1,5 +1,4 @@
 // src/pages/Wallet.jsx
-// *** نسخة كاملة ونهائية حقًا بدون أي اختصارات أو حذف - الإصدار الأخير ***
 
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -402,7 +401,6 @@ const Wallet = () => {
   useEffect(() => {
     if (userId) {
       console.log("[Wallet Effect] Fetching all activity for user:", userId);
-      dispatch(getProfile());
       dispatch(getTransactions());
       dispatch(getUserDepositRequests());
       dispatch(getUserWithdrawalRequests());

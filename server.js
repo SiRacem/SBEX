@@ -82,6 +82,9 @@ io.on('connection', (socket) => {
             }
             io.emit("getOnlineUsers", Object.keys(onlineUsers));
             console.log("[Socket Event - addUser] Current onlineUsers:", onlineUsers);
+
+            io.emit('onlineUsersListUpdated', Object.keys(onlineUsers));
+            console.log("[Socket Event - addUser] Emitted onlineUsersListUpdated. Current online users count:", Object.keys(onlineUsers).length);
         } else {
             console.warn(`[Socket Event - addUser] Invalid or missing userId for socket ${socket.id}: ${userId}`);
         }
@@ -360,6 +363,10 @@ io.on('connection', (socket) => {
             }
             io.emit("getOnlineUsers", Object.keys(onlineUsers)); // Notify all clients about the updated online users
             console.log("[Socket Event - disconnect] Current onlineUsers:", onlineUsers);
+
+            io.emit('onlineUsersListUpdated', Object.keys(onlineUsers));
+            console.log("[Socket Event - disconnect] Emitted onlineUsersListUpdated. Current online users count:", Object.keys(onlineUsers).length);
+
         }
     });
 });
@@ -378,7 +385,7 @@ if (!fs.existsSync(chatImageUploadPath)) {
 // Middleware to pass io and onlineUsers to route handlers
 app.use((req, res, next) => {
     req.io = io;
-    req.onlineUsers = onlineUsers;
+    req.onlineUsers = onlineUsers; // <--- أنت تمرر onlineUsers هنا
     next();
 });
 

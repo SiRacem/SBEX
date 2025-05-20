@@ -499,3 +499,34 @@
 .lightbox-modal .btn-close-custom:hover {
     background-color: rgba(0, 0, 0, 0.5);
 }
+
+.online-status-indicator-small {
+    position: absolute;
+    bottom: 0px;
+    /* اضبط الموقع حسب حجم الأفاتار */
+    right: 0px;
+    /* اضبط الموقع حسب حجم الأفاتار */
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid white;
+    /* أو لون خلفية الشريط الجانبي */
+    box-sizing: content-box;
+}
+
+.online-status-indicator-small.online {
+    background-color: #28a745;
+    /* أخضر */
+}
+
+.online-status-indicator-small.offline {
+    background-color: #dc3545;
+    /* أحمر */
+}
+
+/* قد تحتاج لتعديل الـ padding أو margin لعنصر الصورة ليتناسب مع المؤشر */
+.participant-list .avatar-container {
+    /* افترض أن لديك هذا الـ class أو ما يعادله */
+    margin-right: 12px;
+    /* لتوفير مساحة للمؤشر */
+}

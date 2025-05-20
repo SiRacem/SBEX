@@ -68,10 +68,10 @@ const formatCurrency = (amount, currencyCode = "TND") => {
       style: "currency",
       currency: safeCurrencyCode,
       minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
+      maximumFractionDigits: 2,
     });
   } catch (error) {
-    return `${num.toFixed(3)} ${safeCurrencyCode}`;
+    return `${num.toFixed(2)} ${safeCurrencyCode}`;
   }
 };
 
@@ -148,11 +148,17 @@ const CommandsListVendor = () => {
       return (
         productStatus === "PendingMediatorSelection" ||
         productStatus === "MediatorAssigned" ||
-        mediationRequestStatus === "MediationOfferAccepted" ||
-        mediationRequestStatus === "EscrowFunded" ||
-        mediationRequestStatus === "PartiesConfirmed" ||
-        productStatus === "InProgress" ||
-        mediationRequestStatus === "InProgress"
+        // mediationRequestStatus === "MediationOfferAccepted" || // هذه الحالات تُغطى بـ productStatus
+        // mediationRequestStatus === "EscrowFunded" ||
+        // mediationRequestStatus === "PartiesConfirmed" ||
+        productStatus === "InProgress" || // <--- هذا مهم
+        // mediationRequestStatus === "InProgress" // productStatus يجب أن يكون هو المصدر الأساسي لحالة المنتج هنا
+
+        // --- [!!!] أضف هذه الحالات إذا كانت product.status هي التي تتغير لها [!!!] ---
+        productStatus === "MediationOfferAccepted" ||
+        productStatus === "EscrowFunded" ||
+        productStatus === "PartiesConfirmed"
+        // --------------------------------------------------------------------
       );
     });
   }, [myProducts]);

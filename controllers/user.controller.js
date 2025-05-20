@@ -291,17 +291,31 @@ exports.updateUsers = async (req, res) => {
                     })
                 ]);
                 console.log(`Notifications created successfully for balance update of user ${userIdToUpdate}.`);
+
+                // --- [!!!] إرسال حدث Socket.IO إلى المستخدم الذي تم تحديث رصيده [!!!] ---
+                const targetUserSocketId = req.onlineUsers[userIdToUpdate.toString()]; // req.onlineUsers من middleware
+                if (targetUserSocketId && req.io) { // تأكد من وجود req.io أيضًا
+                    const balancesPayload = {
+                        balance: updatedUser.balance,
+                        sellerAvailableBalance: updatedUser.sellerAvailableBalance,
+                        sellerPendingBalance: updatedUser.sellerPendingBalance,
+                        // أضف أي أرصدة أخرى قد تكون تغيرت
+                    };
+                    req.io.to(targetUserSocketId).emit('balance_updated', balancesPayload);
+                    console.log(`   Socket event 'balance_updated' emitted to user ${userIdToUpdate} with payload:`, balancesPayload);
+                } else {
+                    console.log(`   User ${userIdToUpdate} is not online to receive real-time balance update.`);
+                }
+                // --- نهاية إرسال حدث Socket.IO ---
+
             } catch (notifyError) {
                 console.error(`Error creating balance update notifications for user ${userIdToUpdate}:`, notifyError);
-                // لا نوقف العملية بالكامل بسبب فشل الإشعار، لكن نسجل الخطأ
             }
         } else {
-            console.log("No balance changes detected. Skipping balance notifications.");
+            console.log("No balance changes detected. Skipping balance notifications and socket update.");
         }
-        // --- نهاية خطوة الإشعارات ---
-
-        // --- خطوة 6: إرسال الاستجابة ---
-        res.status(200).json(updatedUser); // إرسال المستخدم المحدث
+        
+        res.status(200).json(updatedUser);
 
     } catch (error) {
         console.error(`Error processing update for user ${userIdToUpdate}:`, error);

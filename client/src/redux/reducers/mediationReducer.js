@@ -13,7 +13,8 @@ import {
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
     GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
-    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,
+    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,BUYER_CONFIRM_RECEIPT_REQUEST,
+    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL,
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -332,63 +333,107 @@ const mediationReducer = (state = initialState, action) => {
                 }
             };
         case UPDATE_UNREAD_COUNT_FROM_SOCKET:
-            // payload: { mediationId, unreadCount, lastMessageTimestamp, productTitle, otherPartyForRecipient }
-            let foundMediation = false;
-            const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
-                if (med._id === payload.mediationId) {
-                    foundMediation = true;
-                    // تحديث العداد ووقت آخر رسالة
-                    return {
-                        ...med,
-                        unreadMessagesCount: payload.unreadCount, // العدد الجديد من الخادم
-                        lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp
-                    };
-                }
-                return med;
-            });
+    console.log("[Reducer MEDIATION] Handling UPDATE_UNREAD_COUNT_FROM_SOCKET. Payload:", payload);
+    let foundMediation = false;
+    const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
+        if (med._id === payload.mediationId) {
+            foundMediation = true;
+            return { 
+                ...med, 
+                unreadMessagesCount: payload.unreadCount, 
+                lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp 
+            };
+        }
+        return med;
+    });
 
-            let finalRequests = updatedRequestsSocket;
+    let finalRequests = updatedRequestsSocket;
+    let newTotalUnreadSocket = 0; // سيتم إعادة حسابه
 
-            // إذا لم يتم العثور على الوساطة (قد تكون وساطة جديدة بدأها طرف آخر للتو)
-            if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
-                // إضافة الوساطة الجديدة إلى بداية القائمة
-                // تأكد أن payload يحتوي على كل الحقول الأساسية اللازمة للعرض
-                const newMediationSummary = {
-                    _id: payload.mediationId,
-                    product: { title: payload.productTitle, imageUrl: null }, // قد تحتاج لتفاصيل أكثر
-                    status: 'InProgress', // أو حالة افتراضية أخرى
-                    otherParty: payload.otherPartyForRecipient,
-                    unreadMessagesCount: payload.unreadCount,
-                    lastMessageTimestamp: payload.lastMessageTimestamp,
-                    updatedAt: payload.lastMessageTimestamp, // قيمة افتراضية
-                };
-                finalRequests = [newMediationSummary, ...updatedRequestsSocket];
-                console.log("UPDATE_UNREAD_COUNT_FROM_SOCKET: Added new mediation summary to list", newMediationSummary);
-            }
+    if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
+        const newMediationSummary = {
+            _id: payload.mediationId,
+            product: { title: payload.productTitle, imageUrl: payload.otherPartyForRecipient?.avatarUrl /* مثال */ },
+            status: 'InProgress', // أو الحالة التي تأتي من payload إذا كانت موجودة
+            otherParty: payload.otherPartyForRecipient,
+            unreadMessagesCount: payload.unreadCount,
+            lastMessageTimestamp: payload.lastMessageTimestamp,
+            updatedAt: payload.lastMessageTimestamp,
+        };
+        finalRequests = [newMediationSummary, ...updatedRequestsSocket];
+        console.log("[Reducer MEDIATION] Added new mediation summary from socket:", newMediationSummary);
+    }
+    
+    // إعادة ترتيب القائمة
+    finalRequests.sort((a, b) => {
+        if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1;
+        if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
+        if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
+        if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
+        return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
+    });
 
-            // إعادة ترتيب القائمة لجعل الوساطة المحدثة (التي بها رسائل جديدة) في الأعلى
-            finalRequests.sort((a, b) => {
-                if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1; // المحدثة أولاً
-                if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
-                if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
-                if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
-                return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
-            });
+    // إعادة حساب الإجمالي بناءً على finalRequests المحدثة
+    newTotalUnreadSocket = finalRequests.reduce((total, med) => {
+        return total + (med.unreadMessagesCount || 0);
+    }, 0);
+    
+    console.log("[Reducer MEDIATION] New totalUnreadMessagesCount:", newTotalUnreadSocket);
+    console.log("[Reducer MEDIATION] Final requests for summary:", finalRequests);
 
+    return {
+        ...state,
+        myMediationSummaries: {
+            ...state.myMediationSummaries,
+            requests: finalRequests, // <--- استخدام finalRequests المحدثة
+            totalUnreadMessagesCount: newTotalUnreadSocket, // <--- استخدام الإجمالي الجديد
+            loading: false, // تأكد من أن loading false إذا لم يكن هناك طلب API هنا
+            error: null,   // مسح أي خطأ سابق
+        }
+    };
 
-            const newTotalUnreadSocket = finalRequests.reduce((total, med) => {
-                return total + (med.unreadMessagesCount || 0);
-            }, 0);
+        // --- Buyer Confirm Receipt ---
+        case BUYER_CONFIRM_RECEIPT_REQUEST:
+            return {
+                ...state,
+                // يمكنك استخدام actionLoading العام أو حالة تحميل مخصصة
+                actionLoading: true, 
+                actionError: null, 
+                // confirmingReceipt: { ...state.confirmingReceipt, [payload.mediationRequestId]: true },
+            };
+        case BUYER_CONFIRM_RECEIPT_SUCCESS:
+            // تحديث حالة الوساطة في قائمة الملخصات (myMediationSummaries.requests)
+            // وتحديثها في أي مكان آخر قد تكون موجودة فيه (مثل buyerRequests إذا كانت مختلفة)
+            const updateRequestInList = (list) => list.map(req => 
+                req._id === payload.mediationRequestId 
+                    ? payload.updatedMediationRequest // استخدام الطلب المحدث بالكامل من الخادم
+                    : req
+            );
 
             return {
                 ...state,
+                actionLoading: false,
+                actionSuccess: true, // للإشارة العامة لنجاح عملية ما
                 myMediationSummaries: {
                     ...state.myMediationSummaries,
-                    requests: finalRequests,
-                    totalUnreadMessagesCount: newTotalUnreadSocket
-                }
+                    requests: updateRequestInList(state.myMediationSummaries.requests),
+                },
+                buyerRequests: { // إذا كان لديك buyerRequests منفصل
+                    ...state.buyerRequests,
+                    list: updateRequestInList(state.buyerRequests.list),
+                },
+                // يمكنك تحديث تفاصيل الوساطة الحالية إذا كانت معروضة في مكان ما
+                // currentMediationDetails: state.currentMediationDetails?._id === payload.mediationRequestId 
+                //    ? payload.updatedMediationRequest 
+                //    : state.currentMediationDetails,
             };
-
+        case BUYER_CONFIRM_RECEIPT_FAIL:
+            return {
+                ...state,
+                actionLoading: false,
+                actionError: payload.error,
+            };
+        
         default:
             return state;
     }

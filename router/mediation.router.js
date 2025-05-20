@@ -22,6 +22,7 @@ const {
     getMediationRequestDetailsController,
     handleChatImageUpload,
     getMyMediationSummariesController,
+    buyerConfirmReceiptController,
 } = require('../controllers/mediation.controller');
 
 // --- مسارات الأدمن ---
@@ -127,7 +128,6 @@ router.post(
 // --- المسار الجديد لجلب ملخصات الوساطات للمستخدم ---
 router.get('/my-summaries', verifyAuth, getMyMediationSummariesController);
 
-// POST /mediation/complete/:requestId (للوسيط لإتمام الصفقة)
-// ... والمزيد ...
+router.put('/buyer/confirm-receipt/:mediationRequestId', verifyAuth, buyerConfirmReceiptController);
 
 module.exports = router;

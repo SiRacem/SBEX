@@ -69,7 +69,11 @@ const NotificationSchema = new Schema({
 
             // General/Other
             'NEW_MESSAGE',
-            'WELCOME'
+            'WELCOME',
+
+            // --- [!!!] أضف هذا النوع هنا [!!!] ---
+            'NEW_CHAT_MESSAGE',
+            // ------------------------------------
         ],
         required: true
     },

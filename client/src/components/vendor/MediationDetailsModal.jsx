@@ -21,10 +21,10 @@ const formatCurrencyLocal = (amount, currencyCode = "TND") => {
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
+      maximumFractionDigits: 2,
     });
   } catch (error) {
-    return `${num.toFixed(3)} ${currencyCode}`;
+    return `${num.toFixed(2)} ${currencyCode}`;
   }
 };
 
@@ -151,7 +151,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
 
               {buyerInfo && buyerInfo._id && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Buyer:</strong>{" "}
+                  <strong className="mx-1">Buyer:</strong>
                   <Link
                     to={`/profile/${buyerInfo._id}`}
                     target="_blank"
@@ -165,7 +165,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
               {/* --- [!!!] إضافة معلومات الوسيط [!!!] --- */}
               {mediatorInfo && mediatorInfo._id && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Mediator:</strong>{" "}
+                  <strong className="mx-1">Mediator:</strong>
                   <Link
                     to={`/profile/${mediatorInfo._id}`} // افترض أن هذا المسار صحيح
                     target="_blank"
@@ -189,14 +189,14 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
 
               {product.price != null && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Original Listing Price:</strong>{" "}
+                  <strong className="mx-1">Original Listing Price:</strong>
                   {formatCurrencyLocal(product.price, product.currency)}
                 </ListGroup.Item>
               )}
 
               {agreedPrice != null && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Agreed Bid Price:</strong>{" "}
+                  <strong className="mx-1">Agreed Bid Price:</strong>
                   <span className="fw-bold text-success">
                     {formatCurrencyLocal(
                       agreedPrice,
@@ -210,7 +210,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
               {feeDetails && !feeDetails.error && feeDetails.fee > 0 && (
                 <>
                   <ListGroup.Item>
-                    <strong className="mx-1">Calculated Mediator Fee:</strong>{" "}
+                    <strong className="mx-1">Calculated Mediator Fee:</strong>
                     {formatCurrencyLocal(
                       feeDetails.fee,
                       feeDetails.currencyUsed
@@ -223,21 +223,21 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                       )}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong className="mx-1">Seller's Share of Fee:</strong>{" "}
+                    <strong className="mx-1">Seller's Share of Fee:</strong>
                     {formatCurrencyLocal(
                       feeDetails.sellerShare,
                       feeDetails.currencyUsed
                     )}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong className="mx-1">Buyer's Share of Fee:</strong>{" "}
+                    <strong className="mx-1">Buyer's Share of Fee:</strong>
                     {formatCurrencyLocal(
                       feeDetails.buyerShare,
                       feeDetails.currencyUsed
                     )}
                   </ListGroup.Item>
                   <ListGroup.Item className="bg-light">
-                    <strong className="mx-1">Net Amount for Seller:</strong>{" "}
+                    <strong className="mx-1">Net Amount for Seller:</strong>
                     <span className="fw-bold text-primary p-1">
                       {formatCurrencyLocal(
                         feeDetails.netForSellerAfterFee ||
@@ -252,7 +252,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                     </div>
                   </ListGroup.Item>
                   <ListGroup.Item className="bg-light">
-                    <strong className="mx-1">Total Price for Buyer:</strong>{" "}
+                    <strong className="mx-1">Total Price for Buyer:</strong>
                     <span className="fw-bold text-danger p-1">
                       {formatCurrencyLocal(
                         feeDetails.totalForBuyerAfterFee ||

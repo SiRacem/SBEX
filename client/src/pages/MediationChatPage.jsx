@@ -29,8 +29,9 @@ import io from "socket.io-client";
 import axios from "axios";
 import EmojiPicker, { EmojiStyle } from "emoji-picker-react";
 import { FaPaperclip, FaSmile, FaPaperPlane, FaCheck } from "react-icons/fa";
+import { toast } from "react-toastify";
 import "./MediationChatPage.css";
-import { FixedSizeList as List } from 'react-window';
+import { buyerConfirmReceipt } from "../redux/actions/mediationAction";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -128,7 +129,10 @@ const TypingIndicator = ({ typingUsersData, currentUserId }) => {
               e.target.src = noUserAvatar;
             }}
           />
-          <span className="typing-user-name-indicator me-1">{user.fullName}</span> {/* Changed from user.name */}
+          <span className="typing-user-name-indicator me-1">
+            {user.fullName}
+          </span>
+          {/* Changed from user.name */}
           {index < otherTypingUsers.slice(0, 2).length - 1 && (
             <span className="mx-1">,</span>
           )}
@@ -159,6 +163,9 @@ const MediationChatPage = () => {
   const currentUserRole = useSelector(
     (state) => state.userReducer.user?.userRole
   );
+  const onlineUserIds = useSelector(
+    (state) => state.userReducer?.onlineUserIds || []
+  );
   // const currentUserFullName = useSelector((state) => state.userReducer.user?.fullName); // Not directly used, can be removed if not needed elsewhere
 
   const [messages, setMessages] = useState([]);
@@ -186,6 +193,8 @@ const MediationChatPage = () => {
   const [typingUsers, setTypingUsers] = useState({});
   const typingTimeoutRef = useRef(null);
 
+  const [isConfirmingReceipt, setIsConfirmingReceipt] = useState(false); // حالة تحميل للزر
+
   const handleShowDetailsOffcanvas = () => setShowDetailsOffcanvas(true);
   const handleCloseDetailsOffcanvas = () => setShowDetailsOffcanvas(false);
 
@@ -198,10 +207,10 @@ const MediationChatPage = () => {
   useEffect(() => {
     // Scroll to bottom when new messages arrive, but only if not loading history initially
     if (!isLoadingHistory && messages.length > 0) {
-        // Determine if we should scroll smoothly or instantly
-        // For example, if the user has scrolled up, maybe don't scroll smoothly
-        // For now, always smooth scroll on new messages if not loading history
-        scrollToBottom({ behavior: "smooth" });
+      // Determine if we should scroll smoothly or instantly
+      // For example, if the user has scrolled up, maybe don't scroll smoothly
+      // For now, always smooth scroll on new messages if not loading history
+      scrollToBottom({ behavior: "smooth" });
     }
   }, [messages, isLoadingHistory, scrollToBottom]);
 
@@ -210,12 +219,12 @@ const MediationChatPage = () => {
     if (!isLoadingHistory && messages.length > 0 && messagesEndRef.current) {
       const lastFewMessages = messages.slice(-3); // Check if any of the last few messages are new
       // This condition can be improved, but for now, scrolls if history is not loading.
-      if (messages.length > 0) { // Simplified: scroll if messages exist after loading
-          scrollToBottom({ behavior: "auto" });
+      if (messages.length > 0) {
+        // Simplified: scroll if messages exist after loading
+        scrollToBottom({ behavior: "auto" });
       }
     }
   }, [isLoadingHistory, messages.length, scrollToBottom]);
-
 
   const markVisibleMessagesAsReadCallback = useCallback(() => {
     const currentSocket = socketRef.current;
@@ -254,7 +263,10 @@ const MediationChatPage = () => {
   useEffect(() => {
     // Effect for visibility and focus changes
     console.log("[ChatPage - Effect] Setting up visibility/focus listeners.");
-    document.addEventListener("visibilitychange", markVisibleMessagesAsReadCallback);
+    document.addEventListener(
+      "visibilitychange",
+      markVisibleMessagesAsReadCallback
+    );
     window.addEventListener("focus", markVisibleMessagesAsReadCallback);
 
     // Initial check if window is already visible
@@ -263,7 +275,9 @@ const MediationChatPage = () => {
     }
 
     return () => {
-      console.log("[ChatPage - Effect] Cleaning up visibility/focus listeners.");
+      console.log(
+        "[ChatPage - Effect] Cleaning up visibility/focus listeners."
+      );
       document.removeEventListener(
         "visibilitychange",
         markVisibleMessagesAsReadCallback
@@ -275,7 +289,10 @@ const MediationChatPage = () => {
   useEffect(() => {
     // Effect for fetching mediation details
     if (mediationRequestId && currentUserId) {
-      console.log("[ChatPage - Effect] Fetching mediation details for:", mediationRequestId);
+      console.log(
+        "[ChatPage - Effect] Fetching mediation details for:",
+        mediationRequestId
+      );
       const fetchMediationDetails = async () => {
         setLoadingDetails(true);
         setChatError(null); // Reset chat error before fetching
@@ -295,7 +312,8 @@ const MediationChatPage = () => {
         } catch (err) {
           console.error("Failed to load mediation details:", err);
           setChatError(
-            err.response?.data?.msg || "Failed to load mediation details. Please try again."
+            err.response?.data?.msg ||
+              "Failed to load mediation details. Please try again."
           );
         } finally {
           setLoadingDetails(false);
@@ -310,14 +328,19 @@ const MediationChatPage = () => {
   useEffect(() => {
     // Effect for fetching chat history
     if (mediationRequestId && currentUserId) {
-      console.log("[ChatPage - Effect] Fetching chat history for:", mediationRequestId);
+      console.log(
+        "[ChatPage - Effect] Fetching chat history for:",
+        mediationRequestId
+      );
       const fetchChatHistory = async () => {
         setIsLoadingHistory(true);
         // Do not reset chatError here, preserve errors from detail fetching
         try {
           const token = localStorage.getItem("token");
           if (!token) {
-            setChatError((prev) => prev || "Authentication token missing for chat history.");
+            setChatError(
+              (prev) => prev || "Authentication token missing for chat history."
+            );
             setIsLoadingHistory(false);
             return;
           }
@@ -332,7 +355,9 @@ const MediationChatPage = () => {
           console.error("Failed to load chat history:", err);
           setChatError(
             (prev) =>
-              prev || err.response?.data?.msg || "Failed to load chat history. Please try again."
+              prev ||
+              err.response?.data?.msg ||
+              "Failed to load chat history. Please try again."
           );
         } finally {
           setIsLoadingHistory(false);
@@ -353,7 +378,9 @@ const MediationChatPage = () => {
 
     // Conditions to prevent socket connection
     if (!userIdForEffect || !mediationIdForEffect) {
-      console.log("[ChatPage - SOCKET useEffect] Missing userId or mediationId. Skipping socket setup.");
+      console.log(
+        "[ChatPage - SOCKET useEffect] Missing userId or mediationId. Skipping socket setup."
+      );
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -363,45 +390,56 @@ const MediationChatPage = () => {
     }
 
     if (loadingDetails) {
-      console.log("[ChatPage - SOCKET useEffect] Mediation details are loading. Skipping socket setup for now.");
+      console.log(
+        "[ChatPage - SOCKET useEffect] Mediation details are loading. Skipping socket setup for now."
+      );
       return; // Don't connect if details are still loading
     }
-    
-    if (!mediationDetails && !loadingDetails) {
-        console.log("[ChatPage - SOCKET useEffect] No mediationDetails and not loadingDetails. Skipping socket setup.");
-        if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-        }
-        setHasJoinedRoom(false);
-        return;
-    }
 
+    if (!mediationDetails && !loadingDetails) {
+      console.log(
+        "[ChatPage - SOCKET useEffect] No mediationDetails and not loadingDetails. Skipping socket setup."
+      );
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setHasJoinedRoom(false);
+      return;
+    }
 
     // If there's a persistent chat error that's not related to initial loading, consider if socket should attempt connection
     // For now, we proceed if details are loaded, history might still be loading or have errored.
     // If chatError is from fetchMediationDetails, we might not want to connect.
     // Let's assume if mediationDetails are present, we can try to connect.
-    if (chatError && !mediationDetails) { // If there's an error AND no details, probably critical
-        console.warn("[ChatPage - SOCKET useEffect] Chat error present and no mediation details. Socket connection aborted.");
-        if (socketRef.current) {
-            socketRef.current.disconnect();
-            socketRef.current = null;
-        }
-        setHasJoinedRoom(false);
-        return;
+    if (chatError && !mediationDetails) {
+      // If there's an error AND no details, probably critical
+      console.warn(
+        "[ChatPage - SOCKET useEffect] Chat error present and no mediation details. Socket connection aborted."
+      );
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setHasJoinedRoom(false);
+      return;
     }
-
 
     // Disconnect existing socket if any before creating a new one
     if (socketRef.current) {
-      console.log("[ChatPage - SOCKET useEffect] Disconnecting existing socket:", socketRef.current.id);
+      console.log(
+        "[ChatPage - SOCKET useEffect] Disconnecting existing socket:",
+        socketRef.current.id
+      );
       socketRef.current.disconnect();
       socketRef.current = null; // Clear the ref
     }
     setHasJoinedRoom(false); // Reset join status
 
-    console.log("[ChatPage - SOCKET useEffect] Attempting to establish new socket connection to:", BACKEND_URL);
+    console.log(
+      "[ChatPage - SOCKET useEffect] Attempting to establish new socket connection to:",
+      BACKEND_URL
+    );
     const newSocket = io(BACKEND_URL, {
       reconnectionAttempts: 5, // Increased attempts
       // transports: ['websocket', 'polling'], // Allow both, REMOVED for client to use default
@@ -410,29 +448,39 @@ const MediationChatPage = () => {
     socketRef.current = newSocket;
 
     newSocket.on("connect", () => {
-      console.log(`[ChatPage - Socket] Connected successfully with ID: ${newSocket.id}. Emitting addUser.`);
+      console.log(
+        `[ChatPage - Socket] Connected successfully with ID: ${newSocket.id}. Emitting addUser.`
+      );
       newSocket.emit("addUser", userIdForEffect); // Add user to general online list
 
       if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
 
       // Ensure mediationDetails are loaded before trying to join
       if (mediationDetails) {
-          joinTimeoutRef.current = setTimeout(() => {
-            // Check connected status again inside timeout, as it might have disconnected
-            if (newSocket.connected && !hasJoinedRoom) { // Use local hasJoinedRoom from state
-              console.log("[ChatPage - Socket] Emitting joinMediationChat for:", mediationIdForEffect);
-              const joinData = {
-                mediationRequestId: mediationIdForEffect,
-                userRole: roleForEffect,
-                userId: userIdForEffect,
-              };
-              newSocket.emit("joinMediationChat", joinData);
-            } else {
-              console.warn("[ChatPage - Socket] Cannot join room: Socket not connected or already joined (or attempted).");
-            }
-          }, 300); // Delay to ensure addUser is processed by server if needed
+        joinTimeoutRef.current = setTimeout(() => {
+          // Check connected status again inside timeout, as it might have disconnected
+          if (newSocket.connected && !hasJoinedRoom) {
+            // Use local hasJoinedRoom from state
+            console.log(
+              "[ChatPage - Socket] Emitting joinMediationChat for:",
+              mediationIdForEffect
+            );
+            const joinData = {
+              mediationRequestId: mediationIdForEffect,
+              userRole: roleForEffect,
+              userId: userIdForEffect,
+            };
+            newSocket.emit("joinMediationChat", joinData);
+          } else {
+            console.warn(
+              "[ChatPage - Socket] Cannot join room: Socket not connected or already joined (or attempted)."
+            );
+          }
+        }, 300); // Delay to ensure addUser is processed by server if needed
       } else {
-          console.warn("[ChatPage - Socket] Mediation details not available at connect time, cannot join room yet.");
+        console.warn(
+          "[ChatPage - Socket] Mediation details not available at connect time, cannot join room yet."
+        );
       }
     });
 
@@ -444,7 +492,10 @@ const MediationChatPage = () => {
     });
 
     newSocket.on("newMediationMessage", (message) => {
-      console.log("[ChatPage - Socket] newMediationMessage received:", message);
+      console.log(
+        "[ChatPage - Socket] newMediationMessage received (FULL OBJECT):",
+        JSON.stringify(message, null, 2)
+      ); // <--- أضف هذا
       setMessages((prevMessages) => {
         const messageExists = prevMessages.some(
           (m) =>
@@ -455,7 +506,10 @@ const MediationChatPage = () => {
               m.imageUrl === message.imageUrl)
         );
         if (messageExists) {
-          console.log("[ChatPage - Socket] Duplicate message detected, not adding:", message._id);
+          console.log(
+            "[ChatPage - Socket] Duplicate message detected, not adding:",
+            message._id
+          );
           return prevMessages;
         }
         const newMessagesArray = [...prevMessages, message];
@@ -468,7 +522,10 @@ const MediationChatPage = () => {
           document.visibilityState === "visible" &&
           message._id // Ensure message has an ID to mark
         ) {
-          console.log("[ChatPage - Socket] Auto-marking new incoming message as read:", message._id);
+          console.log(
+            "[ChatPage - Socket] Auto-marking new incoming message as read:",
+            message._id
+          );
           newSocket.emit("mark_messages_read", {
             mediationRequestId: mediationIdForEffect,
             messageIds: [message._id],
@@ -491,7 +548,12 @@ const MediationChatPage = () => {
     newSocket.on(
       "messages_status_updated",
       ({ mediationRequestId: updatedMedId, updatedMessages }) => {
-        console.log("[ChatPage - Socket] messages_status_updated received for:", updatedMedId, "Updates:", updatedMessages);
+        console.log(
+          "[ChatPage - Socket] messages_status_updated received for:",
+          updatedMedId,
+          "Updates:",
+          updatedMessages
+        );
         if (updatedMedId === mediationIdForEffect) {
           setMessages((prevMessages) =>
             prevMessages.map((msg) => {
@@ -507,6 +569,23 @@ const MediationChatPage = () => {
       }
     );
 
+    newSocket.on(
+      "mediation_details_updated",
+      ({ mediationRequestId: updatedMedId, updatedMediationDetails }) => {
+        if (updatedMedId === mediationIdForEffect) {
+          console.log(
+            '[ChatPage - Socket] Received "mediation_details_updated":',
+            updatedMediationDetails
+          );
+          setMediationDetails(updatedMediationDetails); // <--- تحديث الحالة هنا
+          // يمكنك أيضًا تحديث حالة الرسائل إذا كانت جزءًا من updatedMediationDetails
+          if (updatedMediationDetails.chatMessages) {
+            setMessages(updatedMediationDetails.chatMessages);
+          }
+        }
+      }
+    );
+
     newSocket.on("mediationChatError", (errorEvent) => {
       console.warn("[ChatPage - Socket] mediationChatError:", errorEvent);
       setChatError(errorEvent.message || "A chat error occurred.");
@@ -514,17 +593,26 @@ const MediationChatPage = () => {
     });
 
     newSocket.on("connect_error", (errorEvent) => {
-      console.error(`[ChatPage - Socket] Connection Error: ${errorEvent.message}`, errorEvent);
+      console.error(
+        `[ChatPage - Socket] Connection Error: ${errorEvent.message}`,
+        errorEvent
+      );
       // Only set chatError if it's not already a more specific error.
       // Avoid rapidly changing chatError if connection attempts fail repeatedly.
-      setChatError((prevError) => prevError || `Socket connection failed: ${errorEvent.message}. Retrying...`);
+      setChatError(
+        (prevError) =>
+          prevError ||
+          `Socket connection failed: ${errorEvent.message}. Retrying...`
+      );
       setHasJoinedRoom(false);
     });
 
     newSocket.on("disconnect", (reason) => {
       console.warn(`[ChatPage - Socket] Disconnected. Reason: ${reason}`);
       if (reason === "io server disconnect" || reason === "transport close") {
-        setChatError("Chat connection lost. Please check your internet connection.");
+        setChatError(
+          "Chat connection lost. Please check your internet connection."
+        );
       }
       // Don't set chatError for client-side disconnects unless specific
       setHasJoinedRoom(false);
@@ -553,18 +641,24 @@ const MediationChatPage = () => {
 
     // Cleanup function
     return () => {
-      console.log("[ChatPage - SOCKET useEffect] Cleanup: Disconnecting socket and removing listeners.");
+      console.log(
+        "[ChatPage - SOCKET useEffect] Cleanup: Disconnecting socket and removing listeners."
+      );
       if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
       if (newSocket) {
         // Explicitly emit leave before disconnecting if user was in a room
-        if (hasJoinedRoom && mediationIdForEffect) { // Check hasJoinedRoom state
-            newSocket.emit("leaveMediationChat", {
-              mediationRequestId: mediationIdForEffect,
-            });
+        if (hasJoinedRoom && mediationIdForEffect) {
+          // Check hasJoinedRoom state
+          newSocket.emit("leaveMediationChat", {
+            mediationRequestId: mediationIdForEffect,
+          });
         }
-        if (typingTimeoutRef.current) { // Clear any pending stop_typing
+        if (typingTimeoutRef.current) {
+          // Clear any pending stop_typing
           clearTimeout(typingTimeoutRef.current);
-          newSocket.emit("stop_typing", { mediationRequestId: mediationIdForEffect });
+          newSocket.emit("stop_typing", {
+            mediationRequestId: mediationIdForEffect,
+          });
         }
         newSocket.removeAllListeners(); // Important to prevent memory leaks
         newSocket.disconnect();
@@ -617,8 +711,9 @@ const MediationChatPage = () => {
         clearTimeout(typingTimeoutRef.current);
       }
       typingTimeoutRef.current = setTimeout(() => {
-        if (currentSocket?.connected) { // Check connection again inside timeout
-            currentSocket.emit("stop_typing", { mediationRequestId });
+        if (currentSocket?.connected) {
+          // Check connection again inside timeout
+          currentSocket.emit("stop_typing", { mediationRequestId });
         }
         typingTimeoutRef.current = null;
       }, 1500);
@@ -640,7 +735,7 @@ const MediationChatPage = () => {
         typingTimeoutRef.current = null;
         currentSocket.emit("stop_typing", { mediationRequestId }); // Ensure stop typing is sent
       }
-      
+
       currentSocket.emit("sendMediationMessage", {
         mediationRequestId,
         messageText: newMessage.trim(),
@@ -648,7 +743,9 @@ const MediationChatPage = () => {
       setNewMessage("");
       setShowEmojiPicker(false); // Hide emoji picker on send
     } else if (!currentSocket || !currentSocket.connected) {
-      setChatError("Not connected to chat. Please refresh or check connection.");
+      setChatError(
+        "Not connected to chat. Please refresh or check connection."
+      );
     } else if (!hasJoinedRoom) {
       setChatError("Not joined the chat room yet. Please wait or refresh.");
     }
@@ -676,9 +773,9 @@ const MediationChatPage = () => {
     );
   };
 
-      // --- [!!!] متغير جديد لتحديد ما إذا كانت الدردشة نشطة بناءً على الحالة [!!!] ---
+  // --- [!!!] متغير جديد لتحديد ما إذا كانت الدردشة نشطة بناءً على الحالة [!!!] ---
   const isChatActive = useMemo(() => {
-    return mediationDetails?.status === 'InProgress';
+    return mediationDetails?.status === "InProgress";
   }, [mediationDetails?.status]);
 
   const participants = useMemo(() => {
@@ -708,21 +805,28 @@ const MediationChatPage = () => {
 
   const otherParticipants = useMemo(() => {
     if (!currentUserId) return [];
-    return participants.filter(p => p.id !== currentUserId.toString());
+    return participants.filter((p) => p.id !== currentUserId.toString());
   }, [participants, currentUserId]);
 
   const messageReadIndicators = useMemo(() => {
-    if (!currentUserId || messages.length === 0 || otherParticipants.length === 0) {
+    if (
+      !currentUserId ||
+      messages.length === 0 ||
+      otherParticipants.length === 0
+    ) {
       return {}; // كائن فارغ: messageId -> array of reader avatars
     }
 
     const indicators = {};
-    otherParticipants.forEach(participant => {
+    otherParticipants.forEach((participant) => {
       let lastReadByThisParticipantMessageId = null;
       for (let i = messages.length - 1; i >= 0; i--) {
         const m = messages[i];
         // Ensure m.sender and m.readBy exist, and participant.id is comparable
-        if (m.sender?._id === currentUserId && m.readBy?.some(rb => rb.readerId?.toString() === participant.id)) {
+        if (
+          m.sender?._id === currentUserId &&
+          m.readBy?.some((rb) => rb.readerId?.toString() === participant.id)
+        ) {
           lastReadByThisParticipantMessageId = m._id;
           break;
         }
@@ -732,9 +836,13 @@ const MediationChatPage = () => {
         if (!indicators[lastReadByThisParticipantMessageId]) {
           indicators[lastReadByThisParticipantMessageId] = [];
         }
-        const messageWithReadEntry = messages.find(m => m._id === lastReadByThisParticipantMessageId);
-        const readerEntry = messageWithReadEntry?.readBy.find(rb => rb.readerId?.toString() === participant.id);
-        
+        const messageWithReadEntry = messages.find(
+          (m) => m._id === lastReadByThisParticipantMessageId
+        );
+        const readerEntry = messageWithReadEntry?.readBy.find(
+          (rb) => rb.readerId?.toString() === participant.id
+        );
+
         if (readerEntry) {
           indicators[lastReadByThisParticipantMessageId].push({
             readerId: participant.id,
@@ -748,16 +856,16 @@ const MediationChatPage = () => {
     return indicators;
   }, [messages, currentUserId, otherParticipants]);
 
-
   const onEmojiClick = (emojiData) => {
     setNewMessage((prev) => prev + emojiData.emoji);
     // Consider focusing input after emoji click
-  }
+  };
 
   const handleFileSelected = (event) => {
     const file = event.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
         setChatError("File is too large. Maximum 5MB allowed.");
         if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
         return;
@@ -785,12 +893,18 @@ const MediationChatPage = () => {
         .then((response) => {
           // The server should broadcast the new image message via socket.
           // The client will receive it via 'newMediationMessage' handler.
-          console.log("Image upload initiated, server will broadcast:", response.data);
+          console.log(
+            "Image upload initiated, server will broadcast:",
+            response.data
+          );
           // Optionally, provide user feedback here, e.g., "Image sending..."
         })
         .catch((err) => {
           console.error("Failed to upload image:", err);
-          setChatError(err.response?.data?.msg || "Failed to upload image. Please try again.");
+          setChatError(
+            err.response?.data?.msg ||
+              "Failed to upload image. Please try again."
+          );
         })
         .finally(() => {
           if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
@@ -811,23 +925,79 @@ const MediationChatPage = () => {
     }
   }, []);
 
+  const handleConfirmReceipt = useCallback(async () => {
+    if (!mediationDetails?._id || isConfirmingReceipt) return;
+
+    if (
+      window.confirm(
+        "Are you sure you have received the product/service as agreed and wish to release the funds? This action cannot be undone."
+      )
+    ) {
+      setIsConfirmingReceipt(true);
+      try {
+        await dispatch(buyerConfirmReceipt(mediationDetails._id));
+        toast.success("Receipt confirmed! Funds will be released.");
+
+        // --- [!!!] إعادة جلب التفاصيل [!!!] ---
+        const token = localStorage.getItem("token");
+        if (token && mediationRequestId) {
+          // تأكد من وجود mediationRequestId
+          const config = { headers: { Authorization: `Bearer ${token}` } };
+          try {
+            const response = await axios.get(
+              `${BACKEND_URL}/mediation/request-details/${mediationRequestId}`,
+              config
+            );
+            setMediationDetails(
+              response.data.mediationRequest || response.data
+            );
+          } catch (fetchError) {
+            console.error("Error re-fetching mediation details:", fetchError);
+          }
+        }
+      } catch (error) {
+        // toast.error(error.message || "Failed to confirm receipt."); // عادةً الـ action يعرض الـ toast
+        console.error("Error confirming receipt:", error);
+      } finally {
+        setIsConfirmingReceipt(false);
+      }
+    }
+  }, [
+    dispatch,
+    mediationDetails?._id,
+    isConfirmingReceipt /* mediationRequestId */,
+  ]);
 
   const renderSidebarContent = () => (
     <>
       <h5 className="mb-3">Participants</h5>
       <ListGroup variant="flush" className="mb-4 participant-list">
-        {participants.map((p) => (
-          <ListGroup.Item
-            key={p.id || p._id} // Use p.id which is stringified
-            className="d-flex align-items-center bg-transparent border-0 px-0 py-2"
-          >
-            {renderMessageSenderAvatar(p, 30)}
-            <div>
-              <div className="fw-bold">{p.fullName}</div>
-              <small className="text-muted">{p.roleLabel}</small>
-            </div>
-          </ListGroup.Item>
-        ))}
+        {participants.map((p) => {
+          // --- [!!!] التحقق مما إذا كان المشارك متصلاً [!!!] ---
+          const isOnline = onlineUserIds.includes(p.id?.toString()); // تأكد أن p.id هو string
+          // ----------------------------------------------------
+          return (
+            <ListGroup.Item
+              key={p.id || p._id} // Use p.id which is stringified
+              className="d-flex align-items-center bg-transparent border-0 px-0 py-2"
+            >
+              {/* --- [!!!] إضافة مؤشر الاتصال [!!!] --- */}
+              <div className="position-relative me-2">
+                {renderMessageSenderAvatar(p, 30)}
+                <span
+                  className={`online-status-indicator-small ${
+                    isOnline ? "online" : "offline"
+                  }`}
+                  title={isOnline ? "Online" : "Offline"}
+                ></span>
+              </div>
+              <div>
+                <div className="fw-bold">{p.fullName}</div>
+                <small className="text-muted">{p.roleLabel}</small>
+              </div>
+            </ListGroup.Item>
+          );
+        })}
       </ListGroup>
       <h5 className="mb-3">Transaction Details</h5>
       {mediationDetails && mediationDetails.product ? (
@@ -860,18 +1030,39 @@ const MediationChatPage = () => {
           </p>
           <p className="mb-1">
             <strong>Status :</strong>
-            <Badge bg={mediationDetails.status === "InProgress" ? "success" : "info"}>{mediationDetails.status}</Badge>
+            <Badge
+              bg={mediationDetails.status === "InProgress" ? "success" : "info"}
+            >
+              {mediationDetails.status}
+            </Badge>
           </p>
         </div>
       ) : (
         <p>Loading transaction details...</p>
       )}
       <div className="mt-auto action-buttons-footer pt-3 border-top">
-        {/* Action buttons logic here, ensure mediationDetails is checked */}
         {currentUserId === mediationDetails?.buyer?._id?.toString() &&
           mediationDetails?.status === "InProgress" && (
-            <Button variant="success" className="w-100 mb-2" disabled>
-              Confirm Product Received (WIP)
+            <Button
+              variant="success"
+              className="w-100 mb-2"
+              onClick={handleConfirmReceipt}
+              disabled={isConfirmingReceipt}
+            >
+              {isConfirmingReceipt ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                  Confirming...
+                </>
+              ) : (
+                "Confirm Product Received"
+              )}
             </Button>
           )}
         {mediationDetails?.status === "InProgress" && (
@@ -908,9 +1099,12 @@ const MediationChatPage = () => {
     return (
       <Container className="py-5">
         <Alert variant="danger">
-            <h4>Error Loading Chat</h4>
-            <p>{chatError}</p>
-            <p>This could be due to network issues or if the mediation request does not exist or you don't have permission.</p>
+          <h4>Error Loading Chat</h4>
+          <p>{chatError}</p>
+          <p>
+            This could be due to network issues or if the mediation request does
+            not exist or you don't have permission.
+          </p>
         </Alert>
         <Button onClick={() => navigate(-1)}>Go Back</Button>
       </Container>
@@ -918,9 +1112,11 @@ const MediationChatPage = () => {
   }
   // If no details, not loading, and no specific chatError (e.g., 404 from API)
   if (!mediationDetails && !loadingDetails && !chatError) {
-      return (
+    return (
       <Container className="py-5 text-center">
-        <Alert variant="warning">Mediation details could not be found or are unavailable.</Alert>
+        <Alert variant="warning">
+          Mediation details could not be found or are unavailable.
+        </Alert>
         <Button onClick={() => navigate(-1)}>Go Back</Button>
       </Container>
     );
@@ -940,7 +1136,8 @@ const MediationChatPage = () => {
               <Row className="align-items-center">
                 <Col>
                   <h5 className="mb-0">
-                    Mediation: {mediationDetails?.product?.title || "Chat"} {/* Safe access */}
+                    Mediation: {mediationDetails?.product?.title || "Chat"}
+                    {/* Safe access */}
                   </h5>
                   <small className="text-muted">ID: {mediationRequestId}</small>
                 </Col>
@@ -969,8 +1166,11 @@ const MediationChatPage = () => {
               className="chat-messages-area p-0"
             >
               {/* Persistent chat error display within the chat body if details loaded but socket has issues */}
-              {chatError && mediationDetails && ( 
-                <Alert variant="danger" className="m-3 rounded-0 border-0 border-start border-danger border-4 small">
+              {chatError && mediationDetails && (
+                <Alert
+                  variant="danger"
+                  className="m-3 rounded-0 border-0 border-start border-danger border-4 small"
+                >
                   Chat Connection Issue: {chatError}
                 </Alert>
               )}
@@ -991,131 +1191,176 @@ const MediationChatPage = () => {
                     !previousMessage ||
                     previousMessage.sender?._id !== msg.sender?._id;
                   const isMyMessage = msg.sender?._id === currentUserId;
-                  
+
                   const avatarsForThisMessage = messageReadIndicators[msg._id];
 
                   return (
-                    <React.Fragment key={msg._id || `msg-${index}-${msg.timestamp}`}>
-                        <ListGroup.Item
+                    <React.Fragment
+                      key={msg._id || `msg-${index}-${msg.timestamp}`}
+                    >
+                      <ListGroup.Item
                         className={`d-flex mb-1 message-item border-0 ${
-                            isMyMessage ? "sent" : "received"
+                          isMyMessage ? "sent" : "received"
                         } ${showAvatar ? "mt-2" : "mt-1"}`} // Added margin top based on avatar
-                        style={showAvatar ? {} : { paddingLeft: '56px' }} // Indent if no avatar
-                        >
+                        style={showAvatar ? {} : { paddingLeft: "56px" }} // Indent if no avatar
+                      >
                         <div
-                            className="avatar-container me-2 flex-shrink-0"
-                            style={{ width: "40px", height: "40px", visibility: showAvatar ? 'visible' : 'hidden' }}
+                          className="avatar-container me-2 flex-shrink-0"
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            visibility: showAvatar ? "visible" : "hidden",
+                          }}
                         >
-                            {showAvatar && renderMessageSenderAvatar(msg.sender)}
+                          {showAvatar && renderMessageSenderAvatar(msg.sender)}
                         </div>
                         <div className="message-content flex-grow-1">
-                            <div className="message-bubble">
+                          <div className="message-bubble">
                             {showAvatar && !isMyMessage && (
-                                <strong className="d-block mb-1">{msg.sender?.fullName || "System"}</strong>
+                              <strong className="d-block mb-1">
+                                {msg.sender?.fullName || "System"}
+                              </strong>
                             )}
                             {msg.type === "image" && msg.imageUrl ? (
-                                <Image
-                                src={msg.imageUrl.startsWith("http") ? msg.imageUrl : `${BACKEND_URL}/${msg.imageUrl}`}
+                              <Image
+                                src={
+                                  msg.imageUrl.startsWith("http")
+                                    ? msg.imageUrl // إذا كان الرابط كاملاً بالفعل
+                                    : `${BACKEND_URL}/uploads/${msg.imageUrl}` // <--- [!!!] التعديل هنا [!!!]
+                                }
                                 alt={msg.message || "Chat image"}
                                 fluid
                                 className="mt-1 chat-image-preview"
                                 style={{
-                                    maxHeight: "200px",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                    objectFit: "contain",
-                                    backgroundColor: '#f0f0f0' // Placeholder color for image
+                                  maxHeight: "200px",
+                                  borderRadius: "8px",
+                                  cursor: "pointer",
+                                  objectFit: "contain",
+                                  backgroundColor: "#f0f0f0",
                                 }}
                                 onError={(e) => {
-                                    // More robust error handling for images
-                                    e.target.alt = "Image failed to load";
-                                    e.target.style.display = 'none'; // Hide broken image icon
-                                    // Optionally, show a placeholder or error message in its place
+                                  console.error(
+                                    "Image load error for src:",
+                                    e.target.src
+                                  ); // أضف هذا للتحقق
+                                  e.target.alt = "Image failed to load";
+                                  // يمكنك هنا عرض fallbackProductImageUrl إذا أردت، لكن تأكد أنه لا يسبب حلقة
+                                  // e.target.src = fallbackProductImageUrl; // كن حذرًا مع هذا لتجنب الحلقات
+                                  e.target.style.display = "none"; // إخفاء أيقونة الصورة المكسورة
                                 }}
                                 onClick={() =>
-                                    handleShowImageInModal(
-                                        msg.imageUrl.startsWith("http") ? msg.imageUrl : `${BACKEND_URL}/${msg.imageUrl}`
-                                    )
+                                  handleShowImageInModal(
+                                    msg.imageUrl.startsWith("http")
+                                      ? msg.imageUrl
+                                      : `${BACKEND_URL}/uploads/${msg.imageUrl}` // <--- [!!!] التعديل هنا أيضًا للـ Modal [!!!]
+                                  )
                                 }
-                                />
+                              />
                             ) : (
-                                <p className="mb-0 ws-pre-wrap">{msg.message}</p>
+                              <p className="mb-0 ws-pre-wrap">{msg.message}</p>
                             )}
-                            </div>
-                            <div
+                          </div>
+                          <div
                             className={`message-meta d-flex ${
-                                isMyMessage
+                              isMyMessage
                                 ? "justify-content-end"
                                 : "justify-content-start"
                             } align-items-center mt-1`}
-                            >
+                          >
                             <small className="text-muted message-timestamp">
-                                {formatMessageTimestampForDisplay(msg.timestamp)}
+                              {formatMessageTimestampForDisplay(msg.timestamp)}
                             </small>
                             {/* Original Sent/Delivered tick for my messages */}
-                            {isMyMessage && participants.length > 1 && (!avatarsForThisMessage || avatarsForThisMessage.length === 0) && (
-                                  <FaCheck
-                                    title="Sent" // Or "Delivered" if you have that state
-                                    className="text-muted ms-1"
-                                    style={{ fontSize: "0.8em" }}
-                                  />
-                            )}
-                            </div>
+                            {isMyMessage &&
+                              participants.length > 1 &&
+                              (!avatarsForThisMessage ||
+                                avatarsForThisMessage.length === 0) && (
+                                <FaCheck
+                                  title="Sent" // Or "Delivered" if you have that state
+                                  className="text-muted ms-1"
+                                  style={{ fontSize: "0.8em" }}
+                                />
+                              )}
+                          </div>
                         </div>
-                        </ListGroup.Item>
-                        
-                        {/* NEW: Read indicators below my messages if applicable */}
-                        {isMyMessage && avatarsForThisMessage && avatarsForThisMessage.length > 0 && (
-                            <div className="d-flex justify-content-end pe-3 mb-2 read-indicators-wrapper" 
-                                 style={{ paddingLeft: '56px' /* Align with message bubble */ }}>
-                                <div className="read-by-indicators-cluster d-flex align-items-center">
-                                {avatarsForThisMessage.map((reader, idx) => (
-                                    <OverlayTrigger
-                                    key={reader.readerId}
-                                    placement="top"
-                                    overlay={
-                                        <Tooltip id={`readby-indicator-${reader.readerId}`}>
-                                        Seen by {reader.fullName}
-                                        {reader.readAt ? ` at ${formatMessageTimestampForDisplay(reader.readAt)}` : ""}
-                                        </Tooltip>
-                                    }
+                      </ListGroup.Item>
+
+                      {/* NEW: Read indicators below my messages if applicable */}
+                      {isMyMessage &&
+                        avatarsForThisMessage &&
+                        avatarsForThisMessage.length > 0 && (
+                          <div
+                            className="d-flex justify-content-end pe-3 mb-2 read-indicators-wrapper"
+                            style={{
+                              paddingLeft:
+                                "56px" /* Align with message bubble */,
+                            }}
+                          >
+                            <div className="read-by-indicators-cluster d-flex align-items-center">
+                              {avatarsForThisMessage.map((reader, idx) => (
+                                <OverlayTrigger
+                                  key={reader.readerId}
+                                  placement="top"
+                                  overlay={
+                                    <Tooltip
+                                      id={`readby-indicator-${reader.readerId}`}
                                     >
-                                    <Image
-                                        src={
-                                        reader.avatarUrl && !reader.avatarUrl.startsWith("http")
-                                            ? `${BACKEND_URL}/${reader.avatarUrl}`
-                                            : reader.avatarUrl || noUserAvatar
-                                        }
-                                        roundedCircle
-                                        width={16}
-                                        height={16}
-                                        className="read-by-avatar-indicator"
-                                        style={{
-                                        marginLeft: idx === 0 ? "0" : "-6px", // No margin for first, overlap for others
-                                        border: "1.5px solid white",
-                                        backgroundColor: "#e0e0e0",
-                                        zIndex: avatarsForThisMessage.length - idx 
-                                        }}
-                                        onError={(e) => { e.target.src = noUserAvatar; }}
-                                    />
-                                    </OverlayTrigger>
-                                ))}
-                                </div>
+                                      Seen by {reader.fullName}
+                                      {reader.readAt
+                                        ? ` at ${formatMessageTimestampForDisplay(
+                                            reader.readAt
+                                          )}`
+                                        : ""}
+                                    </Tooltip>
+                                  }
+                                >
+                                  <Image
+                                    src={
+                                      reader.avatarUrl &&
+                                      !reader.avatarUrl.startsWith("http")
+                                        ? `${BACKEND_URL}/${reader.avatarUrl}`
+                                        : reader.avatarUrl || noUserAvatar
+                                    }
+                                    roundedCircle
+                                    width={16}
+                                    height={16}
+                                    className="read-by-avatar-indicator"
+                                    style={{
+                                      marginLeft: idx === 0 ? "0" : "-6px", // No margin for first, overlap for others
+                                      border: "1.5px solid white",
+                                      backgroundColor: "#e0e0e0",
+                                      zIndex:
+                                        avatarsForThisMessage.length - idx,
+                                    }}
+                                    onError={(e) => {
+                                      e.target.src = noUserAvatar;
+                                    }}
+                                  />
+                                </OverlayTrigger>
+                              ))}
                             </div>
+                          </div>
                         )}
                     </React.Fragment>
                   );
                 })}
-                <div ref={messagesEndRef} style={{ height: "1px" }} /> {/* Scroll target */}
+                <div ref={messagesEndRef} style={{ height: "1px" }} />
+                {/* Scroll target */}
               </ListGroup>
             </Card.Body>
             <Card.Footer className="chat-input-area bg-light border-top p-3 position-relative">
-              {!isChatActive && mediationDetails && ( // عرض رسالة إذا الدردشة ليست InProgress والتفاصيل موجودة
-                <Alert variant="info" className="text-center small mb-2 p-2">
-                  The chat will become active once the mediation process is fully in progress (Status: InProgress).
-                  Current status: <strong>{mediationDetails.status.replace(/([A-Z])/g, " $1").trim()}</strong>
-                </Alert>
-              )}
+              {!isChatActive &&
+                mediationDetails && ( // عرض رسالة إذا الدردشة ليست InProgress والتفاصيل موجودة
+                  <Alert variant="info" className="text-center small mb-2 p-2">
+                    The chat will become active once the mediation process is
+                    fully in progress (Status: InProgress). Current status:
+                    <strong>
+                      {mediationDetails.status
+                        .replace(/([A-Z])/g, " $1")
+                        .trim()}
+                    </strong>
+                  </Alert>
+                )}
               <div className="typing-indicator-container">
                 <TypingIndicator
                   typingUsersData={typingUsers}
@@ -1130,7 +1375,12 @@ const MediationChatPage = () => {
                       variant="light"
                       onClick={() => setShowEmojiPicker((prev) => !prev)}
                       title="Toggle Emoji Picker"
-                      disabled={!hasJoinedRoom || !!chatError || isLoadingHistory || !isChatActive} // <--- إضافة !isChatActive
+                      disabled={
+                        !hasJoinedRoom ||
+                        !!chatError ||
+                        isLoadingHistory ||
+                        !isChatActive
+                      } // <--- إضافة !isChatActive
                     >
                       <FaSmile />
                     </Button>
@@ -1140,7 +1390,12 @@ const MediationChatPage = () => {
                       variant="light"
                       onClick={() => fileInputRef.current?.click()}
                       title="Attach Image"
-                      disabled={!hasJoinedRoom || !!chatError || isLoadingHistory || !isChatActive} // <--- إضافة !isChatActive
+                      disabled={
+                        !hasJoinedRoom ||
+                        !!chatError ||
+                        isLoadingHistory ||
+                        !isChatActive
+                      } // <--- إضافة !isChatActive
                     >
                       <FaPaperclip />
                     </Button>
@@ -1150,16 +1405,30 @@ const MediationChatPage = () => {
                       style={{ display: "none" }}
                       onChange={handleFileSelected}
                       accept="image/*" // Only accept images
-                      disabled={!hasJoinedRoom || !!chatError || isLoadingHistory || !isChatActive} // <--- إضافة !isChatActive
+                      disabled={
+                        !hasJoinedRoom ||
+                        !!chatError ||
+                        isLoadingHistory ||
+                        !isChatActive
+                      } // <--- إضافة !isChatActive
                     />
                   </Col>
                   <Col>
                     <Form.Control
                       type="text"
-                      placeholder={hasJoinedRoom ? "Type your message..." : "Connecting to chat..."}
+                      placeholder={
+                        hasJoinedRoom
+                          ? "Type your message..."
+                          : "Connecting to chat..."
+                      }
                       value={newMessage}
                       onChange={handleInputChange}
-                      disabled={!hasJoinedRoom || !!chatError || isLoadingHistory || !isChatActive} // <--- إضافة !isChatActive
+                      disabled={
+                        !hasJoinedRoom ||
+                        !!chatError ||
+                        isLoadingHistory ||
+                        !isChatActive
+                      } // <--- إضافة !isChatActive
                       autoFocus
                       onFocus={() => setShowEmojiPicker(false)} // Hide emoji picker when input is focused
                     />
@@ -1168,7 +1437,10 @@ const MediationChatPage = () => {
                     <Button
                       type="submit"
                       disabled={
-                        !newMessage.trim() || !hasJoinedRoom || !!chatError || isLoadingHistory || 
+                        !newMessage.trim() ||
+                        !hasJoinedRoom ||
+                        !!chatError ||
+                        isLoadingHistory ||
                         !isChatActive // <--- إضافة !isChatActive
                       }
                     >
@@ -1183,11 +1455,11 @@ const MediationChatPage = () => {
                   ref={emojiPickerRef}
                   className="emoji-picker-container shadow-sm" // Added shadow for better visibility
                   style={{
-                     position: 'absolute', // Ensure it's absolute for correct positioning
-                     bottom: "calc(100% + 10px)", // Position above the input area
-                     right: "10px", // Align to the right
-                     zIndex: 1050 // Ensure it's above other elements
-                    }}
+                    position: "absolute", // Ensure it's absolute for correct positioning
+                    bottom: "calc(100% + 10px)", // Position above the input area
+                    right: "10px", // Align to the right
+                    zIndex: 1050, // Ensure it's above other elements
+                  }}
                 >
                   <EmojiPicker
                     onEmojiClick={onEmojiClick}
@@ -1208,8 +1480,11 @@ const MediationChatPage = () => {
           className="chat-sidebar-area bg-light border-start p-3 d-none d-md-flex flex-column order-md-2"
         >
           <div className="flex-grow-1 sidebar-scrollable-content">
-            {mediationDetails && renderSidebarContent()} {/* Render only if details exist */}
-            {!mediationDetails && !loadingDetails && <p>Details unavailable.</p>}
+            {mediationDetails && renderSidebarContent()}
+            {/* Render only if details exist */}
+            {!mediationDetails && !loadingDetails && (
+              <p>Details unavailable.</p>
+            )}
           </div>
         </Col>
       </Row>
@@ -1223,8 +1498,8 @@ const MediationChatPage = () => {
           <Offcanvas.Title>Details & Participants</Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column">
-            {mediationDetails && renderSidebarContent()}
-            {!mediationDetails && !loadingDetails && <p>Details unavailable.</p>}
+          {mediationDetails && renderSidebarContent()}
+          {!mediationDetails && !loadingDetails && <p>Details unavailable.</p>}
         </Offcanvas.Body>
       </Offcanvas>
       <Modal

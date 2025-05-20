@@ -16,6 +16,8 @@ import {
   UPDATE_AVATAR_SUCCESS,     // --- NEW ---
   UPDATE_AVATAR_FAIL,        // --- NEW ---
   UPDATE_AVATAR_RESET,       // --- NEW (Optional) ---
+  SET_ONLINE_USERS,
+  SET_USER_BALANCES,
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -46,6 +48,7 @@ const initialState = {
   loadingUpdateAvatar: false, // --- NEW ---
   errorUpdateAvatar: null,    // --- NEW ---
   successUpdateAvatar: false, // --- NEW (Optional) ---
+  onlineUserIds: [], // <-- إضافة حالة لتخزين المستخدمين المتصلين
 };
 
 const userReducer = (state = initialState, { type, payload }) => {
@@ -120,11 +123,11 @@ const userReducer = (state = initialState, { type, payload }) => {
       return { ...state, errors: null };
 
     // --- [!!!] إضافة حالات جلب الوسطاء [!!!] ---
-    case 'ADMIN_GET_MEDIATORS_REQUEST':
+    case ADMIN_GET_MEDIATORS_REQUEST:
       return { ...state, loadingMediators: true, errorMediators: null };
-    case 'ADMIN_GET_MEDIATORS_SUCCESS':
+    case ADMIN_GET_MEDIATORS_SUCCESS:
       return { ...state, loadingMediators: false, availableMediators: payload || [] };
-    case 'ADMIN_GET_MEDIATORS_FAIL':
+    case ADMIN_GET_MEDIATORS_FAIL:
       return { ...state, loadingMediators: false, errorMediators: payload };
     // -------------------------------------------
 
@@ -183,7 +186,7 @@ const userReducer = (state = initialState, { type, payload }) => {
     case UPDATE_MEDIATOR_STATUS_FAIL:
       return { ...state, loadingUpdateMediatorStatus: false, errorUpdateMediatorStatus: payload };
 
-        // --- [!!!] حالة جديدة لتحديث رصيد المستخدم [!!!] ---
+    // --- [!!!] حالة جديدة لتحديث رصيد المستخدم [!!!] ---
     case UPDATE_USER_BALANCE:
       if (state.user && payload && typeof payload.balance === 'number') { // تحقق من أن payload.balance هو رقم
         return {
@@ -195,14 +198,14 @@ const userReducer = (state = initialState, { type, payload }) => {
         };
       }
       return state; // إذا لم يكن المستخدم موجودًا أو الـ payload غير صالح، لا تغير الحالة
-      
-        // --- NEW CASES for Avatar Update ---
+
+    // --- NEW CASES for Avatar Update ---
     case UPDATE_AVATAR_REQUEST:
-      return { 
-        ...state, 
-        loadingUpdateAvatar: true, 
-        errorUpdateAvatar: null, 
-        successUpdateAvatar: false 
+      return {
+        ...state,
+        loadingUpdateAvatar: true,
+        errorUpdateAvatar: null,
+        successUpdateAvatar: false
       };
     case UPDATE_AVATAR_SUCCESS:
       // payload should be the updated user object or at least { avatarUrl: 'new_url' }
@@ -217,11 +220,11 @@ const userReducer = (state = initialState, { type, payload }) => {
         errorUpdateAvatar: null,
       };
     case UPDATE_AVATAR_FAIL:
-      return { 
-        ...state, 
-        loadingUpdateAvatar: false, 
-        errorUpdateAvatar: payload, 
-        successUpdateAvatar: false 
+      return {
+        ...state,
+        loadingUpdateAvatar: false,
+        errorUpdateAvatar: payload,
+        successUpdateAvatar: false
       };
     case UPDATE_AVATAR_RESET: // Optional
       return {
@@ -230,7 +233,32 @@ const userReducer = (state = initialState, { type, payload }) => {
         errorUpdateAvatar: null,
         successUpdateAvatar: false,
       };
-      
+
+    // --- Set Online Users ---
+    case SET_ONLINE_USERS: // هذا هو الـ actionType الذي تستخدمه
+      console.log("[Reducer USER] SET_ONLINE_USERS, payload:", payload); // أضف console.log هنا
+      return {
+        ...state,
+        onlineUserIds: payload, // تأكد أن هذا الاسم (onlineUserIds) هو نفسه الذي تستخدمه في useSelector
+      };
+
+    // --- Set User Balances ---
+case SET_USER_BALANCES:
+  console.log("[Reducer USER] Handling SET_USER_BALANCES. Payload:", payload, "Current user state:", state.user);
+  if (state.user) { // تأكد أن كائن المستخدم موجود قبل محاولة تحديثه
+    return {
+      ...state,
+      user: { // تحديث كائن المستخدم الموجود
+        ...state.user,
+        balance: payload.balance !== undefined ? payload.balance : state.user.balance,
+        sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
+        sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
+        // أضف أي حقول رصيد أخرى هنا
+      }
+    };
+  }
+  return state; // إذا لم يكن هناك مستخدم، لا تقم بتغيير الحالة (أو يمكنك التعامل مع هذا بشكل مختلف)
+
     default: return state;
   }
 };

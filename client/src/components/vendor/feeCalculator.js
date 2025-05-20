@@ -1,43 +1,82 @@
+// client/src/components/vendor/feeCalculator.js أو المسار الصحيح
+
+// افترض أن لديك TND_USD_EXCHANGE_RATE متاح هنا أيضًا (يمكن تمريره أو استيراده)
+const TND_USD_EXCHANGE_RATE = 3.0; // أو احصل عليه من config/env
 
 export const calculateMediatorFeeDetails = (agreedPrice, currency = "TND") => {
-    let price = Number(agreedPrice);
-    if (isNaN(price) || price <= 0) {
-        return { fee: 0, sellerShare: 0, buyerShare: 0, totalForBuyer: price, netForSeller: price, error: "Invalid or zero price" };
+    let originalPrice = Number(agreedPrice);
+    if (isNaN(originalPrice) || originalPrice <= 0) {
+        console.warn("[FeeCalculator FE] Invalid or zero price received:", agreedPrice);
+        return { 
+            fee: 0, sellerShare: 0, buyerShare: 0, 
+            totalForBuyer: originalPrice, // اسم موحد
+            netForSeller: originalPrice,    // اسم موحد
+            error: "Invalid or zero price", 
+            currencyUsed: currency, 
+            feeInTND: 0, 
+            priceOriginal: originalPrice 
+        };
     }
 
-    // حساب العمولة حسب الشرائح على العملة الأصلية
-    let percent = 0.05;
-    if (price > 15 && price <= 50) {
-        percent = 0.06;
-    } else if (price > 50 && price <= 100) {
-        percent = 0.07;
-    } else if (price > 100) {
-        percent = 0.08;
+    let priceInTNDForSlab;
+    let actualCurrency = currency.toUpperCase(); // توحيد حالة الأحرف
+
+    if (actualCurrency === "USD") {
+        priceInTNDForSlab = originalPrice * TND_USD_EXCHANGE_RATE;
+    } else if (actualCurrency === "TND") {
+        priceInTNDForSlab = originalPrice;
+    } else {
+        console.warn(`[FeeCalculator FE] Unsupported currency: ${currency}. Assuming TND for slabs.`);
+        // يمكنك هنا أن تقرر إرجاع خطأ أو افتراض TND بحذر
+        priceInTNDForSlab = originalPrice; // افتراض حذر
+        // أو:
+        // return { error: `Unsupported currency: ${currency}`, ... (باقي القيم صفرية) };
     }
-    let fee = price * percent;
 
-    // تأكد من أن العمولة لا تتجاوز السعر
-    if (fee > price) {
-        fee = price;
+    let feePercent = 0;
+    if (priceInTNDForSlab >= 1 && priceInTNDForSlab <= 15) {
+        feePercent = 0.05;
+    } else if (priceInTNDForSlab > 15 && priceInTNDForSlab <= 50) {
+        feePercent = 0.06;
+    } else if (priceInTNDForSlab > 50 && priceInTNDForSlab <= 100) {
+        feePercent = 0.07;
+    } else if (priceInTNDForSlab > 100) {
+        feePercent = 0.08;
     }
 
-    // تقسيم العمولة
-    const sellerShare = parseFloat((fee / 2).toFixed(3));
-    const buyerShare = parseFloat((fee / 2).toFixed(3));
-    let totalForBuyer = parseFloat((price + buyerShare).toFixed(3));
-    let netForSeller = parseFloat((price - sellerShare).toFixed(3));
+    let calculatedFeeInTND = priceInTNDForSlab * feePercent;
 
-    // العمولة بالدينار دائماً (للمراجعة أو التقارير)
-    let feeInTND = currency === "USD" || currency === "$US" || currency === "$USD" ? parseFloat((fee * 3).toFixed(3)) : parseFloat(fee.toFixed(3));
+    let feeInOriginalCurrency = calculatedFeeInTND;
+    if (actualCurrency === "USD") {
+        feeInOriginalCurrency = calculatedFeeInTND / TND_USD_EXCHANGE_RATE;
+    }
+    
+    // تأكد أن العمولة لا تتجاوز السعر الأصلي
+    if (feeInOriginalCurrency > originalPrice && originalPrice > 0) {
+        feeInOriginalCurrency = originalPrice;
+         // إذا تم تعديل العمولة، أعد حسابها بالدينار للمرجعية فقط
+        if (actualCurrency === "USD") {
+            calculatedFeeInTND = feeInOriginalCurrency * TND_USD_EXCHANGE_RATE;
+        } else {
+            calculatedFeeInTND = feeInOriginalCurrency;
+        }
+    }
+
+    const sellerShare = parseFloat((feeInOriginalCurrency / 2).toFixed(2));
+    const buyerShare = parseFloat((feeInOriginalCurrency / 2).toFixed(2));
+    
+    // استخدام الأسماء الموحدة
+    const totalForBuyer = parseFloat((originalPrice + buyerShare).toFixed(2));
+    const netForSeller = parseFloat((originalPrice - sellerShare).toFixed(2));
 
     return {
-        fee: parseFloat(fee.toFixed(3)), // دائماً بالعملة الأصلية
+        fee: parseFloat(feeInOriginalCurrency.toFixed(2)),
         sellerShare,
         buyerShare,
-        totalForBuyer,
-        netForSeller,
-        currencyUsed: currency,
-        feeInTND,
-        priceOriginal: price,
+        totalForBuyer, // اسم موحد
+        netForSeller,   // اسم موحد
+        currencyUsed: actualCurrency, // استخدام العملة الموحدة
+        feeInTND: parseFloat(calculatedFeeInTND.toFixed(2)),
+        priceOriginal: parseFloat(originalPrice.toFixed(2)),
     };
 };

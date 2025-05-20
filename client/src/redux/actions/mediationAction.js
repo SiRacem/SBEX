@@ -14,8 +14,10 @@ import {
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
     GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
-    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,
-    } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
+    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET, BUYER_CONFIRM_RECEIPT_REQUEST,
+    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL,
+} from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
+import { getProfile } from './userAction'; // لجلب البروفايل المحدث (الرصيد)
 
 // تأكد من أن لديك axios مثبتًا في مشروعك
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"; // <-- أضف هذا إذا لم يكن موجودًا
@@ -273,7 +275,7 @@ export const sellerConfirmReadinessAction = (mediationRequestId) => async (dispa
 export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: BUYER_CONFIRM_READINESS_ESCROW_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    
+
     if (!config) {
         dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
         toast.error("Authorization required.");
@@ -289,7 +291,7 @@ export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => asyn
         toast.success(data.msg || "Your readiness confirmed and funds are in escrow!");
         // --- [!!!] مهم: تحديث رصيد المستخدم في Redux [!!!] ---
         if (data.updatedBuyerBalance !== undefined) { // إذا أعاد الـ API الرصيد المحدث
-            dispatch({ 
+            dispatch({
                 type: 'UPDATE_USER_BALANCE', // ستحتاج لإنشاء هذا الـ action type والـ case في userReducer
                 payload: { balance: data.updatedBuyerBalance }
             });
@@ -311,7 +313,7 @@ export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => asyn
 export const getBuyerMediationRequestsAction = (page = 1, limit = 10, statusFilter = '') => async (dispatch) => {
     dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_REQUEST });
     const config = getTokenConfig();
-    
+
     if (!config) {
         dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
         toast.error("Authorization required.");
@@ -436,4 +438,68 @@ export const updateUnreadCountFromSocket = (mediationId, newUnreadCount) => (dis
         type: UPDATE_UNREAD_COUNT_FROM_SOCKET,
         payload: { mediationId, unreadCount: newUnreadCount }
     });
+};
+
+export const buyerConfirmReceipt = (mediationRequestId) => async (dispatch) => {
+    dispatch({ type: BUYER_CONFIRM_RECEIPT_REQUEST, payload: { mediationRequestId } });
+    const config = getTokenConfig(); // افترض أن لديك هذه الدالة المساعدة
+    if (!config) {
+        const errorMsg = "Authorization Error.";
+        dispatch({ type: BUYER_CONFIRM_RECEIPT_FAIL, payload: { error: errorMsg } });
+        toast.error(errorMsg);
+        throw new Error(errorMsg); // لكي يتمكن .catch في المكون من التقاط الخطأ
+    }
+
+    try {
+        const { data } = await axios.put(
+            `${BACKEND_URL}/mediation/buyer/confirm-receipt/${mediationRequestId}`,
+            {}, // لا يوجد body مطلوب عادةً
+            config
+        );
+
+        dispatch({
+            type: BUYER_CONFIRM_RECEIPT_SUCCESS,
+            payload: {
+                mediationRequestId,
+                updatedMediationRequest: data.mediationRequest, // الخادم يجب أن يعيد الطلب المحدث
+                // يمكنك أيضًا إرجاع أرصدة محدثة إذا كان الـ backend يفعل ذلك
+            }
+        });
+        toast.success(data.msg || "Receipt confirmed and funds processed!");
+
+        dispatch(getProfile());
+        
+        // --- [!!!] تحديث حالة المنتج في productReducer [!!!] ---
+        if (data.mediationRequest && data.mediationRequest.product) {
+            const productId = typeof data.mediationRequest.product === 'string' 
+                                ? data.mediationRequest.product 
+                                : data.mediationRequest.product._id;
+            const buyerIdForProduct = typeof data.mediationRequest.buyer === 'string'
+                                ? data.mediationRequest.buyer
+                                : data.mediationRequest.buyer._id;
+
+            if (productId) {
+                dispatch({
+                    type: 'UPDATE_PRODUCT_STATUS_SOLD', // ستحتاج لإنشاء هذا الـ actionType والـ case في productReducer
+                    payload: { 
+                        productId, 
+                        newStatus: 'sold', // أو 'Completed'
+                        soldAt: new Date().toISOString(), // تاريخ البيع
+                        buyerId: buyerIdForProduct // مشتري المنتج
+                    }
+                });
+            }
+        }
+        // -----------------------------------------------------
+        return data;
+
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to confirm receipt.';
+        dispatch({
+            type: BUYER_CONFIRM_RECEIPT_FAIL,
+            payload: { mediationRequestId, error: message }
+        });
+        toast.error(message);
+        throw error; // إعادة رمي الخطأ ليتم التقاطه في المكون
+    }
 };

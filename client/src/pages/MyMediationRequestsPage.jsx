@@ -47,10 +47,10 @@ const formatCurrency = (amount, currencyCode = "TND") => {
       style: "currency",
       currency: safeCurrencyCode,
       minimumFractionDigits: 2,
-      maximumFractionDigits: 3,
+      maximumFractionDigits: 2,
     });
   } catch (error) {
-    return `${num.toFixed(3)} ${safeCurrencyCode}`;
+    return `${num.toFixed(2)} ${safeCurrencyCode}`;
   }
 };
 

@@ -18,8 +18,7 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
-const noMediatorImageUrl =
-  'https://bootdey.com/img/Content/avatar/avatar7.png';
+const noMediatorImageUrl = "https://bootdey.com/img/Content/avatar/avatar7.png";
 
 // --- أضف BACKEND_URL هنا ---
 const BACKEND_URL =
@@ -74,19 +73,19 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
               </h6>
             </Link>
             <small className="text-muted">
-              Level: {mediator.level || "N/A"} | Rep:{" "}
+              Level: {mediator.level || "N/A"} | Rep:
               {mediator.reputationPoints || 0} {/* استخدام reputationPoints */}
               pts
             </small>
             <div>
-              <FaStar className="text-warning me-1" />{" "}
+              <FaStar className="text-warning me-1" />
               {/* --- التعديل هنا --- */}
               {typeof calculatedRating === "number"
                 ? calculatedRating.toFixed(1)
-                : "0.0"}{" "}
+                : "0.0"}
               {/* إذا كان الرقم موجوداً، قم بتنسيقه، وإلا اعرض 0.0 */}
               {/* -------------------- */}
-              <FaCheckCircle className="text-success ms-2 me-1" />{" "}
+              <FaCheckCircle className="text-success ms-2 me-1" />
               {mediator.successfulMediationsCount || 0} successful
             </div>
           </Col>
@@ -192,7 +191,7 @@ const SelectMediatorModal = ({
             (availableMediators && availableMediators.length === 0)
           }
         >
-          <FaRedo className="me-1" /> Request New Suggestions{" "}
+          <FaRedo className="me-1" /> Request New Suggestions
           {suggestionsUsedOnce && "(Used)"}
         </Button>
         <Button variant="secondary" onClick={onHide} disabled={loading}>
