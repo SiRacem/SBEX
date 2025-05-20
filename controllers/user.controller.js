@@ -120,15 +120,53 @@ exports.Login = async (req, res) => {
 }
 
 // --- Auth (Get Profile) ---
+// server/controllers/user.controller.js
+
 exports.Auth = async (req, res) => {
-    // req.user يتم تعيينه بواسطة verifyAuth middleware (ويجب أن يستثني كلمة المرور)
-    console.log(`--- Controller: Auth (Get Profile) for user ID: ${req.user?._id} ---`); // Log
-    if (!req.user) {
-        console.warn("Auth Controller: req.user is missing after verifyAuth."); // Log
+    console.log(`--- Controller: Auth (Get Profile) for user ID: ${req.user?._id} ---`);
+    if (!req.user || !req.user._id) { // تحقق من وجود req.user و _id
+        console.warn("Auth Controller: req.user or req.user._id is missing.");
         return res.status(401).json({ msg: "Not authorized (user data missing)" });
     }
-    // إرجاع بيانات المستخدم من req.user
-    res.status(200).json(req.user);
+
+    try {
+        // req.user يأتي من middleware verifyAuth (يفترض أنه جلب المستخدم من DB)
+        // إذا لم يكن كذلك، أو إذا أردت أحدث البيانات، يمكنك إعادة جلبه:
+        const userFromDb = await User.findById(req.user._id).select('-password').lean();
+        if (!userFromDb) {
+            return res.status(404).json({ msg: "User not found in DB for profile." });
+        }
+
+        // 1. حساب المنتجات النشطة (المعتمدة وغير المباعة)
+        const approvedProductCount = await Product.countDocuments({
+            user: userFromDb._id,
+            status: 'approved' // أو الحالة التي تستخدمها للمنتجات النشطة المعروضة للبيع
+        });
+
+        // 2. حساب المنتجات المباعة
+        const soldProductCount = await Product.countDocuments({
+            user: userFromDb._id,
+            status: 'sold' // أو 'Completed' إذا كانت هذه هي الحالة النهائية للمنتج بعد البيع
+        });
+
+        // 3. تجميع البيانات النهائية (أضف هذه الإحصائيات إلى الكائن)
+        const userProfileData = {
+            ...userFromDb, // جميع بيانات المستخدم الأخرى
+            approvedProducts: approvedProductCount,
+            productsSoldCount: soldProductCount,
+            // تأكد من أن جميع الحقول الأخرى التي يعتمد عليها Profile.jsx موجودة هنا
+            // مثل reputationPoints, level, positiveRatings, negativeRatings, إلخ.
+        };
+        
+        // حذف كلمة المرور إذا كانت موجودة بأي شكل (lean() يجب أن يكون قد أزالها إذا لم تكن في select)
+        delete userProfileData.password;
+
+        res.status(200).json(userProfileData);
+
+    } catch (error) {
+        console.error(`Error fetching full profile for ${req.user._id}:`, error);
+        res.status(500).json({ msg: "Server error fetching profile data." });
+    }
 };
 
 // --- *** دالة التحقق من الإيميل مع Logs *** ---

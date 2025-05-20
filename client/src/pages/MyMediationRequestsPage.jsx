@@ -15,6 +15,8 @@ import {
   Modal,
   Carousel,
   Form,
+  OverlayTrigger,
+  Tooltip,
 } from "react-bootstrap";
 import {
   getBuyerMediationRequestsAction,
@@ -30,9 +32,11 @@ import {
   FaHourglassHalf,
   FaHandshake,
   FaCommentDots,
+  FaEye,
 } from "react-icons/fa";
 import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator"; // تأكد من صحة هذا المسار
 import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal"; // تأكد من وجود هذا المكون
+import ViewMediationDetailsModal from "./ViewMediationDetailsModal"; // <--- استيراد المودال الجديد
 
 // Helper: Currency Formatting
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -62,6 +66,10 @@ const fallbackProductImageUrl =
 const MyMediationRequestsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const [showViewDetailsModal, setShowViewDetailsModal] = useState(false); // <--- حالة جديدة
+  const [selectedRequestForDetails, setSelectedRequestForDetails] = useState(null); // <--- حالة جديدة
+
   const {
     buyerRequests,
     loadingBuyerRequests,
@@ -199,6 +207,12 @@ const MyMediationRequestsPage = () => {
     [dispatch, actionLoading, currentPageLocal]
   ); // Removed buyerRequests dependencies, rely on refetch
 
+    // --- [!!!] دالة جديدة لفتح مودال التفاصيل [!!!] ---
+  const handleOpenViewDetailsModal = useCallback((request) => {
+    setSelectedRequestForDetails(request);
+    setShowViewDetailsModal(true);
+  }, []);
+
   if (!currentUser)
     return (
       <Container className="text-center py-5">
@@ -304,7 +318,21 @@ const MyMediationRequestsPage = () => {
 
         return (
           <Card key={request._id} className="mb-3 shadow-sm">
-            <Card.Header as="h5">Product: {product.title || "N/A"}</Card.Header>
+            <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
+              <span>Product: {product.title || "N/A"}</span>
+              {/* --- [!!!] إضافة زر العين هنا [!!!] --- */}
+              <OverlayTrigger placement="top" overlay={<Tooltip>View Details</Tooltip>}>
+                <Button 
+                    variant="outline-secondary" 
+                    size="sm" 
+                    className="p-1"
+                    onClick={(e) => { e.stopPropagation(); handleOpenViewDetailsModal(request); }}
+                >
+                    <FaEye size={16} />
+                </Button>
+              </OverlayTrigger>
+              {/* -------------------------------------- */}
+            </Card.Header>
             <Card.Body>
               <Row>
                 <Col
@@ -378,8 +406,9 @@ const MyMediationRequestsPage = () => {
                   <p>
                     <strong>Agreed Price :</strong> {formatCurrency(request.bidAmount, request.bidCurrency)}
                   </p>
-                  {request.status === "MediationOfferAccepted" &&
-                    !request.buyerConfirmedStart &&
+                  {currentUser?._id === request.buyer?._id?.toString() && // <--- تحقق إضافي هنا
+ request.status === "MediationOfferAccepted" &&
+ !request.buyerConfirmedStart &&
                     feeDisplayDetails &&
                     !feeDisplayDetails.error && (
                       <Alert
@@ -478,8 +507,10 @@ const MyMediationRequestsPage = () => {
                         <Button
                           variant="primary"
                           size="sm"
-                          as={Link}
-                          to={`/dashboard/mediation-chat/${request._id}`}
+                          onClick={(e) => { // أضف e.stopPropagation() إذا كان النقر على العنصر بأكمله يفتح الدردشة
+                            e.stopPropagation(); 
+                            navigate(`/dashboard/mediation-chat/${request._id}`)
+                          }}
                           title="Open Mediation Chat"
                         >
                           <FaCommentDots className="me-1 d-none d-sm-inline" />
@@ -580,6 +611,18 @@ const MyMediationRequestsPage = () => {
             actionLoading &&
             selectedRequestIdForAction === selectedRequestToRejectByBuyer._id
           }
+        />
+      )}
+
+            {/* --- [!!!] إضافة المودال الجديد هنا [!!!] --- */}
+      {selectedRequestForDetails && (
+        <ViewMediationDetailsModal
+          show={showViewDetailsModal}
+          onHide={() => {
+            setShowViewDetailsModal(false);
+            setSelectedRequestForDetails(null);
+          }}
+          request={selectedRequestForDetails}
         />
       )}
     </Container>

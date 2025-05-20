@@ -523,13 +523,13 @@ const CommandsListVendor = () => {
                     <div className="mb-1">
                       <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
                       <small className="text-muted ms-2">
-                        List Price:{" "}
+                        List Price:
                         {formatCurrency(product.price, product.currency)}
                       </small>
                       {agreedPriceForDisplay != null &&
                         mediationRequestData && (
                           <small className="text-primary ms-2 fw-bold">
-                            Agreed:{" "}
+                            Agreed:
                             {formatCurrency(
                               agreedPriceForDisplay,
                               product.currency
@@ -595,18 +595,24 @@ const CommandsListVendor = () => {
                       )}
 
                     {sellerHasConfirmed &&
-                      !isActualMediationInProgress &&
-                      !isPartiesConfirmed && (
+                      productStatus !== "sold" && // <--- إضافة هذا الشرط
+                      productStatus !== "Completed" && // <--- إضافة هذا الشرط
+                      !isActualMediationInProgress && // لم تعد "InProgress"
+                      !isPartiesConfirmed && // لم تعد "PartiesConfirmed"
+                      mediationRequestStatus !== "Completed" && // حالة الوساطة نفسها ليست مكتملة
+                      mediationRequestStatus !== "Cancelled" && ( // وليست ملغاة
                         <Alert variant="success" className="p-2 small mt-2">
                           <FaCheck className="me-1" /> You confirmed.{" "}
                           <small className="text-muted">
-                            Waiting for buyer.
+                            Waiting for buyer to confirm & pay.
                           </small>
                         </Alert>
                       )}
 
                     {(isPartiesConfirmed || isActualMediationInProgress) &&
-                      currentMediationRequestId && (
+                      currentMediationRequestId &&
+                      productStatus !== "sold" && // لا تعرض زر "Open Chat" إذا بيع
+                      productStatus !== "Completed" && (
                         <div className="mt-2">
                           <Alert
                             variant={
@@ -848,10 +854,8 @@ const CommandsListVendor = () => {
                       >
                         {product.buyer.fullName || "a user"}
                       </Link>
-                      on{" "}
-                      {new Date(
-                        product.soldAt || product.updatedAt
-                      ).toLocaleDateString()}
+                      {product.soldAt &&
+                        ` on ${new Date(product.soldAt).toLocaleDateString()}`}
                       .
                     </Alert>
                   )}
@@ -893,7 +897,7 @@ const CommandsListVendor = () => {
           dismissible
           onClose={() => dispatch({ type: "CLEAR_PRODUCT_ERRORS" })}
         >
-          Error:{" "}
+          Error:
           {typeof errors === "string"
             ? errors
             : errors.msg || "An error occurred"}
@@ -923,7 +927,7 @@ const CommandsListVendor = () => {
           eventKey="approved"
           title={
             <>
-              <FaCheck className="me-1" /> Approved{" "}
+              <FaCheck className="me-1" /> Approved
               <Badge pill bg="success" className="ms-1">
                 {approvedProducts.length}
               </Badge>
@@ -946,7 +950,7 @@ const CommandsListVendor = () => {
           eventKey="mediation"
           title={
             <>
-              <FaHandshake className="me-1" /> In Mediation{" "}
+              <FaHandshake className="me-1" /> In Mediation
               <Badge pill bg="primary" className="ms-1">
                 {mediationProducts.length}
               </Badge>
@@ -969,7 +973,7 @@ const CommandsListVendor = () => {
           eventKey="pending"
           title={
             <>
-              <FaHourglassHalf className="me-1" /> Pending{" "}
+              <FaHourglassHalf className="me-1" /> Pending
               <Badge pill bg="warning" text="dark" className="ms-1">
                 {pendingProducts.length}
               </Badge>
@@ -992,7 +996,7 @@ const CommandsListVendor = () => {
           eventKey="sold"
           title={
             <>
-              <FaDollarSign className="me-1" /> Sold{" "}
+              <FaDollarSign className="me-1" /> Sold
               <Badge pill bg="secondary" className="ms-1">
                 {soldProducts.length + completedProducts.length}
               </Badge>
@@ -1022,7 +1026,7 @@ const CommandsListVendor = () => {
           eventKey="rejected"
           title={
             <>
-              <FaTimesCircle className="me-1" /> Rejected{" "}
+              <FaTimesCircle className="me-1" /> Rejected
               <Badge pill bg="danger" className="ms-1">
                 {rejectedProducts.length}
               </Badge>
@@ -1079,8 +1083,8 @@ const CommandsListVendor = () => {
         </Modal.Header>
         <Modal.Body>
           <p>
-            Reason for rejecting bid from{" "}
-            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for{" "}
+            Reason for rejecting bid from
+            <strong>{bidToReject?.bid?.user?.fullName || "Bidder"}</strong> for
             <strong>
               {formatCurrency(
                 bidToReject?.bid?.amount,

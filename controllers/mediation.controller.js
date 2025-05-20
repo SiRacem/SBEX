@@ -980,6 +980,45 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         const updatedMediationRequest = await mediationRequest.save({ session });
 
+                // --- [!!!] منح نقاط السمعة للأطراف المشاركة [!!!] ---
+        const participantsToReward = [];
+        if (mediationRequest.seller?._id) participantsToReward.push(mediationRequest.seller._id);
+        if (mediationRequest.buyer?._id) participantsToReward.push(mediationRequest.buyer._id); // المشتري الذي أكد
+        if (mediationRequest.mediator?._id) participantsToReward.push(mediationRequest.mediator._id);
+
+        const uniqueParticipants = [...new Set(participantsToReward.map(id => id.toString()))];
+        let reputationUpdatePromises = [];
+
+        for (const participantId of uniqueParticipants) {
+            if (mongoose.Types.ObjectId.isValid(participantId)) {
+                // زيادة reputationPoints بمقدار 1
+                // $inc يزيد القيمة، إذا لم يكن الحقل موجودًا، سيقوم بإنشائه وتعيين القيمة له
+                reputationUpdatePromises.push(
+                    User.findByIdAndUpdate(participantId, 
+                        { $inc: { reputationPoints: 1, successfulMediationsCount: (participantId === mediationRequest.mediator?._id.toString() ? 1 : 0) } }, // زيادة successfulMediationsCount للوسيط فقط
+                        { session, new: true } // new: true ليس ضروريًا هنا إذا لم تكن بحاجة للبيانات المحدثة فورًا
+                    )
+                );
+                console.log(`   [Reputation] Queued +1 reputation point for user ${participantId}`);
+            }
+        }
+        
+        if (reputationUpdatePromises.length > 0) {
+            try {
+                await Promise.all(reputationUpdatePromises);
+                console.log(`   [Reputation] Successfully updated reputation points for ${reputationUpdatePromises.length} participants.`);
+            } catch (reputationError) {
+                // هذا الخطأ لا يجب أن يوقف الـ transaction الرئيسي إذا كان تحديث السمعة ثانويًا
+                // لكن من المهم تسجيله
+                console.error("   [Reputation] Error updating reputation points within transaction:", reputationError);
+                // يمكنك هنا أن تقرر ما إذا كنت ستلغي الـ transaction أم لا
+                // إذا كان تحديث السمعة حرجًا، قم بإلغاء الـ transaction:
+                // await session.abortTransaction();
+                // throw new Error("Failed to update reputation points for all participants.");
+            }
+        }
+        // --- نهاية منح نقاط السمعة ---
+
         // إشعارات
         const productTitle = mediationRequest.product?.title || 'the transaction';
         const buyerFullName = req.user.fullName || 'The Buyer';
@@ -1427,11 +1466,15 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             console.warn(`[ConfirmReceipt] Mediation request ${mediationRequestId} not found.`);
             return res.status(404).json({ msg: "Mediation request not found." });
         }
-        if (!mediationRequest.buyer.equals(buyerId)) {
-            await session.abortTransaction();
-            console.warn(`[ConfirmReceipt] User ${buyerId} is not the buyer for request ${mediationRequestId}.`);
-            return res.status(403).json({ msg: "Forbidden: You are not the buyer for this request." });
-        }
+        console.log(`   [SERVER buyerConfirm] mediationRequest.buyer ID: ${mediationRequest.buyer}`);
+    console.log(`   [SERVER buyerConfirm] req.user._id (buyerId performing action): ${buyerId}`);
+    console.log(`   [SERVER buyerConfirm] Are they equal? : ${mediationRequest.buyer.equals(buyerId)}`);
+
+    if (!mediationRequest.buyer.equals(buyerId)) {
+        await session.abortTransaction();
+        console.warn(`   [SERVER buyerConfirm] FORBIDDEN: User ${buyerId} (logged in) is not the buyer for request ${mediationRequestId}. Actual buyer in DB: ${mediationRequest.buyer}`);
+        throw new Error("Forbidden: You are not the buyer for this request.");
+    }
         if (mediationRequest.status !== 'InProgress') {
             await session.abortTransaction();
             console.warn(`[ConfirmReceipt] Action not allowed for request ${mediationRequestId}. Current status: '${mediationRequest.status}'.`);

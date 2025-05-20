@@ -1,0 +1,212 @@
+/* Mediation Details Modal Customizations */
+.mediation-details-modal-custom .modal-content {
+    border-radius: 0.75rem;
+    /* زيادة استدارة الحواف */
+    border: none;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+    /* ظل أعمق قليلاً */
+}
+
+.mediation-details-modal-custom .modal-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.5rem;
+    background-color: #f8f9fa;
+    /* خلفية فاتحة للهيدر */
+}
+
+.mediation-details-modal-custom .modal-title {
+    font-size: 1.3rem;
+    /* تكبير عنوان المودال قليلاً */
+    color: var(--bs-primary);
+    /* استخدام لون العلامة التجارية الأساسي */
+}
+
+.mediation-details-modal-custom .modal-title .text-dark {
+    color: #343a40 !important;
+    /* ضمان لون داكن لاسم المنتج */
+}
+
+
+.mediation-details-modal-custom .modal-body {
+    background-color: #ffffff;
+    /* خلفية بيضاء لجسم المودال */
+    padding: 1.5rem;
+    /* زيادة الحشو الداخلي */
+}
+
+.mediation-details-modal-custom .card {
+    margin-bottom: 0;
+    border: 1px solid #dee2e6;
+    /* إضافة حدود خفيفة للبطاقات */
+}
+
+.mediation-details-modal-custom .card-header {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid rgba(0, 0, 0, .075);
+    /* فاصل أفتح للرأس */
+}
+
+.mediation-details-modal-custom .bg-secondary.text-white {
+    background-color: #5a6268 !important;
+    /* لون ثانوي أغمق */
+    color: white !important;
+}
+
+.mediation-details-modal-custom .bg-info.text-white {
+    background-color: #117a8b !important;
+    /* لون معلوماتي أغمق */
+    color: white !important;
+}
+
+.mediation-details-modal-custom .list-group-item {
+    background-color: transparent;
+    /* جعل خلفية عناصر القائمة شفافة */
+    border-bottom: 1px solid #f1f1f1;
+    padding: 0.85rem;
+    /* تعديل الحشو لعناصر القائمة داخل البطاقات */
+}
+
+.mediation-details-modal-custom .card-header+.list-group .list-group-item:first-child {
+    border-top: none;
+    /* إزالة الحد العلوي لأول عنصر بعد الهيدر */
+}
+
+.mediation-details-modal-custom .list-group-item:last-child {
+    border-bottom: none;
+}
+
+.mediation-details-modal-custom .participant-avatar {
+    border: 2px solid #fff;
+    /* حدود بيضاء للأفاتار */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mediation-details-modal-custom .current-user-participant .fw-bold {
+    color: var(--bs-primary);
+}
+
+/* Accordion Styles */
+.mediation-history-accordion .accordion-button {
+    font-weight: 500;
+    font-size: 1rem;
+    /* تكبير خط رأس الأكورديون */
+    padding: 1rem 1.25rem;
+    background-color: #e9ecef;
+    /* خلفية لرأس الأكورديون */
+    border-radius: 0.25rem;
+    /* استدارة للحواف */
+    color: #343a40;
+}
+
+.mediation-history-accordion .accordion-button:not(.collapsed) {
+    color: #fff;
+    background-color: var(--bs-primary);
+    /* لون أساسي عند الفتح */
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .125);
+}
+
+.mediation-history-accordion .accordion-button:not(.collapsed)::after {
+    background-image: var(--bs-accordion-btn-active-icon);
+    /* أيقونة السهم بلون مناسب */
+    filter: brightness(0) invert(1);
+    /* جعل أيقونة السهم بيضاء */
+}
+
+
+.mediation-history-accordion .accordion-button:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    /* ظل عند التركيز */
+}
+
+.mediation-history-accordion .accordion-item {
+    border: 1px solid #dee2e6;
+    /* حدود للأكورديون */
+    border-radius: 0.3rem;
+}
+
+.mediation-history-accordion .accordion-body {
+    background-color: #fff;
+}
+
+.history-list-group .list-group-item {
+    padding: 0.75rem 1rem !important;
+    /* حشو مخصص لعناصر السجل */
+}
+
+.history-entry-item {
+    border-bottom: 1px solid #e9ecef !important;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.history-entry-item:hover {
+    background-color: #f8f9fa;
+    /* تمييز خفيف عند المرور */
+}
+
+.history-entry-item:last-child {
+    border-bottom: none !important;
+}
+
+.history-event-icon {
+    font-size: 1.3rem;
+    /* تكبير أيقونة الحدث قليلاً */
+    opacity: 0.8;
+    min-width: 28px;
+    /* لضمان محاذاة النص إذا كانت بعض الأيقونات أصغر */
+}
+
+.history-event-name {
+    color: #212529;
+    font-weight: 500;
+}
+
+.history-event-timestamp {
+    font-size: 0.78rem;
+    color: #6c757d;
+}
+
+.history-details-card {
+    border: 1px solid #e0e0e0 !important;
+    /* تغيير حدود بطاقة التفاصيل */
+    font-size: 0.8rem;
+    background-color: #fcfcfc !important;
+    /* خلفية أفتح قليلاً */
+    border-radius: 0.25rem;
+}
+
+.history-details-card .card-body {
+    background-color: transparent !important;
+    /* جعل خلفية الجسم شفافة لتظهر خلفية البطاقة */
+    padding: 0.5rem 0.75rem !important;
+}
+
+.history-details-card .detail-item {
+    margin-bottom: 0.2rem;
+    padding: 0.1rem 0;
+}
+
+.history-details-card .detail-item:not(:last-child) {
+    border-bottom: 1px dotted #eee;
+    /* فاصل منقط خفيف بين التفاصيل */
+}
+
+.history-details-card .detail-key {
+    color: #555;
+}
+
+.history-details-card .detail-value {
+    color: #333;
+    word-break: break-word;
+}
+
+.text-monospace {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.85em;
+}
+
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}

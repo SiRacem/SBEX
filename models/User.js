@@ -58,10 +58,11 @@ const UserSchema = new Schema({
         type: String,
         trim: true
     },
-    reputationPoints: { // نقاط السمعة
-        type: Number,
-        default: 0
-        // يمكن أن تكون النقاط سالبة في حالات نادرة جدًا
+    reputationPoints: { type: Number, default: 0, index: true }, // نقاط السمعة
+    reputationLevel: { // مستوى السمعة بناءً على النقاط
+        type: String,
+        enum: ['Bronze', 'Silver', 'Gold', 'Platinum'],
+        default: 'Bronze'
     },
     level: { // مستوى المستخدم بناءً على النقاط
         type: Number,
