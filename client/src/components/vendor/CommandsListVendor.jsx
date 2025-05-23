@@ -33,6 +33,7 @@ import {
   FaUserFriends,
   FaUndo,
   FaCommentDots,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
@@ -172,6 +173,11 @@ const CommandsListVendor = () => {
   ); // Assuming 'Completed' is a final state post-mediation
   const rejectedProducts = useMemo(
     () => myProducts.filter((p) => p && p.status === "rejected"),
+    [myProducts]
+  );
+    // --- [!!!] useMemo جديد للمنتجات المتنازع عليها [!!!] ---
+  const disputedProducts = useMemo(
+    () => myProducts.filter((p) => p && (p.status === "Disputed" || p.status === "UnderDispute")),
     [myProducts]
   );
 
@@ -444,6 +450,8 @@ const CommandsListVendor = () => {
       const agreedPriceForDisplay = product.agreedPrice;
       const isLoadingThisSellerConfirmButton =
         sellerConfirmLoading[currentMediationRequestId] || false;
+      
+        const isDisputedProduct = productStatus === "Disputed" || productStatus === "UnderDispute";
 
       let statusBadgeText = productStatus
         ? productStatus.charAt(0).toUpperCase() + productStatus.slice(1)
@@ -471,6 +479,9 @@ const CommandsListVendor = () => {
       } else if (isActualMediationInProgress) {
         statusBadgeText = "In Progress";
         statusBadgeBg = "success";
+      } else if (productStatus === "Disputed" || productStatus === "UnderDispute") {
+        statusBadgeText = "Dispute Opened";
+        statusBadgeBg = "danger";
       } else if (product.status === "sold") {
         statusBadgeText = "Sold";
         statusBadgeBg = "dark";
@@ -597,49 +608,54 @@ const CommandsListVendor = () => {
                     {sellerHasConfirmed &&
                       productStatus !== "sold" && // <--- إضافة هذا الشرط
                       productStatus !== "Completed" && // <--- إضافة هذا الشرط
+                      productStatus !== 'Disputed' && // <--- [!!!] إضافة هذا الشرط [!!!]
+                      productStatus !== 'UnderDispute' && // <--- (إذا كنت تستخدم هذه الحالة أيضًا)
                       !isActualMediationInProgress && // لم تعد "InProgress"
                       !isPartiesConfirmed && // لم تعد "PartiesConfirmed"
                       mediationRequestStatus !== "Completed" && // حالة الوساطة نفسها ليست مكتملة
                       mediationRequestStatus !== "Cancelled" && ( // وليست ملغاة
+                      mediationRequestStatus !== 'Disputed' &&
                         <Alert variant="success" className="p-2 small mt-2">
-                          <FaCheck className="me-1" /> You confirmed.{" "}
+                          <FaCheck className="me-1" /> You confirmed.
                           <small className="text-muted">
                             Waiting for buyer to confirm & pay.
                           </small>
                         </Alert>
                       )}
 
-                    {(isPartiesConfirmed || isActualMediationInProgress) &&
+                    {(isPartiesConfirmed || isActualMediationInProgress || isDisputedProduct) &&
                       currentMediationRequestId &&
                       productStatus !== "sold" && // لا تعرض زر "Open Chat" إذا بيع
                       productStatus !== "Completed" && (
                         <div className="mt-2">
-                          <Alert
-                            variant={
-                              isActualMediationInProgress ? "success" : "info"
-                            }
-                            className="p-2 small d-flex justify-content-between align-items-center"
-                          >
-                            <span>
-                              <FaHandshake className="me-1" />
-                              {isActualMediationInProgress
-                                ? "Mediation is in progress."
-                                : "Parties confirmed. Chat starting."}
+      <Alert
+        variant={
+          isActualMediationInProgress ? "success" : (isDisputedProduct ? "danger" : "info")
+        }
+        className="p-2 small d-flex justify-content-between align-items-center"
+      >
+        <span>
+          {isDisputedProduct ? <FaExclamationTriangle className="me-1" /> : <FaHandshake className="me-1" />}
+          {isActualMediationInProgress
+            ? "Mediation is in progress."
+            : isDisputedProduct
+            ? "Dispute is active."
+            : "Parties confirmed. Chat starting."}
                               <br />
                               <small className="text-muted">
                                 Communicate with buyer and mediator.
                               </small>
                             </span>
                             <Button
-                              variant="primary"
-                              size="sm"
-                              as={Link}
-                              to={`/dashboard/mediation-chat/${currentMediationRequestId}`}
-                              title="Open Mediation Chat"
-                            >
-                              <FaCommentDots className="me-1 d-none d-sm-inline" />
-                              Open Chat
-                            </Button>
+          variant={isDisputedProduct ? "warning" : "primary"} // تغيير لون الزر إذا كان في نزاع
+          size="sm"
+          as={Link}
+          to={`/dashboard/mediation-chat/${currentMediationRequestId}`}
+          title={isDisputedProduct ? "Open Dispute Chat" : "Open Mediation Chat"}
+        >
+          <FaCommentDots className="me-1 d-none d-sm-inline" />
+          Open Chat
+        </Button>
                           </Alert>
                         </div>
                       )}
@@ -718,7 +734,7 @@ const CommandsListVendor = () => {
                             size="sm"
                             className="p-1 text-secondary"
                             onClick={() =>
-                              navigate(`/edit-product/${product._id}`)
+                              navigate("/dashboard/comptes")
                             }
                           >
                             <FaEdit />
@@ -947,6 +963,29 @@ const CommandsListVendor = () => {
           )}
         </Tab>
         <Tab
+          eventKey="pending"
+          title={
+            <>
+              <FaHourglassHalf className="me-1" /> Pending
+              <Badge pill bg="warning" text="dark" className="ms-1">
+                {pendingProducts.length}
+              </Badge>
+            </>
+          }
+        >
+          {loadingProducts && !pendingProducts.length ? (
+            <div className="text-center py-4">
+              <Spinner size="sm" /> Loading...
+            </div>
+          ) : pendingProducts.length > 0 ? (
+            pendingProducts.map(renderProductEntry)
+          ) : (
+            <Alert variant="light" className="text-center py-4">
+              No products pending approval.
+            </Alert>
+          )}
+        </Tab>
+        <Tab
           eventKey="mediation"
           title={
             <>
@@ -970,25 +1009,23 @@ const CommandsListVendor = () => {
           )}
         </Tab>
         <Tab
-          eventKey="pending"
+          eventKey="disputed"
           title={
             <>
-              <FaHourglassHalf className="me-1" /> Pending
-              <Badge pill bg="warning" text="dark" className="ms-1">
-                {pendingProducts.length}
+              <FaExclamationTriangle className="me-1 text-primary" /> Disputed
+              <Badge pill bg="info" className="ms-1">
+                {disputedProducts.length}
               </Badge>
             </>
           }
         >
-          {loadingProducts && !pendingProducts.length ? (
-            <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
-            </div>
-          ) : pendingProducts.length > 0 ? (
-            pendingProducts.map(renderProductEntry)
+          {loadingProducts && !disputedProducts.length ? (
+            <div className="text-center py-4"><Spinner size="sm" /> Loading...</div>
+          ) : disputedProducts.length > 0 ? (
+            disputedProducts.map(renderProductEntry)
           ) : (
             <Alert variant="light" className="text-center py-4">
-              No products pending approval.
+              No products currently in dispute.
             </Alert>
           )}
         </Tab>

@@ -13,8 +13,11 @@ import {
     GET_BUYER_MEDIATION_REQUESTS_REQUEST, GET_BUYER_MEDIATION_REQUESTS_SUCCESS, GET_BUYER_MEDIATION_REQUESTS_FAIL,
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
     GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
-    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET,BUYER_CONFIRM_RECEIPT_REQUEST,
-    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL,
+    MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET, BUYER_CONFIRM_RECEIPT_REQUEST,
+    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL, OPEN_DISPUTE_REQUEST, OPEN_DISPUTE_SUCCESS,
+    OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
+    GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
+    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL,
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -76,6 +79,14 @@ const initialState = {
         error: null,
         totalUnreadMessagesCount: 0,
     },
+
+    disputedCases: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
+    loadingDisputedCases: false,
+    errorDisputedCases: null,
+
+    adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
+    loadingAdminDisputed: false,
+    errorAdminDisputed: null,
 };
 
 const mediationReducer = (state = initialState, action) => {
@@ -333,79 +344,79 @@ const mediationReducer = (state = initialState, action) => {
                 }
             };
         case UPDATE_UNREAD_COUNT_FROM_SOCKET:
-    console.log("[Reducer MEDIATION] Handling UPDATE_UNREAD_COUNT_FROM_SOCKET. Payload:", payload);
-    let foundMediation = false;
-    const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
-        if (med._id === payload.mediationId) {
-            foundMediation = true;
-            return { 
-                ...med, 
-                unreadMessagesCount: payload.unreadCount, 
-                lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp 
+            console.log("[Reducer MEDIATION] Handling UPDATE_UNREAD_COUNT_FROM_SOCKET. Payload:", payload);
+            let foundMediation = false;
+            const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
+                if (med._id === payload.mediationId) {
+                    foundMediation = true;
+                    return {
+                        ...med,
+                        unreadMessagesCount: payload.unreadCount,
+                        lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp
+                    };
+                }
+                return med;
+            });
+
+            let finalRequests = updatedRequestsSocket;
+            let newTotalUnreadSocket = 0; // سيتم إعادة حسابه
+
+            if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
+                const newMediationSummary = {
+                    _id: payload.mediationId,
+                    product: { title: payload.productTitle, imageUrl: payload.otherPartyForRecipient?.avatarUrl /* مثال */ },
+                    status: 'InProgress', // أو الحالة التي تأتي من payload إذا كانت موجودة
+                    otherParty: payload.otherPartyForRecipient,
+                    unreadMessagesCount: payload.unreadCount,
+                    lastMessageTimestamp: payload.lastMessageTimestamp,
+                    updatedAt: payload.lastMessageTimestamp,
+                };
+                finalRequests = [newMediationSummary, ...updatedRequestsSocket];
+                console.log("[Reducer MEDIATION] Added new mediation summary from socket:", newMediationSummary);
+            }
+
+            // إعادة ترتيب القائمة
+            finalRequests.sort((a, b) => {
+                if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1;
+                if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
+                if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
+                if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
+                return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
+            });
+
+            // إعادة حساب الإجمالي بناءً على finalRequests المحدثة
+            newTotalUnreadSocket = finalRequests.reduce((total, med) => {
+                return total + (med.unreadMessagesCount || 0);
+            }, 0);
+
+            console.log("[Reducer MEDIATION] New totalUnreadMessagesCount:", newTotalUnreadSocket);
+            console.log("[Reducer MEDIATION] Final requests for summary:", finalRequests);
+
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries,
+                    requests: finalRequests, // <--- استخدام finalRequests المحدثة
+                    totalUnreadMessagesCount: newTotalUnreadSocket, // <--- استخدام الإجمالي الجديد
+                    loading: false, // تأكد من أن loading false إذا لم يكن هناك طلب API هنا
+                    error: null,   // مسح أي خطأ سابق
+                }
             };
-        }
-        return med;
-    });
-
-    let finalRequests = updatedRequestsSocket;
-    let newTotalUnreadSocket = 0; // سيتم إعادة حسابه
-
-    if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
-        const newMediationSummary = {
-            _id: payload.mediationId,
-            product: { title: payload.productTitle, imageUrl: payload.otherPartyForRecipient?.avatarUrl /* مثال */ },
-            status: 'InProgress', // أو الحالة التي تأتي من payload إذا كانت موجودة
-            otherParty: payload.otherPartyForRecipient,
-            unreadMessagesCount: payload.unreadCount,
-            lastMessageTimestamp: payload.lastMessageTimestamp,
-            updatedAt: payload.lastMessageTimestamp,
-        };
-        finalRequests = [newMediationSummary, ...updatedRequestsSocket];
-        console.log("[Reducer MEDIATION] Added new mediation summary from socket:", newMediationSummary);
-    }
-    
-    // إعادة ترتيب القائمة
-    finalRequests.sort((a, b) => {
-        if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1;
-        if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
-        if (a.unreadMessagesCount > 0 && b.unreadMessagesCount === 0) return -1;
-        if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
-        return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
-    });
-
-    // إعادة حساب الإجمالي بناءً على finalRequests المحدثة
-    newTotalUnreadSocket = finalRequests.reduce((total, med) => {
-        return total + (med.unreadMessagesCount || 0);
-    }, 0);
-    
-    console.log("[Reducer MEDIATION] New totalUnreadMessagesCount:", newTotalUnreadSocket);
-    console.log("[Reducer MEDIATION] Final requests for summary:", finalRequests);
-
-    return {
-        ...state,
-        myMediationSummaries: {
-            ...state.myMediationSummaries,
-            requests: finalRequests, // <--- استخدام finalRequests المحدثة
-            totalUnreadMessagesCount: newTotalUnreadSocket, // <--- استخدام الإجمالي الجديد
-            loading: false, // تأكد من أن loading false إذا لم يكن هناك طلب API هنا
-            error: null,   // مسح أي خطأ سابق
-        }
-    };
 
         // --- Buyer Confirm Receipt ---
         case BUYER_CONFIRM_RECEIPT_REQUEST:
             return {
                 ...state,
                 // يمكنك استخدام actionLoading العام أو حالة تحميل مخصصة
-                actionLoading: true, 
-                actionError: null, 
+                actionLoading: true,
+                actionError: null,
                 // confirmingReceipt: { ...state.confirmingReceipt, [payload.mediationRequestId]: true },
             };
         case BUYER_CONFIRM_RECEIPT_SUCCESS:
             // تحديث حالة الوساطة في قائمة الملخصات (myMediationSummaries.requests)
             // وتحديثها في أي مكان آخر قد تكون موجودة فيه (مثل buyerRequests إذا كانت مختلفة)
-            const updateRequestInList = (list) => list.map(req => 
-                req._id === payload.mediationRequestId 
+            const updateRequestInList = (list) => list.map(req =>
+                req._id === payload.mediationRequestId
                     ? payload.updatedMediationRequest // استخدام الطلب المحدث بالكامل من الخادم
                     : req
             );
@@ -433,7 +444,73 @@ const mediationReducer = (state = initialState, action) => {
                 actionLoading: false,
                 actionError: payload.error,
             };
-        
+
+        // --- Open Dispute ---
+        case OPEN_DISPUTE_REQUEST:
+            return {
+                ...state,
+                actionLoading: true,
+                actionError: null,
+            };
+        case OPEN_DISPUTE_SUCCESS:
+            const updateRequestInListsOpenDispute = (list) => list.map(req =>
+                req._id === payload.mediationRequestId
+                    ? payload.updatedMediationRequest
+                    : req
+            );
+            return {
+                ...state,
+                actionLoading: false,
+                actionSuccess: true,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries,
+                    requests: updateRequestInListsOpenDispute(state.myMediationSummaries.requests),
+                },
+                buyerRequests: { // إذا كان لديك buyerRequests منفصل
+                    ...state.buyerRequests,
+                    list: updateRequestInListsOpenDispute(state.buyerRequests.list),
+                },
+                // يمكنك تحديث أي قائمة أخرى قد تحتوي على هذا الطلب
+            };
+        case OPEN_DISPUTE_FAIL:
+            return {
+                ...state,
+                actionLoading: false,
+                actionError: payload.error,
+            };
+
+        case GET_MEDIATOR_DISPUTED_CASES_REQUEST:
+            return { ...state, loadingDisputedCases: true, errorDisputedCases: null };
+        case GET_MEDIATOR_DISPUTED_CASES_SUCCESS:
+            return {
+                ...state,
+                loadingDisputedCases: false,
+                disputedCases: {
+                    list: payload.assignments || payload.requests || [], // تأكد من اسم الحقل من الخادم
+                    totalPages: payload.totalPages || 1,
+                    currentPage: payload.currentPage || 1,
+                    totalCount: payload.totalAssignments || payload.totalRequests || 0,
+                }
+            };
+        case GET_MEDIATOR_DISPUTED_CASES_FAIL:
+            return { ...state, loadingDisputedCases: false, errorDisputedCases: payload, disputedCases: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 } };
+
+        case ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST:
+            return { ...state, loadingAdminDisputed: true, errorAdminDisputed: null };
+        case ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS:
+            return {
+                ...state,
+                loadingAdminDisputed: false,
+                adminDisputedMediations: {
+                    list: payload.requests || payload.mediations || [],
+                    totalPages: payload.totalPages || 1,
+                    currentPage: payload.currentPage || 1,
+                    totalCount: payload.totalRequests || payload.totalMediations || 0,
+                },
+            };
+        case ADMIN_GET_DISPUTED_MEDIATIONS_FAIL:
+            return { ...state, loadingAdminDisputed: false, errorAdminDisputed: payload, adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 } };
+
         default:
             return state;
     }

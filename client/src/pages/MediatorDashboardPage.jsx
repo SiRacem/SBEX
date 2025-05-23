@@ -1,5 +1,5 @@
 // client/src/pages/MediatorDashboardPage.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Container,
@@ -9,7 +9,7 @@ import {
   Button,
   Spinner,
   Alert,
-  Pagination,
+  Pagination, // تم التأكد من استيراده
   Image,
   Modal,
   Carousel,
@@ -22,29 +22,41 @@ import {
   mediatorAcceptAssignmentAction,
   mediatorRejectAssignmentAction,
   getMediatorAcceptedAwaitingPartiesAction,
+  getMediatorDisputedCasesAction,
 } from "../redux/actions/mediationAction";
 import { Link } from "react-router-dom";
-import { BsImage } from "react-icons/bs";
+import { BsImage, BsChatDotsFill } from "react-icons/bs";
 import RejectAssignmentModal from "../components/mediator/RejectAssignmentModal";
+import {
+  FaExclamationTriangle,
+  FaGavel,
+  FaCheck,
+  FaTimes,
+  FaHourglassHalf,
+} from "react-icons/fa";
+import "./MediatorDashboardPage.css";
 
-// Helper: Currency Formatting (Keep as is)
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+
 const formatCurrency = (amount, currencyCode = "TND") => {
-    const num = Number(amount);
-    if (isNaN(num) || amount == null) return "N/A";
-    let safeCurrencyCode = currencyCode;
-    if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-        safeCurrencyCode = "TND";
-    }
-    try {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: safeCurrencyCode,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(num);
-    } catch (error) {
-        return `${num.toFixed(2)} ${safeCurrencyCode}`;
-    }
+  const num = Number(amount);
+  if (isNaN(num) || amount == null) return "N/A";
+  let safeCurrencyCode = currencyCode;
+  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
+    safeCurrencyCode = "TND";
+  }
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: safeCurrencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  } catch (error) {
+    console.warn(`Currency formatting error for ${safeCurrencyCode}:`, error);
+    return `${num.toFixed(2)} ${safeCurrencyCode}`;
+  }
 };
 
 const noProductImageUrl =
@@ -59,26 +71,55 @@ const MediatorDashboardPage = () => {
     loadingPendingDecision,
     errorPendingDecision,
     acceptedAwaitingPartiesAssignments: activeData,
-    loadingAcceptedAwaitingParties: loadingActiveMediations,
-    errorAcceptedAwaitingParties: errorActiveMediations,
+    loadingAcceptedAwaitingParties,
+    errorAcceptedAwaitingParties,
     actionLoading,
+    disputedCases: disputedData,
+    loadingDisputedCases,
+    errorDisputedCases,
   } = useSelector((state) => state.mediationReducer);
 
   const currentUser = useSelector((state) => state.userReducer.user);
-
   const [activeTabKey, setActiveTabKey] = useState("pendingDecision");
 
-  const pendingDecisionAssignments = pendingData?.list || [];
-  const totalPagesPending = pendingData?.totalPages || 1;
-  const currentPagePendingFromState = pendingData?.currentPage || 1;
-  const totalPending = pendingData?.totalCount || 0;
-  const [currentPagePendingLocal, setCurrentPagePendingLocal] = useState(1); // ابدأ دائماً بالصفحة 1 محلياً
+  const pendingDecisionAssignments = useMemo(
+    () => pendingData?.list || [],
+    [pendingData]
+  );
+  const totalPagesPending = useMemo(
+    () => pendingData?.totalPages || 1,
+    [pendingData]
+  );
+  const totalPending = useMemo(
+    () => pendingData?.totalCount || 0,
+    [pendingData]
+  );
+  const [currentPagePendingLocal, setCurrentPagePendingLocal] = useState(1);
 
-  const activeMediationsList = activeData?.list || [];
-  const totalPagesActive = activeData?.totalPages || 1;
-  const currentPageActiveFromState = activeData?.currentPage || 1;
-  const totalActive = activeData?.totalCount || 0;
-  const [currentPageActiveLocal, setCurrentPageActiveLocal] = useState(1); // ابدأ دائماً بالصفحة 1 محلياً
+  const activeMediationsList = useMemo(
+    () => activeData?.list || [],
+    [activeData]
+  );
+  const totalPagesActive = useMemo(
+    () => activeData?.totalPages || 1,
+    [activeData]
+  );
+  const totalActive = useMemo(() => activeData?.totalCount || 0, [activeData]);
+  const [currentPageActiveLocal, setCurrentPageActiveLocal] = useState(1);
+
+  const disputedCasesList = useMemo(
+    () => disputedData?.list || [],
+    [disputedData]
+  );
+  const totalPagesDisputed = useMemo(
+    () => disputedData?.totalPages || 1,
+    [disputedData]
+  );
+  const totalDisputed = useMemo(
+    () => disputedData?.totalCount || 0,
+    [disputedData]
+  );
+  const [currentPageDisputedLocal, setCurrentPageDisputedLocal] = useState(1);
 
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -88,44 +129,54 @@ const MediatorDashboardPage = () => {
     useState(null);
   const [processingAssignmentId, setProcessingAssignmentId] = useState(null);
 
-  // --- MODIFIED: useEffect for fetching data based on active tab and local page ---
   useEffect(() => {
     if (currentUser && currentUser.isMediatorQualified) {
-        console.log("MediatorDashboardPage: Initial data fetch triggered.");
-        dispatch(getMediatorAssignments(1)); 
-        dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); 
-    }
-}, [dispatch, currentUser]);
+        // --- [!!!] جلب بيانات جميع التبويبات عند التحميل الأول أو عند تغير المستخدم [!!!] ---
+        // هذا الجزء سيعمل مرة واحدة عند تحميل المكون (أو عند تغير currentUser)
+        // ويمكنك الاحتفاظ به إذا أردت تحديثًا دوريًا لجميع الأعداد.
+        // أو يمكنك نقله إلى useEffect منفصل بمصفوفة اعتماديات [dispatch, currentUser] فقط.
 
-  // -----------------------------------------------------------------------------------
-
-  // Sync local page with Redux state if needed, but fetching directly on local page change is often simpler
-  useEffect(() => {
-    // If Redux current page for pending changes (e.g. from initial load or other source)
-    // and it's different from local, update local. This is mostly for initialization.
-    if (
-      currentPagePendingFromState !== currentPagePendingLocal &&
-      activeTabKey === "pendingDecision"
-    ) {
-      // setCurrentPagePendingLocal(currentPagePendingFromState); // This might cause a loop if not careful
+        console.log("[MediatorDashboardPage Effect] Fetching initial counts for all tabs...");
+        dispatch(getMediatorAssignments(1)); // جلب الصفحة الأولى دائمًا للعدد
+        dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
+        dispatch(getMediatorDisputedCasesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
     }
-  }, [currentPagePendingFromState, currentPagePendingLocal, activeTabKey]);
+}, [dispatch, currentUser]); // <--- اعتماديات هذا الـ useEffect
 
   useEffect(() => {
-    if (
-      currentPageActiveFromState !== currentPageActiveLocal &&
-      activeTabKey === "activeMediations"
-    ) {
-      // setCurrentPageActiveLocal(currentPageActiveFromState);
+    if (currentUser && currentUser.isMediatorQualified) {
+        console.log(`[MediatorDashboardPage Effect] Fetching data for active tab: ${activeTabKey}`);
+        if (activeTabKey === 'pendingDecision') {
+            dispatch(getMediatorAssignments(currentPagePendingLocal));
+        } else if (activeTabKey === 'activeMediations') {
+            dispatch(getMediatorAcceptedAwaitingPartiesAction(currentPageActiveLocal));
+        } else if (activeTabKey === 'disputedCases') {
+            dispatch(getMediatorDisputedCasesAction(currentPageDisputedLocal));
+        }
     }
-  }, [currentPageActiveFromState, currentPageActiveLocal, activeTabKey]);
+    // الاعتماديات يجب أن تكون ما يُشغل هذا الـ Effect بشكل صحيح
+    // عندما يتغير التبويب النشط، أو عندما تتغير الصفحة المحلية للتبويب النشط.
+}, [dispatch, currentUser, activeTabKey, 
+    (activeTabKey === 'pendingDecision' ? currentPagePendingLocal : undefined),
+    (activeTabKey === 'activeMediations' ? currentPageActiveLocal : undefined),
+    (activeTabKey === 'disputedCases' ? currentPageDisputedLocal : undefined)
+]);
 
   const handleShowImageModal = useCallback((images, index = 0) => {
-    /* ... */
+    setSelectedAssignmentImages(
+      images && images.length > 0 ? images : [noProductImageUrl]
+    );
+    setCurrentImageIndex(index);
+    setShowImageModal(true);
   }, []);
+
   const handleCloseImageModal = useCallback(() => setShowImageModal(false), []);
+
   const handleImageError = useCallback((e) => {
-    /* ... */
+    if (e.target.src !== fallbackProductImageUrl) {
+      e.target.onerror = null;
+      e.target.src = fallbackProductImageUrl;
+    }
   }, []);
 
   const handleAccept = useCallback(
@@ -134,12 +185,13 @@ const MediatorDashboardPage = () => {
       setProcessingAssignmentId(assignmentId);
       dispatch(mediatorAcceptAssignmentAction(assignmentId))
         .then(() => {
-          // Refetch current page of pending, and first page of active
           dispatch(getMediatorAssignments(currentPagePendingLocal));
-          dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // Fetch page 1 of active as item moves
+          dispatch(getMediatorAcceptedAwaitingPartiesAction(1));
           setActiveTabKey("activeMediations");
         })
-        .catch(() => {})
+        .catch((err) =>
+          console.error("Error accepting assignment in component:", err)
+        )
         .finally(() => setProcessingAssignmentId(null));
     },
     [dispatch, actionLoading, currentPagePendingLocal, processingAssignmentId]
@@ -160,7 +212,9 @@ const MediatorDashboardPage = () => {
           setSelectedAssignmentForReject(null);
           dispatch(getMediatorAssignments(currentPagePendingLocal));
         })
-        .catch(() => {})
+        .catch((err) =>
+          console.error("Error rejecting assignment in component:", err)
+        )
         .finally(() => setProcessingAssignmentId(null));
     },
     [dispatch, actionLoading, currentPagePendingLocal, processingAssignmentId]
@@ -171,188 +225,249 @@ const MediatorDashboardPage = () => {
       setCurrentPagePendingLocal(pageNumber);
     } else if (tabKey === "activeMediations") {
       setCurrentPageActiveLocal(pageNumber);
+    } else if (tabKey === "disputedCases") {
+      setCurrentPageDisputedLocal(pageNumber);
     }
   }, []);
 
   const renderAssignmentCard = useCallback(
-    (assignment, isPendingDecisionTab = false) => {
-      // ... (نفس الكود الممتاز الذي قدمته لـ renderAssignmentCard، مع Alert لـ InProgress) ...
-      if (!assignment || !assignment.product)
-        return <Alert variant="danger">Error displaying assignment.</Alert>;
+    (assignment, isPendingDecisionTab = false, isDisputedTab = false) => {
+      if (!assignment || !assignment.product) {
+        console.warn(
+          "RenderAssignmentCard: Invalid assignment data provided.",
+          assignment
+        );
+        return (
+          <Alert variant="warning" className="my-3">
+            Assignment data is incomplete.
+          </Alert>
+        );
+      }
+
+      let statusBadgeBg = "secondary";
+      let statusText = assignment.status
+        ? assignment.status.replace(/([A-Z])/g, " $1").trim()
+        : "Unknown";
+      const currentStatus = assignment.status;
+
+      if (currentStatus === "Disputed") {
+        statusBadgeBg = "danger";
+        statusText = "Dispute Active";
+      } else {
+        switch (currentStatus) {
+          case "MediatorAssigned":
+            statusBadgeBg = "warning";
+            statusText = "Pending Your Decision";
+            break;
+          case "MediationOfferAccepted":
+            statusBadgeBg = "info";
+            statusText = "Awaiting Parties' Confirmation";
+            break;
+          case "EscrowFunded":
+            statusBadgeBg = "primary";
+            statusText = "Buyer Confirmed & Escrowed";
+            break;
+          case "PartiesConfirmed":
+            statusBadgeBg = "info";
+            statusText = "All Parties Confirmed";
+            break;
+          case "InProgress":
+            statusBadgeBg = "success";
+            statusText = "Mediation In Progress";
+            break;
+          default:
+            break;
+        }
+      }
+
       const productImages = assignment.product.imageUrls;
       const isCurrentlyProcessing =
         processingAssignmentId === assignment._id && actionLoading;
-      let statusBadgeBg = "secondary";
-      let statusText = assignment.status;
-      switch (assignment.status) {
-        case "MediatorAssigned":
-          statusBadgeBg = "warning text-dark";
-          break;
-        case "MediationOfferAccepted":
-          statusBadgeBg = "info text-dark";
-          statusText = "Awaiting Parties";
-          break;
-        case "EscrowFunded":
-          statusBadgeBg = "primary";
-          statusText = "Buyer Confirmed";
-          break;
-        case "PartiesConfirmed":
-          statusBadgeBg = "info";
-          statusText = "Parties Confirmed";
-          break;
-        case "InProgress":
-          statusBadgeBg = "success";
-          statusText = "In Progress";
-          break;
-        default:
-          break;
-      }
+
       return (
-        <Card key={assignment._id} className="mb-3 shadow-sm">
-          <Card.Header as="h5">
-            Product: {assignment.product.title || "N/A"}
+        <Card key={assignment._id} className="mb-3 shadow-sm assignment-card">
+          <Card.Header
+            as="h5"
+            className="d-flex justify-content-between align-items-center assignment-card-header"
+          >
+            <span>Product: {assignment.product.title || "N/A"}</span>
+            <Badge
+              bg={statusBadgeBg}
+              text={
+                (statusBadgeBg === "warning" || statusBadgeBg === "info") &&
+                !statusBadgeBg.includes("dark")
+                  ? "dark"
+                  : undefined
+              }
+            >
+              {statusText}
+            </Badge>
           </Card.Header>
           <Card.Body>
-            <Row>
+            <Row className="g-3">
               <Col
-                md={3}
-                className="text-center mb-2 mb-md-0 position-relative"
+                md={4}
+                lg={3}
+                className="text-center mb-3 mb-md-0 position-relative"
               >
                 <Image
-                  src={productImages?.[0] || noProductImageUrl}
+                  src={
+                    productImages && productImages[0]
+                      ? productImages[0].startsWith("http")
+                        ? productImages[0]
+                        : `${BACKEND_URL}/${productImages[0]}`
+                      : noProductImageUrl
+                  }
                   alt={assignment.product.title || "Product Image"}
                   style={{
                     width: "100%",
-                    height: "120px",
+                    maxHeight: "150px",
                     objectFit: "contain",
                     cursor: productImages?.length ? "pointer" : "default",
                   }}
-                  className="rounded"
+                  className="rounded border"
                   onError={handleImageError}
                   onClick={() =>
                     productImages?.length &&
                     handleShowImageModal(productImages, 0)
                   }
                 />
-                {productImages?.length && (
+                {productImages && productImages.length > 1 && (
                   <Button
-                    variant="dark"
+                    variant="outline-secondary"
                     size="sm"
                     onClick={() => handleShowImageModal(productImages, 0)}
-                    className="position-absolute bottom-0 start-50 translate-middle-x mb-2"
-                    style={{
-                      opacity: 0.8,
-                      fontSize: "0.8rem",
-                      padding: "0.2rem 0.5rem",
-                    }}
+                    className="position-absolute bottom-0 start-50 translate-middle-x mb-2 view-gallery-btn"
                   >
-                    <BsImage /> View Gallery ({productImages.length})
+                    <BsImage className="me-1" /> View ({productImages.length})
                   </Button>
                 )}
               </Col>
-              <Col md={9}>
-                <Card.Text as="div">
-                  <strong>Transaction ID:</strong> {assignment._id} <br />
-                  <strong>Seller:</strong>{" "}
-                  {assignment.seller?.fullName ? (
-                    <Link
-                      to={`/profile/${assignment.seller._id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {assignment.seller.fullName}
-                    </Link>
-                  ) : (
-                    "N/A"
-                  )}
-                  <br />
-                  <strong>Buyer:</strong>{" "}
-                  {assignment.buyer?.fullName ? (
-                    <Link
-                      to={`/profile/${assignment.buyer._id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {assignment.buyer.fullName}
-                    </Link>
-                  ) : (
-                    "N/A"
-                  )}
-                  <br />
-                  <strong>Agreed Price:</strong>{" "}
-                  {formatCurrency(assignment.bidAmount, assignment.bidCurrency)}
-                  <br />
-                  <strong>Status:</strong>{" "}
-                  <Badge bg={statusBadgeBg}>{statusText}</Badge>
-                  <br />
-                  <strong>Assigned/Updated On:</strong>{" "}
-                  {new Date(
-                    assignment.updatedAt || assignment.createdAt
-                  ).toLocaleDateString()}{" "}
-                  At{" "}
-                  {new Date(
-                    assignment.updatedAt || assignment.createdAt
-                  ).toLocaleTimeString()}
-                </Card.Text>
+              <Col md={8} lg={9}>
+                <div className="assignment-details">
+                  <p className="mb-1">
+                    <small className="text-muted">Transaction ID:</small>{" "}
+                    {assignment._id}
+                  </p>
+                  <p className="mb-1">
+                    <small className="text-muted">Seller:</small>{" "}
+                    {assignment.seller?.fullName ? (
+                      <Link
+                        to={`/profile/${assignment.seller._id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {assignment.seller.fullName}
+                      </Link>
+                    ) : (
+                      "N/A"
+                    )}
+                  </p>
+                  <p className="mb-1">
+                    <small className="text-muted">Buyer:</small>{" "}
+                    {assignment.buyer?.fullName ? (
+                      <Link
+                        to={`/profile/${assignment.buyer._id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {assignment.buyer.fullName}
+                      </Link>
+                    ) : (
+                      "N/A"
+                    )}
+                  </p>
+                  <p className="mb-1">
+                    <small className="text-muted">Agreed Price:</small>{" "}
+                    <strong>
+                      {formatCurrency(
+                        assignment.bidAmount,
+                        assignment.bidCurrency
+                      )}
+                    </strong>
+                  </p>
+                  <p className="mb-0">
+                    <small className="text-muted">Last Update:</small>{" "}
+                    {new Date(
+                      assignment.updatedAt || assignment.createdAt
+                    ).toLocaleString("en-GB", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                </div>
+
                 {isPendingDecisionTab && (
-                  <div className="mt-3">
+                  <div className="mt-3 pt-3 border-top">
                     <Button
                       variant="success"
                       className="me-2 mb-2 mb-md-0"
                       onClick={() => handleAccept(assignment._id)}
                       disabled={isCurrentlyProcessing || actionLoading}
                     >
-                      {isCurrentlyProcessing ? (
+                      {isCurrentlyProcessing &&
+                      processingAssignmentId === assignment._id ? (
                         <Spinner as="span" animation="border" size="sm" />
                       ) : (
-                        "Accept Assignment"
-                      )}
+                        <FaCheck />
+                      )}{" "}
+                      Accept
                     </Button>
                     <Button
-                      variant="danger"
+                      variant="outline-danger"
                       onClick={() => openRejectModal(assignment)}
                       disabled={isCurrentlyProcessing || actionLoading}
                     >
                       {isCurrentlyProcessing &&
+                      processingAssignmentId === assignment._id &&
                       selectedAssignmentForReject?._id === assignment._id ? (
                         <Spinner as="span" animation="border" size="sm" />
                       ) : (
-                        "Reject Assignment"
-                      )}
+                        <FaTimes />
+                      )}{" "}
+                      Reject
                     </Button>
                   </div>
                 )}
-                {!isPendingDecisionTab && (
-                  <>
-                    {assignment.status === "MediationOfferAccepted" && (
-                      <Alert variant="info" className="mt-3 small p-2">
+
+                {!isPendingDecisionTab && ( // For Active and Disputed Tabs
+                  <div className="mt-3 pt-3 border-top">
+                    {currentStatus === "MediationOfferAccepted" && (
+                      <Alert variant="light" className="small p-2">
+                        <FaHourglassHalf className="me-1" />
                         You accepted. Waiting for parties to confirm.
                       </Alert>
                     )}
-                    {assignment.status === "EscrowFunded" && (
-                      <Alert variant="primary" className="mt-3 small p-2">
+                    {currentStatus === "EscrowFunded" && (
+                      <Alert variant="light" className="small p-2">
+                        <FaHourglassHalf className="me-1" />
                         Buyer confirmed & escrowed. Waiting for seller.
                       </Alert>
                     )}
-                    {assignment.status === "PartiesConfirmed" && (
-                      <Alert variant="info" className="mt-3 small p-2">
-                        Parties confirmed. Chat will start soon.
+                    {currentStatus === "PartiesConfirmed" && (
+                      <Alert variant="light" className="small p-2">
+                        <FaCheck className="me-1" />
+                        Parties confirmed. Chat starting soon.
                       </Alert>
                     )}
-                    {assignment.status === "InProgress" && (
-                      <Alert variant="success" className="mt-3 small p-2">
-                        Mediation in progress.{" "}
-                        <Button
-                          className="mt-1 ms-2"
-                          size="sm"
-                          as={Link}
-                          to={`/dashboard/mediation-chat/${assignment._id}`}
-                        >
-                          Open Chat
-                        </Button>
-                      </Alert>
+
+                    {(currentStatus === "InProgress" ||
+                      currentStatus === "Disputed") && (
+                      <Button
+                        size="sm"
+                        as={Link}
+                        to={`/dashboard/mediation-chat/${assignment._id}`}
+                        variant={
+                          currentStatus === "Disputed" ? "warning" : "primary"
+                        } // أو outline-danger للنزاع
+                      >
+                        <BsChatDotsFill className="me-1" />
+                        {currentStatus === "Disputed"
+                          ? "Review Dispute"
+                          : "Open Chat"}
+                      </Button>
                     )}
-                  </>
+                  </div>
                 )}
               </Col>
             </Row>
@@ -362,12 +477,14 @@ const MediatorDashboardPage = () => {
     },
     [
       actionLoading,
+      processingAssignmentId,
+      selectedAssignmentForReject,
       handleAccept,
       openRejectModal,
       handleShowImageModal,
       handleImageError,
-      selectedAssignmentForReject,
-      processingAssignmentId,
+      // لا تحتاج لإضافة dispatch هنا إذا كانت الدوال أعلاه لا تستدعي dispatch مباشرةً في هذا الـ useCallback
+      // وإنما dispatch يتم داخل الدوال نفسها (handleAccept, openRejectModal)
     ]
   );
 
@@ -381,31 +498,33 @@ const MediatorDashboardPage = () => {
   if (!currentUser.isMediatorQualified)
     return (
       <Container className="py-5 text-center">
-        <Alert variant="danger">Access Denied.</Alert>
-        <Link to="/">Homepage</Link>
+        <Alert variant="danger">
+          Access Denied. You are not a qualified mediator.
+        </Alert>
+        <Link to="/dashboard">Go to Dashboard</Link>
       </Container>
     );
 
   return (
-    <Container className="py-4 mediator-dashboard-page">
-      <Row className="mb-3 align-items-center">
+    <Container fluid className="py-4 mediator-dashboard-page px-md-4">
+      <Row className="mb-4 align-items-center">
         <Col>
-          <h2>My Mediation Dashboard</h2>
+          <h2 className="page-title mb-0">Mediator Hub</h2>
         </Col>
       </Row>
       <Tabs
         activeKey={activeTabKey}
         onSelect={(k) => setActiveTabKey(k || "pendingDecision")}
         id="mediator-dashboard-tabs"
-        className="mb-3"
+        className="mb-3 nav-tabs-custom"
         fill
       >
         <Tab
           eventKey="pendingDecision"
           title={
             <>
-              Pending My Decision{" "}
-              <Badge bg="warning" text="dark" pill>
+              <FaHourglassHalf className="me-1" /> Pending My Decision{" "}
+              <Badge bg="warning" text="dark" pill className="ms-1">
                 {totalPending}
               </Badge>
             </>
@@ -415,27 +534,29 @@ const MediatorDashboardPage = () => {
             pendingDecisionAssignments.length === 0 && (
               <div className="text-center my-5">
                 <Spinner />
-                <p>Loading...</p>
+                <p>Loading pending assignments...</p>
               </div>
             )}
-          {errorPendingDecision && !loadingPendingDecision && (
-            <Alert variant="danger">{errorPendingDecision}</Alert>
+          {!loadingPendingDecision && errorPendingDecision && (
+            <Alert variant="danger" className="mt-3">
+              {errorPendingDecision}
+            </Alert>
           )}
           {!loadingPendingDecision &&
             pendingDecisionAssignments.length === 0 &&
             !errorPendingDecision && (
-              <Alert variant="info">
-                No assignments pending your decision.
+              <Alert variant="light" className="text-center mt-3 py-4">
+                No assignments currently pending your decision.
               </Alert>
             )}
           {pendingDecisionAssignments.map((assignment) =>
-            renderAssignmentCard(assignment, true)
+            renderAssignmentCard(assignment, true, false)
           )}
           {totalPagesPending > 1 && (
             <Pagination className="justify-content-center mt-4">
               {[...Array(totalPagesPending).keys()].map((num) => (
                 <Pagination.Item
-                  key={num + 1}
+                  key={`pending-${num + 1}`}
                   active={num + 1 === currentPagePendingLocal}
                   onClick={() => handlePageChange("pendingDecision", num + 1)}
                   disabled={loadingPendingDecision}
@@ -450,42 +571,90 @@ const MediatorDashboardPage = () => {
           eventKey="activeMediations"
           title={
             <>
-              Active Mediations{" "}
-              <Badge bg="info" text="dark" pill>
+              <FaCheck className="me-1" /> Active Mediations{" "}
+              <Badge bg="primary" pill className="ms-1">
                 {totalActive}
               </Badge>
             </>
           }
         >
-          {loadingActiveMediations && activeMediationsList.length === 0 && (
-            <div className="text-center my-5">
-              <Spinner />
-              <p>Loading...</p>
-            </div>
-          )}
-          {errorActiveMediations && !loadingActiveMediations && (
-            <Alert variant="danger">{errorActiveMediations}</Alert>
-          )}
-          {!loadingActiveMediations &&
-            activeMediationsList.length === 0 &&
-            !errorActiveMediations && (
-              <Alert variant="info">No active mediations.</Alert>
+          {loadingAcceptedAwaitingParties &&
+            activeMediationsList.length === 0 && (
+              <div className="text-center my-5">
+                <Spinner />
+                <p>Loading active mediations...</p>
+              </div>
             )}
-          {console.log(
-            "[MediatorDashboardPage] Rendering 'Active Mediations' Tab. Data from Redux:",
-            activeMediationsList
+          {!loadingAcceptedAwaitingParties && errorAcceptedAwaitingParties && (
+            <Alert variant="danger" className="mt-3">
+              {errorAcceptedAwaitingParties}
+            </Alert>
           )}
+          {!loadingAcceptedAwaitingParties &&
+            activeMediationsList.length === 0 &&
+            !errorAcceptedAwaitingParties && (
+              <Alert variant="light" className="text-center mt-3 py-4">
+                No active mediations assigned to you.
+              </Alert>
+            )}
           {activeMediationsList.map((assignment) =>
-            renderAssignmentCard(assignment, false)
+            renderAssignmentCard(assignment, false, false)
           )}
           {totalPagesActive > 1 && (
             <Pagination className="justify-content-center mt-4">
               {[...Array(totalPagesActive).keys()].map((num) => (
                 <Pagination.Item
-                  key={num + 1}
+                  key={`active-${num + 1}`}
                   active={num + 1 === currentPageActiveLocal}
                   onClick={() => handlePageChange("activeMediations", num + 1)}
-                  disabled={loadingActiveMediations}
+                  disabled={loadingAcceptedAwaitingParties}
+                >
+                  {num + 1}
+                </Pagination.Item>
+              ))}
+            </Pagination>
+          )}
+        </Tab>
+        <Tab
+          eventKey="disputedCases"
+          title={
+            <>
+              <FaGavel className="me-1" /> Disputed Cases{" "}
+              <Badge bg="danger" pill className="ms-1">
+                {totalDisputed}
+              </Badge>
+            </>
+          }
+        >
+          {loadingDisputedCases && disputedCasesList.length === 0 && (
+            <div className="text-center my-5">
+              <Spinner />
+              <p>Loading disputed cases...</p>
+            </div>
+          )}
+          {!loadingDisputedCases && errorDisputedCases && (
+            <Alert variant="danger" className="mt-3">
+              {errorDisputedCases}
+            </Alert>
+          )}
+          {!loadingDisputedCases &&
+            disputedCasesList.length === 0 &&
+            !errorDisputedCases && (
+              <Alert variant="light" className="text-center mt-3 py-4">
+                No disputed cases assigned to you currently.
+              </Alert>
+            )}
+          {disputedCasesList.map((assignment) =>
+            renderAssignmentCard(assignment, false, true)
+          )}
+          {totalPagesDisputed > 1 && (
+            <Pagination className="justify-content-center mt-4">
+              {[...Array(totalPagesDisputed).keys()].map((num) => (
+                <Pagination.Item
+                  key={`disputed-${num + 1}`}
+                  active={num + 1 === currentPageDisputedLocal}
+                  onClick={() => handlePageChange("disputedCases", num + 1)}
+                  disabled={loadingDisputedCases}
                 >
                   {num + 1}
                 </Pagination.Item>
@@ -495,7 +664,7 @@ const MediatorDashboardPage = () => {
         </Tab>
       </Tabs>
 
-      {/* Modals (Image and Reject) */}
+      {/* Modals */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}
@@ -515,7 +684,11 @@ const MediatorDashboardPage = () => {
               {selectedAssignmentImages.map((imgUrl, index) => (
                 <Carousel.Item key={index}>
                   <Image
-                    src={imgUrl || fallbackProductImageUrl}
+                    src={
+                      imgUrl.startsWith("http")
+                        ? imgUrl
+                        : `${BACKEND_URL}/${imgUrl}` || fallbackProductImageUrl
+                    }
                     fluid
                     className="lightbox-image"
                     onError={handleImageError}

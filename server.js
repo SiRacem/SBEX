@@ -91,262 +91,195 @@ io.on('connection', (socket) => {
     });
 
     socket.on('joinMediationChat', async ({ mediationRequestId, userId, userRole }) => {
-        // ... (كود joinMediationChat كما هو، تأكد أنه يعمل بشكل صحيح)
-        // (يفترض أنه لا يحتاج لتعديلات بناءً على المشكلة الحالية)
         const userIdToJoin = socket.userIdForChat || userId;
-        console.log(`[Socket Event - joinMediationChat] Received. SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}, Role: ${userRole}`);
+
+        console.log(`[Socket Event - joinMediationChat] SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}`);
+
         if (!userIdToJoin || !mediationRequestId || !mongoose.Types.ObjectId.isValid(userIdToJoin) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
-            console.warn(`[Socket Event - joinMediationChat] VALIDATION FAILED: Missing or invalid IDs. UserID: ${userIdToJoin}, MediationID: ${mediationRequestId}`);
-            return socket.emit('mediationChatError', { message: "Required user or mediation ID missing/invalid to join chat." });
+            return socket.emit('mediationChatError', {
+                message: "Missing or invalid user/mediation ID for chat join."
+            });
         }
-        if (!socket.userIdForChat) socket.userIdForChat = userIdToJoin.toString();
-        if (!socket.userFullNameForChat && userIdToJoin) { // Ensure userIdToJoin is valid before fetching
+
+        // تأكيد هوية المستخدم في السوكت
+        socket.userIdForChat = userIdToJoin.toString();
+
+        if (!socket.userFullNameForChat) {
             try {
                 const userDoc = await User.findById(userIdToJoin).select('fullName avatarUrl').lean();
-                if (userDoc) {
-                    socket.userFullNameForChat = userDoc.fullName;
-                    socket.userAvatarUrlForChat = userDoc.avatarUrl;
-                } else { socket.userFullNameForChat = 'User'; socket.userAvatarUrlForChat = null; }
-            } catch (e) { console.error("Error fetching user details for joinMediationChat:", e); socket.userFullNameForChat = 'User'; socket.userAvatarUrlForChat = null; }
+                socket.userFullNameForChat = userDoc?.fullName || 'User';
+                socket.userAvatarUrlForChat = userDoc?.avatarUrl || null;
+            } catch (e) {
+                socket.userFullNameForChat = 'User';
+                socket.userAvatarUrlForChat = null;
+            }
         }
+
         try {
-            const request = await MediationRequest.findById(mediationRequestId).select('seller buyer mediator status');
-            if (!request) return socket.emit('mediationChatError', { message: "Mediation request not found for chat." });
-            const isSeller = request.seller.equals(userIdToJoin);
-            const isBuyer = request.buyer.equals(userIdToJoin);
-            const isMediator = request.mediator && request.mediator.equals(userIdToJoin);
-            const userDocForRole = await User.findById(userIdToJoin).select('userRole').lean();
-            const isAdmin = userDocForRole?.userRole === 'Admin';
-            if (!(isSeller || isBuyer || isMediator || isAdmin)) {
-                console.warn(`[Socket Event - joinMediationChat] User ${userIdToJoin} not authorized for mediation ${mediationRequestId}.`);
-                return socket.emit('mediationChatError', { message: "You are not authorized to join this chat." });
+            const request = await MediationRequest.findById(mediationRequestId)
+                .select('seller buyer mediator status disputeOverseers')
+                .lean();
+
+            if (!request) {
+                return socket.emit('mediationChatError', { message: "Mediation request not found." });
             }
-            if (!['InProgress', 'PartiesConfirmed', 'MediationOfferAccepted', 'EscrowFunded'].includes(request.status)) {
-                console.warn(`[Socket Event - joinMediationChat] Chat not active for mediation ${mediationRequestId}. Status: ${request.status}`);
-                return socket.emit('mediationChatError', { message: `Chat is not active for this mediation (Status: ${request.status}).` });
+
+            const isSeller = request.seller?.toString() === userIdToJoin;
+            const isBuyer = request.buyer?.toString() === userIdToJoin;
+            const isMediator = request.mediator?.toString() === userIdToJoin;
+            const isAdmin = userRole === 'Admin'; // userRole يأتي من العميل
+            const isOverseer = Array.isArray(request.disputeOverseers) &&
+                request.disputeOverseers.some(id => id.toString() === userIdToJoin);
+
+            if (!(isSeller || isBuyer || isMediator || isOverseer || (isAdmin && request.status === 'Disputed'))) {
+                return socket.emit('mediationChatError', { message: "Unauthorized to join this mediation chat." });
             }
+
+            // ✅ محاولة آمنة لإضافة الـ Admin إلى overseers في حالة Disputed
+            if (isAdmin && request.status === 'Disputed' && !isOverseer) {
+                try {
+                    await MediationRequest.updateOne(
+                        { _id: mediationRequestId },
+                        { $addToSet: { disputeOverseers: userIdToJoin } },
+                        { maxTimeMS: 500 }
+                    );
+                    console.log(`Admin ${userIdToJoin} added to disputeOverseers (non-blocking).`);
+                } catch (conflictErr) {
+                    console.warn(`[joinMediationChat] ⚠️ Write conflict ignored: ${conflictErr.message}`);
+                }
+            }
+
+            const allowedStatusesToJoin = ['InProgress', 'PartiesConfirmed', 'MediationOfferAccepted', 'EscrowFunded', 'Disputed'];
+            if (!allowedStatusesToJoin.includes(request.status)) {
+                return socket.emit('mediationChatError', {
+                    message: `Chat unavailable for this mediation status (${request.status}).`
+                });
+            }
+
+            // ✅ انضمام الغرفة
             socket.join(mediationRequestId.toString());
-            console.log(`[Socket Event - joinMediationChat] User ${userIdToJoin} (${socket.userFullNameForChat || 'N/A'}) joined room: ${mediationRequestId}`);
-            socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined chat for mediation: ${mediationRequestId}` });
+            socket.emit('joinedMediationChatSuccess', {
+                mediationRequestId,
+                message: `Successfully joined mediation chat.`
+            });
+
+            console.log(`[joinMediationChat] Socket ${socket.id} joined room ${mediationRequestId}`);
+
         } catch (error) {
-            console.error(`[Socket Event - joinMediationChat] Error for mediation ${mediationRequestId}, user ${userIdToJoin}:`, error);
-            socket.emit('mediationChatError', { message: "Server error while trying to join the chat." });
+            console.error("[joinMediationChat] Error:", error.message);
+            socket.emit('mediationChatError', {
+                message: "An unexpected error occurred while joining chat."
+            });
         }
     });
 
-    socket.on('sendMediationMessage', async ({ mediationRequestId, messageText }) => {
-        const senderId = socket.userIdForChat; // من المفترض أن هذا مُعيّن عند addUser
-        const senderFullName = socket.userFullNameForChat || 'A User'; // من المفترض أن هذا مُعيّن عند addUser
+    socket.on('sendMediationMessage', async ({ mediationRequestId, messageText, imageUrl }) => {
+        const senderId = socket.userIdForChat;
+        const senderFullName = socket.userFullNameForChat || 'User';
 
-        if (!senderId || !mediationRequestId || !messageText || messageText.trim() === "") {
-            console.warn("[Socket Event - sendMediationMessage] Missing data:", { senderId, mediationRequestId, messageTextIsEmpty: !messageText || messageText.trim() === "" });
-            return socket.emit('mediationChatError', { message: "Cannot send message: missing data or empty message." });
+        if (!senderId || !mediationRequestId || (!messageText && !imageUrl)) {
+            return socket.emit('mediationChatError', {
+                message: "Cannot send empty message."
+            });
         }
 
-        console.log(`[Socket Event - sendMediationMessage] From ${senderFullName} (${senderId}) for room ${mediationRequestId}: "${messageText}"`);
-
-        let session; // تعريف session خارج الـ try للسماح بالوصول إليها في finally
         try {
-            session = await mongoose.startSession();
-            session.startTransaction();
-
-            const mediationRequest = await MediationRequest.findById(mediationRequestId)
-                .populate('product', 'title _id')
-                .populate('seller', '_id fullName avatarUrl') // Populating avatarUrl for otherPartyForRecipient
-                .populate('buyer', '_id fullName avatarUrl')
-                .populate('mediator', '_id fullName avatarUrl')
-                .session(session);
-
-            if (!mediationRequest) {
-                throw new Error("Mediation request not found for sending message.");
-            }
-            // (يمكنك إضافة التحقق من الحالة isParty هنا كما كان)
-
             const newMessageDoc = {
-                sender: senderId,
-                message: messageText.trim(),
-                type: 'text',
+                sender: new mongoose.Types.ObjectId(senderId),
+                message: (imageUrl && !messageText) ? null : messageText?.trim(),
+                imageUrl: imageUrl || null,
+                type: imageUrl ? 'image' : 'text',
                 timestamp: new Date(),
                 readBy: []
             };
-            mediationRequest.chatMessages.push(newMessageDoc);
-            await mediationRequest.save({ session });
-            await session.commitTransaction(); // Commit transaction for saving the message
 
-            // --- جلب تفاصيل المرسل للبث ---
-            // لا نحتاج لـ session هنا لأن الـ transaction السابق انتهى
-            const senderDetailsForBroadcast = await User.findById(senderId).select('fullName avatarUrl _id').lean();
-            if (!senderDetailsForBroadcast) {
-                console.warn(`[sendMediationMessage] Could not find sender details for ID: ${senderId} after saving message.`);
-                // يمكنك التعامل مع هذا، ربما بإرسال اسم افتراضي
+            if (newMessageDoc.type === 'text' && (!newMessageDoc.message || newMessageDoc.message.trim() === "")) {
+                console.error("Attempted to send an empty text message.");
+                return;
             }
 
-            const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1].toObject();
-            const messageToBroadcast = { ...savedMessageFromDb, sender: senderDetailsForBroadcast || { fullName: senderFullName, _id: senderId } };
+            const updated = await MediationRequest.findByIdAndUpdate(
+                mediationRequestId,
+                { $push: { chatMessages: newMessageDoc } },
+                { new: true }
+            )
+                .populate('chatMessages.sender', 'fullName avatarUrl')
+                .lean();
 
-            io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
-            console.log(`   [sendMediationMessage] Text message broadcasted to room ${mediationRequestId}`);
+            const lastMessage = updated.chatMessages[updated.chatMessages.length - 1];
 
-            // --- إرسال تحديث للرسائل غير المقروءة وإشعارات ---
-            const senderIdString = senderId.toString();
-            const recipientsForSummaryAndUpdate = [];
-            if (mediationRequest.seller?._id && mediationRequest.seller._id.toString() !== senderIdString) {
-                recipientsForSummaryAndUpdate.push(mediationRequest.seller._id.toString());
-            }
-            if (mediationRequest.buyer?._id && mediationRequest.buyer._id.toString() !== senderIdString) {
-                recipientsForSummaryAndUpdate.push(mediationRequest.buyer._id.toString());
-            }
-            if (mediationRequest.mediator?._id && mediationRequest.mediator._id.toString() !== senderIdString) {
-                recipientsForSummaryAndUpdate.push(mediationRequest.mediator._id.toString());
-            }
-            const uniqueRecipients = [...new Set(recipientsForSummaryAndUpdate)];
-
-            console.log("   [sendMediationMessage] Online users for unread summary:", onlineUsers);
-            console.log("   [sendMediationMessage] Unique recipients for unread/notification:", uniqueRecipients);
-
-            // لا حاجة لـ session جديد هنا، العمليات التالية هي قراءة وإرسال socket events أو إنشاء إشعارات (التي لا تحتاج transaction هنا)
-            const freshMediationRequestForCounts = await MediationRequest.findById(mediationRequestId)
-                .populate('product', 'title _id') // نحتاج product.title للـ payload
-                .lean(); // جلب بدون session للقراءة فقط
-
-            if (freshMediationRequestForCounts) {
-                uniqueRecipients.forEach(async (recipientId) => {
-                    let unreadCountForRecipient = 0;
-                    freshMediationRequestForCounts.chatMessages.forEach(msg => {
-                        if (msg.sender && !msg.sender.equals(recipientId) &&
-                            (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(recipientId)))) {
-                            unreadCountForRecipient++;
-                        }
-                    });
-
-                    const recipientSocketId = onlineUsers[recipientId];
-                    if (recipientSocketId) {
-                        const payloadForUnreadSummary = {
-                            mediationId: mediationRequestId.toString(),
-                            newUnreadCount: unreadCountForRecipient,
-                            lastMessageTimestamp: messageToBroadcast.timestamp,
-                            productTitle: freshMediationRequestForCounts.product?.title || 'Mediation Chat',
-                            otherPartyForRecipient: senderDetailsForBroadcast ? { // معلومات مرسل الرسالة
-                                _id: senderDetailsForBroadcast._id.toString(),
-                                fullName: senderDetailsForBroadcast.fullName,
-                                avatarUrl: senderDetailsForBroadcast.avatarUrl
-                            } : { fullName: senderFullName, _id: senderIdString }, // Fallback
-                        };
-                        console.log(`   [sendMediationMessage] Emitting 'update_unread_summary' to user ${recipientId} (socket ${recipientSocketId}) with payload:`, payloadForUnreadSummary);
-                        io.to(recipientSocketId).emit('update_unread_summary', payloadForUnreadSummary);
-                    } else {
-                        console.log(`   [sendMediationMessage] User ${recipientId} is not online for 'update_unread_summary'.`);
-                    }
-
-                    // إرسال إشعار NEW_CHAT_MESSAGE
-                    try {
-                        const newNotification = await Notification.create({ // لا يحتاج session هنا
-                            user: recipientId,
-                            type: 'NEW_CHAT_MESSAGE', // تأكد من أن هذا النوع موجود في موديل Notification
-                            title: `New message in: ${freshMediationRequestForCounts.product?.title || 'Mediation Chat'}`,
-                            message: `${senderFullName}: ${messageText.substring(0, 50)}${messageText.length > 50 ? '...' : ''}`,
-                            relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
-                        });
-                        if (recipientSocketId) { // أرسل إشعارًا إذا كان المستخدم متصلاً
-                            console.log(`   [sendMediationMessage] Emitting 'new_notification' to user ${recipientId}`);
-                            io.to(recipientSocketId).emit('new_notification', newNotification.toObject());
-                        }
-                    } catch (notifError) {
-                        console.error(`   [sendMediationMessage] Error creating NEW_CHAT_MESSAGE notification for ${recipientId}:`, notifError);
-                    }
-                });
-            } else {
-                console.warn(`   [sendMediationMessage] Could not fetch freshMediationRequestForCounts for ID: ${mediationRequestId}`);
-            }
-
+            io.to(mediationRequestId.toString()).emit('newMediationMessage', lastMessage);
         } catch (error) {
-            if (session && session.inTransaction()) { // تحقق أن session معرف قبل استدعاء inTransaction
-                await session.abortTransaction();
-            }
-            console.error(`[Socket Event - sendMediationMessage] Error for request ${mediationRequestId}:`, error.message, error.stack);
-            socket.emit('mediationChatError', { message: error.message || "Server error sending message." });
-        } finally {
-            if (session && typeof session.endSession === 'function') {
-                await session.endSession();
-                console.log(`   [sendMediationMessage] Session ended for request ${mediationRequestId}`);
-            }
+            console.error("❌ sendMediationMessage error:", error);
+            socket.emit('mediationChatError', {
+                message: "Error sending message."
+            });
         }
     });
 
-    socket.on('mark_messages_read', async ({ mediationRequestId, messageIds, readerUserId }) => {
-        // ... (كود mark_messages_read كما هو، يفترض أنه يعمل بشكل صحيح ولا يسبب MongoExpiredSessionError هنا)
-        // (تأكد من أن أي عمليات await داخل الـ transaction الخاص به لا تستغرق وقتًا طويلاً)
-        const currentReaderUserId = socket.userIdForChat || readerUserId;
-        // ... (باقي الكود كما قدمته سابقًا، مع التأكد من أن أي await داخل الـ try/catch يستخدم الـ session بشكل صحيح إذا كان ضمن transaction)
-        // إذا كان mark_messages_read يستخدم transaction خاص به، تأكد من إغلاقه بـ endSession() في finally
-        let markSession;
+    socket.on("mark_messages_read", async ({ mediationRequestId, messageIds, readerUserId }) => {
+        if (!mediationRequestId || !messageIds || !Array.isArray(messageIds) || !readerUserId) {
+            return;
+        }
+
         try {
-            markSession = await mongoose.startSession();
-            markSession.startTransaction();
+            const objectIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
 
-            const mediationRequest = await MediationRequest.findById(mediationRequestId).session(markSession);
-            if (!mediationRequest) throw new Error(`Mediation request ${mediationRequestId} not found.`);
-            // ... (بقية منطق mark_messages_read مع استخدام markSession) ...
-            const isParty = (mediationRequest.seller.equals(currentReaderUserId) || mediationRequest.buyer.equals(currentReaderUserId) || (mediationRequest.mediator && mediationRequest.mediator.equals(currentReaderUserId)));
-            if (!isParty) throw new Error(`User ${currentReaderUserId} not party to mediation ${mediationRequestId}.`);
-            let updatedMessagesForBroadcast = [];
-            let actuallyUpdatedCount = 0;
-            const idsToUpdate = Array.isArray(messageIds) ? messageIds : [messageIds];
-
-            for (const messageId of idsToUpdate) {
-                const message = mediationRequest.chatMessages.id(messageId);
-                if (message) {
-                    if (message.sender && message.sender.equals(currentReaderUserId)) continue;
-                    const alreadyRead = message.readBy.some(entry => entry.readerId.equals(currentReaderUserId));
-                    if (!alreadyRead) {
-                        message.readBy.push({ readerId: new mongoose.Types.ObjectId(currentReaderUserId), readAt: new Date() });
-                        actuallyUpdatedCount++;
-                        const populatedReadBy = [];
-                        for (const entry of message.readBy) {
-                            const userDoc = await User.findById(entry.readerId).select('fullName avatarUrl _id').lean(); // No session needed for this read
-                            if (userDoc) populatedReadBy.push({ readerId: userDoc._id.toString(), readAt: entry.readAt, avatarUrl: userDoc.avatarUrl, fullName: userDoc.fullName });
+            // استعلام لتحديث جميع الرسائل matching IDs في الـ array
+            const updateResult = await MediationRequest.updateMany(
+                {
+                    _id: mediationRequestId,
+                    'chatMessages._id': { $in: objectIds }
+                },
+                {
+                    $addToSet: {
+                        'chatMessages.$[elem].readBy': {
+                            readerId: readerUserId,
+                            timestamp: new Date()
                         }
-                        updatedMessagesForBroadcast.push({ _id: message._id.toString(), readBy: populatedReadBy });
-                    } else if (!updatedMessagesForBroadcast.some(um => um._id === message._id.toString())) { // Ensure we send the full readBy if others might have read it
-                        const populatedReadBy = [];
-                        for (const entry of message.readBy) {
-                            const userDoc = await User.findById(entry.readerId).select('fullName avatarUrl _id').lean();
-                            if (userDoc) populatedReadBy.push({ readerId: userDoc._id.toString(), readAt: entry.readAt, avatarUrl: userDoc.avatarUrl, fullName: userDoc.fullName });
-                        }
-                        updatedMessagesForBroadcast.push({ _id: message._id.toString(), readBy: populatedReadBy });
                     }
+                },
+                {
+                    arrayFilters: [{ 'elem._id': { $in: objectIds } }],
+                    maxTimeMS: 500 // يمنع الاحتكاك
                 }
-            }
-            if (actuallyUpdatedCount > 0) await mediationRequest.save({ session: markSession });
-            await markSession.commitTransaction();
-            if (updatedMessagesForBroadcast.length > 0) {
-                io.to(mediationRequestId.toString()).emit('messages_status_updated', { mediationRequestId, updatedMessages: updatedMessagesForBroadcast });
-                console.log(`   [mark_messages_read] Event 'messages_status_updated' broadcasted for ${mediationRequestId}`);
-            }
-        } catch (error) {
-            if (markSession && markSession.inTransaction()) await markSession.abortTransaction();
-            console.error(`[Socket Event - mark_messages_read] Error for ${mediationRequestId}:`, error.message);
-            socket.emit('mediationChatError', { message: error.message || "Server error marking messages read." });
-        } finally {
-            if (markSession && typeof markSession.endSession === 'function') await markSession.endSession();
+            );
+
+            console.log(`[mark_messages_read] Updated readBy for ${updateResult.modifiedCount} messages`);
+
+            // اختيارياً: إرسال إشعار بأن الرسائل تمت قراءتها
+            socket.to(mediationRequestId.toString()).emit("messages_status_updated", {
+                mediationRequestId,
+                updatedMessages: messageIds.map((id) => ({
+                    _id: id,
+                    readBy: [{ readerId: readerUserId, timestamp: new Date() }]
+                }))
+            });
+        } catch (err) {
+            console.warn("[mark_messages_read] ⚠️ Write conflict avoided:", err.message);
         }
     });
 
-    socket.on('start_typing', ({ mediationRequestId }) => {
-        // ... (كما هو)
-        if (socket.userIdForChat && socket.userFullNameForChat && mediationRequestId) {
-            socket.to(mediationRequestId.toString()).emit('user_typing', { userId: socket.userIdForChat, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat });
+    socket.on("start_typing", ({ mediationRequestId }) => {
+        if (mediationRequestId && socket.userIdForChat) {
+            io.to(mediationRequestId.toString()).emit("user_typing", {
+                userId: socket.userIdForChat,
+                fullName: socket.userFullNameForChat,
+                avatarUrl: socket.userAvatarUrlForChat
+            });
         }
     });
-    socket.on('stop_typing', ({ mediationRequestId }) => {
-        // ... (كما هو)
-        if (socket.userIdForChat && mediationRequestId) {
-            socket.to(mediationRequestId.toString()).emit('user_stopped_typing', { userId: socket.userIdForChat });
+
+    socket.on("stop_typing", ({ mediationRequestId }) => {
+        if (mediationRequestId && socket.userIdForChat) {
+            io.to(mediationRequestId.toString()).emit("user_stopped_typing", {
+                userId: socket.userIdForChat
+            });
         }
     });
 
     socket.on('leaveMediationChat', ({ mediationRequestId }) => {
-        // ... (كما هو)
+        console.log(`[Socket - leaveMediationChat] User ${socket.userIdForChat} leaving mediation ${mediationRequestId}`);
         if (socket.userIdForChat && mediationRequestId) {
             socket.leave(mediationRequestId.toString());
             console.log(`Socket: User ${socket.userIdForChat} left room ${mediationRequestId}`);

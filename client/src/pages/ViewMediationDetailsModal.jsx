@@ -82,7 +82,7 @@ const ViewMediationDetailsModal = ({
     const lowerStatus = status?.toLowerCase();
     if (lowerStatus?.includes("progress")) return "success";
     if (lowerStatus?.includes("completed")) return "dark";
-    if (lowerStatus?.includes("cancelled") || lowerStatus?.includes("rejected"))
+    if (lowerStatus?.includes("cancelled") || lowerStatus?.includes("rejected") || lowerStatus?.includes("dispute"))
       return "danger";
     if (lowerStatus?.includes("pending") || lowerStatus?.includes("assigned"))
       return "info";

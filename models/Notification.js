@@ -74,6 +74,7 @@ const NotificationSchema = new Schema({
             // --- [!!!] أضف هذا النوع هنا [!!!] ---
             'NEW_CHAT_MESSAGE',
             // ------------------------------------
+            'MEDIATION_DISPUTED',
         ],
         required: true
     },

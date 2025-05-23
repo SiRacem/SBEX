@@ -302,6 +302,9 @@ const MyMediationRequestsPage = () => {
         } else if (request.status === "EscrowFunded") {
           statusBadgeText = "Funds Escrowed - Awaiting Seller";
           statusBadgeBg = "primary";
+        } else if (request.status === "Disputed" || request.status === "UnderDispute") {
+        statusBadgeText = "Dispute Opened";
+        statusBadgeBg = "danger";
         } else if (request.status === "PartiesConfirmed") {
           statusBadgeText = "Parties Confirmed";
           statusBadgeBg = "info";
@@ -407,8 +410,8 @@ const MyMediationRequestsPage = () => {
                     <strong>Agreed Price :</strong> {formatCurrency(request.bidAmount, request.bidCurrency)}
                   </p>
                   {currentUser?._id === request.buyer?._id?.toString() && // <--- تحقق إضافي هنا
- request.status === "MediationOfferAccepted" &&
- !request.buyerConfirmedStart &&
+                    request.status === "MediationOfferAccepted" &&
+                    !request.buyerConfirmedStart &&
                     feeDisplayDetails &&
                     !feeDisplayDetails.error && (
                       <Alert
@@ -489,8 +492,9 @@ const MyMediationRequestsPage = () => {
                       </Alert>
                     )}
 
-                  {(request.status === "PartiesConfirmed" ||
-                    request.status === "InProgress") && (
+                  {(request.status === "InProgress" || 
+                    request.status === "PartiesConfirmed" || 
+                    request.status === "Disputed") && (
                     <div className="mt-3">
                       <Alert
                         variant={
@@ -505,13 +509,10 @@ const MyMediationRequestsPage = () => {
                             : "Mediation is in progress."}
                         </span>
                         <Button
-                          variant="primary"
+                          variant={request.status === "Disputed" ? "warning" : "primary"}
                           size="sm"
-                          onClick={(e) => { // أضف e.stopPropagation() إذا كان النقر على العنصر بأكمله يفتح الدردشة
-                            e.stopPropagation(); 
-                            navigate(`/dashboard/mediation-chat/${request._id}`)
-                          }}
-                          title="Open Mediation Chat"
+                          onClick={() => navigate(`/dashboard/mediation-chat/${request._id}`)}
+                          title={request.status === "Disputed" ? "Open Dispute Chat" : "Open Mediation Chat"}
                         >
                           <FaCommentDots className="me-1 d-none d-sm-inline" />
                           Open Chat

@@ -31,6 +31,9 @@ const MediationRequestSchema = new Schema({
         ],
         default: 'PendingMediatorSelection'
     },
+
+    // --- [!!!] الحقل الجديد للمشرفين على النزاع [!!!] ---
+    disputeOverseers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     mediationFee: { type: Number, default: 0 },
     mediationFeeCurrency: { type: String, default: 'TND' },
     history: { // سجل أحداث للوساطة
@@ -45,7 +48,12 @@ const MediationRequestSchema = new Schema({
     chatMessages: [
         {
             sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-            message: { type: String, required: true, trim: true },
+            message: {
+                type: String,
+                trim: true,
+                required: function () { return this.type === 'text' && !this.imageUrl; },
+                default: null
+            },
             timestamp: { type: Date, default: Date.now, index: true },
             type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
             imageUrl: { type: String, default: null },

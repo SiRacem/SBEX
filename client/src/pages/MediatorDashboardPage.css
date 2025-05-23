@@ -1,0 +1,65 @@
+.mediator-dashboard-page .page-title {
+    color: #333;
+    font-weight: 600;
+}
+
+.mediator-dashboard-page .nav-tabs-custom .nav-link {
+    color: #495057;
+    border: 1px solid transparent;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+}
+
+.mediator-dashboard-page .nav-tabs-custom .nav-link.active {
+    color: var(--bs-primary);
+    border-color: #dee2e6 #dee2e6 var(--bs-primary);
+    border-bottom-width: 3px;
+    background-color: #fff;
+}
+
+.mediator-dashboard-page .nav-tabs-custom .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+}
+
+
+.assignment-card {
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.assignment-card:hover {
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.assignment-card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.assignment-details p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.assignment-details strong {
+    color: #495057;
+}
+
+.assignment-details .text-muted {
+    color: #6c757d !important;
+}
+
+.view-gallery-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    font-size: 0.75rem !important;
+    padding: 0.2rem 0.4rem !important;
+}
+
+.position-relative:hover .view-gallery-btn {
+    opacity: 0.9;
+}
+
+.lightbox-image {
+    max-width: 100%;
+}

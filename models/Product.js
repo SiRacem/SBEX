@@ -57,6 +57,7 @@ const ProductSchema = new Schema({
             'Cancelled',                // تم إلغاء الصفقة/الوساطة
             'Disputed',                 // تم فتح نزاع
             'Archived',               // تمت الأرشفة
+            'Disputed',                 // تم فتح نزاع
         ],
         default: 'pending',
         index: true

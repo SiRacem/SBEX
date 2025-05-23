@@ -2,8 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const { verifyAuth } = require('../middlewares/verifyAuth');
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const { uploadChatImage } = require("../controllers/mediation.controller");
 const { isAdmin, isAssignedMediator } = require('../middlewares/roleCheck');
-const uploadChatImage = require('../middlewares/uploadChatImage');
+// const uploadChatImage = require('../middlewares/uploadChatImage');
 const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck'); // Middleware جديد
 const {
     adminGetPendingAssignmentRequests,
@@ -23,7 +27,11 @@ const {
     handleChatImageUpload,
     getMyMediationSummariesController,
     buyerConfirmReceiptController,
+    openDisputeController,
+    getMediatorDisputedCasesController,
+    adminGetDisputedCasesController,
 } = require('../controllers/mediation.controller');
+const isQualifiedMediator = require('../middlewares/isQualifiedMediator'); // <--- استيراد الـ middleware الجديد
 
 // --- مسارات الأدمن ---
 
@@ -118,16 +126,38 @@ router.get(
 );
 
 // --- [!!! NEW ROUTE FOR UPLOADING CHAT IMAGES !!!] ---
-router.post(
-    '/chat/upload-image', // المسار الذي تستدعيه الواجهة الأمامية
-    verifyAuth,           // تأكد أن المستخدم مسجل دخوله
-    uploadChatImage.single('chatImage'), // استخدم middleware الرفع، 'chatImage' هو اسم الحقل من FormData
-    handleChatImageUpload  // دالة الـ controller الجديدة
-);
+// إنشاء المجلد إن لم يكن موجودًا
+const uploadDir = path.join(__dirname, "..", "uploads", "chat_images");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// إعداد multer
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, uniqueName + ext);
+    },
+});
+
+const upload = multer({ storage });
+
+// حماية الراوت
+router.post("/chat/upload-image", verifyAuth, upload.single("image"), uploadChatImage);
 
 // --- المسار الجديد لجلب ملخصات الوساطات للمستخدم ---
 router.get('/my-summaries', verifyAuth, getMyMediationSummariesController);
 
 router.put('/buyer/confirm-receipt/:mediationRequestId', verifyAuth, buyerConfirmReceiptController);
+
+router.put('/open-dispute/:mediationRequestId', verifyAuth, openDisputeController);
+
+router.get('/mediator/disputed-cases', verifyAuth, isQualifiedMediator, getMediatorDisputedCasesController); // افترض أن لديك middleware isQualifiedMediator
+
+router.get('/admin/disputed-cases', verifyAuth, isAdmin, adminGetDisputedCasesController);
 
 module.exports = router;

@@ -15,7 +15,10 @@ import {
     BUYER_REJECT_MEDIATION_REQUEST, BUYER_REJECT_MEDIATION_SUCCESS, BUYER_REJECT_MEDIATION_FAIL,
     GET_MY_MEDIATION_SUMMARIES_REQUEST, GET_MY_MEDIATION_SUMMARIES_SUCCESS, GET_MY_MEDIATION_SUMMARIES_FAIL,
     MARK_MEDIATION_AS_READ_IN_LIST, UPDATE_UNREAD_COUNT_FROM_SOCKET, BUYER_CONFIRM_RECEIPT_REQUEST,
-    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL,
+    BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL, OPEN_DISPUTE_REQUEST, OPEN_DISPUTE_SUCCESS,
+    OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
+    GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
+    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL,
 } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
 import { getProfile } from './userAction'; // لجلب البروفايل المحدث (الرصيد)
 
@@ -311,28 +314,65 @@ export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => asyn
 
 // --- [!!!] Action لجلب طلبات وساطة المشتري [!!!] ---
 export const getBuyerMediationRequestsAction = (page = 1, limit = 10, statusFilter = '') => async (dispatch) => {
+    console.log(`[Action getBuyerMediationRequestsAction] Dispatching REQUEST. Page: ${page}, Limit: ${limit}, StatusFilter: '${statusFilter}'`);
     dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_REQUEST });
+
     const config = getTokenConfig();
 
     if (!config) {
-        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
+        const errorMsg = "Not authorized. Please login to view your mediation requests.";
+        console.error("[Action getBuyerMediationRequestsAction] Authorization error:", errorMsg);
+        dispatch({
+            type: GET_BUYER_MEDIATION_REQUESTS_FAIL,
+            payload: errorMsg
+        });
         toast.error("Authorization required.");
-        return Promise.reject({ error: "Not authorized." });
+        return Promise.reject({ error: errorMsg });
+    }
+
+    // بناء كائن الـ query parameters
+    const queryParams = {
+        page: page,
+        limit: limit
+    };
+
+    // إذا تم توفير statusFilter (وليس سلسلة فارغة)، أضفه إلى الـ query parameters
+    if (statusFilter && typeof statusFilter === 'string' && statusFilter.trim() !== "") {
+        queryParams.status = statusFilter.trim();
+        console.log("[Action getBuyerMediationRequestsAction] Applying status filter to queryParams:", queryParams.status);
+    } else {
+        console.log("[Action getBuyerMediationRequestsAction] No specific status filter provided by action call. Backend will use its default list of statuses.");
+        // لا نرسل queryParams.status إذا لم يتم توفير فلتر،
+        // ليعتمد الخادم على قائمته الافتراضية التي تشمل 'Disputed'.
     }
 
     try {
-        let url = `/mediation/buyer/my-requests?page=${page}&limit=${limit}`;
-        if (statusFilter) {
-            url += `&status=${statusFilter}`;
-        }
-        const { data } = await axios.get(url, config);
-        dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_SUCCESS, payload: data });
-        return Promise.resolve(data);
+        const baseUrl = `${BACKEND_URL}/mediation/buyer/my-requests`;
+        console.log(`[Action getBuyerMediationRequestsAction] Sending GET request to: ${baseUrl} with params:`, queryParams);
+
+        const { data } = await axios.get(baseUrl, {
+            ...config,      // دمج إعدادات التوكن (headers)
+            params: queryParams  // تمرير الـ query parameters هنا
+        });
+
+        console.log("[Action getBuyerMediationRequestsAction] Successfully fetched requests. Payload from server:", data);
+        dispatch({
+            type: GET_BUYER_MEDIATION_REQUESTS_SUCCESS,
+            payload: data // الـ payload هو الكائن المستلم من الخادم (يفترض أنه يحتوي على requests, totalPages, etc.)
+        });
+        return Promise.resolve(data); // أرجع Promise ناجحًا مع البيانات للاستخدام في المكون إذا لزم الأمر
+
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to fetch your mediation requests.";
-        dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: message });
-        toast.error(message);
-        return Promise.reject({ error: message });
+        const statusCode = error.response?.status;
+        console.error(`[Action getBuyerMediationRequestsAction] Error fetching requests (Status: ${statusCode}):`, message, error.response || error);
+
+        dispatch({
+            type: GET_BUYER_MEDIATION_REQUESTS_FAIL,
+            payload: message
+        });
+        toast.error(`Error fetching requests: ${message}`);
+        return Promise.reject({ error: message, statusCode }); // أرجع Promise مرفوضًا مع رسالة الخطأ وربما رمز الحالة
     }
 };
 
@@ -468,21 +508,21 @@ export const buyerConfirmReceipt = (mediationRequestId) => async (dispatch) => {
         toast.success(data.msg || "Receipt confirmed and funds processed!");
 
         dispatch(getProfile());
-        
+
         // --- [!!!] تحديث حالة المنتج في productReducer [!!!] ---
         if (data.mediationRequest && data.mediationRequest.product) {
-            const productId = typeof data.mediationRequest.product === 'string' 
-                                ? data.mediationRequest.product 
-                                : data.mediationRequest.product._id;
+            const productId = typeof data.mediationRequest.product === 'string'
+                ? data.mediationRequest.product
+                : data.mediationRequest.product._id;
             const buyerIdForProduct = typeof data.mediationRequest.buyer === 'string'
-                                ? data.mediationRequest.buyer
-                                : data.mediationRequest.buyer._id;
+                ? data.mediationRequest.buyer
+                : data.mediationRequest.buyer._id;
 
             if (productId) {
                 dispatch({
                     type: 'UPDATE_PRODUCT_STATUS_SOLD', // ستحتاج لإنشاء هذا الـ actionType والـ case في productReducer
-                    payload: { 
-                        productId, 
+                    payload: {
+                        productId,
                         newStatus: 'sold', // أو 'Completed'
                         soldAt: new Date().toISOString(), // تاريخ البيع
                         buyerId: buyerIdForProduct // مشتري المنتج
@@ -501,5 +541,80 @@ export const buyerConfirmReceipt = (mediationRequestId) => async (dispatch) => {
         });
         toast.error(message);
         throw error; // إعادة رمي الخطأ ليتم التقاطه في المكون
+    }
+};
+
+export const openDisputeAction = (mediationRequestId, reason = null) => async (dispatch) => {
+    dispatch({ type: OPEN_DISPUTE_REQUEST, payload: { mediationRequestId } });
+    const config = getTokenConfig();
+    if (!config) {
+        const errorMsg = "Authorization Error.";
+        dispatch({ type: OPEN_DISPUTE_FAIL, payload: { error: errorMsg } });
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    try {
+        const body = reason ? { reason } : {};
+        const { data } = await axios.put(
+            `${BACKEND_URL}/mediation/open-dispute/${mediationRequestId}`,
+            body,
+            config
+        );
+
+        dispatch({
+            type: OPEN_DISPUTE_SUCCESS,
+            payload: {
+                mediationRequestId,
+                updatedMediationRequest: data.mediationRequest,
+            }
+        });
+        toast.info(data.msg || "Dispute opened successfully. A mediator will be notified.");
+        // لا حاجة لإعادة جلب البروفايل هنا عادةً، لكن يمكن إعادة جلب ملخصات الوساطة
+        // dispatch(getMyMediationSummaries()); 
+        return data;
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to open dispute.';
+        dispatch({
+            type: OPEN_DISPUTE_FAIL,
+            payload: { mediationRequestId, error: message }
+        });
+        toast.error(message);
+        throw error;
+    }
+};
+
+export const getMediatorDisputedCasesAction = (page = 1, limit = 10) => async (dispatch) => {
+    dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_REQUEST });
+    const config = getTokenConfig();
+    if (!config) { 
+    dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_FAIL, payload: 'Authorization Error' });
+        return; }
+    try {
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/mediator/disputed-cases?page=${page}&limit=${limit}`, config);
+        dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_SUCCESS, payload: data });
+    } catch (error) { 
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch disputed cases.';
+        dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_FAIL, payload: message });
+        toast.error(message);
+    }
+};
+
+export const adminGetDisputedMediationsAction = (page = 1, limit = 10) => async (dispatch) => {
+    dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST });
+    const config = getTokenConfig();
+    if (!config) {
+        dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, payload: 'Authorization Error' });
+        toast.error("Authorization required.");
+        return; }
+
+    try {
+        // Endpoint جديد للخادم لجلب جميع الوساطات المتنازع عليها
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/admin/disputed-cases?page=${page}&limit=${limit}`, config);
+        dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS, payload: data });
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch disputed mediations.';
+        dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, payload: message });
+        toast.error(message);
     }
 };

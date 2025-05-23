@@ -1,6 +1,6 @@
 // src/App.js
-import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'; // استخدم BrowserRouter هنا
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import io from 'socket.io-client';
 import { getProfile, setOnlineUsers, updateUserBalances } from './redux/actions/userAction';
@@ -39,7 +39,11 @@ import './components/layout/Sidebar.css';
 import './pages/MainDashboard.css';
 import MediationsListPage from './pages/MediationsListPage';
 import { FaComments } from 'react-icons/fa';
+import AdminDisputesPage from './components/admin/AdminDisputesPage';
 // يمكنك إضافة CSS خاص بـ MediationChatPage.css إذا أنشأته
+
+// إنشاء SocketContext
+export const SocketContext = createContext(null);
 
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
 
@@ -160,38 +164,16 @@ function App() {
                 <div className="small text-muted">From: {data.otherPartyForRecipient.fullName}</div>
               )}
             </div>,
-            {
-              position: "bottom-right",
-              autoClose: 4000,
-              onClick: () => {
-                // يمكنك توجيه المستخدم إلى قائمة الوساطات أو الدردشة المحددة
-                // navigate(`/dashboard/mediation-chat/${data.mediationId}`); // ستحتاج لـ navigate
-              }
-            }
+            { position: "bottom-right", autoClose: 4000 }
           );
 
           // تحديث حالة Redux
           dispatch(updateUnreadCountFromSocket(data.mediationId, data.newUnreadCount));
 
-          // (اختياري) يمكنك أيضًا تحديث بيانات أخرى مثل lastMessageTimestamp إذا كان ذلك مفيدًا
-          // dispatch({ 
-          //   type: 'UPDATE_MEDIATION_SUMMARY_DETAILS', 
-          //   payload: { 
-          //     mediationId: data.mediationId, 
-          //     lastMessageTimestamp: data.lastMessageTimestamp,
-          //     // إذا كانت الوساطة جديدة تمامًا ولم تكن في القائمة، قد تحتاج لإعادة جلب الكل
-          //     // أو إضافة الوساطة الجديدة إذا كان الـ payload يحتوي على معلومات كافية
-          //   }
-          // });
-
-          // (بديل) إذا كان من الأسهل، يمكنك ببساطة إعادة جلب جميع الملخصات
-          // dispatch(getMyMediationSummaries()); 
-          // لكن هذا أقل كفاءة من تحديث وساطة معينة فقط
         });
         // --- [!!!] نهاية المستمع الجديد [!!!] ---
-        // --------------------------------------------------------------------------------
 
-        socketRef.current.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
+                socketRef.current.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
         socketRef.current.on('connect_error', (err) => console.error('Socket connection error:', err.message));
       }
     } else {
@@ -200,10 +182,11 @@ function App() {
         socketRef.current.disconnect();
       }
     }
+
     return () => {
       if (socketRef.current) {
-        console.log("App Cleanup: Disconnecting Socket.IO and removing listeners...");
-        socketRef.current.off('update_unread_summary'); // <-- لا تنس إزالة المستمع الجديد
+        console.log("App Cleanup: Disconnecting Socket.IO...");
+        socketRef.current.off('update_unread_summary');
         socketRef.current.off('onlineUsersListUpdated');
         socketRef.current.removeAllListeners();
         socketRef.current.disconnect();
@@ -224,12 +207,13 @@ function App() {
   const handleSearchChange = (newSearchTerm) => setSearch(newSearchTerm);
 
   return (
-    <div className={`app-container ${isAuth ? 'layout-authenticated' : 'layout-public'}`}>
-      <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
-      {isAuth && <Sidebar onSearchChange={handleSearchChange} />}
-      <main className={`main-content-area flex-grow-1 ${isAuth ? 'content-authenticated' : 'content-public'}`}>
-        <BlockedWarning isAuth={isAuth} user={user} />
-        <Routes>
+<SocketContext.Provider value={socketRef.current}>
+        <div className={`app-container ${isAuth ? 'layout-authenticated' : 'layout-public'}`}>
+          <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+          {isAuth && <Sidebar onSearchChange={(term) => setSearch(term)} />}
+          <main className={`main-content-area flex-grow-1 ${isAuth ? 'content-authenticated' : 'content-public'}`}>
+            <BlockedWarning isAuth={isAuth} user={user} />
+            <Routes>
           <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/dashboard" replace />} />
           <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/dashboard" replace />} />
           <Route path="/" element={<OfflineProd />} />
@@ -262,6 +246,14 @@ function App() {
           <Route path="/dashboard/admin/withdrawals" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="withdrawals" search={search} /></ProtectedRoute>} />
           <Route path="/dashboard/admin/mediator-review" element={<ProtectedRoute requiredRole="Admin"><ReviewMediatorApplications search={search} /></ProtectedRoute>} />
           <Route path="/dashboard/admin/payment-methods" element={<ProtectedRoute requiredRole="Admin"><AdminPaymentMethods search={search} /></ProtectedRoute>} />
+          <Route 
+            path="/dashboard/admin/disputes" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminDisputesPage />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* Mediator Specific Routes */}
           <Route path="/dashboard/mediator/assignments" element={
@@ -280,9 +272,10 @@ function App() {
 
           <Route path="/profile/:userId" element={<UserProfilePage />} /> {/* Public profile */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-    </div>
+            </Routes>
+          </main>
+        </div>
+    </SocketContext.Provider>
   );
 }
 

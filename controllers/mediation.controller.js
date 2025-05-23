@@ -1,13 +1,12 @@
 // server/controllers/mediation.controller.js
-
 const MediationRequest = require('../models/MediationRequest');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Notification = require('../models/Notification');
 const mongoose = require('mongoose');
-const fs = require('fs'); // تأكد من وجود هذا إذا كنت تستخدمه في handleChatImageUpload
-const path = require('path'); // تأكد من وجود هذا
-const { calculateMediatorFeeDetails } = require('../utils/feeCalculator'); // استيراد من ملف الخادم
+const path = require('path');
+const fs = require('fs'); // <<<<========= ADD THIS LINE
+const { calculateMediatorFeeDetails } = require('../utils/feeCalculator');
 
 // --- Helper: Currency Formatting ---
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -96,22 +95,21 @@ exports.getMediationRequestDetailsController = async (req, res) => {
     console.log("--- Controller: getMediationRequestDetailsController ---");
     try {
         const { mediationRequestId } = req.params;
-        const userId = req.user._id;
+        const userId = req.user._id; // ID المستخدم الحالي (الأدمن في هذه الحالة)
+        const userRole = req.user.userRole; // دور المستخدم الحالي
 
         if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
             return res.status(400).json({ msg: "Invalid Mediation Request ID." });
         }
 
         const request = await MediationRequest.findById(mediationRequestId)
-            .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency') // أضفت bidAmount و bidCurrency
+            .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency')
             .populate('seller', '_id fullName avatarUrl userRole')
             .populate('buyer', '_id fullName avatarUrl userRole')
             .populate('mediator', '_id fullName avatarUrl userRole isMediatorQualified')
-            .populate({ // Populate sender details within each chat message's readBy array
-                path: 'chatMessages.readBy.readerId',
-                select: 'fullName avatarUrl _id'
-            })
-            .populate('chatMessages.sender', 'fullName avatarUrl _id'); // Populate sender of messages
+            .populate('disputeOverseers', '_id fullName avatarUrl userRole')
+            .populate({ path: 'chatMessages.readBy.readerId', select: 'fullName avatarUrl _id' })
+            .populate('chatMessages.sender', 'fullName avatarUrl _id');
 
         if (!request) {
             return res.status(404).json({ msg: "Mediation request not found." });
@@ -120,16 +118,36 @@ exports.getMediationRequestDetailsController = async (req, res) => {
         const isSeller = request.seller && request.seller._id.equals(userId);
         const isBuyer = request.buyer && request.buyer._id.equals(userId);
         const isMediator = request.mediator && request.mediator._id.equals(userId);
-        const isAdminUser = req.user.userRole === 'Admin';
+        const isAdmin = userRole === 'Admin'; // استخدم userRole من req.user
 
-        if (!(isSeller || isBuyer || isMediator || isAdminUser)) {
-            return res.status(403).json({ msg: "Forbidden: You are not authorized to view these details." });
+        // التحقق إذا كان المستخدم الحالي مشرفًا محددًا على هذا النزاع
+        const isDesignatedOverseer = request.disputeOverseers &&
+            request.disputeOverseers.some(overseer => overseer._id.equals(userId));
+
+        let canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer;
+
+        // إذا كان المستخدم أدمن والحالة نزاع، اسمح له بالوصول حتى لو لم يكن مشرفًا معينًا
+        // هذا يعتمد على سياستك: هل كل الأدمنز يمكنهم رؤية كل النزاعات، أم فقط المشرفون المعينون؟
+        // إذا كان كل الأدمنز، فاستخدم:
+        if (isAdmin && request.status === 'Disputed') {
+            canAccess = true;
+        }
+        // إذا كان فقط المشرفون المعينون (بالإضافة للأطراف الأخرى):
+        // canAccess = isSeller || isBuyer || isMediator || (isDesignatedOverseer && request.status === 'Disputed');
+        // أو إذا كنت تريد أن يتمكن أي أدمن من الوصول إذا كانت الحالة نزاع، بالإضافة إلى المشرفين المعينين:
+        // canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer || (isAdmin && request.status === 'Disputed');
+
+
+        if (!canAccess) {
+            console.warn(`[getMediationDetails] User ${userId} (Role: ${userRole}) is FORBIDDEN from accessing details for ${mediationRequestId}. Status: ${request.status}. Parties: S-${request.seller?._id}, B-${request.buyer?._id}, M-${request.mediator?._id}`);
+            return res.status(403).json({ msg: "Forbidden: You are not authorized to view these mediation details." });
         }
 
+        console.log(`[getMediationDetails] User ${userId} (Role: ${userRole}) GRANTED access to details for ${mediationRequestId}.`);
         res.status(200).json({ mediationRequest: request });
 
     } catch (error) {
-        console.error("[getMediationDetails] Error fetching mediation request details:", error);
+        console.error("[getMediationDetails] Error fetching mediation request details:", error.message, error.stack);
         res.status(500).json({ msg: "Server error fetching mediation details.", errorDetails: error.message });
     }
 };
@@ -756,23 +774,73 @@ exports.getMediatorAcceptedAwaitingParties = async (req, res) => {
 
 // --- Buyer: Get Own Mediation Requests ---
 exports.getBuyerMediationRequests = async (req, res) => {
-    // ... (الكود الكامل لهذه الدالة كما قدمته سابقاً، بدون تغييرات هنا) ...
-    // (تأكد أن $in يتضمن PartiesConfirmed إذا أردت أن يراها المشتري)
-    const buyerId = req.user._id;
-    const { page = 1, limit = 10, status: statusFilterFromQuery } = req.query;
+    const buyerId = req.user._id; // يُفترض أن req.user._id متاح من middleware المصادقة
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const statusFilterFromQuery = req.query.status; // هذا سيكون سلسلة نصية واحدة إذا تم تمريره
+
+    console.log(`--- [Controller getBuyerMediationRequests] START - BuyerID: ${buyerId}, Page: ${page}, Limit: ${limit}, StatusFilter from query: '${statusFilterFromQuery}' ---`);
+
     try {
-        const query = { buyer: buyerId };
-        if (statusFilterFromQuery) {
-            query.status = statusFilterFromQuery;
+        const query = { buyer: buyerId }; // الفلتر الأساسي: طلبات هذا المشتري
+
+        if (statusFilterFromQuery && typeof statusFilterFromQuery === 'string' && statusFilterFromQuery.trim() !== "") {
+            // إذا تم تمرير فلتر حالة محدد من العميل، استخدمه
+            query.status = statusFilterFromQuery.trim();
+            console.log(`   [Controller getBuyerMediationRequests] Applying specific status filter: '${query.status}'`);
         } else {
-            query.status = { $in: ['PendingMediatorSelection', 'MediatorAssigned', 'MediationOfferAccepted', 'EscrowFunded', 'InProgress', 'PendingBuyerAction', 'PartiesConfirmed', 'Completed', 'Cancelled'] }; // أضفت حالات أكثر للمشتري
+            // إذا لم يتم تمرير فلتر حالة، استخدم القائمة الافتراضية للحالات التي تهم المشتري
+            query.status = {
+                $in: [
+                    'PendingMediatorSelection',
+                    'MediatorAssigned',
+                    'MediationOfferAccepted',
+                    'EscrowFunded',
+                    'InProgress',
+                    'PendingBuyerAction', // إذا كان هناك إجراء مطلوب من المشتري
+                    'PartiesConfirmed',
+                    'Completed',
+                    'Cancelled',
+                    'Disputed' // <-- تأكد من تضمين حالة النزاع هنا
+                ]
+            };
+            console.log(`   [Controller getBuyerMediationRequests] No specific status filter provided. Using default list of statuses:`, query.status.$in);
         }
-        const options = { page: parseInt(page), limit: parseInt(limit), sort: { updatedAt: -1 }, populate: [{ path: 'product', select: 'title imageUrls agreedPrice currency user' }, { path: 'seller', select: 'fullName avatarUrl' }, { path: 'mediator', select: 'fullName avatarUrl' }], lean: true };
+
+        const options = {
+            page: page,
+            limit: limit,
+            sort: { updatedAt: -1 }, // ترتيب حسب آخر تحديث (الأحدث أولاً)
+            populate: [
+                { path: 'product', select: 'title imageUrls agreedPrice currency user' }, // user هنا هو بائع المنتج
+                { path: 'seller', select: '_id fullName avatarUrl' },
+                { path: 'mediator', select: '_id fullName avatarUrl' },
+                // يمكنك إضافة populate لسجل الأحداث إذا أردت عرضه في القائمة
+                // { path: 'history.userId', select: 'fullName' } 
+            ],
+            lean: true // للأداء الأفضل عند القراءة فقط
+        };
+
+        console.log(`   [Controller getBuyerMediationRequests] Executing MediationRequest.paginate with query:`, JSON.stringify(query), `and options:`, options);
         const result = await MediationRequest.paginate(query, options);
-        res.status(200).json({ requests: result.docs, totalPages: result.totalPages, currentPage: result.page, totalRequests: result.totalDocs });
+
+        console.log(`   [Controller getBuyerMediationRequests] Found ${result.docs?.length || 0} requests for buyer ${buyerId} on page ${result.page} (Total: ${result.totalDocs || 0}).`);
+
+        res.status(200).json({
+            requests: result.docs || [], // أرجع مصفوفة فارغة إذا لم تكن هناك نتائج
+            totalPages: result.totalPages || 0,
+            currentPage: result.page || 1,
+            totalRequests: result.totalDocs || 0
+        });
+
     } catch (error) {
-        console.error("Error fetching buyer's mediation requests:", error);
-        res.status(500).json({ msg: "Server error fetching requests.", errorDetails: error.message });
+        console.error("[Controller getBuyerMediationRequests] Error fetching buyer's mediation requests:", error.message, "\nStack:", error.stack);
+        res.status(500).json({
+            msg: "Server error while fetching your mediation requests. Please try again later.",
+            errorDetails: process.env.NODE_ENV !== 'production' ? error.message : undefined
+        });
+    } finally {
+        console.log(`--- [Controller getBuyerMediationRequests] END - BuyerID: ${buyerId} ---`);
     }
 };
 
@@ -980,7 +1048,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         const updatedMediationRequest = await mediationRequest.save({ session });
 
-                // --- [!!!] منح نقاط السمعة للأطراف المشاركة [!!!] ---
+        // --- [!!!] منح نقاط السمعة للأطراف المشاركة [!!!] ---
         const participantsToReward = [];
         if (mediationRequest.seller?._id) participantsToReward.push(mediationRequest.seller._id);
         if (mediationRequest.buyer?._id) participantsToReward.push(mediationRequest.buyer._id); // المشتري الذي أكد
@@ -994,7 +1062,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
                 // زيادة reputationPoints بمقدار 1
                 // $inc يزيد القيمة، إذا لم يكن الحقل موجودًا، سيقوم بإنشائه وتعيين القيمة له
                 reputationUpdatePromises.push(
-                    User.findByIdAndUpdate(participantId, 
+                    User.findByIdAndUpdate(participantId,
                         { $inc: { reputationPoints: 1, successfulMediationsCount: (participantId === mediationRequest.mediator?._id.toString() ? 1 : 0) } }, // زيادة successfulMediationsCount للوسيط فقط
                         { session, new: true } // new: true ليس ضروريًا هنا إذا لم تكن بحاجة للبيانات المحدثة فورًا
                     )
@@ -1002,7 +1070,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
                 console.log(`   [Reputation] Queued +1 reputation point for user ${participantId}`);
             }
         }
-        
+
         if (reputationUpdatePromises.length > 0) {
             try {
                 await Promise.all(reputationUpdatePromises);
@@ -1162,177 +1230,216 @@ exports.buyerRejectMediation = async (req, res) => {
 
 // --- Get Mediation Chat History ---
 exports.getMediationChatHistory = async (req, res) => {
-    // ... (الكود الكامل لهذه الدالة كما قدمته سابقاً، بدون تغييرات هنا) ...
     const { mediationRequestId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user._id; // المستخدم الحالي
     try {
         if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) return res.status(400).json({ msg: "Invalid ID." });
-        const request = await MediationRequest.findById(mediationRequestId).select('seller buyer mediator status chatMessages').populate('chatMessages.sender', 'fullName avatarUrl _id');
+
+        const request = await MediationRequest.findById(mediationRequestId)
+            .select('seller buyer mediator status chatMessages disputeOverseers') // أضفت disputeOverseers
+            .populate('chatMessages.sender', 'fullName avatarUrl _id');
+        // يمكنك إضافة populate لـ disputeOverseers إذا أردت عرض معلوماتهم هنا أيضًا
+
         if (!request) return res.status(404).json({ msg: "Request not found." });
-        const isParty = request.seller.equals(userId) || request.buyer.equals(userId) || (request.mediator && request.mediator.equals(userId));
-        if (!isParty) return res.status(403).json({ msg: "Forbidden: Not a party." });
+
+        // --- [!!!] التحقق من الصلاحية هنا [!!!] ---
+        const isSeller = request.seller.equals(userId);
+        const isBuyer = request.buyer.equals(userId);
+        const isMediator = request.mediator && request.mediator.equals(userId);
+        // --- [!!!] يجب إضافة الأدمن هنا إذا كانت الحالة Disputed [!!!] ---
+        const isAdmin = req.user.userRole === 'Admin'; // افترض أن req.user يحتوي على userRole
+        const isOverseer = request.disputeOverseers && request.disputeOverseers.some(adminId => adminId.equals(userId));
+
+        let isParty = isSeller || isBuyer || isMediator;
+
+        // إذا كانت الحالة نزاع، اسمح للأدمن أو المشرف على النزاع بالوصول
+        if (request.status === 'Disputed' && (isAdmin || isOverseer)) {
+            isParty = true;
+            console.log(`   [ChatHistory] Admin/Overseer ${userId} accessing disputed chat ${mediationRequestId}.`);
+        }
+        // ---------------------------------------------------------------
+
+        if (!isParty) {
+            console.warn(`   [ChatHistory] User ${userId} (Role: ${req.user.userRole}) is FORBIDDEN from accessing chat history for ${mediationRequestId}. Parties: S-${request.seller}, B-${request.buyer}, M-${request.mediator}`);
+            return res.status(403).json({ msg: "Forbidden: You are not a party to this mediation chat or not authorized." });
+        }
+        // --------------------------------------------
+
         res.status(200).json(request.chatMessages || []);
     } catch (error) {
         console.error("Error fetching chat history:", error);
-        res.status(500).json({ msg: "Server error.", errorDetails: error.message });
+        res.status(500).json({ msg: "Server error fetching chat history.", errorDetails: error.message });
     }
 };
 
+// exports.handleChatImageUpload = async (req, res) => {
+//     const senderId = req.user._id;
+//     const { mediationRequestId } = req.body;
+//     // --- [!!!] احصل على io و onlineUsers من req [!!!] ---
+//     const io = req.io;
+//     const onlineUsers = req.onlineUsers;
+//     // ----------------------------------------------------
+//     console.log(`--- Controller: handleChatImageUpload for MedReq: ${mediationRequestId}, Sender: ${senderId} ---`);
+//     console.log(`   [handleChatImageUpload] Available onlineUsers:`, onlineUsers ? Object.keys(onlineUsers) : 'Not available'); // للتحقق
+
+//     if (!req.file) return res.status(400).json({ msg: "No image file provided." });
+//     if (!mediationRequestId || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+//         if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//         return res.status(400).json({ msg: "Invalid or missing mediationRequestId." });
+//     }
+
+//     let session;
+//     try {
+//         session = await mongoose.startSession();
+//         session.startTransaction();
+
+//         const mediationRequest = await MediationRequest.findById(mediationRequestId)
+//             .populate('product', 'title _id') // أضفت _id هنا أيضًا
+//             .populate('seller', '_id fullName avatarUrl') // أضفت avatarUrl
+//             .populate('buyer', '_id fullName avatarUrl')  // أضفت avatarUrl
+//             .populate('mediator', '_id fullName avatarUrl') // أضفت avatarUrl
+//             .session(session);
+
+//         if (!mediationRequest) {
+//             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//             throw new Error("Mediation request not found.");
+//         }
+//         const isParty = (mediationRequest.seller._id.equals(senderId) ||
+//             mediationRequest.buyer._id.equals(senderId) ||
+//             (mediationRequest.mediator && mediationRequest.mediator._id.equals(senderId)));
+//         if (!isParty) {
+//             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//             throw new Error("Forbidden: Not a party to this mediation.");
+//         }
+//         if (mediationRequest.status !== 'InProgress') {
+//             if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+//             throw new Error("Forbidden: Chat is not active for this mediation request.");
+//         }
+
+//         let relativeImagePath = req.file.path.replace(/\\/g, '/');
+//         if (relativeImagePath.includes('uploads/chat_images/')) {
+//             relativeImagePath = relativeImagePath.split('uploads/chat_images/')[1];
+//             relativeImagePath = `chat_images/${relativeImagePath}`; // المسار النسبي من مجلد uploads الرئيسي
+//         } else if (relativeImagePath.includes('uploads/')) {
+//             relativeImagePath = relativeImagePath.split('uploads/')[1]; // إذا كان في uploads مباشرة
+//         } else {
+//             // إذا لم يكن المسار متوقعًا، قد تحتاج لمراجعة إعدادات Multer
+//             console.warn("[handleChatImageUpload] Unexpected file path from Multer:", req.file.path);
+//             // افتراضيًا، إذا لم يتم العثور على 'uploads/', استخدم اسم الملف فقط (قد لا يكون هذا صحيحًا دائمًا)
+//             relativeImagePath = req.file.filename;
+//         }
+
+//         console.log("[handleChatImageUpload] Calculated relativeImagePath:", relativeImagePath); // <--- أضف هذا
+//         // تأكد أن المسار المخزن في DB صحيح بالنسبة لمجلد static الخاص بك
+//         // إذا كان مجلد static هو 'uploads', والملفات في 'uploads/chat_images', فالقيمة يجب أن تكون 'chat_images/filename.ext'
+
+//         const imageMessageObject = {
+//             sender: senderId,
+//             message: `[Image: ${req.file.originalname}]`,
+//             type: 'image',
+//             imageUrl: relativeImagePath, // <--- القيمة التي تُحفظ وتُرسل
+//             timestamp: new Date(),
+//             readBy: []
+//         };
+//         mediationRequest.chatMessages.push(imageMessageObject);
+//         await mediationRequest.save({ session });
+//         await session.commitTransaction(); // <--- تم الحفظ في قاعدة البيانات هنا بنجاح
+
+//         const senderDetails = await User.findById(senderId).select('fullName avatarUrl _id').lean();
+//         const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1].toObject();
+//         const messageToBroadcast = { ...savedMessageFromDb, sender: senderDetails || { fullName: 'User', _id: senderId } };
+
+//         console.log("[handleChatImageUpload] Broadcasting image message (messageToBroadcast):", JSON.stringify(messageToBroadcast, null, 2)); // <--- أضف هذا
+
+//         if (io) {
+//             io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
+//         }
+
+//         // --- الجزء الخاص بإرسال update_unread_summary ---
+//         const senderIdString = senderId.toString();
+//         const participantsForUnreadSummary = [];
+//         if (mediationRequest.seller?._id && mediationRequest.seller._id.toString() !== senderIdString) {
+//             participantsForUnreadSummary.push(mediationRequest.seller._id.toString());
+//         }
+//         if (mediationRequest.buyer?._id && mediationRequest.buyer._id.toString() !== senderIdString) {
+//             participantsForUnreadSummary.push(mediationRequest.buyer._id.toString());
+//         }
+//         if (mediationRequest.mediator?._id && mediationRequest.mediator._id.toString() !== senderIdString) {
+//             participantsForUnreadSummary.push(mediationRequest.mediator._id.toString());
+//         }
+//         const uniqueRecipients = [...new Set(participantsForUnreadSummary)];
+
+//         // لا نحتاج لإعادة جلب mediationRequest هنا لأننا لم نعدل chatMessages بعد الـ commit
+//         // والـ transaction انتهى
+//         if (mediationRequest && onlineUsers && io) { // التأكد من وجود onlineUsers و io
+//             uniqueRecipients.forEach(async (recipientId) => {
+//                 let unreadCountForRecipient = 0;
+//                 mediationRequest.chatMessages.forEach(msg => { // استخدم mediationRequest الذي تم جلبه في بداية الدالة
+//                     if (msg.sender && !msg.sender.equals(recipientId) &&
+//                         (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(recipientId)))) {
+//                         unreadCountForRecipient++;
+//                     }
+//                 });
+
+//                 const recipientSocketId = onlineUsers[recipientId];
+//                 if (recipientSocketId) {
+//                     const payloadForUnreadSummary = {
+//                         mediationId: mediationRequestId.toString(),
+//                         newUnreadCount: unreadCountForRecipient,
+//                         lastMessageTimestamp: messageToBroadcast.timestamp,
+//                         productTitle: mediationRequest.product?.title || 'Mediation Chat',
+//                         otherPartyForRecipient: senderDetails ? {
+//                             _id: senderDetails._id.toString(),
+//                             fullName: senderDetails.fullName,
+//                             avatarUrl: senderDetails.avatarUrl
+//                         } : { fullName: 'User', _id: senderIdString },
+//                     };
+//                     console.log(`   [handleChatImageUpload] Emitting 'update_unread_summary' to user ${recipientId} (socket ${recipientSocketId}) with payload:`, payloadForUnreadSummary);
+//                     io.to(recipientSocketId).emit('update_unread_summary', payloadForUnreadSummary);
+//                 } else {
+//                     console.log(`   [handleChatImageUpload] User ${recipientId} is not online for 'update_unread_summary'.`);
+//                 }
+//             });
+//         }
+//         // --- نهاية الجزء الخاص بإرسال update_unread_summary ---
+
+//         res.status(201).json({ msg: "Image uploaded and message sent.", message: messageToBroadcast });
+
+//     } catch (error) {
+//         if (session && session.inTransaction()) { // تحقق أن session معرف
+//             await session.abortTransaction();
+//         }
+//         console.error("[handleChatImageUpload] Error caught:", error.message, error.stack); // طباعة الـ stack للخطأ
+//         // لا تحذف الملف إذا كان الخطأ ليس بسبب فشل في الـ transaction أو الـ DB
+//         // الحذف يجب أن يتم فقط إذا فشل الحفظ في الـ DB بعد تحميل الملف بنجاح
+//         // إذا كان الخطأ "onlineUsers is not defined"، فهذا يحدث بعد commitTransaction
+//         // لذا لا يجب حذف الملف أو عمل abort.
+//         // ولكن إذا كان الخطأ قبل الـ commit، فالمنطق الحالي صحيح.
+
+//         // إذا كان الخطأ بسبب onlineUsers is not defined، يجب ألا يتم حذف الملف
+//         if (error.message !== "onlineUsers is not defined" && req.file?.path && fs.existsSync(req.file.path)) {
+//             console.log("[handleChatImageUpload] Unlinking file due to error (not onlineUsers error):", req.file.path);
+//             fs.unlinkSync(req.file.path);
+//         }
+//         res.status(400).json({ msg: error.message || "Failed to process image upload." });
+//     } finally {
+//         if (session && typeof session.endSession === 'function') {
+//             await session.endSession();
+//         }
+//     }
+// };
+
 exports.handleChatImageUpload = async (req, res) => {
-    const senderId = req.user._id;
-    const { mediationRequestId } = req.body;
-    // --- [!!!] احصل على io و onlineUsers من req [!!!] ---
-    const io = req.io;
-    const onlineUsers = req.onlineUsers;
-    // ----------------------------------------------------
-    console.log(`--- Controller: handleChatImageUpload for MedReq: ${mediationRequestId}, Sender: ${senderId} ---`);
-    console.log(`   [handleChatImageUpload] Available onlineUsers:`, onlineUsers ? Object.keys(onlineUsers) : 'Not available'); // للتحقق
-
-    if (!req.file) return res.status(400).json({ msg: "No image file provided." });
-    if (!mediationRequestId || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
-        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        return res.status(400).json({ msg: "Invalid or missing mediationRequestId." });
+    if (!req.file) {
+        return res.status(400).json({ msg: "No file uploaded." });
     }
 
-    let session;
-    try {
-        session = await mongoose.startSession();
-        session.startTransaction();
+    const imageUrl = `/uploads/chat/${req.file.filename}`;
 
-        const mediationRequest = await MediationRequest.findById(mediationRequestId)
-            .populate('product', 'title _id') // أضفت _id هنا أيضًا
-            .populate('seller', '_id fullName avatarUrl') // أضفت avatarUrl
-            .populate('buyer', '_id fullName avatarUrl')  // أضفت avatarUrl
-            .populate('mediator', '_id fullName avatarUrl') // أضفت avatarUrl
-            .session(session);
-
-        if (!mediationRequest) {
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Mediation request not found.");
-        }
-        const isParty = (mediationRequest.seller._id.equals(senderId) ||
-            mediationRequest.buyer._id.equals(senderId) ||
-            (mediationRequest.mediator && mediationRequest.mediator._id.equals(senderId)));
-        if (!isParty) {
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Forbidden: Not a party to this mediation.");
-        }
-        if (mediationRequest.status !== 'InProgress') {
-            if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-            throw new Error("Forbidden: Chat is not active for this mediation request.");
-        }
-
-        let relativeImagePath = req.file.path.replace(/\\/g, '/');
-        if (relativeImagePath.includes('uploads/chat_images/')) {
-            relativeImagePath = relativeImagePath.split('uploads/chat_images/')[1];
-            relativeImagePath = `chat_images/${relativeImagePath}`; // المسار النسبي من مجلد uploads الرئيسي
-        } else if (relativeImagePath.includes('uploads/')) {
-            relativeImagePath = relativeImagePath.split('uploads/')[1]; // إذا كان في uploads مباشرة
-        } else {
-            // إذا لم يكن المسار متوقعًا، قد تحتاج لمراجعة إعدادات Multer
-            console.warn("[handleChatImageUpload] Unexpected file path from Multer:", req.file.path);
-            // افتراضيًا، إذا لم يتم العثور على 'uploads/', استخدم اسم الملف فقط (قد لا يكون هذا صحيحًا دائمًا)
-            relativeImagePath = req.file.filename;
-        }
-
-        console.log("[handleChatImageUpload] Calculated relativeImagePath:", relativeImagePath); // <--- أضف هذا
-        // تأكد أن المسار المخزن في DB صحيح بالنسبة لمجلد static الخاص بك
-        // إذا كان مجلد static هو 'uploads', والملفات في 'uploads/chat_images', فالقيمة يجب أن تكون 'chat_images/filename.ext'
-
-        const imageMessageObject = {
-            sender: senderId,
-            message: `[Image: ${req.file.originalname}]`,
-            type: 'image',
-            imageUrl: relativeImagePath, // <--- القيمة التي تُحفظ وتُرسل
-            timestamp: new Date(),
-            readBy: []
-        };
-        mediationRequest.chatMessages.push(imageMessageObject);
-        await mediationRequest.save({ session });
-        await session.commitTransaction(); // <--- تم الحفظ في قاعدة البيانات هنا بنجاح
-
-        const senderDetails = await User.findById(senderId).select('fullName avatarUrl _id').lean();
-        const savedMessageFromDb = mediationRequest.chatMessages[mediationRequest.chatMessages.length - 1].toObject();
-        const messageToBroadcast = { ...savedMessageFromDb, sender: senderDetails || { fullName: 'User', _id: senderId } };
-
-        console.log("[handleChatImageUpload] Broadcasting image message (messageToBroadcast):", JSON.stringify(messageToBroadcast, null, 2)); // <--- أضف هذا
-
-        if (io) {
-            io.to(mediationRequestId.toString()).emit('newMediationMessage', messageToBroadcast);
-        }
-
-        // --- الجزء الخاص بإرسال update_unread_summary ---
-        const senderIdString = senderId.toString();
-        const participantsForUnreadSummary = [];
-        if (mediationRequest.seller?._id && mediationRequest.seller._id.toString() !== senderIdString) {
-            participantsForUnreadSummary.push(mediationRequest.seller._id.toString());
-        }
-        if (mediationRequest.buyer?._id && mediationRequest.buyer._id.toString() !== senderIdString) {
-            participantsForUnreadSummary.push(mediationRequest.buyer._id.toString());
-        }
-        if (mediationRequest.mediator?._id && mediationRequest.mediator._id.toString() !== senderIdString) {
-            participantsForUnreadSummary.push(mediationRequest.mediator._id.toString());
-        }
-        const uniqueRecipients = [...new Set(participantsForUnreadSummary)];
-
-        // لا نحتاج لإعادة جلب mediationRequest هنا لأننا لم نعدل chatMessages بعد الـ commit
-        // والـ transaction انتهى
-        if (mediationRequest && onlineUsers && io) { // التأكد من وجود onlineUsers و io
-            uniqueRecipients.forEach(async (recipientId) => {
-                let unreadCountForRecipient = 0;
-                mediationRequest.chatMessages.forEach(msg => { // استخدم mediationRequest الذي تم جلبه في بداية الدالة
-                    if (msg.sender && !msg.sender.equals(recipientId) &&
-                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(recipientId)))) {
-                        unreadCountForRecipient++;
-                    }
-                });
-
-                const recipientSocketId = onlineUsers[recipientId];
-                if (recipientSocketId) {
-                    const payloadForUnreadSummary = {
-                        mediationId: mediationRequestId.toString(),
-                        newUnreadCount: unreadCountForRecipient,
-                        lastMessageTimestamp: messageToBroadcast.timestamp,
-                        productTitle: mediationRequest.product?.title || 'Mediation Chat',
-                        otherPartyForRecipient: senderDetails ? {
-                            _id: senderDetails._id.toString(),
-                            fullName: senderDetails.fullName,
-                            avatarUrl: senderDetails.avatarUrl
-                        } : { fullName: 'User', _id: senderIdString },
-                    };
-                    console.log(`   [handleChatImageUpload] Emitting 'update_unread_summary' to user ${recipientId} (socket ${recipientSocketId}) with payload:`, payloadForUnreadSummary);
-                    io.to(recipientSocketId).emit('update_unread_summary', payloadForUnreadSummary);
-                } else {
-                    console.log(`   [handleChatImageUpload] User ${recipientId} is not online for 'update_unread_summary'.`);
-                }
-            });
-        }
-        // --- نهاية الجزء الخاص بإرسال update_unread_summary ---
-
-        res.status(201).json({ msg: "Image uploaded and message sent.", message: messageToBroadcast });
-
-    } catch (error) {
-        if (session && session.inTransaction()) { // تحقق أن session معرف
-            await session.abortTransaction();
-        }
-        console.error("[handleChatImageUpload] Error caught:", error.message, error.stack); // طباعة الـ stack للخطأ
-        // لا تحذف الملف إذا كان الخطأ ليس بسبب فشل في الـ transaction أو الـ DB
-        // الحذف يجب أن يتم فقط إذا فشل الحفظ في الـ DB بعد تحميل الملف بنجاح
-        // إذا كان الخطأ "onlineUsers is not defined"، فهذا يحدث بعد commitTransaction
-        // لذا لا يجب حذف الملف أو عمل abort.
-        // ولكن إذا كان الخطأ قبل الـ commit، فالمنطق الحالي صحيح.
-
-        // إذا كان الخطأ بسبب onlineUsers is not defined، يجب ألا يتم حذف الملف
-        if (error.message !== "onlineUsers is not defined" && req.file?.path && fs.existsSync(req.file.path)) {
-            console.log("[handleChatImageUpload] Unlinking file due to error (not onlineUsers error):", req.file.path);
-            fs.unlinkSync(req.file.path);
-        }
-        res.status(400).json({ msg: error.message || "Failed to process image upload." });
-    } finally {
-        if (session && typeof session.endSession === 'function') {
-            await session.endSession();
-        }
-    }
+    res.status(200).json({
+        msg: "Image uploaded successfully.",
+        imageUrl
+    });
 };
 
 exports.getMyMediationSummariesController = async (req, res) => {
@@ -1467,14 +1574,14 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
         console.log(`   [SERVER buyerConfirm] mediationRequest.buyer ID: ${mediationRequest.buyer}`);
-    console.log(`   [SERVER buyerConfirm] req.user._id (buyerId performing action): ${buyerId}`);
-    console.log(`   [SERVER buyerConfirm] Are they equal? : ${mediationRequest.buyer.equals(buyerId)}`);
+        console.log(`   [SERVER buyerConfirm] req.user._id (buyerId performing action): ${buyerId}`);
+        console.log(`   [SERVER buyerConfirm] Are they equal? : ${mediationRequest.buyer.equals(buyerId)}`);
 
-    if (!mediationRequest.buyer.equals(buyerId)) {
-        await session.abortTransaction();
-        console.warn(`   [SERVER buyerConfirm] FORBIDDEN: User ${buyerId} (logged in) is not the buyer for request ${mediationRequestId}. Actual buyer in DB: ${mediationRequest.buyer}`);
-        throw new Error("Forbidden: You are not the buyer for this request.");
-    }
+        if (!mediationRequest.buyer.equals(buyerId)) {
+            await session.abortTransaction();
+            console.warn(`   [SERVER buyerConfirm] FORBIDDEN: User ${buyerId} (logged in) is not the buyer for request ${mediationRequestId}. Actual buyer in DB: ${mediationRequest.buyer}`);
+            throw new Error("Forbidden: You are not the buyer for this request.");
+        }
         if (mediationRequest.status !== 'InProgress') {
             await session.abortTransaction();
             console.warn(`[ConfirmReceipt] Action not allowed for request ${mediationRequestId}. Current status: '${mediationRequest.status}'.`);
@@ -1540,6 +1647,13 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
         console.log(`   [ConfirmReceipt] Mediator current balance: ${mediator.balance}`);
         console.log(`   [ConfirmReceipt] Mediator fee to add (in ${platformBaseCurrency}): ${mediatorFeeInPlatformCurrency}`);
+        console.log("--- [ConfirmReceipt] Inspecting chatMessages BEFORE SAVE ---");
+        mediationRequest.chatMessages.forEach((msg, index) => {
+            console.log(`   Message ${index}:`, JSON.stringify(msg));
+            if (!msg.message && msg.type !== 'image' && msg.type !== 'file') { // If it's a text message but message field is missing
+                console.error(`   VALIDATION ERROR PREDICTION: Message ${index} is missing 'message' field and is not an image/file.`);
+            }
+        });
 
         mediator.balance = parseFloat(((mediator.balance || 0) + mediatorFeeInPlatformCurrency).toFixed(2));
         await mediator.save({ session });
@@ -1678,5 +1792,273 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             await session.endSession();
             console.log(`   [ConfirmReceipt] Session ended for request ${mediationRequestId}`);
         }
+    }
+};
+
+exports.openDisputeController = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    const { reason } = req.body;
+    const disputingUserId = req.user._id;
+    const disputingUserFullName = req.user.fullName || 'A user'; // احصل عليها مبكرًا
+
+    console.log(`--- Controller: openDispute for ${mediationRequestId} by User: ${disputingUserId} ---`);
+    console.log(`   Reason (optional): ${reason}`);
+
+    const session = await mongoose.startSession();
+    let updatedMediationRequestGlobal; // لتخزين النتيجة بعد نجاح المعاملة
+
+    try {
+        // عدد مرات إعادة المحاولة
+        const MAX_RETRIES = 3;
+        let attempt = 0;
+
+        while (attempt < MAX_RETRIES) {
+            try {
+                await session.withTransaction(async (currentSession) => {
+                    const mediationRequest = await MediationRequest.findById(mediationRequestId)
+                        .populate('product', 'title _id user') // user هو بائع المنتج
+                        .populate('seller', '_id fullName')
+                        .populate('buyer', '_id fullName')
+                        .populate('mediator', '_id fullName')
+                        .session(currentSession);
+
+                    if (!mediationRequest) {
+                        // لا حاجة لـ abortTransaction هنا لأن withTransaction يعالجها
+                        const err = new Error("Mediation request not found.");
+                        err.status = 404; // أضف status للخطأ
+                        throw err;
+                    }
+
+                    const isSeller = mediationRequest.seller._id.equals(disputingUserId);
+                    const isBuyer = mediationRequest.buyer._id.equals(disputingUserId);
+
+                    if (!isSeller && !isBuyer) {
+                        const err = new Error("Forbidden: You are not a party to this mediation.");
+                        err.status = 403;
+                        throw err;
+                    }
+
+                    if (mediationRequest.status !== 'InProgress') {
+                        const err = new Error(`Cannot open dispute. Current status is '${mediationRequest.status}'.`);
+                        err.status = 400;
+                        throw err;
+                    }
+
+                    // --- التحديثات الأساسية داخل المعاملة ---
+                    mediationRequest.status = 'Disputed';
+                    mediationRequest.history.push({
+                        event: `Dispute opened by ${disputingUserFullName} (${isSeller ? 'Seller' : 'Buyer'})`,
+                        userId: disputingUserId,
+                        timestamp: new Date(),
+                        details: { reasonProvided: reason || "No specific reason provided initially." }
+                    });
+
+                    if (mediationRequest.product?._id) {
+                        await Product.findByIdAndUpdate(mediationRequest.product._id,
+                            { $set: { status: 'Disputed' } },
+                            { session: currentSession } // استخدم currentSession
+                        );
+                        console.log(`   Product ${mediationRequest.product._id} status updated to 'Disputed' in transaction.`);
+                    }
+
+                    // احفظ النسخة المحدثة ليتم استخدامها خارج المعاملة
+                    updatedMediationRequestGlobal = await mediationRequest.save({ session: currentSession });
+                    console.log(`   MediationRequest ${mediationRequestId} status updated to 'Disputed' in transaction.`);
+                });
+
+                // إذا نجحت المعاملة، اخرج من حلقة إعادة المحاولة
+                console.log(`   Transaction committed successfully for dispute opening on attempt ${attempt + 1}.`);
+                break;
+
+            } catch (error) {
+                attempt++;
+                if (error.errorLabels && error.errorLabels.includes('TransientTransactionError') && attempt < MAX_RETRIES) {
+                    console.warn(`[openDisputeController] Write conflict, retrying transaction (attempt ${attempt}/${MAX_RETRIES})...`, error.message);
+                    // انتظر قليلاً قبل إعادة المحاولة (اختياري ولكن جيد)
+                    await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+                } else {
+                    // إذا لم يكن خطأ عابرًا أو تم تجاوز عدد المحاولات، أعد رمي الخطأ
+                    throw error;
+                }
+            }
+        }
+
+        if (!updatedMediationRequestGlobal) {
+            // هذا لا يجب أن يحدث إذا خرجنا من الحلقة بنجاح
+            throw new Error("Failed to open dispute after retries or transaction did not complete as expected.");
+        }
+
+        // --- العمليات بعد نجاح المعاملة (الإشعارات، Socket.IO) ---
+        // جلب الأدمنز (يمكن أن يتم خارج المعاملة)
+        const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
+
+        const partiesToNotify = [];
+        if (updatedMediationRequestGlobal.seller?._id && !updatedMediationRequestGlobal.seller._id.equals(disputingUserId)) partiesToNotify.push(updatedMediationRequestGlobal.seller._id);
+        if (updatedMediationRequestGlobal.buyer?._id && !updatedMediationRequestGlobal.buyer._id.equals(disputingUserId)) partiesToNotify.push(updatedMediationRequestGlobal.buyer._id);
+        if (updatedMediationRequestGlobal.mediator?._id) partiesToNotify.push(updatedMediationRequestGlobal.mediator._id);
+        admins.forEach(admin => partiesToNotify.push(admin._id));
+
+        const uniqueNotificationRecipients = [...new Set(partiesToNotify.map(id => id.toString()))];
+        const productTitle = updatedMediationRequestGlobal.product?.title || 'the transaction';
+        const notificationMessage = `A dispute has been opened by ${disputingUserFullName} for the transaction regarding "${productTitle}". Please review the details.`;
+
+        const notifications = uniqueNotificationRecipients.map(userIdToNotify => ({
+            user: userIdToNotify, type: 'MEDIATION_DISPUTED', title: 'Dispute Opened for Mediation',
+            message: notificationMessage + (reason ? ` Reason: ${reason}` : ''),
+            relatedEntity: { id: updatedMediationRequestGlobal._id, modelName: 'MediationRequest' }
+        }));
+
+        if (notifications.length > 0) {
+            try {
+                await Notification.insertMany(notifications); // لا تحتاج session هنا
+                console.log("   Dispute notifications created successfully after transaction commit.");
+            } catch (notificationError) {
+                console.error("   Error creating notifications after transaction commit (non-critical for dispute itself):", notificationError);
+                // يمكنك تسجيل هذا الخطأ لكن لا توقف العملية بسببه
+            }
+        }
+
+        // إرسال تحديثات عبر Socket.IO
+        if (req.io && updatedMediationRequestGlobal) {
+            const roomName = mediationRequestId.toString();
+            // أعد جلب الطلب مع كل populate اللازم للـ socket إذا أردت أحدث البيانات
+            const finalUpdatedRequestForSocket = await MediationRequest.findById(mediationRequestId)
+                .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency status')
+                .populate('seller', '_id fullName avatarUrl userRole')
+                .populate('buyer', '_id fullName avatarUrl userRole')
+                .populate('mediator', '_id fullName avatarUrl userRole')
+                .lean();
+
+            if (finalUpdatedRequestForSocket) {
+                req.io.to(roomName).emit('mediation_details_updated', {
+                    mediationRequestId: mediationRequestId,
+                    updatedMediationDetails: finalUpdatedRequestForSocket
+                });
+                console.log(`   Socket event 'mediation_details_updated' emitted for room ${roomName} after dispute opened.`);
+
+                if (finalUpdatedRequestForSocket.seller?._id && finalUpdatedRequestForSocket.product) {
+                    const sellerSocketId = req.onlineUsers[finalUpdatedRequestForSocket.seller._id.toString()];
+                    if (sellerSocketId) {
+                        req.io.to(sellerSocketId).emit('product_list_updated_for_seller', {
+                            productId: finalUpdatedRequestForSocket.product._id,
+                            newStatus: finalUpdatedRequestForSocket.product.status
+                        });
+                    }
+                }
+            }
+        }
+
+        res.status(200).json({
+            msg: "Dispute opened successfully. A mediator/admin will review.",
+            mediationRequest: updatedMediationRequestGlobal.toObject() // استخدم المستند المحدث
+        });
+
+    } catch (error) {
+        console.error("[openDisputeController] Final Error Catch Block:", error.message, "\nStack:", error.stack);
+        // `error.status` تم تعيينه في حالات الخطأ المخصصة
+        const statusCode = error.status || (error.code === 112 || (error.errorLabels && error.errorLabels.includes('TransientTransactionError')) ? 503 : 500); // 503 للتعارض بعد عدة محاولات
+        const message = error.message || "Server error opening dispute.";
+
+        // إذا كان خطأ تعارض بعد كل المحاولات
+        if (statusCode === 503 || (error.errorLabels && error.errorLabels.includes('TransientTransactionError'))) {
+            return res.status(statusCode).json({
+                msg: "Could not open dispute due to high server load or conflicting operations. Please try again shortly.",
+                errorDetails: "Write conflict occurred." // لا تعرض تفاصيل الخطأ الكاملة للعميل
+            });
+        }
+
+        res.status(statusCode).json({ msg: message });
+    } finally {
+        // تأكد من إنهاء الجلسة دائمًا
+        if (session) {
+            await session.endSession();
+        }
+    }
+};
+
+
+exports.getMediatorDisputedCasesController = async (req, res) => {
+    const mediatorId = req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    console.log(`--- Controller: getMediatorDisputedCases for Mediator: ${mediatorId}, Page: ${page} ---`);
+    try {
+        const query = { mediator: mediatorId, status: 'Disputed' }; // <--- الفلتر هنا
+        const options = {
+            page, limit, sort: { updatedAt: -1 },
+            populate: [
+                { path: 'product', select: 'title imageUrls agreedPrice currency' },
+                { path: 'seller', select: 'fullName avatarUrl' },
+                { path: 'buyer', select: 'fullName avatarUrl' }
+            ]
+        };
+        const result = await MediationRequest.paginate(query, options);
+        res.status(200).json({
+            assignments: result.docs, // أو اسم مناسب مثل 'disputedCases'
+            totalPages: result.totalPages,
+            currentPage: result.page,
+            totalAssignments: result.totalDocs
+        });
+    } catch (error) {
+        console.error("Error fetching mediator disputed cases:", error);
+        res.status(500).json({ msg: "Server error fetching disputed cases." });
+    }
+};
+
+exports.adminGetDisputedCasesController = async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    console.log(`--- Controller: adminGetDisputedCases - Page: ${page}, Limit: ${limit} ---`);
+    try {
+        const query = { status: 'Disputed' }; // الفلتر: فقط الحالات المتنازع عليها
+        const options = {
+            page,
+            limit,
+            sort: { updatedAt: -1 }, // الأحدث أولاً
+            populate: [ // نفس populate الذي تستخدمه في أماكن أخرى لعرض التفاصيل
+                { path: 'product', select: 'title imageUrls user' }, // user هنا هو البائع
+                { path: 'seller', select: '_id fullName avatarUrl' },
+                { path: 'buyer', select: '_id fullName avatarUrl' },
+                { path: 'mediator', select: '_id fullName avatarUrl' }
+            ],
+            lean: true
+        };
+        const result = await MediationRequest.paginate(query, options);
+        res.status(200).json({
+            requests: result.docs, // أو اسم مناسب مثل 'disputedCases'
+            totalPages: result.totalPages,
+            currentPage: result.page,
+            totalRequests: result.totalDocs
+        });
+    } catch (error) {
+        console.error("[AdminGetDisputedCasesController] Error:", error.message);
+        res.status(500).json({ msg: "Server error fetching disputed cases.", errorDetails: error.message });
+    }
+};
+
+exports.uploadChatImage = async (req, res) => {
+    try {
+        // تأكد أن الملف موجود
+        if (!req.file) {
+            return res.status(400).json({ msg: "No image file provided." });
+        }
+
+        const file = req.file;
+
+        // تأكد من نوع الصورة
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp", "image/gif"];
+        if (!allowedTypes.includes(file.mimetype)) {
+            // حذف الملف إذا كان غير مدعوم
+            fs.unlinkSync(file.path);
+            return res.status(400).json({ msg: "Unsupported image format." });
+        }
+
+        // إعادة تسميه الملف أو تركه كما هو
+        const imageUrl = `/uploads/chat_images/${file.filename}`;
+
+        return res.status(200).json({ msg: "Image uploaded successfully", imageUrl });
+    } catch (error) {
+        console.error("❌ Error in uploadChatImage:", error);
+        return res.status(500).json({ msg: "Internal server error during image upload." });
     }
 };
