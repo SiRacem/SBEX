@@ -24,10 +24,10 @@ const initialState = {
   loading: false,
   user: null,
   token: localStorage.getItem("token") || null, // تحميل التوكن الأولي
-  isAuth: !!localStorage.getItem("token"), // تحديد المصادقة الأولية
+  isAuth: !!localStorage.getItem("token"), // تحقق من وجود توكن
+  authChecked: false, 
   errors: null,
   registrationStatus: null, // success or fail
-  authChecked: false,
   availableMediators: [], // <-- إضافة حالة لتخزين الوسطاء
   loadingMediators: false,
   errorMediators: null,
@@ -80,29 +80,30 @@ const userReducer = (state = initialState, { type, payload }) => {
 
     // --- Get Profile Cases ---
     case GET_PROFILE_REQUEST:
-      // لا تغير authChecked هنا، فقط loading
       return { ...state, loading: true };
+
     case GET_PROFILE_SUCCESS:
-      // عند النجاح: اكتمل التحقق، تحديث المستخدم والمصادقة
       return {
         ...state,
         loading: false,
         isAuth: true,
-        user: payload,
+        user: payload.user || payload, // افترض أن payload قد يكون { user: ... } أو المستخدم مباشرة
         errors: null,
-        authChecked: true // <-- [!] مهم جداً: تعيينها true هنا
+        authChecked: true
       };
+
     case GET_PROFILE_FAIL:
-      // عند الفشل: اكتمل التحقق أيضاً، مسح المصادقة
-      // (لا تمسح التوكن من هنا، دع logout يفعل ذلك إذا لزم الأمر)
       return {
         ...state,
         loading: false,
-        // isAuth: false, // لا تغير isAuth هنا بالضرورة، قد يكون فشل مؤقت
-        // user: null,
         errors: payload,
-        authChecked: true // <-- [!] مهم جداً: تعيينها true هنا أيضاً
+        authChecked: true
+        // لا تمسح user أو isAuth هنا بالضرورة، فقط أوقف التحميل
       };
+
+    case 'AUTH_CHECK_COMPLETE': // تأكد أن هذا النوع يُرسل من App.js عندما لا يوجد توكن
+      console.log('[Reducer USER] AUTH_CHECK_COMPLETE'); // <-- أضف هذا
+      return { ...state, authChecked: true, loading: false }; // أضف loading: false هنا أيضًا
 
     // --- Logout Case ---
     case LOGOUT:
@@ -243,21 +244,21 @@ const userReducer = (state = initialState, { type, payload }) => {
       };
 
     // --- Set User Balances ---
-case SET_USER_BALANCES:
-  console.log("[Reducer USER] Handling SET_USER_BALANCES. Payload:", payload, "Current user state:", state.user);
-  if (state.user) { // تأكد أن كائن المستخدم موجود قبل محاولة تحديثه
-    return {
-      ...state,
-      user: { // تحديث كائن المستخدم الموجود
-        ...state.user,
-        balance: payload.balance !== undefined ? payload.balance : state.user.balance,
-        sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
-        sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
-        // أضف أي حقول رصيد أخرى هنا
+    case SET_USER_BALANCES:
+      console.log("[Reducer USER] Handling SET_USER_BALANCES. Payload:", payload, "Current user state:", state.user);
+      if (state.user) { // تأكد أن كائن المستخدم موجود قبل محاولة تحديثه
+        return {
+          ...state,
+          user: { // تحديث كائن المستخدم الموجود
+            ...state.user,
+            balance: payload.balance !== undefined ? payload.balance : state.user.balance,
+            sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
+            sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
+            // أضف أي حقول رصيد أخرى هنا
+          }
+        };
       }
-    };
-  }
-  return state; // إذا لم يكن هناك مستخدم، لا تقم بتغيير الحالة (أو يمكنك التعامل مع هذا بشكل مختلف)
+      return state; // إذا لم يكن هناك مستخدم، لا تقم بتغيير الحالة (أو يمكنك التعامل مع هذا بشكل مختلف)
 
     default: return state;
   }

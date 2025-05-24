@@ -1,5 +1,5 @@
 // src/redux/actions/productAction.js
-
+import { getProfile } from './userAction'; // <--- استيراد getProfile
 import axios from 'axios';
 import {
     GET_PRODUCTS_REQUEST, GET_PRODUCTS_SUCCESS, GET_PRODUCTS_FAIL,
@@ -127,17 +127,18 @@ export const getPendingProducts = () => async (dispatch) => {
 };
 
 // --- Approve Product (Admin) ---
-export const approveProduct = (productId) => async (dispatch) => {
+export const approveProduct = (productId) => async (dispatch, getState) => { // <--- أضف getState
     dispatch({ type: APPROVE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
 
     try {
-        // --- [!] CORRECTED PATH --- (Matches router/product.js admin route)
         await axios.put(`/product/approve/${productId}`, {}, config);
-        // --------------------------
         dispatch({ type: APPROVE_PRODUCT_SUCCESS, payload: { productId } });
         toast.success("Product approved successfully!");
+        const { user: currentUser } = getState().userReducer;
+        const { productDetails } = getState().productReducer;
+        dispatch(getProfile());
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to approve product.';
         dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, error: message } });
@@ -286,7 +287,7 @@ export const rejectBid = (productId, bidUserId, reason) => async (dispatch) => {
 
     try {
         const { data } = await axios.put(`/product/${productId}/reject-bid`, { bidUserId, reason }, config);
-        
+
         if (data && data.updatedProduct) {
             dispatch({
                 type: REJECT_BID_SUCCESS,

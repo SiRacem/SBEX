@@ -91,84 +91,144 @@ io.on('connection', (socket) => {
     });
 
     socket.on('joinMediationChat', async ({ mediationRequestId, userId, userRole }) => {
-        const userIdToJoin = socket.userIdForChat || userId;
+        const userIdToJoin = socket.userIdForChat || userId; // استخدم userId من الـ socket إذا كان متاحًا
 
-        console.log(`[Socket Event - joinMediationChat] SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}`);
+        console.log(`[Socket Event - joinMediationChat] Attempting join. SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}, UserRole: ${userRole}`);
 
         if (!userIdToJoin || !mediationRequestId || !mongoose.Types.ObjectId.isValid(userIdToJoin) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+            console.warn(`[joinMediationChat] Invalid IDs. UserID: ${userIdToJoin}, MediationID: ${mediationRequestId}`);
             return socket.emit('mediationChatError', {
                 message: "Missing or invalid user/mediation ID for chat join."
             });
         }
 
-        // تأكيد هوية المستخدم في السوكت
-        socket.userIdForChat = userIdToJoin.toString();
-
-        if (!socket.userFullNameForChat) {
+        // تأكيد أو جلب بيانات المستخدم (الاسم والصورة الرمزية) إذا لم تكن موجودة على الـ socket
+        if (!socket.userFullNameForChat || !socket.userAvatarUrlForChat || socket.userIdForChat !== userIdToJoin.toString()) {
             try {
                 const userDoc = await User.findById(userIdToJoin).select('fullName avatarUrl').lean();
-                socket.userFullNameForChat = userDoc?.fullName || 'User';
-                socket.userAvatarUrlForChat = userDoc?.avatarUrl || null;
+                if (userDoc) {
+                    socket.userIdForChat = userIdToJoin.toString(); // تأكد من تحديثه هنا أيضًا
+                    socket.userFullNameForChat = userDoc.fullName;
+                    socket.userAvatarUrlForChat = userDoc.avatarUrl;
+                    console.log(`[joinMediationChat] Fetched/Updated user details on socket: ${socket.userFullNameForChat}`);
+                } else {
+                    console.warn(`[joinMediationChat] User document not found for ID: ${userIdToJoin} during socket user detail fetch.`);
+                    socket.userFullNameForChat = userRole === 'Admin' ? 'Admin' : 'User (Unknown)';
+                    socket.userAvatarUrlForChat = null;
+                }
             } catch (e) {
-                socket.userFullNameForChat = 'User';
+                console.error(`[joinMediationChat] Error fetching user details for socket:`, e);
+                socket.userFullNameForChat = userRole === 'Admin' ? 'Admin' : 'User (Error)';
                 socket.userAvatarUrlForChat = null;
             }
         }
 
         try {
             const request = await MediationRequest.findById(mediationRequestId)
-                .select('seller buyer mediator status disputeOverseers')
+                .select('seller buyer mediator status disputeOverseers adminJoinMessageSent product') // جلب product أيضًا لاسم المنتج في رسالة النظام
+                .populate('product', 'title') // لجلب عنوان المنتج فقط
                 .lean();
 
             if (!request) {
+                console.warn(`[joinMediationChat] Mediation request ${mediationRequestId} not found.`);
                 return socket.emit('mediationChatError', { message: "Mediation request not found." });
             }
 
             const isSeller = request.seller?.toString() === userIdToJoin;
             const isBuyer = request.buyer?.toString() === userIdToJoin;
             const isMediator = request.mediator?.toString() === userIdToJoin;
-            const isAdmin = userRole === 'Admin'; // userRole يأتي من العميل
-            const isOverseer = Array.isArray(request.disputeOverseers) &&
+            const isAdmin = userRole === 'Admin';
+            const isDesignatedOverseer = Array.isArray(request.disputeOverseers) &&
                 request.disputeOverseers.some(id => id.toString() === userIdToJoin);
 
-            if (!(isSeller || isBuyer || isMediator || isOverseer || (isAdmin && request.status === 'Disputed'))) {
+            let canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer;
+            if (isAdmin && request.status === 'Disputed') {
+                canAccess = true;
+            }
+
+            if (!canAccess) {
+                console.warn(`[joinMediationChat] User ${userIdToJoin} (Role: ${userRole}) is UNAUTHORIZED for mediation ${mediationRequestId}. Status: ${request.status}`);
                 return socket.emit('mediationChatError', { message: "Unauthorized to join this mediation chat." });
             }
 
-            // ✅ محاولة آمنة لإضافة الـ Admin إلى overseers في حالة Disputed
-            if (isAdmin && request.status === 'Disputed' && !isOverseer) {
+            // إضافة الأدمن إلى disputeOverseers إذا لم يكن موجودًا وكان النزاع قائمًا (محاولة آمنة)
+            if (isAdmin && request.status === 'Disputed' && !isDesignatedOverseer) {
                 try {
-                    await MediationRequest.updateOne(
+                    // لا ننتظر هذه العملية حتى لا تعيق الانضمام
+                    MediationRequest.updateOne(
                         { _id: mediationRequestId },
-                        { $addToSet: { disputeOverseers: userIdToJoin } },
-                        { maxTimeMS: 500 }
-                    );
-                    console.log(`Admin ${userIdToJoin} added to disputeOverseers (non-blocking).`);
-                } catch (conflictErr) {
-                    console.warn(`[joinMediationChat] ⚠️ Write conflict ignored: ${conflictErr.message}`);
+                        { $addToSet: { disputeOverseers: userIdToJoin } }
+                    ).exec(); // exec() يجعلها تعمل في الخلفية
+                    console.log(`[joinMediationChat] Admin ${userIdToJoin} added to disputeOverseers for ${mediationRequestId} (async).`);
+                } catch (updateError) {
+                    // هذا الخطأ لا يجب أن يمنع الانضمام
+                    console.warn(`[joinMediationChat] Non-critical error adding admin to overseers: ${updateError.message}`);
                 }
             }
 
             const allowedStatusesToJoin = ['InProgress', 'PartiesConfirmed', 'MediationOfferAccepted', 'EscrowFunded', 'Disputed'];
             if (!allowedStatusesToJoin.includes(request.status)) {
+                console.warn(`[joinMediationChat] Chat unavailable for mediation ${mediationRequestId} due to status: ${request.status}`);
                 return socket.emit('mediationChatError', {
                     message: `Chat unavailable for this mediation status (${request.status}).`
                 });
             }
 
-            // ✅ انضمام الغرفة
+            // الانضمام للغرفة
             socket.join(mediationRequestId.toString());
             socket.emit('joinedMediationChatSuccess', {
                 mediationRequestId,
-                message: `Successfully joined mediation chat.`
+                message: `Successfully joined mediation chat: ${request.product?.title || mediationRequestId}.`
             });
+            console.log(`[joinMediationChat] Socket ${socket.id} (User: ${userIdToJoin}, Role: ${userRole}) successfully joined room ${mediationRequestId}`);
 
-            console.log(`[joinMediationChat] Socket ${socket.id} joined room ${mediationRequestId}`);
+            // إرسال رسالة نظام عند انضمام الأدمن (مرة واحدة فقط لكل نزاع)
+            if (isAdmin && request.status === 'Disputed' && !request.adminJoinMessageSent) {
+                const adminName = socket.userFullNameForChat || 'Admin'; // استخدم الاسم من الـ socket
+                const productTitle = request.product?.title || 'this dispute';
+                const systemMessageContent = `🛡️ **${adminName} has joined the chat to review ${productTitle}.** Please provide all necessary information.`;
+
+                const systemMessageForBroadcast = {
+                    _id: new mongoose.Types.ObjectId(), // ID فريد للرسالة
+                    sender: null, // أو ID مستخدم "النظام" إذا كان لديك واحد
+                    message: systemMessageContent,
+                    type: 'system',
+                    timestamp: new Date(),
+                    readBy: []
+                };
+
+                // إرسال الرسالة لجميع من في الغرفة
+                io.to(mediationRequestId.toString()).emit('newMediationMessage', systemMessageForBroadcast);
+
+                // تحديث قاعدة البيانات لتعليم أن الرسالة قد أُرسلت وحفظها
+                try {
+                    await MediationRequest.findByIdAndUpdate(mediationRequestId, {
+                        $set: { adminJoinMessageSent: true },
+                        $push: {
+                            chatMessages: {
+                                sender: null, // تأكد أن السكيما تسمح بأن يكون sender فارغًا لرسائل النظام
+                                message: systemMessageContent,
+                                type: 'system',
+                                timestamp: systemMessageForBroadcast.timestamp,
+                                readBy: []
+                                // _id: systemMessageForBroadcast._id // يمكنك حفظ الـ ID إذا أردت
+                            }
+                        }
+                    }, { new: true }); // new: true لضمان أن التحديث قد تم (اختياري هنا)
+                    console.log(`[joinMediationChat] Admin join system message sent and flag 'adminJoinMessageSent' set to true for ${mediationRequestId}.`);
+                } catch (dbError) {
+                    console.error(`[joinMediationChat] CRITICAL: Error setting adminJoinMessageSent flag or saving system message for ${mediationRequestId}:`, dbError);
+                    // في حالة فشل هذا التحديث، قد يتم إرسال الرسالة مرة أخرى في محاولة الانضمام التالية.
+                    // هذا قد يتطلب معالجة أكثر تعقيدًا إذا كان الفشل متكررًا.
+                }
+            } else if (isAdmin && request.status === 'Disputed' && request.adminJoinMessageSent) {
+                console.log(`[joinMediationChat] Admin join system message was already sent for ${mediationRequestId}. Skipping.`);
+            }
 
         } catch (error) {
-            console.error("[joinMediationChat] Error:", error.message);
+            console.error(`[joinMediationChat] General error for mediation ${mediationRequestId}:`, error.message, error.stack);
             socket.emit('mediationChatError', {
-                message: "An unexpected error occurred while joining chat."
+                message: "An unexpected error occurred while trying to join the chat."
             });
         }
     });

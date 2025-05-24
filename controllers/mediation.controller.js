@@ -1049,15 +1049,15 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
         const updatedMediationRequest = await mediationRequest.save({ session });
 
         // --- [!!!] منح نقاط السمعة للأطراف المشاركة [!!!] ---
-        const participantsToReward = [];
-        if (mediationRequest.seller?._id) participantsToReward.push(mediationRequest.seller._id);
-        if (mediationRequest.buyer?._id) participantsToReward.push(mediationRequest.buyer._id); // المشتري الذي أكد
-        if (mediationRequest.mediator?._id) participantsToReward.push(mediationRequest.mediator._id);
+        // const participantsToReward = [];
+        // if (mediationRequest.seller?._id) participantsToReward.push(mediationRequest.seller._id);
+        // if (mediationRequest.buyer?._id) participantsToReward.push(mediationRequest.buyer._id); // المشتري الذي أكد
+        // if (mediationRequest.mediator?._id) participantsToReward.push(mediationRequest.mediator._id);
 
-        const uniqueParticipants = [...new Set(participantsToReward.map(id => id.toString()))];
-        let reputationUpdatePromises = [];
+        // const uniqueParticipants = [...new Set(participantsToReward.map(id => id.toString()))];
+        // let reputationUpdatePromises = [];
 
-        for (const participantId of uniqueParticipants) {
+        /* for (const participantId of uniqueParticipants) {
             if (mongoose.Types.ObjectId.isValid(participantId)) {
                 // زيادة reputationPoints بمقدار 1
                 // $inc يزيد القيمة، إذا لم يكن الحقل موجودًا، سيقوم بإنشائه وتعيين القيمة له
@@ -1084,7 +1084,7 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
                 // await session.abortTransaction();
                 // throw new Error("Failed to update reputation points for all participants.");
             }
-        }
+        } */
         // --- نهاية منح نقاط السمعة ---
 
         // إشعارات
@@ -1673,6 +1673,45 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         });
         const updatedMediationRequest = await mediationRequest.save({ session });
 
+        // --- [!!!] منح نقاط السمعة للأطراف المشاركة [!!!] ---
+        console.log("   [Reputation] Awarding reputation points for COMPLETED mediation.");
+        const participantsToReward = [];
+        if (mediationRequest.seller?._id) participantsToReward.push(mediationRequest.seller._id);
+        if (mediationRequest.buyer?._id) participantsToReward.push(mediationRequest.buyer._id); // المشتري الذي أكد
+        if (mediationRequest.mediator?._id) participantsToReward.push(mediationRequest.mediator._id);
+
+        const uniqueParticipantsForReputation = [...new Set(participantsToReward.map(id => id.toString()))];
+        let reputationUpdatePromises = [];
+
+        for (const participantId of uniqueParticipantsForReputation) {
+            if (mongoose.Types.ObjectId.isValid(participantId)) {
+                // زيادة reputationPoints بمقدار 1
+                // وزيادة successfulMediationsCount للوسيط فقط عند الاكتمال
+                const updateQuery = { $inc: { reputationPoints: 1 } };
+                if (participantId === mediationRequest.mediator?._id.toString()) {
+                    updateQuery.$inc.successfulMediationsCount = 1;
+                }
+
+                reputationUpdatePromises.push(
+                    User.findByIdAndUpdate(participantId, updateQuery, { session })
+                );
+                console.log(`   [Reputation] Queued +1 reputation point for user ${participantId}. Mediator success count updated if applicable.`);
+            }
+        }
+
+        if (reputationUpdatePromises.length > 0) {
+            try {
+                await Promise.all(reputationUpdatePromises);
+                console.log(`   [Reputation] Successfully updated reputation points for ${reputationUpdatePromises.length} participants for COMPLETED mediation.`);
+            } catch (reputationError) {
+                console.error("   [Reputation] Error updating reputation points for COMPLETED mediation (within transaction):", reputationError);
+                // قرر إذا كان هذا يجب أن يلغي المعاملة
+                // await session.abortTransaction();
+                // throw new Error("Failed to update reputation points for all participants.");
+            }
+        }
+        // --- نهاية منح نقاط السمعة ---
+
         const productTitle = mediationRequest.product?.title || 'the transaction';
         const buyerFullName = req.user.fullName || 'The Buyer';
 
@@ -1688,11 +1727,19 @@ exports.buyerConfirmReceiptController = async (req, res) => {
                     // productToUpdate.currentMediationRequest = null; 
                     await productToUpdate.save({ session });
                     console.log(`   Product ${productToUpdate._id} status updated to '${productToUpdate.status}'.`);
+                    // <<<<<<< START: إضافة تحديث productsSoldCount للبائع >>>>>>>>>
+                    if (mediationRequest.seller && mediationRequest.seller._id) {
+                        await User.findByIdAndUpdate(
+                            mediationRequest.seller._id,
+                            { $inc: { productsSoldCount: 1 } },
+                            { session }
+                        );
+                        console.log(`   Incremented productsSoldCount for seller ${mediationRequest.seller._id}.`);
+                    }
+                    // <<<<<<< END: إضافة تحديث productsSoldCount للبائع >>>>>>>>>
                 }
             } catch (productUpdateError) {
-                console.error(`   Error updating product status for ${mediationRequest.product._id}:`, productUpdateError);
-                // هذا الخطأ لا يجب أن يوقف الـ transaction الأساسي إذا كان تحديث المنتج ثانويًا
-                // ولكن من الأفضل التعامل معه بشكل صحيح
+                console.error(`   Error updating product status or seller's sold count for ${mediationRequest.product._id}:`, productUpdateError);
             }
         }
         // --- نهاية تحديث حالة المنتج ---

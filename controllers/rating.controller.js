@@ -25,11 +25,11 @@ exports.submitRating = async (req, res) => {
     }
     // التحقق من طول التعليق (اختياري)
     if (comment && comment.length > 500) {
-         return res.status(400).json({ msg: "Comment cannot exceed 500 characters." });
+        return res.status(400).json({ msg: "Comment cannot exceed 500 characters." });
     }
     // التحقق من productId إذا كان موجوداً
     if (productId && !mongoose.Types.ObjectId.isValid(productId)) {
-         return res.status(400).json({ msg: "Invalid product ID format provided." });
+        return res.status(400).json({ msg: "Invalid product ID format provided." });
     }
 
     // بدء جلسة معاملة لضمان التناسق (تحديث التقييم وتحديث عداد المستخدم)
@@ -46,16 +46,16 @@ exports.submitRating = async (req, res) => {
             const product = await Product.findOne({ _id: productId, user: ratedUserId, buyer: raterId, sold: true }).session(session);
             if (!product) {
                 // إذا لم نجد المنتج المحدد بهذه الشروط، نمنع التقييم
-                 throw new Error("Rating failed: You can only rate sellers for products you have purchased from them and marked as received/sold.");
+                throw new Error("Rating failed: You can only rate sellers for products you have purchased from them and marked as received/sold.");
             }
             console.log(`Verification successful: Rater ${raterId} purchased product ${productId} from seller ${ratedUserId}`);
         } else {
             // إذا لم يتم توفير productId، يمكنك تطبيق منطق تحقق أعم (مثل البحث في الطلبات)
             // أو منع التقييم إذا كان productId مطلوبًا دائمًا.
-             console.warn("Rating submitted without specific product ID. Verification might be incomplete.");
-             // throw new Error("Product ID is required to submit a rating."); // يمكنك تفعيل هذا إذا أردت
+            console.warn("Rating submitted without specific product ID. Verification might be incomplete.");
+            // throw new Error("Product ID is required to submit a rating."); // يمكنك تفعيل هذا إذا أردت
         }
-         // --- نهاية التحقق من الأهلية (مثال) ---
+        // --- نهاية التحقق من الأهلية (مثال) ---
 
 
         // 3. التحقق مما إذا كان المستخدم قد قيّم هذا المنتج/الطلب بالفعل
@@ -66,14 +66,14 @@ exports.submitRating = async (req, res) => {
         }).session(session);
 
         if (existingRating) {
-             // يمكنك السماح بتحديث التقييم أو منع التقييم المكرر
-             throw new Error("You have already rated this transaction/seller.");
-             // أو:
-             // existingRating.ratingType = ratingType;
-             // existingRating.comment = comment || existingRating.comment;
-             // await existingRating.save({ session });
-             // ... (تحديث عدادات المستخدم إذا تغير النوع) ...
-             // throw new Error("Rating updated."); // لإيقاف إنشاء سجل جديد
+            // يمكنك السماح بتحديث التقييم أو منع التقييم المكرر
+            throw new Error("You have already rated this transaction/seller.");
+            // أو:
+            // existingRating.ratingType = ratingType;
+            // existingRating.comment = comment || existingRating.comment;
+            // await existingRating.save({ session });
+            // ... (تحديث عدادات المستخدم إذا تغير النوع) ...
+            // throw new Error("Rating updated."); // لإيقاف إنشاء سجل جديد
         }
 
 

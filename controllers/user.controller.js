@@ -120,27 +120,23 @@ exports.Login = async (req, res) => {
 }
 
 // --- Auth (Get Profile) ---
-// server/controllers/user.controller.js
-
 exports.Auth = async (req, res) => {
     console.log(`--- Controller: Auth (Get Profile) for user ID: ${req.user?._id} ---`);
-    if (!req.user || !req.user._id) { // تحقق من وجود req.user و _id
+    if (!req.user || !req.user._id) {
         console.warn("Auth Controller: req.user or req.user._id is missing.");
         return res.status(401).json({ msg: "Not authorized (user data missing)" });
     }
 
     try {
-        // req.user يأتي من middleware verifyAuth (يفترض أنه جلب المستخدم من DB)
-        // إذا لم يكن كذلك، أو إذا أردت أحدث البيانات، يمكنك إعادة جلبه:
         const userFromDb = await User.findById(req.user._id).select('-password').lean();
         if (!userFromDb) {
             return res.status(404).json({ msg: "User not found in DB for profile." });
         }
 
         // 1. حساب المنتجات النشطة (المعتمدة وغير المباعة)
-        const approvedProductCount = await Product.countDocuments({
+        const activeListingsCount = await Product.countDocuments({ // تغيير اسم المتغير ليتناسب مع الواجهة
             user: userFromDb._id,
-            status: 'approved' // أو الحالة التي تستخدمها للمنتجات النشطة المعروضة للبيع
+            status: 'approved' // تأكد أن هذه هي الحالة الصحيحة للمنتجات النشطة
         });
 
         // 2. حساب المنتجات المباعة
@@ -149,19 +145,15 @@ exports.Auth = async (req, res) => {
             status: 'sold' // أو 'Completed' إذا كانت هذه هي الحالة النهائية للمنتج بعد البيع
         });
 
-        // 3. تجميع البيانات النهائية (أضف هذه الإحصائيات إلى الكائن)
+        // 3. تجميع البيانات النهائية
         const userProfileData = {
-            ...userFromDb, // جميع بيانات المستخدم الأخرى
-            approvedProducts: approvedProductCount,
-            productsSoldCount: soldProductCount,
-            // تأكد من أن جميع الحقول الأخرى التي يعتمد عليها Profile.jsx موجودة هنا
-            // مثل reputationPoints, level, positiveRatings, negativeRatings, إلخ.
+            ...userFromDb,
+            activeListingsCount: activeListingsCount, // <--- اسم المتغير الجديد
+            // productsSoldCount سيأتي من userFromDb.productsSoldCount
         };
-        
-        // حذف كلمة المرور إذا كانت موجودة بأي شكل (lean() يجب أن يكون قد أزالها إذا لم تكن في select)
-        delete userProfileData.password;
 
-        res.status(200).json(userProfileData);
+        delete userProfileData.password;
+        res.status(200).json(userProfileData); // <--- إرسال userProfileData مباشرة
 
     } catch (error) {
         console.error(`Error fetching full profile for ${req.user._id}:`, error);
@@ -352,7 +344,7 @@ exports.updateUsers = async (req, res) => {
         } else {
             console.log("No balance changes detected. Skipping balance notifications and socket update.");
         }
-        
+
         res.status(200).json(updatedUser);
 
     } catch (error) {
@@ -754,7 +746,7 @@ exports.updateUserProfilePicture = async (req, res) => {
             // إذا كان avatarUrl يخزن المسار الكامل مع اسم المضيف، ستحتاج إلى تعديل هذا.
             // إذا كان يخزن فقط المسار النسبي مثل 'uploads/avatars/filename.jpg'
             const oldAvatarPath = path.join(__dirname, '../..', user.avatarUrl); // ../.. للعودة من controllers إلى جذر المشروع
-            
+
             // تحقق مما إذا كان الملف القديم موجودًا قبل محاولة حذفه
             if (fs.existsSync(oldAvatarPath)) {
                 fs.unlink(oldAvatarPath, (err) => {
@@ -782,8 +774,8 @@ exports.updateUserProfilePicture = async (req, res) => {
         delete userToReturn.password; // تأكد من عدم إرجاع كلمة المرور
 
         console.log(`Avatar updated successfully for user ${userId}. New URL: ${user.avatarUrl}`);
-        res.status(200).json({ 
-            msg: "Profile picture updated successfully!", 
+        res.status(200).json({
+            msg: "Profile picture updated successfully!",
             user: userToReturn // إرجاع المستخدم المحدث بالكامل
             // أو يمكنك إرجاع avatarUrl فقط: avatarUrl: user.avatarUrl 
         });

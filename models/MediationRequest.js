@@ -47,12 +47,12 @@ const MediationRequestSchema = new Schema({
     },
     chatMessages: [
         {
-            sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+            sender: { type: Schema.Types.ObjectId, ref: 'User' /* , required: true */ },
             message: {
                 type: String,
                 trim: true,
-                required: function () { return this.type === 'text' && !this.imageUrl; },
-                default: null
+                required: function() { return this.type !== 'system' && this.type !== 'image' && this.type !== 'file'; },
+                /* default: null */
             },
             timestamp: { type: Date, default: Date.now, index: true },
             type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
@@ -92,7 +92,8 @@ const MediationRequestSchema = new Schema({
     calculatedSellerFeeShare: { type: Number, default: 0 },
     chatId: { type: String },
     resolutionDetails: { type: String },
-    adminNotes: { type: String }
+    adminNotes: { type: String },
+    adminJoinMessageSent: { type: Boolean, default: false },
 }, { timestamps: true });
 
 MediationRequestSchema.index({ status: 1, mediator: 1 });

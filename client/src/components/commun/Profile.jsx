@@ -133,7 +133,7 @@ const Profile = () => {
         : 0,
     [pointsProgress, nextLevelPoints]
   );
-  const approvedProductsCount = user?.approvedProducts ?? 0;
+  const activeListingsCount = user?.activeListingsCount ?? 0; // <--- استخدام القيمة الجديدة
   const soldProductsCount = user?.productsSoldCount ?? 0;
 
   useEffect(() => {
@@ -213,20 +213,44 @@ const Profile = () => {
     return "https://bootdey.com/img/Content/avatar/avatar7.png";
   }, [user?.avatarUrl]);
 
-  if (loading && !user)
+  if (loading) {
+    // إذا كانت عملية التحميل جارية، اعرض Spinner
     return (
       <Container className="d-flex justify-content-center align-items-center vh-100">
         <Spinner animation="border" variant="primary" />
+        <p className="ms-2">Loading profile...</p>
       </Container>
     );
-  if (!isAuth || !user)
+  }
+
+  if (!isAuth || !user) {
+    // إذا لم يكن مسجل دخوله أو لا يوجد مستخدم بعد التحميل
+    // هذا الشرط يجب أن يتحقق بعد انتهاء التحميل (loading is false)
+    // إذا كان isAuth هو true ولكن user ما زال null بعد loading=false، فهذا يعني فشل جلب البروفايل
     return (
       <Container className="py-5">
         <Alert variant="warning" className="text-center">
-          Please <Link to="/login">login</Link> to view your profile.
+          {isAuth && !user
+            ? "Failed to load profile data. Please try again or re-login."
+            : "Please login to view your profile."}
         </Alert>
+        {isAuth && !user && (
+          <Button
+            onClick={() => dispatch(getProfile())}
+            variant="primary"
+            className="d-block mx-auto mt-2"
+          >
+            Retry
+          </Button>
+        )}
+        {!isAuth && (
+          <Link to="/login" className="btn btn-primary d-block mx-auto mt-2">
+            Login
+          </Link>
+        )}
       </Container>
     );
+  }
 
   const renderLevelSection = () => {
     const nextLevelReward =
@@ -477,9 +501,7 @@ const Profile = () => {
                   <div className="statistic-entry">
                     <FeatherTag size={20} className="me-2 text-info" />
                     <div>
-                      <span className="stat-value">
-                        {approvedProductsCount}
-                      </span>
+                      <span className="stat-value">{activeListingsCount}</span>
                       <span className="stat-label">Active Listings</span>
                     </div>
                   </div>

@@ -93,17 +93,22 @@ function App() {
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
   const { isAuth, authChecked, user, loading } = useSelector(state => state.userReducer);
-  const token = localStorage.getItem('token');
   const socketRef = useRef(null); // استخدم useRef لتخزين مرجع الـ socket
 
+  // App.js
   useEffect(() => {
-    if (token && !authChecked && !loading) {
-      console.log("App Effect (Mount/Auth Check): Calling getProfile...");
+    const localToken = localStorage.getItem('token');
+    if (localToken && !user && !loading && !authChecked) {
+      console.log('[App.js useEffect] Calling getProfile - Conditions met.'); // <-- أضف log
       dispatch(getProfile());
-    } else if (!token && !authChecked) {
+    } else if (!localToken && !authChecked) {
+      console.log('[App.js useEffect] No token, dispatching AUTH_CHECK_COMPLETE.'); // <-- أضف log
       dispatch({ type: 'AUTH_CHECK_COMPLETE' });
     }
-  }, [dispatch, token, authChecked, loading]);
+    // أضف logs للشروط لمعرفة لماذا لا يتم استدعاء getProfile أو لماذا يتكرر
+    console.log('[App.js useEffect] Check - localToken:', !!localToken, 'user:', !!user, 'loading:', loading, 'authChecked:', authChecked);
+
+  }, [dispatch, user, loading, authChecked]);
 
   useEffect(() => {
     if (isAuth && user?._id) {
@@ -115,21 +120,21 @@ function App() {
           // query: { token: localStorage.getItem('token') } // يمكنك تفعيل هذا إذا كان الـ backend يتوقعه
         });
 
-        socketRef.current.on('connect', () => {
-          console.log('Socket connected:', socketRef.current.id);
-          socketRef.current.emit('addUser', user._id); // استخدم 'addUser' كما في server.js
+        socketRef.current.on("connect", () => {
+          console.log("Socket connected:", socketRef.current.id);
+          socketRef.current.emit("addUser", user._id);
         });
 
-      // --- [!!!] أضف أو ألغِ تعليق هذا الجزء [!!!] ---
-      socketRef.current.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
-        console.log('[App Socket] Received "onlineUsersListUpdated":', onlineUserIdsFromServer);
-        if (Array.isArray(onlineUserIdsFromServer)) {
-          dispatch(setOnlineUsers(onlineUserIdsFromServer));
-        } else {
-          console.warn('[App Socket] "onlineUsersListUpdated" did not receive an array:', onlineUserIdsFromServer);
-        }
-      });
-      // --- نهاية الجزء المضاف/المعدل ---
+        // --- [!!!] أضف أو ألغِ تعليق هذا الجزء [!!!] ---
+        socketRef.current.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
+          console.log('[App Socket] Received "onlineUsersListUpdated":', onlineUserIdsFromServer);
+          if (Array.isArray(onlineUserIdsFromServer)) {
+            dispatch(setOnlineUsers(onlineUserIdsFromServer));
+          } else {
+            console.warn('[App Socket] "onlineUsersListUpdated" did not receive an array:', onlineUserIdsFromServer);
+          }
+        });
+        // --- نهاية الجزء المضاف/المعدل ---
 
         socketRef.current.on('balance_updated', (newBalances) => {
           console.log('[App Socket] Received "balance_updated":', newBalances);
@@ -173,7 +178,7 @@ function App() {
         });
         // --- [!!!] نهاية المستمع الجديد [!!!] ---
 
-                socketRef.current.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
+        socketRef.current.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
         socketRef.current.on('connect_error', (err) => console.error('Socket connection error:', err.message));
       }
     } else {
@@ -195,7 +200,9 @@ function App() {
     };
   }, [isAuth, user?._id, dispatch]);
 
-  if (!authChecked && token) {
+  const currentToken = localStorage.getItem('token'); // اقرأ التوكن مرة أخرى هنا
+  if (!authChecked && currentToken) { // استخدم 'currentToken'
+    // <<<< END: تعديل هنا >>>>
     return (
       <div className="vh-100 d-flex justify-content-center align-items-center bg-light">
         <Spinner animation="border" variant="primary" role="status"><span className="visually-hidden">Loading...</span></Spinner>
@@ -207,74 +214,74 @@ function App() {
   const handleSearchChange = (newSearchTerm) => setSearch(newSearchTerm);
 
   return (
-<SocketContext.Provider value={socketRef.current}>
-        <div className={`app-container ${isAuth ? 'layout-authenticated' : 'layout-public'}`}>
-          <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
-          {isAuth && <Sidebar onSearchChange={(term) => setSearch(term)} />}
-          <main className={`main-content-area flex-grow-1 ${isAuth ? 'content-authenticated' : 'content-public'}`}>
-            <BlockedWarning isAuth={isAuth} user={user} />
-            <Routes>
-          <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/dashboard" replace />} />
-          <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/dashboard" replace />} />
-          <Route path="/" element={<OfflineProd />} />
+    <SocketContext.Provider value={socketRef.current}>
+      <div className={`app-container ${isAuth ? 'layout-authenticated' : 'layout-public'}`}>
+        <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+        {isAuth && <Sidebar onSearchChange={(term) => setSearch(term)} />}
+        <main className={`main-content-area flex-grow-1 ${isAuth ? 'content-authenticated' : 'content-public'}`}>
+          <BlockedWarning isAuth={isAuth} user={user} />
+          <Routes>
+            <Route path="/login" element={!isAuth ? <Login /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/register" element={!isAuth ? <Register /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<OfflineProd />} />
 
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-          <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} /> {/* صفحة البائع لإضافة منتجاته */}
-          <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/dashboard/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
-          <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
-          <Route path="/my-mediation-requests" element={<ProtectedRoute><MyMediationRequestsPage /></ProtectedRoute>} /> {/* للمشتري */}
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+            <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} /> {/* صفحة البائع لإضافة منتجاته */}
+            <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/dashboard/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
+            <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/my-mediation-requests" element={<ProtectedRoute><MyMediationRequestsPage /></ProtectedRoute>} /> {/* للمشتري */}
 
-          <Route
-            path="/dashboard/mediations"
-            element={
-              <ProtectedRoute>
-                <MediationsListPage />
+            <Route
+              path="/dashboard/mediations"
+              element={
+                <ProtectedRoute>
+                  <MediationsListPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Vendor Specific Routes */}
+            <Route path="/dashboard/comptes_bids" element={<ProtectedRoute requiredRole="Vendor"><CommandsListVendor search={search} /></ProtectedRoute>} />
+
+            {/* Admin Specific Routes */}
+            <Route path="/dashboard/admin/products" element={<ProtectedRoute requiredRole="Admin"><ProductListAdmin search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/users" element={<ProtectedRoute requiredRole="Admin"><UserListAd search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/deposits" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="deposits" search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/withdrawals" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="withdrawals" search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/mediator-review" element={<ProtectedRoute requiredRole="Admin"><ReviewMediatorApplications search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/payment-methods" element={<ProtectedRoute requiredRole="Admin"><AdminPaymentMethods search={search} /></ProtectedRoute>} />
+            <Route
+              path="/dashboard/admin/disputes"
+              element={
+                <ProtectedRoute requiredRole="Admin">
+                  <AdminDisputesPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Mediator Specific Routes */}
+            <Route path="/dashboard/mediator/assignments" element={
+              <ProtectedRoute isMediatorRoute={true}> {/* Check if user is qualified mediator */}
+                <MediatorDashboardPage />
               </ProtectedRoute>
-            }
-          />
+            } />
+            {/* --- NEW ROUTE FOR MEDIATION CHAT --- */}
+            <Route
+              path="/dashboard/mediation-chat/:mediationRequestId"
+              element={<ProtectedRoute><MediationChatPage /></ProtectedRoute>}
+            // يمكن إضافة isMediatorRoute={true} هنا أيضاً إذا أردت أن يصل إليها الوسطاء فقط
+            // أو يمكنك جعلها متاحة للبائع والمشتري والوسيط (التحقق من الصلاحية داخل المكون)
+            />
+            {/* ------------------------------------ */}
 
-          {/* Vendor Specific Routes */}
-          <Route path="/dashboard/comptes_bids" element={<ProtectedRoute requiredRole="Vendor"><CommandsListVendor search={search} /></ProtectedRoute>} />
-
-          {/* Admin Specific Routes */}
-          <Route path="/dashboard/admin/products" element={<ProtectedRoute requiredRole="Admin"><ProductListAdmin search={search} /></ProtectedRoute>} />
-          <Route path="/dashboard/admin/users" element={<ProtectedRoute requiredRole="Admin"><UserListAd search={search} /></ProtectedRoute>} />
-          <Route path="/dashboard/admin/deposits" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="deposits" search={search} /></ProtectedRoute>} />
-          <Route path="/dashboard/admin/withdrawals" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="withdrawals" search={search} /></ProtectedRoute>} />
-          <Route path="/dashboard/admin/mediator-review" element={<ProtectedRoute requiredRole="Admin"><ReviewMediatorApplications search={search} /></ProtectedRoute>} />
-          <Route path="/dashboard/admin/payment-methods" element={<ProtectedRoute requiredRole="Admin"><AdminPaymentMethods search={search} /></ProtectedRoute>} />
-          <Route 
-            path="/dashboard/admin/disputes" 
-            element={
-              <ProtectedRoute requiredRole="Admin">
-                <AdminDisputesPage />
-              </ProtectedRoute>
-            } 
-          />
-
-          {/* Mediator Specific Routes */}
-          <Route path="/dashboard/mediator/assignments" element={
-            <ProtectedRoute isMediatorRoute={true}> {/* Check if user is qualified mediator */}
-              <MediatorDashboardPage />
-            </ProtectedRoute>
-          } />
-          {/* --- NEW ROUTE FOR MEDIATION CHAT --- */}
-          <Route
-            path="/dashboard/mediation-chat/:mediationRequestId"
-            element={<ProtectedRoute><MediationChatPage /></ProtectedRoute>}
-          // يمكن إضافة isMediatorRoute={true} هنا أيضاً إذا أردت أن يصل إليها الوسطاء فقط
-          // أو يمكنك جعلها متاحة للبائع والمشتري والوسيط (التحقق من الصلاحية داخل المكون)
-          />
-          {/* ------------------------------------ */}
-
-          <Route path="/profile/:userId" element={<UserProfilePage />} /> {/* Public profile */}
-          <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-        </div>
+            <Route path="/profile/:userId" element={<UserProfilePage />} /> {/* Public profile */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+      </div>
     </SocketContext.Provider>
   );
 }

@@ -60,6 +60,10 @@ export const loginUser = (loggedUser) => async (dispatch) => {
             payload: data
         });
 
+        if (data.token && data.user && !data.user.blocked) { // تأكد من وجود توكن والمستخدم غير محظور
+            dispatch(getProfile()); // استدعاء getProfile لجلب البيانات الكاملة
+        }
+
         // --- [!] تعديل منطق الـ Toast ---
         if (data.user.blocked) {
             // عرض رسالة خطأ/تحذير للحساب المحظور
