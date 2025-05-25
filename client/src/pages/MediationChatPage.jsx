@@ -33,18 +33,23 @@ import {
   FaSmile,
   FaPaperPlane,
   FaCheck,
-  FaCrown, // أيقونة للتاج (اختياري)
-  FaShieldAlt, // أيقونة للدرع (اختياري)
+  FaCrown,
+  FaShieldAlt,
+  FaStar, // أيقونة للتقييم
+  FaArrowLeft, // أيقونة للرجوع
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
   buyerConfirmReceipt,
   openDisputeAction,
-  // ستحتاج لإنشاء هذا الـ action لاحقًا
-  // adminResolveDisputeAction,
+  getMediationDetailsByIdAction,
+  updateMediationDetailsFromSocket,
+  clearActiveMediationDetails,
 } from "../redux/actions/mediationAction";
 import { SocketContext } from "../App";
 import "./MediationChatPage.css";
+import RatingForm from "../components/ratings/RatingForm";
+import { getRatingsForMediationAction } from "../redux/actions/ratingAction";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -175,15 +180,21 @@ const MediationChatPage = () => {
   const currentUserRole = useSelector(
     (state) => state.userReducer.user?.userRole
   );
+  const mediationDetails = useSelector(
+    (state) => state.mediationReducer.activeMediationDetails
+  );
+  const loadingDetails = useSelector(
+    (state) => state.mediationReducer.loadingActiveMediationDetails
+  );
+  const errorDetails = useSelector(
+    (state) => state.mediationReducer.errorActiveMediationDetails
+  );
   const onlineUserIds = useSelector(
     (state) => state.userReducer?.onlineUserIds || []
   );
 
-  console.log(
-    "INITIAL RENDER - currentUserId:",
-    currentUserId,
-    "currentUserRole:",
-    currentUserRole
+  const { mediationRatings, loadingMediationRatings } = useSelector(
+    (state) => state.ratingReducer
   );
 
   const [messages, setMessages] = useState([]);
@@ -194,8 +205,6 @@ const MediationChatPage = () => {
   const chatContainerRef = useRef(null);
   const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
   const joinTimeoutRef = useRef(null);
-  const [mediationDetails, setMediationDetails] = useState(null);
-  const [loadingDetails, setLoadingDetails] = useState(true);
   const [showDetailsOffcanvas, setShowDetailsOffcanvas] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef(null);
@@ -207,10 +216,83 @@ const MediationChatPage = () => {
   const typingTimeoutRef = useRef(null);
   const [isConfirmingReceipt, setIsConfirmingReceipt] = useState(false);
   const [isOpeningDispute, setIsOpeningDispute] = useState(false);
-  const [resolutionNotes, setResolutionNotes] = useState(""); // للأدمن
+  const [resolutionNotes, setResolutionNotes] = useState("");
+
+  const [sidebarView, setSidebarView] = useState("details"); // 'details' or 'ratings'
 
   const handleShowDetailsOffcanvas = () => setShowDetailsOffcanvas(true);
   const handleCloseDetailsOffcanvas = () => setShowDetailsOffcanvas(false);
+
+  useEffect(() => {
+    if (
+      mediationDetails?._id &&
+      mediationDetails.status === "Completed" &&
+      sidebarView === "ratings"
+    ) {
+      // Fetch ratings if viewing ratings panel and transaction is complete
+      // This is also called when switching to ratings panel
+      dispatch(getRatingsForMediationAction(mediationDetails._id));
+    }
+  }, [dispatch, mediationDetails?._id, mediationDetails?.status, sidebarView]);
+
+  const partiesNotYetRatedByCurrentUser = useMemo(() => {
+    if (
+      !mediationDetails ||
+      !currentUserId ||
+      mediationDetails.status !== "Completed"
+    )
+      return [];
+
+    const currentMediationRatings =
+      mediationRatings && mediationRatings[mediationRequestId]
+        ? mediationRatings[mediationRequestId]
+        : [];
+
+    const ratedUserIdsByCurrentUser = currentMediationRatings
+      .filter(
+        (rating) =>
+          rating.rater === currentUserId || rating.rater?._id === currentUserId
+      )
+      .map((rating) => rating.ratedUser?._id || rating.ratedUser);
+
+    const uniqueRatedUserIds = [...new Set(ratedUserIdsByCurrentUser)];
+
+    const parties = [];
+    const { seller, buyer, mediator } = mediationDetails;
+
+    if (
+      seller &&
+      seller._id !== currentUserId &&
+      !uniqueRatedUserIds.includes(seller._id)
+    ) {
+      parties.push({
+        id: seller._id,
+        fullName: seller.fullName,
+        role: "Seller",
+      });
+    }
+    if (
+      buyer &&
+      buyer._id !== currentUserId &&
+      !uniqueRatedUserIds.includes(buyer._id)
+    ) {
+      parties.push({ id: buyer._id, fullName: buyer.fullName, role: "Buyer" });
+    }
+    if (
+      mediator &&
+      mediator._id !== currentUserId &&
+      !uniqueRatedUserIds.includes(mediator._id)
+    ) {
+      parties.push({
+        id: mediator._id,
+        fullName: mediator.fullName,
+        role: "Mediator",
+      });
+    }
+    return parties;
+  }, [mediationDetails, currentUserId, mediationRatings, mediationRequestId]);
+
+  const unratedPartiesCount = partiesNotYetRatedByCurrentUser.length;
 
   const scrollToBottom = useCallback((options = { behavior: "smooth" }) => {
     setTimeout(() => messagesEndRef.current?.scrollIntoView(options), 100);
@@ -273,41 +355,22 @@ const MediationChatPage = () => {
     };
   }, [markVisibleMessagesAsReadCallback]);
 
+  // جلب التفاصيل
   useEffect(() => {
-    console.log(
-      "[MediationChatPage] User Info - ID:",
-      currentUserId,
-      "Role:",
-      currentUserRole
-    );
-    if (mediationRequestId && currentUserId) {
-      const fetchMediationDetails = async () => {
-        setLoadingDetails(true);
-        setChatError(null);
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) throw new Error("Authentication required.");
-          const config = { headers: { Authorization: `Bearer ${token}` } };
-          const response = await axios.get(
-            `${BACKEND_URL}/mediation/request-details/${mediationRequestId}`,
-            config
-          );
-          setMediationDetails(response.data.mediationRequest || response.data);
-        } catch (err) {
-          setChatError(
-            err.response?.data?.msg || "Failed to load mediation details."
-          );
-        } finally {
-          setLoadingDetails(false);
-        }
-      };
-      fetchChatHistory();
-      fetchMediationDetails();
+    if (
+      mediationRequestId &&
+      currentUserId &&
+      (!mediationDetails || mediationDetails._id !== mediationRequestId)
+    ) {
+      dispatch(getMediationDetailsByIdAction(mediationRequestId));
     }
-  }, [mediationRequestId, currentUserId, currentUserRole]); // currentUserRole مضاف للـ dependencies
+  }, [dispatch, mediationRequestId, currentUserId, mediationDetails]); // Added mediationDetails to dependency to re-fetch if it changes unexpectedly
 
-  const fetchChatHistory = async () => {
+  // جلب سجل المحادثة
+  const fetchChatHistory = useCallback(async () => {
+    // useCallback here
     setIsLoadingHistory(true);
+    setChatError(null);
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token missing.");
@@ -317,23 +380,31 @@ const MediationChatPage = () => {
         config
       );
       setMessages(response.data || []);
-      if (!chatError && response.data) setChatError(null);
     } catch (err) {
       setChatError(err.response?.data?.msg || "Failed to load chat history.");
     } finally {
       setIsLoadingHistory(false);
     }
-  };
+  }, [mediationRequestId]); // mediationRequestId is a dependency
 
   useEffect(() => {
-    if (
-      !socket ||
-      !currentUserId ||
-      !mediationRequestId ||
-      loadingDetails ||
-      !mediationDetails
-    )
+    if (mediationDetails && mediationDetails._id === mediationRequestId) {
+      fetchChatHistory();
+    }
+  }, [mediationDetails, mediationRequestId, fetchChatHistory]); // Added fetchChatHistory
+
+  // التنظيف
+  useEffect(() => {
+    return () => {
+      dispatch(clearActiveMediationDetails());
+    };
+  }, [dispatch]);
+
+  // Socket Connection and Event Handling
+  useEffect(() => {
+    if (!socket || !currentUserId || !mediationRequestId || !mediationDetails) {
       return;
+    }
 
     const handleConnect = () => {
       if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
@@ -374,19 +445,15 @@ const MediationChatPage = () => {
       });
 
       if (message.sender && message.sender._id) {
-        // تحقق من وجود المرسل ومعرّفه
         setTypingUsers((prevTypingUsers) => {
-          // تحقق مما إذا كان مرسل الرسالة موجودًا حاليًا في قائمة المستخدمين الذين يكتبون
           if (prevTypingUsers.hasOwnProperty(message.sender._id)) {
             const updatedTypingUsers = { ...prevTypingUsers };
             delete updatedTypingUsers[message.sender._id];
             return updatedTypingUsers;
           }
-          // إذا لم يكن المستخدم يكتب بالفعل، أعد الحالة السابقة بدون تغيير
           return prevTypingUsers;
         });
       }
-      // --- END OF FIX ---
     };
 
     const handleMessagesStatusUpdated = ({
@@ -404,23 +471,27 @@ const MediationChatPage = () => {
         );
       }
     };
+
     const handleMediationDetailsUpdated = ({
       mediationRequestId: updatedMedId,
       updatedMediationDetails,
     }) => {
       if (updatedMedId === mediationRequestId) {
-        setMediationDetails(updatedMediationDetails);
+        dispatch(updateMediationDetailsFromSocket(updatedMediationDetails));
       }
     };
+
     const handleChatError = (errorEvent) => {
       setChatError(errorEvent.message || "Chat error occurred.");
       setHasJoinedRoom(false);
     };
+
     const handleDisconnect = (reason) => {
       setChatError("Chat connection lost.");
       setHasJoinedRoom(false);
       setTypingUsers({});
     };
+
     const handleUserTyping = ({ userId, fullName, avatarUrl }) => {
       if (userId !== currentUserId) {
         setTypingUsers((prev) => ({
@@ -429,6 +500,7 @@ const MediationChatPage = () => {
         }));
       }
     };
+
     const handleUserStoppedTyping = ({ userId }) => {
       if (userId !== currentUserId) {
         setTypingUsers((prev) => {
@@ -476,10 +548,10 @@ const MediationChatPage = () => {
     mediationRequestId,
     currentUserId,
     currentUserRole,
-    loadingDetails,
-    mediationDetails?._id,
+    mediationDetails,
     markVisibleMessagesAsReadCallback,
-  ]); // markVisibleMessagesAsReadCallback مضاف
+    dispatch,
+  ]);
 
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
@@ -632,12 +704,11 @@ const MediationChatPage = () => {
   }, [mediationDetails]);
 
   const otherParticipants = useMemo(() => {
-    if (!currentUserId) return [];
+    if (!currentUserId || !participants) return [];
     return participants.filter((p) => p.id !== currentUserId.toString());
   }, [participants, currentUserId]);
 
   const messageReadIndicators = useMemo(() => {
-    // شرط خروج مبكر إذا لم تكن هناك بيانات كافية
     if (
       !currentUserId ||
       !messages ||
@@ -647,56 +718,37 @@ const MediationChatPage = () => {
     ) {
       return {};
     }
-
     const indicators = {};
-
     otherParticipants.forEach((participant) => {
-      // تحقق من أن المشارك صالح ولديه ID
-      if (!participant || !participant.id) {
-        console.warn(
-          "[messageReadIndicators] Skipping an invalid participant in otherParticipants:",
-          participant
-        );
-        return; // انتقل للمشارك التالي إذا كان هذا المشارك غير صالح
-      }
-
+      if (!participant || !participant.id) return;
       let lastReadByThisParticipantMessageId = null;
-
-      // المرور على الرسائل من الأحدث إلى الأقدم
       for (let i = messages.length - 1; i >= 0; i--) {
         const m = messages[i];
-
-        // تحقق من أن الرسالة ومُرسِلها وبيانات القراءة موجودة وصحيحة
         if (
-          m && // الرسالة موجودة
-          m.sender && // مُرسِل الرسالة موجود
-          m.sender._id && // مُرسِل الرسالة لديه _id
-          m.sender._id.toString() === currentUserId.toString() && // الرسالة أُرسلت بواسطة المستخدم الحالي
-          m.readBy && // مصفوفة readBy موجودة
-          Array.isArray(m.readBy) && // هي مصفوفة بالفعل
+          m &&
+          m.sender &&
+          m.sender._id &&
+          m.sender._id.toString() === currentUserId.toString() &&
+          m.readBy &&
+          Array.isArray(m.readBy) &&
           m.readBy.some(
-            (
-              rb // تحقق من كل قارئ
-            ) =>
-              rb && // كائن القارئ (rb) موجود
-              rb.readerId && // القارئ لديه readerId
-              rb.readerId.toString() === participant.id.toString() // هل هذا القارئ هو المشارك الحالي من otherParticipants
+            (rb) =>
+              rb &&
+              rb.readerId &&
+              rb.readerId.toString() === participant.id.toString()
           )
         ) {
           lastReadByThisParticipantMessageId = m._id;
-          break; // وجدنا آخر رسالة قرأها هذا المشارك
+          break;
         }
       }
-
       if (lastReadByThisParticipantMessageId) {
         if (!indicators[lastReadByThisParticipantMessageId]) {
           indicators[lastReadByThisParticipantMessageId] = [];
         }
-
         const messageWithReadEntry = messages.find(
           (msg) => msg && msg._id === lastReadByThisParticipantMessageId
         );
-
         if (
           messageWithReadEntry &&
           messageWithReadEntry.readBy &&
@@ -708,7 +760,6 @@ const MediationChatPage = () => {
               rb.readerId &&
               rb.readerId.toString() === participant.id.toString()
           );
-
           if (readerEntry) {
             indicators[lastReadByThisParticipantMessageId].push({
               readerId: participant.id,
@@ -716,19 +767,10 @@ const MediationChatPage = () => {
               avatarUrl: readerEntry.avatarUrl || participant.avatarUrl,
               readAt: readerEntry.readAt,
             });
-          } else {
-            console.warn(
-              `[messageReadIndicators] Could not find readerEntry for participant ${participant.id} in message ${lastReadByThisParticipantMessageId}`
-            );
           }
-        } else {
-          console.warn(
-            `[messageReadIndicators] Could not find messageWithReadEntry or its readBy array for message ${lastReadByThisParticipantMessageId}`
-          );
         }
       }
     });
-    console.log("[messageReadIndicators] Calculated indicators:", indicators); // يمكنك تفعيل هذا للـ debugging
     return indicators;
   }, [messages, currentUserId, otherParticipants]);
 
@@ -777,9 +819,11 @@ const MediationChatPage = () => {
       try {
         await dispatch(buyerConfirmReceipt(mediationDetails._id));
         toast.success("Receipt confirmed! Funds will be released.");
-        // Re-fetch details can be handled by socket event 'mediation_details_updated'
+        // Potentially reset sidebar view to details if it was on ratings
+        // setSidebarView('details');
       } catch (error) {
         console.error("Error confirming receipt:", error);
+        // Error already handled by toast in action
       } finally {
         setIsConfirmingReceipt(false);
       }
@@ -806,6 +850,7 @@ const MediationChatPage = () => {
         );
       } catch (error) {
         console.error("Error opening dispute:", error);
+        // Error already handled by toast in action
       } finally {
         setIsOpeningDispute(false);
       }
@@ -817,7 +862,6 @@ const MediationChatPage = () => {
     isOpeningDispute,
   ]);
 
-  // --- Admin Action Handlers (Placeholders) ---
   const handleResolveDispute = async (winner) => {
     if (
       !mediationDetails?._id ||
@@ -834,21 +878,19 @@ const MediationChatPage = () => {
     ) {
       return;
     }
+    // Replace with actual dispatch to backend
     console.log(
       `Admin resolving dispute. Winner: ${winner}, Notes: ${resolutionNotes}, Mediation ID: ${mediationDetails._id}`
     );
-    // TODO: Dispatch an action like adminResolveDisputeAction(mediationDetails._id, winner, resolutionNotes)
-    // This action will call the backend API to finalize the dispute.
     toast.info(
       `Dispute resolution process for ${winner} initiated (Backend logic to be implemented).`
     );
-    // Example: dispatch(adminResolveDisputeAction(mediationDetails._id, winner, resolutionNotes));
   };
 
   const handleCancelMediationByAdmin = async () => {
     if (
       !mediationDetails?._id ||
-      mediationDetails.status !== "Disputed" ||
+      mediationDetails.status !== "Disputed" || // Or any other relevant status
       currentUserRole !== "Admin"
     ) {
       toast.warn("Action not allowed or not in correct state.");
@@ -861,183 +903,261 @@ const MediationChatPage = () => {
     ) {
       return;
     }
+    // Replace with actual dispatch to backend
     console.log(
       `Admin cancelling mediation. Mediation ID: ${mediationDetails._id}, Notes: ${resolutionNotes}`
     );
-    // TODO: Dispatch an action like adminCancelMediationAction(mediationDetails._id, resolutionNotes)
     toast.info(
       "Mediation cancellation process initiated (Backend logic to be implemented)."
     );
   };
 
-  const renderSidebarContent = () => (
+  const renderRatingsPanel = () => {
+    const isLoadingSpecificRatings =
+      loadingMediationRatings && loadingMediationRatings[mediationRequestId];
+
+    if (isLoadingSpecificRatings && !mediationRatings[mediationRequestId]) {
+      // Show loader if loading and no data yet
+      return (
+        <div className="text-center p-3">
+          <Spinner animation="border" size="sm" /> Loading ratings...
+        </div>
+      );
+    }
+
+    if (!mediationDetails) {
+      // Should ideally not happen if this panel is shown
+      return (
+        <Alert variant="warning" className="m-3">
+          Mediation details not available.
+        </Alert>
+      );
+    }
+
+    if (mediationDetails.status !== "Completed") {
+      return (
+        <Alert variant="info" className="m-3">
+          Ratings are available once the transaction is completed.
+        </Alert>
+      );
+    }
+
+    return (
+      <>
+        <div
+          className="d-flex justify-content-between align-items-center mb-0 p-3 border-bottom sticky-top bg-light"
+          style={{ zIndex: 1 }}
+        >
+          <h5 className="mb-0">Rate Participants</h5>
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => setSidebarView("details")}
+          >
+            <FaArrowLeft className="me-1" /> Back to Details
+          </Button>
+        </div>
+        <div
+          className="p-3 flex-grow-1" // flex-grow-1 allows this div to take available space
+          style={{ overflowY: "auto", minHeight: "0" }} // overflowY enables scrolling, minHeight:0 for flex item scroll
+        >
+          {/* Scrollable content area for ratings */}
+          {partiesNotYetRatedByCurrentUser.length > 0 ? (
+            partiesNotYetRatedByCurrentUser.map((party) => (
+              <RatingForm
+                key={party.id}
+                mediationRequestId={mediationRequestId}
+                ratedUserId={party.id}
+                ratedUserFullName={party.fullName}
+                onRatingSubmitted={() => {
+                  // Re-fetch ratings for this mediation to update the list
+                  // and potentially see if all are rated to show success message
+                  dispatch(getRatingsForMediationAction(mediationRequestId));
+                }}
+              />
+            ))
+          ) : (
+            <Alert variant="success" className="m-0">
+              You have rated all available participants for this transaction.
+              Thank you!
+            </Alert>
+          )}
+          {isLoadingSpecificRatings && (
+            <div className="text-center mt-2">
+              <Spinner size="sm" />
+            </div>
+          )}
+        </div>
+      </>
+    );
+  };
+
+  const renderTransactionDetailsAndActions = () => (
     <>
-      <h5 className="mb-3">Participants</h5>
-      <ListGroup variant="flush" className="mb-4 participant-list">
-        {participants.map((p) => {
-          const isOnline = onlineUserIds.includes(p.id?.toString());
-          const isAdminParticipant =
-            p.roleLabel === "Admin" ||
-            (p.isOverseer && p.roleLabel?.toLowerCase().includes("admin"));
-          return (
-            <ListGroup.Item
-              key={p.id || p._id}
-              className={`d-flex align-items-center bg-transparent border-0 px-0 py-2 participant-item ${
-                isAdminParticipant ? "admin-participant" : ""
-              }`}
-            >
-              <div className="position-relative me-2">
-                {renderMessageSenderAvatar(p, 30)}
-                {isAdminParticipant && (
-                  <Badge
-                    pill
-                    bg="primary"
-                    className="admin-badge position-absolute bottom-0 end-0"
-                    style={{
-                      transform: "translate(25%, 25%)",
-                      fontSize: "0.6rem",
-                      border: "1.5px solid white",
-                    }}
-                  >
-                    <FaShieldAlt /> {/* أو FaCrown */}
-                  </Badge>
-                )}
-                <span
-                  className={`online-status-indicator-small ${
-                    isOnline ? "online" : "offline"
-                  }`}
-                  title={isOnline ? "Online" : "Offline"}
-                ></span>
-              </div>
-              <div>
-                <div
-                  className={`fw-bold ${
-                    isAdminParticipant ? "text-primary" : ""
+      <div className="flex-grow-1" style={{ overflowY: "auto" }}>
+        {/* Make this part scrollable */}
+        <div className="p-3">
+          <h5 className="mb-3">Participants</h5>
+          <ListGroup variant="flush" className="mb-4 participant-list">
+            {participants.map((p) => {
+              const isOnline = onlineUserIds.includes(p.id?.toString());
+              const isAdminParticipant =
+                p.roleLabel === "Admin" ||
+                (p.isOverseer && p.roleLabel?.toLowerCase().includes("admin"));
+              return (
+                <ListGroup.Item
+                  key={p.id || p._id}
+                  className={`d-flex align-items-center bg-transparent border-0 px-0 py-2 participant-item ${
+                    isAdminParticipant ? "admin-participant" : ""
                   }`}
                 >
-                  {p.fullName}
-                </div>
-                <small className="text-muted">
-                  {isAdminParticipant ? (
-                    <strong>{p.roleLabel}</strong>
-                  ) : (
-                    p.roleLabel
-                  )}
-                </small>
-              </div>
-            </ListGroup.Item>
-          );
-        })}
-      </ListGroup>
-      <h5 className="mb-3">Transaction Details</h5>
-      {mediationDetails && mediationDetails.product ? (
-        <div className="transaction-details-widget mb-4 small">
-          <p className="mb-1">
-            <strong>Product:</strong> {mediationDetails.product.title}
-          </p>
-          <p className="mb-1">
-            <strong>Agreed Price:</strong>{" "}
-            {formatCurrency(
-              mediationDetails.bidAmount,
-              mediationDetails.bidCurrency
-            )}
-          </p>
-          <p className="mb-1">
-            <strong>Escrowed:</strong>{" "}
-            {mediationDetails.escrowedAmount
-              ? formatCurrency(
-                  mediationDetails.escrowedAmount,
-                  mediationDetails.escrowedCurrency
-                )
-              : "Not yet"}
-          </p>
-          <p className="mb-1">
-            <strong>Mediator Fee:</strong>{" "}
-            {formatCurrency(
-              mediationDetails.calculatedMediatorFee,
-              mediationDetails.mediationFeeCurrency
-            )}
-          </p>
-          <p className="mb-1">
-            <strong>Status:</strong>{" "}
-            <Badge
-              bg={
-                mediationDetails.status === "InProgress"
-                  ? "success"
-                  : isDisputed
-                  ? "danger"
-                  : "info"
-              }
-            >
-              {mediationDetails.status}
-            </Badge>
-          </p>
-        </div>
-      ) : (
-        <p>Loading transaction details...</p>
-      )}
+                  <div className="position-relative me-2">
+                    {renderMessageSenderAvatar(p, 30)}
+                    {isAdminParticipant && (
+                      <Badge
+                        pill
+                        bg="primary"
+                        className="admin-badge position-absolute bottom-0 end-0"
+                        style={{
+                          transform: "translate(25%, 25%)",
+                          fontSize: "0.6rem",
+                          border: "1.5px solid white",
+                        }}
+                      >
+                        <FaShieldAlt />
+                      </Badge>
+                    )}
+                    <span
+                      className={`online-status-indicator-small ${
+                        isOnline ? "online" : "offline"
+                      }`}
+                      title={isOnline ? "Online" : "Offline"}
+                    ></span>
+                  </div>
+                  <div>
+                    <div
+                      className={`fw-bold ${
+                        isAdminParticipant ? "text-primary" : ""
+                      }`}
+                    >
+                      {p.fullName}
+                    </div>
+                    <small className="text-muted">
+                      {isAdminParticipant ? (
+                        <strong>{p.roleLabel}</strong>
+                      ) : (
+                        p.roleLabel
+                      )}
+                    </small>
+                  </div>
+                </ListGroup.Item>
+              );
+            })}
+          </ListGroup>
+          <h5 className="mb-3">Transaction Details</h5>
+          {mediationDetails && mediationDetails.product ? (
+            <div className="transaction-details-widget mb-4 small">
+              <p className="mb-1">
+                <strong>Product:</strong> {mediationDetails.product.title}
+              </p>
+              <p className="mb-1">
+                <strong>Agreed Price:</strong>
+                {formatCurrency(
+                  mediationDetails.bidAmount,
+                  mediationDetails.bidCurrency
+                )}
+              </p>
+              <p className="mb-1">
+                <strong>Escrowed:</strong>
+                {mediationDetails.escrowedAmount
+                  ? formatCurrency(
+                      mediationDetails.escrowedAmount,
+                      mediationDetails.escrowedCurrency
+                    )
+                  : "Not yet"}
+              </p>
+              <p className="mb-1">
+                <strong>Mediator Fee:</strong>
+                {formatCurrency(
+                  mediationDetails.calculatedMediatorFee,
+                  mediationDetails.mediationFeeCurrency
+                )}
+              </p>
+              <p className="mb-1">
+                <strong>Status:</strong>
+                <Badge
+                  bg={
+                    mediationDetails.status === "InProgress"
+                      ? "success"
+                      : mediationDetails.status === "Completed"
+                      ? "primary" // Changed to primary for completed
+                      : isDisputed
+                      ? "danger"
+                      : "info" // Default for other statuses
+                  }
+                >
+                  {mediationDetails.status}
+                </Badge>
+              </p>
+            </div>
+          ) : (
+            <p>Loading transaction details...</p>
+          )}
 
-      {/* Admin Dispute Controls */}
-      {currentUserRole === "Admin" && isDisputed && (
-        <div className="admin-dispute-tools mt-4 pt-3 border-top">
-          <h5 className="mb-3 text-danger">Admin Dispute Controls</h5>
-          {/* Placeholder for private chat button
-            <Button variant="outline-info" size="sm" className="w-100 mb-3" onClick={() => toast.info("Private chat feature: To be implemented")}>
-                <FaCommentDots /> Private Chat with Party (TBI)
-            </Button>
-            */}
-          <Form.Group className="mb-3">
-            <Form.Label className="small fw-bold">
-              Resolution Notes (Visible to parties):
-            </Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              placeholder="Explain the decision rationale here..."
-              value={resolutionNotes}
-              onChange={(e) => setResolutionNotes(e.target.value)}
-            />
-          </Form.Group>
-          <p className="text-muted small mb-1">Decision:</p>
-          <div className="d-grid gap-2">
-            <Button
-              variant="success"
-              onClick={() => handleResolveDispute("buyer")}
-              disabled={
-                mediationDetails?.status !== "Disputed" ||
-                !resolutionNotes.trim()
-              }
-            >
-              Rule in Favor of Buyer
-            </Button>
-            <Button
-              variant="warning"
-              onClick={() => handleResolveDispute("seller")}
-              disabled={
-                mediationDetails?.status !== "Disputed" ||
-                !resolutionNotes.trim()
-              }
-            >
-              Rule in Favor of Seller
-            </Button>
-            {/* 
-                <Button variant="secondary" onClick={() => handleResolveDispute('custom')} disabled={mediationDetails?.status !== 'Disputed'  || !resolutionNotes.trim()}>
-                    Custom Resolution / Split (TBI)
+          {currentUserRole === "Admin" && isDisputed && (
+            <div className="admin-dispute-tools mt-4 pt-3 border-top">
+              <h5 className="mb-3 text-danger">Admin Dispute Controls</h5>
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-bold">
+                  Resolution Notes (Visible to parties):
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  placeholder="Explain the decision rationale here..."
+                  value={resolutionNotes}
+                  onChange={(e) => setResolutionNotes(e.target.value)}
+                />
+              </Form.Group>
+              <p className="text-muted small mb-1">Decision:</p>
+              <div className="d-grid gap-2">
+                <Button
+                  variant="success"
+                  onClick={() => handleResolveDispute("buyer")}
+                  disabled={
+                    mediationDetails?.status !== "Disputed" ||
+                    !resolutionNotes.trim()
+                  }
+                >
+                  Rule in Favor of Buyer
                 </Button>
-                */}
-            <Button
-              variant="outline-danger"
-              onClick={() => handleCancelMediationByAdmin()}
-              disabled={mediationDetails?.status !== "Disputed"}
-              className="mt-2"
-            >
-              Cancel Mediation (e.g., Fraud)
-            </Button>
-          </div>
+                <Button
+                  variant="warning"
+                  onClick={() => handleResolveDispute("seller")}
+                  disabled={
+                    mediationDetails?.status !== "Disputed" ||
+                    !resolutionNotes.trim()
+                  }
+                >
+                  Rule in Favor of Seller
+                </Button>
+                <Button
+                  variant="outline-danger"
+                  onClick={() => handleCancelMediationByAdmin()}
+                  disabled={mediationDetails?.status !== "Disputed"}
+                  className="mt-2"
+                >
+                  Cancel Mediation (e.g., Fraud)
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      <div className="mt-auto action-buttons-footer pt-3 border-top">
+      {/* Action buttons footer - should stick to bottom */}
+      <div className="action-buttons-footer p-3 border-top mt-auto">
+        {/* mt-auto to push to bottom */}
         {currentUserId === mediationDetails?.buyer?._id?.toString() &&
           mediationDetails?.status === "InProgress" && (
             <Button
@@ -1048,7 +1168,7 @@ const MediationChatPage = () => {
             >
               {isConfirmingReceipt ? (
                 <>
-                  <Spinner as="span" animation="border" size="sm" />{" "}
+                  <Spinner as="span" animation="border" size="sm" />
                   Confirming...
                 </>
               ) : (
@@ -1058,26 +1178,14 @@ const MediationChatPage = () => {
           )}
         {(currentUserId === mediationDetails?.buyer?._id?.toString() ||
           currentUserId === mediationDetails?.seller?._id?.toString()) &&
-          (mediationDetails?.status === "InProgress" ||
-            mediationDetails?.status === "Disputed") && (
+          mediationDetails?.status === "InProgress" && (
             <Button
-              variant={isDisputed ? "outline-secondary" : "danger"}
+              variant={"danger"}
               className="w-100"
-              onClick={
-                !isDisputed
-                  ? handleOpenDispute
-                  : () =>
-                      toast.info("Dispute is already open and under review.")
-              }
-              disabled={
-                isOpeningDispute ||
-                isConfirmingReceipt ||
-                (isDisputed && mediationDetails?.status === "Disputed")
-              }
+              onClick={handleOpenDispute}
+              disabled={isOpeningDispute || isConfirmingReceipt || isDisputed}
             >
-              {isDisputed ? (
-                "Dispute In Progress"
-              ) : isOpeningDispute ? (
+              {isOpeningDispute ? (
                 <>
                   <Spinner as="span" animation="border" size="sm" /> Opening...
                 </>
@@ -1086,11 +1194,42 @@ const MediationChatPage = () => {
               )}
             </Button>
           )}
+        {isDisputed && mediationDetails?.status === "Disputed" && (
+          <Button variant="outline-secondary" className="w-100" disabled>
+            Dispute In Progress
+          </Button>
+        )}
+        {mediationDetails?.status === "Completed" && (
+          <Button
+            variant="info"
+            className="w-100 mt-2"
+            onClick={() => {
+              dispatch(getRatingsForMediationAction(mediationRequestId));
+              setSidebarView("ratings");
+            }}
+            disabled={
+              loadingMediationRatings &&
+              loadingMediationRatings[mediationRequestId]
+            } // Disable if ratings are loading
+          >
+            <FaStar className="me-1" /> Rate Participants
+            {unratedPartiesCount > 0 && (
+              <Badge pill bg="danger" className="ms-2">
+                {unratedPartiesCount}
+              </Badge>
+            )}
+            {loadingMediationRatings &&
+              loadingMediationRatings[mediationRequestId] && (
+                <Spinner as="span" size="sm" className="ms-1" />
+              )}
+          </Button>
+        )}
       </div>
     </>
   );
 
-  if (!currentUserId)
+  // Conditional Rendering for Page Content
+  if (!currentUserId) {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" />
@@ -1100,30 +1239,42 @@ const MediationChatPage = () => {
         </Alert>
       </Container>
     );
-  if (loadingDetails)
+  }
+
+  if (loadingDetails && !mediationDetails) {
+    // Show main loader only if no details yet
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" />
-        <p>Loading details...</p>
+        <p>Loading mediation details...</p>
       </Container>
     );
-  if (chatError && !mediationDetails && !loadingDetails)
+  }
+
+  if (errorDetails && !mediationDetails) {
+    // Show error if loading failed and no details
     return (
       <Container className="py-5">
         <Alert variant="danger">
-          <h4>Error Loading Chat</h4>
-          <p>{chatError}</p>
+          <h4>Error Loading Mediation Details</h4>
+          <p>{errorDetails}</p>
           <Button onClick={() => navigate(-1)}>Go Back</Button>
         </Alert>
       </Container>
     );
-  if (!mediationDetails && !loadingDetails && !chatError)
+  }
+
+  if (!mediationDetails && !loadingDetails && !errorDetails) {
+    // If still no details after loading attempt
     return (
       <Container className="py-5 text-center">
-        <Alert variant="warning">Details unavailable.</Alert>
+        <Alert variant="warning">Mediation details unavailable.</Alert>
         <Button onClick={() => navigate(-1)}>Go Back</Button>
       </Container>
     );
+  }
+  // Note: Removed chatError check that prevented rendering if !mediationDetails, as mediationDetails might load even if chat has an issue.
+  // Chat-specific error is handled within the chat area.
 
   return (
     <Container fluid className="mediation-chat-page-redesigned p-0">
@@ -1175,7 +1326,7 @@ const MediationChatPage = () => {
               ref={chatContainerRef}
               className="chat-messages-area p-0"
             >
-              {chatError && mediationDetails && (
+              {chatError && ( // Show chat error if present, regardless of mediationDetails
                 <Alert
                   variant="danger"
                   className="m-3 rounded-0 border-0 border-start border-danger border-4 small"
@@ -1199,7 +1350,7 @@ const MediationChatPage = () => {
                   const showAvatar =
                     !previousMessage ||
                     previousMessage.sender?._id !== msg.sender?._id ||
-                    msg.type === "system"; // إظهار الأفاتار دائمًا لرسائل النظام إذا كان لها مُرسِل (أو لا تظهر إذا كان null)
+                    msg.type === "system";
                   const isMyMessage = msg.sender?._id === currentUserId;
 
                   if (msg.type === "system") {
@@ -1245,23 +1396,31 @@ const MediationChatPage = () => {
                         style={
                           showAvatar || msg.type === "system"
                             ? {}
-                            : { paddingLeft: "56px" }
+                            : { paddingLeft: isMyMessage ? "0px" : "56px" } // Adjusted for sent messages too
                         }
                       >
+                        {!isMyMessage && (
+                          <div
+                            className="avatar-container me-2 flex-shrink-0"
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              visibility:
+                                showAvatar && msg.sender ? "visible" : "hidden",
+                            }}
+                          >
+                            {showAvatar &&
+                              msg.sender &&
+                              renderMessageSenderAvatar(msg.sender)}
+                          </div>
+                        )}
                         <div
-                          className="avatar-container me-2 flex-shrink-0"
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            visibility:
-                              showAvatar && msg.sender ? "visible" : "hidden",
-                          }}
+                          className={`message-content flex-grow-1 ${
+                            isMyMessage
+                              ? "align-items-end"
+                              : "align-items-start"
+                          }`}
                         >
-                          {showAvatar &&
-                            msg.sender &&
-                            renderMessageSenderAvatar(msg.sender)}
-                        </div>
-                        <div className="message-content flex-grow-1">
                           <div className="message-bubble">
                             {showAvatar && !isMyMessage && msg.sender && (
                               <strong className="d-block mb-1">
@@ -1278,7 +1437,13 @@ const MediationChatPage = () => {
                                 alt="Chat"
                                 className="chat-image-preview"
                                 onError={(e) => {
-                                  e.target.style.display = "none";
+                                  e.target.style.display = "none"; // Or show placeholder
+                                  const errorText =
+                                    document.createElement("span");
+                                  errorText.textContent =
+                                    "Image failed to load";
+                                  errorText.className = "text-danger small";
+                                  e.target.parentNode.appendChild(errorText);
                                 }}
                                 onClick={() =>
                                   handleShowImageInModal(
@@ -1303,9 +1468,10 @@ const MediationChatPage = () => {
                               {formatMessageTimestampForDisplay(msg.timestamp)}
                             </small>
                             {isMyMessage &&
-                              participants.length > 1 &&
+                              participants.length > 1 && // Ensure there are others to read it
                               (!avatarsForThisMessage ||
                                 avatarsForThisMessage.length === 0) && (
+                                // Show single check if sent but not yet read by anyone specific we are tracking
                                 <FaCheck
                                   title="Sent"
                                   className="text-muted ms-1"
@@ -1314,13 +1480,28 @@ const MediationChatPage = () => {
                               )}
                           </div>
                         </div>
+                        {isMyMessage && ( // Avatar for sent messages, if shown on right
+                          <div
+                            className="avatar-container ms-2 flex-shrink-0" // ms-2 for margin on left
+                            style={{
+                              width: "40px",
+                              height: "40px",
+                              visibility:
+                                showAvatar && msg.sender ? "visible" : "hidden",
+                            }}
+                          >
+                            {/* {showAvatar && msg.sender && renderMessageSenderAvatar(msg.sender)}  Decide if you want avatar for self */}
+                          </div>
+                        )}
                       </ListGroup.Item>
                       {isMyMessage &&
                         avatarsForThisMessage &&
                         avatarsForThisMessage.length > 0 && (
                           <div
                             className="d-flex justify-content-end pe-3 mb-2 read-indicators-wrapper"
-                            style={{ paddingLeft: "56px" }}
+                            style={{
+                              paddingRight: showAvatar ? "56px" : "16px",
+                            }} // Adjust based on if self-avatar is shown
                           >
                             <div className="read-by-indicators-cluster d-flex align-items-center">
                               {avatarsForThisMessage.map((reader, idx) => (
@@ -1373,10 +1554,10 @@ const MediationChatPage = () => {
             </Card.Body>
             <Card.Footer className="chat-input-area bg-light border-top p-3 position-relative">
               {!isChatActuallyActiveForInput &&
-                mediationDetails &&
+                mediationDetails && // mediationDetails must exist here
                 mediationDetails.status !== "Disputed" && (
                   <Alert variant="info" className="text-center small mb-2 p-2">
-                    Chat is active when mediation is In Progress. Status:{" "}
+                    Chat is active when mediation is In Progress. Status:
                     <strong>
                       {mediationDetails.status
                         .replace(/([A-Z])/g, " $1")
@@ -1402,7 +1583,7 @@ const MediationChatPage = () => {
                       title="Emoji"
                       disabled={
                         !hasJoinedRoom ||
-                        !!chatError ||
+                        !!chatError || // Disable if chat connection error
                         isLoadingHistory ||
                         !isChatActuallyActiveForInput
                       }
@@ -1422,17 +1603,18 @@ const MediationChatPage = () => {
                           const file = event.target.files[0];
                           if (file) {
                             if (file.size > 5 * 1024 * 1024) {
-                              toast.error("Max 5MB.");
+                              // 5MB
+                              toast.error("Max file size is 5MB.");
                               return;
                             }
                             if (!file.type.startsWith("image/")) {
-                              toast.error("Images only.");
+                              toast.error("Only image files are allowed.");
                               return;
                             }
                             handleImageUpload(file);
                           }
                           if (fileInputRef.current)
-                            fileInputRef.current.value = "";
+                            fileInputRef.current.value = ""; // Reset file input
                         }}
                         style={{ display: "none" }}
                         ref={fileInputRef}
@@ -1442,12 +1624,13 @@ const MediationChatPage = () => {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={
                           !hasJoinedRoom ||
-                          !!chatError ||
+                          !!chatError || // Disable if chat connection error
                           isLoadingHistory ||
                           !isChatActuallyActiveForInput
                         }
                       >
                         📷
+                        {/* Using emoji for camera as an example, replace with FaPaperclip if preferred */}
                       </Button>
                     </Form.Group>
                   </Col>
@@ -1467,7 +1650,7 @@ const MediationChatPage = () => {
                       onChange={handleInputChange}
                       disabled={
                         !hasJoinedRoom ||
-                        !!chatError ||
+                        !!chatError || // Disable if chat connection error
                         isLoadingHistory ||
                         !isChatActuallyActiveForInput
                       }
@@ -1481,7 +1664,7 @@ const MediationChatPage = () => {
                       disabled={
                         !newMessage.trim() ||
                         !hasJoinedRoom ||
-                        !!chatError ||
+                        !!chatError || // Disable if chat connection error
                         isLoadingHistory ||
                         !isChatActuallyActiveForInput
                       }
@@ -1499,7 +1682,7 @@ const MediationChatPage = () => {
                 >
                   <EmojiPicker
                     onEmojiClick={onEmojiClick}
-                    emojiStyle={EmojiStyle.APPLE}
+                    emojiStyle={EmojiStyle.APPLE} // Or your preferred style
                     height={320}
                     searchDisabled
                     previewConfig={{ showPreview: false }}
@@ -1509,33 +1692,80 @@ const MediationChatPage = () => {
             </Card.Footer>
           </Card>
         </Col>
+
+        {/* Sidebar for larger screens */}
         <Col
           md={4}
           lg={3}
-          className="chat-sidebar-area bg-light border-start p-3 d-none d-md-flex flex-column order-md-2"
+          className="chat-sidebar-area bg-light border-start p-0 d-none d-md-flex flex-column order-md-2"
         >
-          <div className="flex-grow-1 sidebar-scrollable-content">
-            {mediationDetails && renderSidebarContent()}
-            {!mediationDetails && !loadingDetails && (
-              <p>Details unavailable.</p>
+          {/* This div ensures the content inside can be flex and scroll correctly */}
+          <div
+            className="flex-grow-1 d-flex flex-column"
+            style={{ minHeight: 0 }}
+          >
+            {/* minHeight for flex scroll */}
+            {mediationDetails ? ( // Only render sidebar content if mediationDetails exist
+              sidebarView === "details" ? (
+                renderTransactionDetailsAndActions()
+              ) : (
+                renderRatingsPanel()
+              )
+            ) : loadingDetails ? ( // Show spinner if loading and no details yet
+              <div className="text-center p-3 flex-grow-1 d-flex align-items-center justify-content-center">
+                <Spinner animation="border" />
+              </div>
+            ) : (
+              // Show placeholder/error if not loading and no details
+              <div className="p-3">
+                <Alert variant="warning">
+                  Details unavailable for sidebar.
+                </Alert>
+              </div>
             )}
           </div>
         </Col>
       </Row>
+
+      {/* Offcanvas for smaller screens */}
       <Offcanvas
         show={showDetailsOffcanvas}
-        onHide={handleCloseDetailsOffcanvas}
+        onHide={() => {
+          handleCloseDetailsOffcanvas();
+          // setSidebarView('details'); // Optionally reset view when closing offcanvas, or let it persist
+        }}
         placement="end"
         className="d-md-none"
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>Details & Participants</Offcanvas.Title>
+          <Offcanvas.Title>
+            {sidebarView === "details"
+              ? "Details & Actions"
+              : "Rate Participants"}
+          </Offcanvas.Title>
         </Offcanvas.Header>
-        <Offcanvas.Body className="d-flex flex-column">
-          {mediationDetails && renderSidebarContent()}
-          {!mediationDetails && !loadingDetails && <p>Details unavailable.</p>}
+        <Offcanvas.Body className="d-flex flex-column p-0">
+          {mediationDetails ? ( // Only render offcanvas content if mediationDetails exist
+            sidebarView === "details" ? (
+              renderTransactionDetailsAndActions()
+            ) : (
+              renderRatingsPanel()
+            )
+          ) : loadingDetails ? (
+            <div className="text-center p-3 flex-grow-1 d-flex align-items-center justify-content-center">
+              <Spinner animation="border" />
+            </div>
+          ) : (
+            <div className="p-3">
+              <Alert variant="warning">
+                Details unavailable for offcanvas.
+              </Alert>
+            </div>
+          )}
         </Offcanvas.Body>
       </Offcanvas>
+
+      {/* Image Modal */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}

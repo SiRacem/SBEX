@@ -17,7 +17,8 @@ import {
     BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL, OPEN_DISPUTE_REQUEST, OPEN_DISPUTE_SUCCESS,
     OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
-    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL,
+    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -87,6 +88,10 @@ const initialState = {
     adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingAdminDisputed: false,
     errorAdminDisputed: null,
+
+    activeMediationDetails: null,
+    loadingActiveMediationDetails: false,
+    errorActiveMediationDetails: null,
 };
 
 const mediationReducer = (state = initialState, action) => {
@@ -511,6 +516,44 @@ const mediationReducer = (state = initialState, action) => {
         case ADMIN_GET_DISPUTED_MEDIATIONS_FAIL:
             return { ...state, loadingAdminDisputed: false, errorAdminDisputed: payload, adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 } };
 
+        case GET_MEDIATION_DETAILS_BY_ID_REQUEST:
+            return {
+                ...state,
+                loadingActiveMediationDetails: true,
+                errorActiveMediationDetails: null,
+                // يمكنك اختيار مسح التفاصيل القديمة هنا أو عند النجاح فقط
+                // activeMediationDetails: null,
+            };
+        case GET_MEDIATION_DETAILS_BY_ID_SUCCESS:
+            return {
+                ...state,
+                loadingActiveMediationDetails: false,
+                activeMediationDetails: payload,
+            };
+        case GET_MEDIATION_DETAILS_BY_ID_FAIL:
+            return {
+                ...state,
+                loadingActiveMediationDetails: false,
+                errorActiveMediationDetails: payload,
+            };
+        case UPDATE_MEDIATION_DETAILS_FROM_SOCKET:
+            // تأكد من أن الـ payload هو كائن تفاصيل الوساطة المحدث
+            // وأن الـ ID يطابق الوساطة النشطة الحالية (إذا كان هناك واحدة)
+            if (state.activeMediationDetails && state.activeMediationDetails._id === payload._id) {
+                return {
+                    ...state,
+                    activeMediationDetails: payload,
+                };
+            }
+            return state; // إذا لم تكن الوساطة النشطة أو لا يوجد payload
+        case CLEAR_ACTIVE_MEDIATION_DETAILS:
+            return {
+                ...state,
+                activeMediationDetails: null,
+                loadingActiveMediationDetails: false,
+                errorActiveMediationDetails: null,
+            };
+            
         default:
             return state;
     }

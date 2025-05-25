@@ -61,7 +61,7 @@ const UserSchema = new Schema({
     reputationPoints: { type: Number, default: 0, index: true }, // نقاط السمعة
     reputationLevel: { // مستوى السمعة بناءً على النقاط
         type: String,
-        enum: ['Bronze', 'Silver', 'Gold', 'Platinum'],
+        enum: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Legend', 'Mythic'],
         default: 'Bronze'
     },
     level: { // مستوى المستخدم بناءً على النقاط
@@ -69,8 +69,10 @@ const UserSchema = new Schema({
         default: 1, // يبدأ من المستوى 1
         min: 1
     },
-    // ----------------------------------------------------
-
+    claimedLevelRewards: {
+        type: [Number], // مصفوفة من أرقام المستويات التي تم استلام مكافآتها
+        default: []
+    },
     // --- حقول التقييم (تبقى كما هي) ---
     positiveRatings: { type: Number, default: 0, min: 0 },
     negativeRatings: { type: Number, default: 0, min: 0 },

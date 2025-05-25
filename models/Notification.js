@@ -75,6 +75,8 @@ const NotificationSchema = new Schema({
             'NEW_CHAT_MESSAGE',
             // ------------------------------------
             'MEDIATION_DISPUTED',
+            'RATING_RECEIVED',
+            'LEVEL_UP_REWARD',
         ],
         required: true
     },

@@ -18,7 +18,8 @@ import {
     BUYER_CONFIRM_RECEIPT_SUCCESS, BUYER_CONFIRM_RECEIPT_FAIL, OPEN_DISPUTE_REQUEST, OPEN_DISPUTE_SUCCESS,
     OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
-    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL,
+    ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS
 } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
 import { getProfile } from './userAction'; // لجلب البروفايل المحدث (الرصيد)
 
@@ -300,7 +301,7 @@ export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => asyn
             });
         } else {
             // أو يمكنك استدعاء getProfile لجلب البروفايل بالكامل مع الرصيد المحدث
-            // dispatch(getProfile()); // افترض أن getProfile موجودة في userActions
+            dispatch(getProfile()); // افترض أن getProfile موجودة في userActions
         }
         // ----------------------------------------------------
         return Promise.resolve(data);
@@ -618,3 +619,31 @@ export const adminGetDisputedMediationsAction = (page = 1, limit = 10) => async 
         toast.error(message);
     }
 };
+
+export const getMediationDetailsByIdAction = (mediationRequestId) => async (dispatch) => {
+    dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_REQUEST, payload: { mediationRequestId } });
+    const config = getTokenConfig();
+    if (!config) {
+        dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_FAIL, payload: 'Authorization required.' });
+        return;
+    }
+    try {
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/request-details/${mediationRequestId}`, config);
+        dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_SUCCESS, payload: data.mediationRequest || data });
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to load mediation details.';
+        dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_FAIL, payload: message });
+        // toast.error(message); // يمكنك إضافة toast هنا إذا أردت
+    }
+};
+
+// Action لتحديث التفاصيل من السوكيت
+export const updateMediationDetailsFromSocket = (updatedDetails) => ({
+    type: UPDATE_MEDIATION_DETAILS_FROM_SOCKET,
+    payload: updatedDetails,
+});
+
+// Action لمسح التفاصيل عند مغادرة الصفحة (اختياري لكن جيد)
+export const clearActiveMediationDetails = () => ({
+    type: CLEAR_ACTIVE_MEDIATION_DETAILS,
+});
