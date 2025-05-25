@@ -61,8 +61,8 @@ const UserSchema = new Schema({
     reputationPoints: { type: Number, default: 0, index: true }, // نقاط السمعة
     reputationLevel: { // مستوى السمعة بناءً على النقاط
         type: String,
-        enum: ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Legend', 'Mythic'],
-        default: 'Bronze'
+        enum: ['Novice', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster', 'Legend', 'Mythic'],
+        default: 'Novice' // يبدأ من المستوى المبتدئ
     },
     level: { // مستوى المستخدم بناءً على النقاط
         type: Number,

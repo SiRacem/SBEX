@@ -1,0 +1,281 @@
+/* src/components/modals/LevelsModal.css */
+.levels-modal-final .modal-content {
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(30, 40, 100, 0.15);
+    border: none;
+    overflow: hidden;
+    background-color: #fcfdff;
+}
+
+.levels-modal-header-final {
+    background: linear-gradient(135deg, #6a7eff 0%, #8e8eff 50%, #b0a0ff 100%);
+    color: white;
+    border-bottom: none;
+    padding: 1.2rem 1.75rem;
+    align-items: center;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.levels-modal-title-final {
+    font-weight: 700;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+}
+
+.title-icon-final {
+    margin-right: 0.8rem;
+    font-size: 1.5em;
+}
+
+.levels-modal-header-final .btn-close {
+    filter: brightness(0) invert(1) opacity(0.85);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.levels-modal-header-final .btn-close:hover {
+    opacity: 1;
+    transform: rotate(90deg) scale(1.1);
+}
+
+.levels-modal-body-final {
+    background-color: #f7f9fc;
+    max-height: calc(100vh - 220px);
+    padding: 0 !important;
+}
+
+.current-user-summary-final {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e3e9f3;
+    color: #334155;
+    font-size: 0.95rem;
+    text-align: center !important;
+    padding: 0.85rem 1.25rem !important;
+}
+
+.current-user-summary-final strong {
+    color: #6a7eff;
+}
+
+.level-entry-final {
+    padding: 1.25rem 1.5rem !important;
+    border-bottom: 1px solid #e8edf5 !important;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-out;
+    background-color: #ffffff;
+    position: relative;
+}
+
+.level-entry-final:last-child {
+    border-bottom: none !important;
+}
+
+.level-entry-final:hover:not(.current-level-entry-final):not(.locked-level-entry-final) {
+    background-color: #fcfdff;
+    box-shadow: 0 3px 8px rgba(106, 126, 255, 0.08);
+    z-index: 5;
+}
+
+.current-level-entry-final {
+    background-color: #eff5ff !important;
+    border-left: 5px solid var(--level-tier-color, #6a7eff) !important;
+    padding-left: calc(1.5rem - 5px) !important;
+    box-shadow: inset 4px 0px 10px -3px rgba(106, 126, 255, 0.15);
+}
+
+.current-level-entry-final .level-title-final {
+    color: var(--level-tier-color, #4358e0);
+}
+
+.achieved-level-entry-final {
+    background-color: #fafff8;
+    border-left: 5px solid #5cb85c;
+    padding-left: calc(1.5rem - 5px) !important;
+}
+
+.achieved-level-entry-final .level-title-final {
+    color: #387b38;
+}
+
+.locked-level-entry-final {
+    background-color: #f8f9fa;
+}
+
+.locked-level-entry-final .level-title-final,
+.locked-level-entry-final .badge-name-final,
+.locked-level-entry-final .level-badge-icon-wrapper-final svg {
+    color: #b0bdcc !important;
+}
+
+.locked-level-entry-final .level-badge-icon-wrapper-final {
+    background-color: #e9ecef !important;
+    opacity: 0.6;
+}
+
+.locked-details-final {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0;
+    color: #90a0b7;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.level-icon-col-final-v2 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding-right: 1rem;
+}
+
+.level-badge-icon-wrapper-final {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.level-entry-final:hover .level-badge-icon-wrapper-final {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.level-main-content-area-final {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.level-top-info-final {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 0.25rem;
+}
+
+.level-title-group-final {
+    line-height: 1.2;
+    margin-right: 0.5rem;
+}
+
+.level-title-final {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.badge-name-final {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    display: block;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.current-tag-final {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.25em 0.7em;
+    background-color: var(--level-tier-color, #6a7eff) !important;
+    color: white !important;
+    border: none;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.level-details-final {
+    font-size: 0.8rem;
+    color: #526176;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.2rem 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.detail-label-final {
+    color: #718096;
+    text-align: left;
+    padding-right: 0.5rem;
+}
+
+.detail-value-final {
+    color: #334155;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+}
+
+.reward-info-final svg {
+    margin-right: 0.4rem;
+    font-size: 0.95em;
+}
+
+.level-progress-bar-wrapper-final {
+    margin-top: 0.6rem !important;
+}
+
+.level-progress-final.progress {
+    height: 8px !important;
+    border-radius: 4px;
+    background-color: #e9edf5 !important;
+    overflow: visible;
+}
+
+.level-progress-final .progress-bar {
+    transition: width 0.5s ease-in-out;
+    position: relative;
+}
+
+.level-progress-final.current .progress-bar {
+    background: linear-gradient(90deg, #63e2b7, #20bd70) !important;
+}
+
+.level-progress-final.achieved .progress-bar {
+    background-color: #5cb85c !important;
+}
+
+.progress-text-final {
+    font-size: 0.75rem !important;
+    color: #6c757d;
+}
+
+.progress-text-final.text-success-emphasis {
+    color: #1c7430 !important;
+    font-weight: 500;
+}
+
+.achieved-text-final {
+    white-space: nowrap;
+}
+
+.levels-modal-footer-final {
+    background-color: #fdfdff;
+    border-top: 1px solid #e8edf5;
+    padding: 1rem 1.5rem;
+}
+
+.close-button-final.btn-outline-primary {
+    border-color: #6a7eff;
+    color: #6a7eff;
+    font-weight: 600;
+    padding: 0.6rem 1.75rem;
+    border-radius: 8px;
+    transition: all 0.25s ease;
+}
+
+.close-button-final.btn-outline-primary:hover {
+    background-color: #6a7eff;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(106, 126, 255, 0.3);
+}

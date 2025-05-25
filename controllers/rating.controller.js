@@ -1,7 +1,7 @@
 // server/controllers/rating.controller.js
 const mongoose = require('mongoose');
 const Rating = require('../models/Rating');
-const User = require('../models/User'); // تأكد أن نموذج User يحتوي على claimedLevelRewards: [Number]
+const User = require('../models/User');
 const MediationRequest = require('../models/MediationRequest');
 const Notification = require('../models/Notification');
 
@@ -11,42 +11,28 @@ const POINTS_INCREMENT_PER_LEVEL_STEP = 5;
 const BASE_REWARD_FOR_LEVEL_2 = 2;
 const REWARD_INCREMENT_PER_LEVEL = 2;
 const DEFAULT_CURRENCY = 'TND';
-const MAX_LEVEL_CAP = 100; // A practical limit for dynamically calculated levels
+const MAX_LEVEL_CAP = 100;
 
-/**
- * Calculates the total cumulative reputation points required to reach a specific target level.
- * @param {number} targetLevel - The level for which to calculate the required points.
- * @returns {number} - The total cumulative points required.
- */
 function calculateCumulativePointsForLevel(targetLevel) {
-    if (targetLevel <= 1) return 0; // Level 1 requires 0 points (base level)
+    if (targetLevel <= 1) return 0;
     let totalPoints = 0;
     let pointsForCurrentStep = BASE_POINTS_FOR_LEVEL_2;
     for (let level = 2; level <= targetLevel; level++) {
         totalPoints += pointsForCurrentStep;
-        if (level < targetLevel) { // Prepare for the next iteration
+        if (level < targetLevel) {
             pointsForCurrentStep += POINTS_INCREMENT_PER_LEVEL_STEP;
         }
     }
     return totalPoints;
 }
 
-/**
- * Calculates the monetary reward for achieving a specific target level.
- * @param {number} targetLevel - The level for which to calculate the reward.
- * @returns {{amount: number, currency: string}} - An object containing the reward amount and currency.
- */
 function calculateRewardForLevel(targetLevel) {
-    if (targetLevel < 2) return { amount: 0, currency: DEFAULT_CURRENCY }; // No reward for level 1 or below
+    if (targetLevel < 2) return { amount: 0, currency: DEFAULT_CURRENCY };
     const rewardAmount = BASE_REWARD_FOR_LEVEL_2 + (targetLevel - 2) * REWARD_INCREMENT_PER_LEVEL;
     return { amount: rewardAmount, currency: DEFAULT_CURRENCY };
 }
 
-/**
- * Determines the reputation badge (e.g., 'Bronze', 'Silver') based on the user's numeric level.
- * @param {number} numericLevel - The user's current numeric level.
- * @returns {string} - The name of the reputation badge.
- */
+// --- Updated Badge Logic for Backend ---
 function determineReputationBadge(numericLevel) {
     if (numericLevel >= 35) return 'Mythic';
     if (numericLevel >= 30) return 'Legend';
@@ -55,20 +41,15 @@ function determineReputationBadge(numericLevel) {
     if (numericLevel >= 15) return 'Diamond';
     if (numericLevel >= 10) return 'Platinum';
     if (numericLevel >= 7) return 'Gold';
-    if (numericLevel >= 4) return 'Silver';
-    return 'Bronze';
+    if (numericLevel >= 5) return 'Silver';
+    if (numericLevel >= 3) return 'Bronze'; // البرونزية من المستوى 3
+    return 'Novice'; // للمستويات 1 و 2
 }
 
-/**
- * Updates the user's numeric level and reputation badge based on their current reputation points.
- * @param {mongoose.Document<User>} userDoc - The Mongoose document for the user.
- * @returns {boolean} - True if the level or badge changed, otherwise false.
- */
 function updateUserLevelAndBadge(userDoc) {
     if (!userDoc) return false;
     let madeChanges = false;
     let newNumericLevel = 1;
-
     for (let levelCheck = MAX_LEVEL_CAP; levelCheck >= 2; levelCheck--) {
         if (userDoc.reputationPoints >= calculateCumulativePointsForLevel(levelCheck)) {
             newNumericLevel = levelCheck;
@@ -78,13 +59,11 @@ function updateUserLevelAndBadge(userDoc) {
     if (userDoc.reputationPoints < calculateCumulativePointsForLevel(2)) {
         newNumericLevel = 1;
     }
-
     if (userDoc.level !== newNumericLevel) {
         console.log(`User ${userDoc._id} numeric level changing from ${userDoc.level} to ${newNumericLevel} (Points: ${userDoc.reputationPoints})`);
         userDoc.level = newNumericLevel;
         madeChanges = true;
     }
-
     const newBadge = determineReputationBadge(userDoc.level);
     if (userDoc.reputationLevel !== newBadge) {
         console.log(`User ${userDoc._id} reputation badge changing from ${userDoc.reputationLevel} to ${newBadge}`);
@@ -94,17 +73,9 @@ function updateUserLevelAndBadge(userDoc) {
     return madeChanges;
 }
 
-/**
- * Checks for user level-up, processes rewards if a new level is achieved and reward not claimed.
- * @param {mongoose.Document<User>} userDoc - The Mongoose document for the user.
- * @param {number} oldNumericLevelBeforePointsUpdate - The numeric level before reputation points were changed.
- * @param {mongoose.ClientSession} session - The Mongoose session for the transaction.
- * @returns {Promise<boolean>} - True if a reward was processed.
- */
 async function processLevelUpRewards(userDoc, oldNumericLevelBeforePointsUpdate, session) {
     if (!userDoc) return false;
     let rewardProcessed = false;
-
     if (userDoc.level > oldNumericLevelBeforePointsUpdate) {
         for (let achievedLevel = oldNumericLevelBeforePointsUpdate + 1; achievedLevel <= userDoc.level; achievedLevel++) {
             if (achievedLevel > MAX_LEVEL_CAP) break;
@@ -135,108 +106,55 @@ exports.submitRating = async (req, res) => {
 
     console.log(`--- Controller: submitRating by Rater: ${raterId} for User: ${ratedUserId} (Type: ${ratingType}) for Mediation: ${mediationRequestId} ---`);
 
-    if (!ratedUserId || !ratingType || !mediationRequestId) {
-        return res.status(400).json({ msg: "Rated user ID, rating type, and mediation request ID are required." });
-    }
-    if (!mongoose.Types.ObjectId.isValid(ratedUserId) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
-        return res.status(400).json({ msg: "Invalid ID format for rated user or mediation request." });
-    }
-    if (!['like', 'dislike'].includes(ratingType)) {
-        return res.status(400).json({ msg: "Invalid rating type. Must be 'like' or 'dislike'." });
-    }
-    if (raterId.equals(ratedUserId)) {
-        return res.status(400).json({ msg: "You cannot rate yourself." });
-    }
+    if (!ratedUserId || !ratingType || !mediationRequestId) return res.status(400).json({ msg: "Rated user ID, rating type, and mediation request ID are required." });
+    if (!mongoose.Types.ObjectId.isValid(ratedUserId) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) return res.status(400).json({ msg: "Invalid ID format." });
+    if (!['like', 'dislike'].includes(ratingType)) return res.status(400).json({ msg: "Invalid rating type." });
+    if (raterId.equals(ratedUserId)) return res.status(400).json({ msg: "You cannot rate yourself." });
 
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        const mediationRequest = await MediationRequest.findById(mediationRequestId)
-            .populate('product', 'title')
-            .populate('seller', '_id fullName') // Populate fullName for validation if needed
-            .populate('buyer', '_id fullName')   // Populate fullName for validation if needed
-            .populate('mediator', '_id fullName') // Populate fullName for validation if needed
-            .session(session);
+        const mediationRequest = await MediationRequest.findById(mediationRequestId).populate('product', 'title').populate('seller', '_id fullName').populate('buyer', '_id fullName').populate('mediator', '_id fullName').session(session);
+        if (!mediationRequest) { await session.abortTransaction(); await session.endSession(); return res.status(404).json({ msg: "Mediation request not found." }); }
+        if (mediationRequest.status !== 'Completed') { await session.abortTransaction(); await session.endSession(); return res.status(400).json({ msg: "Ratings can only be for completed mediations." }); }
 
-        if (!mediationRequest) {
-            await session.abortTransaction();
-            await session.endSession();
-            return res.status(404).json({ msg: "Mediation request not found." });
-        }
-        if (mediationRequest.status !== 'Completed') {
-            await session.abortTransaction();
-            await session.endSession();
-            return res.status(400).json({ msg: "Ratings can only be submitted for completed mediations." });
-        }
-
-        // --- Participant Validation ---
         const isRaterSeller = mediationRequest.seller._id.equals(raterId);
         const isRaterBuyer = mediationRequest.buyer._id.equals(raterId);
         const isRaterMediator = mediationRequest.mediator?._id.equals(raterId);
-
         const isRatedSeller = mediationRequest.seller._id.equals(ratedUserId);
         const isRatedBuyer = mediationRequest.buyer._id.equals(ratedUserId);
         const isRatedMediator = mediationRequest.mediator?._id.equals(ratedUserId);
-
         let isValidParticipantPair = false;
         if (isRaterBuyer && (isRatedSeller || (isRatedMediator && mediationRequest.mediator))) isValidParticipantPair = true;
         else if (isRaterSeller && (isRatedBuyer || (isRatedMediator && mediationRequest.mediator))) isValidParticipantPair = true;
         else if (isRaterMediator && (isRatedSeller || isRatedBuyer)) isValidParticipantPair = true;
+        if (!isValidParticipantPair) { await session.abortTransaction(); await session.endSession(); return res.status(403).json({ msg: "Unauthorized to rate this user for this transaction." }); }
 
-        if (!isValidParticipantPair) {
-            await session.abortTransaction();
-            await session.endSession();
-            return res.status(403).json({ msg: "You are not authorized to rate this user for this transaction, or the rated user is not part of this transaction." });
-        }
-        // --- End Participant Validation ---
+        const existingRating = await Rating.findOne({ rater: raterId, ratedUser: ratedUserId, mediationRequestId }).session(session);
+        if (existingRating) { await session.abortTransaction(); await session.endSession(); return res.status(400).json({ msg: "You have already rated this user for this transaction." }); }
 
-        const existingRating = await Rating.findOne({
-            rater: raterId,
-            ratedUser: ratedUserId,
-            mediationRequestId: mediationRequestId
-        }).session(session);
-
-        if (existingRating) {
-            await session.abortTransaction();
-            await session.endSession();
-            return res.status(400).json({ msg: "You have already rated this user for this mediation transaction." });
-        }
-
-        const newRating = new Rating({
-            rater: raterId,
-            ratedUser: ratedUserId,
-            mediationRequestId: mediationRequestId,
-            product: mediationRequest.product?._id,
-            ratingType: ratingType,
-            comment: comment || undefined
-        });
+        const newRating = new Rating({ rater: raterId, ratedUser: ratedUserId, mediationRequestId, product: mediationRequest.product?._id, ratingType, comment: comment || undefined });
         await newRating.save({ session });
         console.log("New rating saved:", newRating._id);
 
         const ratedUserDoc = await User.findById(ratedUserId).session(session);
-        if (!ratedUserDoc) {
-            // This should not happen if ratedUserId is validated elsewhere (e.g., route param validation or from token)
-            // but as a safeguard within the transaction:
-            throw new Error(`Rated user with ID ${ratedUserId} not found in database. Rating cannot be processed.`);
-        }
+        if (!ratedUserDoc) { throw new Error(`Rated user ${ratedUserId} not found.`); }
 
         const oldNumericLevelBeforePointsUpdate = ratedUserDoc.level;
-
         let reputationChange = (ratingType === 'like') ? 3 : -2;
         let ratingFieldToUpdate = (ratingType === 'like') ? 'positiveRatings' : 'negativeRatings';
 
         ratedUserDoc[ratingFieldToUpdate] = (ratedUserDoc[ratingFieldToUpdate] || 0) + 1;
         ratedUserDoc.reputationPoints = (ratedUserDoc.reputationPoints || 0) + reputationChange;
         if (ratedUserDoc.reputationPoints < 0) ratedUserDoc.reputationPoints = 0;
-        console.log(`User ${ratedUserId} points updated by ${reputationChange} to ${ratedUserDoc.reputationPoints}. ${ratingFieldToUpdate} incremented.`);
 
         const structuralChangesMade = updateUserLevelAndBadge(ratedUserDoc);
         const rewardWasProcessed = await processLevelUpRewards(ratedUserDoc, oldNumericLevelBeforePointsUpdate, session);
 
         if (structuralChangesMade || rewardWasProcessed || ratingFieldToUpdate) {
             await ratedUserDoc.save({ session });
-            console.log(`User ${ratedUserDoc._id} saved with all updates.`);
+            console.log(`User ${ratedUserDoc._id} saved with updates.`);
         }
 
         const raterInfo = await User.findById(raterId).select('fullName').lean().session(session);
@@ -259,13 +177,11 @@ exports.submitRating = async (req, res) => {
             req.io.emit('user_profile_updated', updatedProfileSummary);
             console.log(`SOCKET: Emitted 'user_profile_updated' for user ${updatedProfileSummary._id}`);
         }
-
         res.status(201).json({ msg: "Rating submitted successfully!", rating: newRating });
-
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error submitting rating:", error.message, error.stack);
-        const statusCode = error.isOperationalError ? 400 : (error.status || 500); // Differentiate known vs unknown errors
+        const statusCode = error.isOperationalError ? 400 : (error.status || 500);
         res.status(statusCode).json({ msg: error.message || 'Failed to submit rating.' });
     } finally {
         if (session) await session.endSession();

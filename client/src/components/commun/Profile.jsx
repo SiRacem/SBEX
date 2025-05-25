@@ -47,7 +47,6 @@ import {
   FaSkullCrossbones,
   FaDragon,
   FaShieldAlt,
-  // FaGiftOpen, // Import if you have a specific open gift icon
 } from "react-icons/fa";
 import {
   Briefcase,
@@ -61,6 +60,7 @@ import {
 } from "react-feather";
 import { IoWalletOutline } from "react-icons/io5";
 import { SocketContext } from "../../App";
+import LevelsModal from "../ratings/LevelsModal";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -83,7 +83,6 @@ function calculateCumulativePointsForLevelFrontend(targetLevel) {
   }
   return totalPoints;
 }
-
 function calculateRewardForLevelFrontend(targetLevel) {
   if (targetLevel < 2)
     return { amount: 0, currency: DEFAULT_CURRENCY_FRONTEND };
@@ -92,7 +91,6 @@ function calculateRewardForLevelFrontend(targetLevel) {
     (targetLevel - 2) * REWARD_INCREMENT_PER_LEVEL_FRONTEND;
   return { amount: rewardAmount, currency: DEFAULT_CURRENCY_FRONTEND };
 }
-
 const calculatePositiveFeedbackPercent = (p, n) => {
   const t = p + n;
   return t === 0 ? 0 : Math.round((p / t) * 100);
@@ -101,6 +99,43 @@ const calculateNegativeFeedbackPercent = (p, n) => {
   const t = p + n;
   return t === 0 ? 0 : Math.round((n / t) * 100);
 };
+
+// --- [!!!] تعريف الدالة هنا [!!!] ---
+// This function should ideally mirror the logic in your backend's determineReputationBadge
+function determineReputationBadgeFrontend(numericLevel) {
+  // Ensure icons are returned as JSX elements for ReputationBadgeDisplay component
+  // The 'color' here will be used for the icon via style prop
+  // 'badgeClasses' in ReputationBadgeDisplay will determine the badge's background/text color from CSS
+  if (numericLevel >= 35)
+    return {
+      name: "Mythic",
+      IconComponent: FaSkullCrossbones,
+      color: "#A020F0",
+    };
+  if (numericLevel >= 30)
+    return { name: "Legend", IconComponent: FaDragon, color: "#FF8C00" };
+  if (numericLevel >= 25)
+    return { name: "Grandmaster", IconComponent: FaCrown, color: "#FF4500" };
+  if (numericLevel >= 20)
+    return { name: "Master", IconComponent: FaCrown, color: "#D4AF37" };
+  if (numericLevel >= 15)
+    return { name: "Diamond", IconComponent: FaGem, color: "#00BFFF" };
+  if (numericLevel >= 10)
+    return { name: "Platinum", IconComponent: FaShieldAlt, color: "#708090" };
+  if (numericLevel >= 7)
+    return { name: "Gold", IconComponent: FaTrophy, color: "#FFD700" };
+  if (numericLevel >= 5)
+    return { name: "Silver", IconComponent: FaMedal, color: "#A9A9A9" };
+  if (numericLevel >= 3)
+    return { name: "Bronze", IconComponent: FaAward, color: "#CD7F32" };
+  if (numericLevel >= 1)
+    return { name: "Novice", IconComponent: FaStar, color: "#6C757D" }; // Default for level 1 & 2
+  return {
+    name: "Unranked",
+    IconComponent: FaQuestionCircle,
+    color: "#6C757D",
+  }; // Fallback
+}
 
 const Profile = ({ profileForOtherUser = null }) => {
   const dispatch = useDispatch();
@@ -111,6 +146,10 @@ const Profile = ({ profileForOtherUser = null }) => {
   const [profileData, setProfileData] = useState(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState(null);
+
+  const [showLevelsModal, setShowLevelsModal] = useState(false);
+  const handleOpenLevelsModal = () => setShowLevelsModal(true);
+  const handleCloseLevelsModal = () => setShowLevelsModal(false);
 
   const isViewingOwnProfile = !routeUsername && !profileForOtherUser;
   const targetUserId = useMemo(() => {
@@ -150,10 +189,7 @@ const Profile = ({ profileForOtherUser = null }) => {
             routeUsername.toLowerCase()
         ) {
           setProfileData(currentUserState.user);
-        } else
-          setProfileError(
-            `Profile data for ${routeUsername} is currently unavailable or feature needs implementation.`
-          );
+        } else setProfileError(`Profile for ${routeUsername} is unavailable.`);
       } else {
         setIsLoadingProfile(false);
         setProfileError("Unable to determine which profile to display.");
@@ -235,7 +271,7 @@ const Profile = ({ profileForOtherUser = null }) => {
     const totalForNext = calculateCumulativePointsForLevelFrontend(
       currentLevel + 1
     );
-    return Math.max(0, totalForNext - pointsForCurrentLevelAbsolute); // Ensure it's not negative if logic error
+    return Math.max(0, totalForNext - pointsForCurrentLevelAbsolute);
   }, [currentLevel, pointsForCurrentLevelAbsolute]);
 
   const pointsProgress = useMemo(
@@ -312,79 +348,96 @@ const Profile = ({ profileForOtherUser = null }) => {
     return "https://bootdey.com/img/Content/avatar/avatar7.png";
   }, [profileData?.avatarUrl]);
 
-  const ReputationBadgeDisplay = ({ badgeName, level }) => {
-    let badgeIconElement = <FaQuestionCircle />;
-    let badgeClasses = "profile-badge-default";
-    let badgeText = badgeName || "Unranked";
-    let iconColor = "#ffffff";
-    switch (String(badgeName).toLowerCase()) {
+  const ReputationBadgeDisplay = ({ reputationLevelName, numericLevel }) => {
+    // Use reputationLevelName from DB if available, otherwise determine from numericLevel
+    const actualBadgeName =
+      reputationLevelName ||
+      determineReputationBadgeFrontend(numericLevel).name;
+    const badgeDetails = determineReputationBadgeFrontend(numericLevel); // Still useful for icon & fallback color
+
+    let iconToUse = badgeDetails.IconComponent ? (
+      <badgeDetails.IconComponent />
+    ) : (
+      <FaQuestionCircle />
+    );
+    let finalBadgeClasses = "profile-badge-default";
+    let iconColorToUse = badgeDetails.color || "#6c757d"; // Fallback color
+
+    // Override based on the actualBadgeName (which might come from DB)
+    switch (String(actualBadgeName).toLowerCase()) {
+      case "novice":
+        iconToUse = <FaStar />;
+        finalBadgeClasses = "profile-badge-novice";
+        iconColorToUse = "#6C757D";
+        break;
       case "bronze":
-        badgeIconElement = <FaAward />;
-        badgeClasses = "profile-badge-bronze";
-        iconColor = "#8c531b";
+        iconToUse = <FaAward />;
+        finalBadgeClasses = "profile-badge-bronze";
+        iconColorToUse = "#8c531b";
         break;
       case "silver":
-        badgeIconElement = <FaMedal />;
-        badgeClasses = "profile-badge-silver";
-        iconColor = "#505050";
+        iconToUse = <FaMedal />;
+        finalBadgeClasses = "profile-badge-silver";
+        iconColorToUse = "#505050";
         break;
       case "gold":
-        badgeIconElement = <FaTrophy />;
-        badgeClasses = "profile-badge-gold";
-        iconColor = "#a16c00";
+        iconToUse = <FaTrophy />;
+        finalBadgeClasses = "profile-badge-gold";
+        iconColorToUse = "#a16c00";
         break;
       case "platinum":
-        badgeIconElement = <FaShieldAlt />;
-        badgeClasses = "profile-badge-platinum";
-        iconColor = "#3e5660";
+        iconToUse = <FaShieldAlt />;
+        finalBadgeClasses = "profile-badge-platinum";
+        iconColorToUse = "#3e5660";
         break;
       case "diamond":
-        badgeIconElement = <FaGem />;
-        badgeClasses = "profile-badge-diamond";
-        iconColor = "#1a6a73";
+        iconToUse = <FaGem />;
+        finalBadgeClasses = "profile-badge-diamond";
+        iconColorToUse = "#1a6a73";
         break;
       case "master":
-        badgeIconElement = <FaCrown />;
-        badgeClasses = "profile-badge-master";
-        iconColor = "#790079";
+        iconToUse = <FaCrown />;
+        finalBadgeClasses = "profile-badge-master";
+        iconColorToUse = "#790079";
         break;
       case "grandmaster":
-        badgeIconElement = (
+        iconToUse = (
           <FaCrown style={{ filter: "hue-rotate(280deg) saturate(1.5)" }} />
         );
-        badgeClasses = "profile-badge-grandmaster";
-        iconColor = "#d43a00";
+        finalBadgeClasses = "profile-badge-grandmaster";
+        iconColorToUse = "#d43a00";
         break;
       case "legend":
-        badgeIconElement = <FaDragon />;
-        badgeClasses = "profile-badge-legend";
-        iconColor = "#b87300";
+        iconToUse = <FaDragon />;
+        finalBadgeClasses = "profile-badge-legend";
+        iconColorToUse = "#b87300";
         break;
       case "mythic":
-        badgeIconElement = <FaSkullCrossbones />;
-        badgeClasses = "profile-badge-mythic";
-        iconColor = "#3a0068";
+        iconToUse = <FaSkullCrossbones />;
+        finalBadgeClasses = "profile-badge-mythic";
+        iconColorToUse = "#3a0068";
         break;
       default:
-        badgeIconElement = <FaStar />;
-        badgeText = `Level ${level}`;
-        badgeClasses = "profile-badge-info";
-        iconColor = "white";
+        iconToUse = <FaQuestionCircle />;
+        finalBadgeClasses = "profile-badge-info";
+        iconColorToUse = "white"; // Default if unexpected name
     }
-    const styledIcon = React.cloneElement(badgeIconElement, {
+
+    const styledIcon = React.cloneElement(iconToUse, {
       style: {
-        ...badgeIconElement.props.style,
-        color: iconColor,
+        ...iconToUse.props.style,
+        color: iconColorToUse,
         fontSize: "1em",
       },
       className: "me-1",
     });
+
     return (
       <div
-        className={`d-inline-flex align-items-center reputation-badge ${badgeClasses} px-3 py-1 mt-2 shadow-sm`}
+        className={`d-inline-flex align-items-center reputation-badge ${finalBadgeClasses} px-3 py-1 mt-2 shadow-sm`}
       >
-        <tspan>{styledIcon}</tspan>
-        <span className="ms-1 badge-text">{badgeText}</span>
+        <span>{styledIcon}</span>
+        <span className="ms-1 badge-text">{actualBadgeName}</span>
       </div>
     );
   };
@@ -423,7 +476,12 @@ const Profile = ({ profileForOtherUser = null }) => {
     else if (numericLevel >= 2) levelBackgroundClass = "level-bg-beginner";
 
     return (
-      <div className={`level-section-widget-v2 mt-3 ${levelBackgroundClass}`}>
+      <div
+        className={`level-section-widget-v2 mt-3 ${levelBackgroundClass}`}
+        onClick={handleOpenLevelsModal}
+        style={{ cursor: "pointer" }}
+        title="Click to see all levels and rewards"
+      >
         <div className="d-flex justify-content-between align-items-center mb-2">
           <Badge bg={null} className="level-badge-main me-2 px-2 py-1">
             <FaStar className="me-1" /> Level {numericLevel}
@@ -448,7 +506,7 @@ const Profile = ({ profileForOtherUser = null }) => {
             </ProgressBar>
             <div className="d-flex justify-content-between align-items-center small progress-labels">
               <span>
-                {pointsProgress} / {pointsNeededForThisLevelStep} pts to Level{" "}
+                {pointsProgress} / {pointsNeededForThisLevelStep} pts to Level
                 {nextNumericLevel}
               </span>
               <OverlayTrigger
@@ -556,7 +614,7 @@ const Profile = ({ profileForOtherUser = null }) => {
               </h3>
               <p className="text-muted mb-2">{profileData.email}</p>
               <p className="text-muted small mb-3">
-                <MapPin size={14} className="me-1" />{" "}
+                <MapPin size={14} className="me-1" />
                 {profileData.address || "Location not set"}
               </p>
               <div className="mb-1">
@@ -581,9 +639,10 @@ const Profile = ({ profileForOtherUser = null }) => {
                   {profileData.userRole}
                 </Badge>
               </div>
+              {/* تمرير profileData.reputationLevel مباشرة */}
               <ReputationBadgeDisplay
-                badgeName={profileData.reputationLevel}
-                level={profileData.level}
+                reputationLevelName={profileData.reputationLevel}
+                numericLevel={profileData.level}
               />
               {profileData.isMediatorQualified && (
                 <Badge
@@ -605,11 +664,11 @@ const Profile = ({ profileForOtherUser = null }) => {
                 </h6>
                 <div className="d-flex justify-content-around align-items-center mb-2">
                   <div className="text-success small">
-                    <FeatherThumbsUp size={16} className="me-1" />{" "}
+                    <FeatherThumbsUp size={16} className="me-1" />
                     {positiveRatings}
                   </div>
                   <div className="text-danger small">
-                    <FeatherThumbsDown size={16} className="me-1" />{" "}
+                    <FeatherThumbsDown size={16} className="me-1" />
                     {negativeRatings}
                   </div>
                 </div>
@@ -652,7 +711,6 @@ const Profile = ({ profileForOtherUser = null }) => {
             </Card.Header>
             <Card.Body className="p-4">
               <Row className="g-3 text-center">
-                {" "}
                 <Col sm={6} md={4} className="mb-3">
                   <div className="balance-widget">
                     <FaPiggyBank className="icon text-primary" />
@@ -816,6 +874,13 @@ const Profile = ({ profileForOtherUser = null }) => {
             </Button>
           </Modal.Footer>
         </Modal>
+      )}
+      {profileData && (
+        <LevelsModal
+          show={showLevelsModal}
+          handleClose={handleCloseLevelsModal}
+          currentUserData={profileData}
+        />
       )}
     </Container>
   );
