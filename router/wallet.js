@@ -3,23 +3,20 @@
 const express = require('express');
 const router = express.Router();
 const { verifyAuth } = require('../middlewares/verifyAuth'); // حماية المسارات
-
-// --- استيراد دوال وحدة تحكم المحفظة (ستحتاج لإنشائها) ---
-// افترض أن لديك ملف controllers/wallet.controller.js
 const {
     sendFundsController,
-    getTransactionsController // <-- استيراد الدالة الجديدة
+    getTransactionsController, // <-- استيراد الدالة الجديدة
+    getSellerPendingFundsDetailsController,
+    getDashboardTransactionsController, // <-- استيراد الدالة الجديدة للداشبورد
 } = require('../controllers/wallet.controller');
 // ---------------------------------------------------------
 
 // --- تعريف المسارات ---
-
-// POST /wallet/send - لتنفيذ عملية إرسال الرصيد
-// verifyAuth يحمي المسار ويتأكد أن المستخدم مسجل دخول
-// sendFundsController هي الدالة التي ستحتوي على منطق التحويل في الواجهة الخلفية
 router.post('/send', verifyAuth, sendFundsController);
 router.get('/transactions', verifyAuth, getTransactionsController);
-
-// --- نهاية تعريف المسارات ---
+router.get('/transactions/dashboard', verifyAuth, getDashboardTransactionsController);
+// --- [!!!] المسار الجديد لجلب تفاصيل الأموال المعلقة للبائع [!!!] ---
+router.get('/seller-pending-details', verifyAuth, getSellerPendingFundsDetailsController);
+// --------------------------------------------------------------------
 
 module.exports = router;

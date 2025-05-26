@@ -7,11 +7,6 @@ const PaymentMethod = require('../models/PaymentMethod'); // تأكد من أن 
 const Notification = require('../models/Notification'); // تأكد من أن enum type يحتوي على أنواع السحب
 const mongoose = require('mongoose');
 
-// --- المتغيرات والثوابت ---
-const TND_TO_USD_RATE = 3.0; // أو اجلبه من الإعدادات أو متغيرات البيئة
-
-// --- دوال المساعدة ---
-
 /**
  * تنسيق رقم كعملة.
  * @param {number | string | null | undefined} amount - المبلغ المراد تنسيقه.

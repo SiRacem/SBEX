@@ -10,8 +10,8 @@ const mongoose = require('mongoose');
 const config = require('config');
 
 // --- سعر الصرف ---
-const TND_TO_USD_RATE = config.get('TND_TO_USD_RATE') || 3.1;
-console.log(`[DepositCtrl] Using TND_TO_USD_RATE: ${TND_TO_USD_RATE}`);
+const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
+console.log(`[DepositCtrl] Using TND_USD_EXCHANGE_RATE: ${TND_USD_EXCHANGE_RATE}`);
 
 // --- دالة تنسيق العملة ---
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -241,8 +241,8 @@ exports.adminApproveDeposit = async (req, res) => {
         const userBalanceCurrency = 'TND'; // افترض أن عملة الرصيد هي TND
         if (depositRequest.currency !== userBalanceCurrency) {
             console.log(`   Converting ${depositRequest.currency} to ${userBalanceCurrency}`);
-            if (depositRequest.currency === 'USD') amountToAdd = depositRequest.netAmountCredited * TND_TO_USD_RATE;
-            else if (depositRequest.currency === 'TND') amountToAdd = depositRequest.netAmountCredited / TND_TO_USD_RATE; // Example if balance was USD
+            if (depositRequest.currency === 'USD') amountToAdd = depositRequest.netAmountCredited * TND_USD_EXCHANGE_RATE;
+            else if (depositRequest.currency === 'TND') amountToAdd = depositRequest.netAmountCredited / TND_USD_EXCHANGE_RATE; // Example if balance was USD
             else throw new Error("Unsupported currency conversion.");
             amountToAdd = Number(amountToAdd.toFixed(2)); // تقريب بعد التحويل
             console.log(`   Converted amount: ${amountToAdd} ${userBalanceCurrency}`);

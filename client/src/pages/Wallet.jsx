@@ -35,11 +35,7 @@ import {
   FaCopy,
   FaCheck,
 } from "react-icons/fa";
-import {
-  BsClockHistory,
-  BsXCircle,
-  BsGearFill,
-} from "react-icons/bs";
+import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
   FiArrowDownCircle,
   FiArrowUpCircle,
@@ -131,15 +127,6 @@ const Wallet = () => {
   const userLoading = useSelector(
     (state) => state.userReducer?.loading ?? false
   );
-  const transactions = useSelector(
-    (state) => state.transactionReducer?.transactions ?? []
-  );
-  const transactionsLoading = useSelector(
-    (state) => state.transactionReducer?.loading ?? false
-  );
-  const transactionsError = useSelector(
-    (state) => state.transactionReducer?.error ?? null
-  );
   const {
     userRequests: depositRequests = [],
     loadingUserRequests: depositsLoading = false,
@@ -152,6 +139,18 @@ const Wallet = () => {
   } = useSelector((state) => state.withdrawalRequestReducer || {});
   const displayCurrencyGlobal = useSelector(
     (state) => state.ui?.displayCurrency || "TND"
+  );
+  const {
+    transactions = [], // البيانات من الجزء الرئيسي للحالة
+    loading: transactionsLoading = false,
+    error: transactionsError = null,
+  } = useSelector(
+    (state) =>
+      state.transactionReducer || {
+        transactions: [],
+        loading: false,
+        error: null,
+      }
   );
 
   // --- Hooks ---
@@ -590,14 +589,11 @@ const Wallet = () => {
           onClick={() => handleShowActivityDetails(item)}
           className={`transaction-item d-flex justify-content-between align-items-center px-3 py-3 status-${statusLower}`}
         >
-          
           <div className="d-flex align-items-center">
-            
             <div className={`transaction-icon me-3 ${iconColorClass}`}>
               <FinalIconComponent size={iconSize} />
             </div>
             <div>
-              
               <div className="transaction-type-peer fw-bold">{title}</div>
               <div className="transaction-date text-muted small mt-1">
                 {item.createdAt
@@ -624,7 +620,6 @@ const Wallet = () => {
         className="d-flex justify-content-center align-items-center"
         style={{ minHeight: "80vh" }}
       >
-        
         <Spinner animation="border" variant="primary" />
         <span className="ms-2">Loading Wallet...</span>
       </Container>
@@ -633,9 +628,7 @@ const Wallet = () => {
   if (!user && !userLoading) {
     return (
       <Container fluid className="py-4">
-        
         <Alert variant="danger" className="text-center">
-          
           User data not available. Please login.
         </Alert>
       </Container>
@@ -648,7 +641,6 @@ const Wallet = () => {
     <div className="wallet-page container-fluid py-4">
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        
         <h2 className="page-title mb-0">My Wallet</h2>
         <CurrencySwitcher size="sm" />
       </div>
@@ -697,11 +689,9 @@ const Wallet = () => {
           {/* Recent Activity List */}
           <Card className="shadow-sm mb-4 transaction-card">
             <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-              
               <h5 className="mb-0 text-secondary">Recent Activity</h5>
               {!isLoadingHistory && !historyError && (
                 <span className="text-muted small">
-                  
                   Showing {combinedHistory.length} items
                 </span>
               )}
@@ -709,13 +699,11 @@ const Wallet = () => {
             <Card.Body className="p-0">
               {isLoadingHistory ? (
                 <div className="text-center py-5">
-                  
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-2">Loading activity...</p>
                 </div>
               ) : historyError ? (
                 <Alert variant="danger" className="text-center m-3">
-                  
                   Error fetching activity: {historyError}
                 </Alert>
               ) : combinedHistory?.length > 0 ? (
@@ -727,14 +715,9 @@ const Wallet = () => {
                   className="no-transactions-placeholder d-flex justify-content-center align-items-center flex-column text-center py-5"
                   style={{ minHeight: "200px" }}
                 >
-                  
-                  <FaReceipt
-                    size={40}
-                    className="text-light-emphasis mb-3"
-                  />
+                  <FaReceipt size={40} className="text-light-emphasis mb-3" />
                   <h6 className="text-muted">No Activity Yet</h6>
                   <p className="text-muted small mb-0">
-                    
                     Your wallet activity will appear here.
                   </p>
                 </div>
@@ -746,13 +729,9 @@ const Wallet = () => {
         <Col lg={4}>
           <Row className="g-4">
             <Col xs={12}>
-              
               <Card className="shadow-sm balance-card balance-card-principal text-white h-100">
-                
                 <Card.Body className="d-flex flex-column">
-                  
                   <div className="d-flex justify-content-between align-items-start mb-2">
-                    
                     <div>
                       <Card.Subtitle className="mb-1 text-white-75">
                         Principal Balance
@@ -777,15 +756,10 @@ const Wallet = () => {
             </Col>
             {(user?.userRole === "Vendor" || user?.userRole === "Admin") && (
               <>
-                
                 <Col xs={12} sm={6} lg={12}>
-                  
                   <Card className="shadow-sm balance-card balance-card-seller text-white h-100">
-                    
                     <Card.Body>
-                      
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        
                         <div>
                           <Card.Subtitle className="mb-1 text-white-75">
                             Seller Available
@@ -803,13 +777,9 @@ const Wallet = () => {
                   </Card>
                 </Col>
                 <Col xs={12} sm={6} lg={12}>
-                  
                   <Card className="shadow-sm balance-card balance-card-hold text-white h-100">
-                    
                     <Card.Body>
-                      
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        
                         <div>
                           <Card.Subtitle className="mb-1 text-white-75">
                             On Hold
@@ -842,7 +812,6 @@ const Wallet = () => {
         className="send-modal"
       >
         <Modal.Header closeButton>
-          
           <Modal.Title>
             {modalStep === 1
               ? "Send Funds - Step 1: Recipient"
@@ -884,7 +853,6 @@ const Wallet = () => {
                     emailCheckError ? "text-danger" : "text-success"
                   }`}
                 >
-                  
                   {isCheckingEmail ? (
                     <Spinner animation="border" size="sm" as="span" />
                   ) : emailCheckError ? (
@@ -908,7 +876,6 @@ const Wallet = () => {
                 disabled={isCheckingEmail || !recipientEmail}
                 className="w-100 check-email-btn"
               >
-                
                 {isCheckingEmail ? (
                   "Checking..."
                 ) : (
@@ -930,7 +897,6 @@ const Wallet = () => {
                 variant="light"
                 className="text-center mb-3 recipient-info"
               >
-                
                 Sending to: <strong>{recipientUser.fullName}</strong> (
                 {recipientUser.email})
               </Alert>
@@ -947,7 +913,6 @@ const Wallet = () => {
                       setAmountError(null);
                     }}
                   >
-                    
                     TND
                   </Button>
                   <Button
@@ -960,7 +925,6 @@ const Wallet = () => {
                       setAmountError(null);
                     }}
                   >
-                    
                     USD
                   </Button>
                 </ButtonGroup>
@@ -1002,7 +966,6 @@ const Wallet = () => {
                       variant="outline-secondary"
                       onClick={handleSetMaxAmount}
                     >
-                      
                       MAX
                     </Button>
                     <InputGroup.Text>{sendCurrency}</InputGroup.Text>
@@ -1015,7 +978,6 @@ const Wallet = () => {
                   parseFloat(sendAmount) > 0 &&
                   !amountError && (
                     <Form.Text className="text-muted d-block text-end">
-                      
                       ~
                       {formatCurrency(
                         parseFloat(sendAmount) * TND_TO_USD_RATE,
@@ -1033,32 +995,26 @@ const Wallet = () => {
               {sendSuccess && <Alert variant="success">{sendSuccess}</Alert>}
               <ListGroup variant="flush" className="mb-3">
                 <ListGroup.Item className="d-flex justify-content-between">
-                  
                   <span>To:</span>
                   <strong>
                     {recipientUser.fullName} ({recipientUser.email})
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
-                  
                   <span>Amount to Send:</span>
                   <strong>
                     {formatCurrency(parseFloat(sendAmount), sendCurrency)}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
-                  
                   <span>Transfer Fee ({TRANSFER_FEE_PERCENT}%):</span>
                   <strong className="text-warning">
-                    
                     - {formatCurrency(transferFee, sendCurrency)}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between total-amount pt-3 mt-2 border-top">
-                  
                   <span>Total Deducted (TND):</span>
                   <strong className="fs-5 text-danger">
-                    
                     {formatCurrency(totalDeductedTND, "TND")}
                   </strong>
                 </ListGroup.Item>
@@ -1155,7 +1111,6 @@ const Wallet = () => {
                   disabled={isCopied || !user?.email}
                   style={isCopied ? { pointerEvents: "none" } : {}}
                 >
-                  
                   {isCopied ? <FaCheck /> : <FaCopy />}
                 </Button>
               </span>

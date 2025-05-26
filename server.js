@@ -7,6 +7,8 @@ const path = require('path');
 const config = require('config');
 const mongoose = require('mongoose');
 const fs = require('fs');
+const cron = require('node-cron'); // <<< استيراد node-cron
+const { releaseDuePendingFunds } = require('./services/pendingFundsReleaseService'); // <<< استيراد دالة الخدمة
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -362,6 +364,19 @@ io.on('connection', (socket) => {
 
         }
     });
+});
+
+// --- Scheduled Jobs ---
+// مهمة لفك تجميد الأرصدة المعلقة، تعمل كل 10 دقائق كمثال
+cron.schedule('*/10 * * * *', async () => {
+    console.log(`[CRON MASTER] Triggering 'releaseDuePendingFunds' job at ${new Date().toISOString()}`);
+    try {
+        // <<<--- تمرير io و onlineUsers هنا ---<<<
+        await releaseDuePendingFunds(io, onlineUsers);
+        console.log('[CRON MASTER] Job "releaseDuePendingFunds" completed its run.');
+    } catch (error) {
+        console.error('[CRON MASTER] Critical error during scheduled "releaseDuePendingFunds" job:', error);
+    }
 });
 
 // --- Express Middlewares & Setup ---

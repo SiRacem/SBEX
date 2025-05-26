@@ -5,10 +5,15 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const mongoose = require('mongoose');
+const PendingFund = require('../models/PendingFund'); // <<< استيراد PendingFund
+const config = require('config');
 
 // --- ثوابت ---
 const TRANSFER_FEE_PERCENT = 2; // 2%
-const TND_TO_USD_RATE = 3.0; // تأكد من تطابقه مع الواجهة الأمامية والإعدادات
+// --- سعر الصرف ---
+const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
+const PLATFORM_BASE_CURRENCY = config.get('PLATFORM_BASE_CURRENCY') || 'TND'; // العملة الأساسية للمنصة (افتراضيًا TND)
+// ----------------------------------------------------------
 
 // --- دالة مساعدة لتنسيق العملة (يمكن استيرادها إذا كانت في ملف منفصل) ---
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -38,7 +43,7 @@ exports.sendFundsController = async (req, res) => {
         return res.status(400).json({ msg: 'Invalid amount specified.' });
     }
     // التحقق من الحد الأدنى (اختياري في الـ Backend، لكن جيد)
-    const minSend = currency === 'USD' ? (6.0 / TND_TO_USD_RATE) : 6.0;
+    const minSend = currency === 'USD' ? (6.0 / TND_USD_EXCHANGE_RATE) : 6.0;
     if (numericAmount < minSend) {
         return res.status(400).json({ msg: `Minimum send amount is ${formatCurrency(minSend, currency)}.` });
     }
@@ -69,7 +74,7 @@ exports.sendFundsController = async (req, res) => {
         let totalDeductedTND;
         if (currency === 'USD') {
             // المبلغ المرسل بالدولار + الرسوم بالدولار، ثم الكل * سعر الصرف
-            totalDeductedTND = (numericAmount + transferFee) * TND_TO_USD_RATE;
+            totalDeductedTND = (numericAmount + transferFee) * TND_USD_EXCHANGE_RATE;
         } else { // currency === 'TND'
             // المبلغ المرسل بالدينار + الرسوم بالدينار
             totalDeductedTND = numericAmount + transferFee;
@@ -91,7 +96,7 @@ exports.sendFundsController = async (req, res) => {
         let netAmountForRecipientTND;
         if (currency === 'USD') {
             // فقط المبلغ الأصلي المرسل * سعر الصرف (بدون الرسوم)
-            netAmountForRecipientTND = numericAmount * TND_TO_USD_RATE;
+            netAmountForRecipientTND = numericAmount * TND_USD_EXCHANGE_RATE;
         } else { // currency === 'TND'
             // فقط المبلغ الأصلي المرسل (بدون الرسوم)
             netAmountForRecipientTND = numericAmount;
@@ -167,17 +172,206 @@ exports.getTransactionsController = async (req, res) => {
     const userId = req.user._id;
     console.log(`[WalletCtrl GetTx] Fetching transactions for User ID: ${userId}`);
     try {
-        const transactions = await Transaction.find({ $or: [{ user: userId }, { sender: userId }, { recipient: userId }] })
+        const walletTransactionTypes = [
+            'TRANSFER_SENT',
+            'TRANSFER_RECEIVED',
+            'DEPOSIT_COMPLETED',    // أو النوع الذي تستخدمه للإيداع المكتمل
+            'WITHDRAWAL_COMPLETED', // أو النوع الذي تستخدمه للسحب المكتمل
+            // أضف أي أنواع أخرى خاصة بالمحفظة فقط
+        ];
+        const transactions = await Transaction.find({
+            // ابحث عن المعاملات حيث المستخدم هو user أو sender أو recipient
+            // ونوع المعاملة ضمن الأنواع المحددة للمحفظة
+            $and: [
+                { $or: [{ user: userId }, { sender: userId }, { recipient: userId }] },
+                { type: { $in: walletTransactionTypes } }
+            ]
+        })
             .populate('sender', 'fullName email avatarUrl')
             .populate('recipient', 'fullName email avatarUrl')
-            .populate('user', 'fullName email avatarUrl')
+            .populate('user', 'fullName email avatarUrl') // إذا كان حقل user مستخدمًا لأنواع أخرى
             .sort({ createdAt: -1 })
-            .limit(50); // Consider pagination for large histories
-        console.log(`[WalletCtrl GetTx] Found ${transactions.length} transactions.`);
+            .limit(50); // يمكنك إضافة pagination هنا أيضًا إذا أردت
+
+        console.log(`[WalletCtrl GetTxForWallet] Found ${transactions.length} wallet transactions.`);
         res.status(200).json(transactions);
     } catch (error) {
-        console.error("[WalletCtrl GetTx] Error fetching transactions:", error);
-        res.status(500).json({ msg: "Failed to retrieve transactions." });
+        console.error("[WalletCtrl GetTxForWallet] Error fetching wallet transactions:", error);
+        res.status(500).json({ msg: "Failed to retrieve wallet transactions." });
     }
 };
 // -------------------------------------
+
+// --- [!!!] دالة جديدة لجلب تفاصيل الأموال المعلقة للبائع [!!!] ---
+exports.getSellerPendingFundsDetailsController = async (req, res) => {
+    const sellerId = req.user._id; // البائع الحالي
+    console.log(`--- Controller: getSellerPendingFundsDetails for Seller: ${sellerId} ---`);
+
+    try {
+        // 1. جلب بيانات البائع للأرصدة الإجمالية
+        const seller = await User.findById(sellerId)
+            .select('sellerPendingBalance sellerAvailableBalance balance depositBalance withdrawalBalance email fullName') // جلب الأرصدة الأساسية أيضًا
+            .lean();
+
+        if (!seller) {
+            return res.status(404).json({ msg: "Seller profile not found." });
+        }
+
+        // 2. جلب الأموال المعلقة حاليًا (التي لم يتم فك تجميدها)
+        const pendingItems = await PendingFund.find({
+            seller: sellerId,
+            isReleased: false
+        })
+            .populate('product', 'title imageUrls') // جلب عنوان المنتج وصورة واحدة
+            .populate('mediationRequest', 'status buyer') // جلب حالة الوساطة والمشتري
+            .populate({ // لاسم المشتري
+                path: 'mediationRequest',
+                populate: {
+                    path: 'buyer',
+                    select: 'fullName'
+                }
+            })
+            .sort({ releaseAt: 1 }); // الأقرب لفك التجميد أولاً
+
+        // 3. (اختياري) جلب آخر X مبالغ تم فك تجميدها
+        const recentlyReleasedItems = await PendingFund.find({
+            seller: sellerId,
+            isReleased: true
+        })
+            .populate('product', 'title')
+            .populate('mediationRequest', 'status buyer')
+            .populate({
+                path: 'mediationRequest',
+                populate: { path: 'buyer', select: 'fullName' }
+            })
+            .sort({ releasedToAvailableAt: -1 }) // الأحدث أولاً
+            .limit(5); // مثال: آخر 5
+
+        // 4. حساب الوقت المتبقي لكل pendingItem
+        const now = new Date();
+        const pendingItemsWithRemainingTime = pendingItems.map(item => {
+            const remainingMilliseconds = item.releaseAt.getTime() - now.getTime();
+            let releasesIn = "Processing...";
+            if (remainingMilliseconds <= 0) {
+                releasesIn = "Releasing soon / Overdue";
+            } else {
+                const days = Math.floor(remainingMilliseconds / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remainingMilliseconds % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingMilliseconds % (1000 * 60 * 60)) / (1000 * 60));
+                if (days > 0) releasesIn = `in ~${days} day(s), ${hours} hr(s)`;
+                else if (hours > 0) releasesIn = `in ~${hours} hr(s), ${minutes} min(s)`;
+                else if (minutes > 0) releasesIn = `in ~${minutes} min(s)`;
+                else releasesIn = "Releasing very soon";
+            }
+            return {
+                ...item.toObject(), // تحويل مستند Mongoose إلى كائن عادي
+                releasesIn,
+                productTitle: item.product?.title || "N/A",
+                buyerName: item.mediationRequest?.buyer?.fullName || "N/A" // اسم المشتري
+            };
+        });
+
+        const recentlyReleasedItemsFormatted = recentlyReleasedItems.map(item => ({
+            ...item.toObject(),
+            productTitle: item.product?.title || "N/A",
+            buyerName: item.mediationRequest?.buyer?.fullName || "N/A"
+        }));
+
+        res.status(200).json({
+            platformBaseCurrency: PLATFORM_BASE_CURRENCY,
+            totalPendingBalance: seller.sellerPendingBalance || 0,
+            totalAvailableBalance: seller.sellerAvailableBalance || 0,
+            // يمكنك إضافة أرصدة أخرى من `seller` إذا أردت عرضها في نفس المودال
+            mainBalance: seller.balance || 0,
+            depositBalance: seller.depositBalance || 0,
+            withdrawalBalance: seller.withdrawalBalance || 0,
+            pendingItems: pendingItemsWithRemainingTime,
+            recentlyReleasedItems: recentlyReleasedItemsFormatted
+        });
+
+    } catch (error) {
+        console.error("[getSellerPendingFundsDetailsController] Error:", error.message, error.stack);
+        res.status(500).json({ msg: "Server error fetching pending funds details.", errorDetails: error.message });
+    }
+};
+// --- نهاية الدالة الجديدة ---
+
+exports.getDashboardTransactionsController = async (req, res) => {
+    const userId = req.user._id; // المستخدم الحالي الذي قام بتسجيل الدخول
+    const userRole = req.user.userRole; // دور المستخدم الحالي
+
+    console.log(`[GetDashboardTxCtrl] Fetching for User: ${userId}, Role: ${userRole}`);
+
+    try {
+        let queryConditions = [];
+
+        // 1. معاملات البائع
+        if (userRole === 'Vendor' || userRole === 'Admin') { // الأدمن قد يرغب برؤية كل شيء أو ما يراه البائع
+            queryConditions.push({
+                user: userId, // البائع هو "مالك" هذه المعاملات
+                type: { $in: ['PRODUCT_SALE_FUNDS_PENDING', 'PRODUCT_SALE_FUNDS_RELEASED'] }
+            });
+        }
+
+        // 2. معاملات المشتري
+        if (userRole === 'User' || userRole === 'Admin') { // المشتري هو "User" أو أدمن
+            queryConditions.push({
+                user: userId, // المشتري هو "مالك" هذه المعاملة
+                type: 'PRODUCT_PURCHASE_COMPLETED'
+            });
+        }
+
+        // 3. معاملات الوسيط
+        if (userRole === 'Admin' || req.user.isMediatorQualified) { // إذا كان وسيطًا مؤهلاً أو أدمن
+            queryConditions.push({
+                user: userId, // الوسيط هو "مالك" هذه المعاملة
+                type: 'MEDIATION_FEE_RECEIVED'
+            });
+        }
+
+        // 4. معاملات المكافآت (للجميع)
+        queryConditions.push({
+            user: userId,
+            type: 'LEVEL_UP_REWARD_RECEIVED'
+        });
+
+
+        // إذا لم يكن هناك شروط (مثلاً مستخدم ليس له دور محدد أو لا تنطبق عليه أي من الشروط أعلاه)
+        // قد لا يرجع أي شيء، أو يمكنك إضافة منطق افتراضي.
+        // حاليًا، إذا كانت queryConditions فارغة، فإن $or فارغة سترجع خطأ.
+        // لذا، يجب التأكد من أن هناك شرط واحد على الأقل أو التعامل مع الحالة الفارغة.
+
+        let finalQuery = {};
+        if (queryConditions.length > 0) {
+            finalQuery = { $or: queryConditions };
+        } else {
+            // إذا لم يكن المستخدم يطابق أي دور له معاملات خاصة بالداشبورد
+            // يمكنك إرجاع مصفوفة فارغة مباشرة أو إضافة نوع معاملة عام جدًا إذا أردت
+            console.log(`[GetDashboardTxCtrl] No specific dashboard transaction types for User: ${userId}, Role: ${userRole}`);
+            return res.status(200).json([]); // إرجاع مصفوفة فارغة
+        }
+
+        console.log("[GetDashboardTxCtrl] Final Query:", JSON.stringify(finalQuery));
+
+        const transactions = await Transaction.find(finalQuery)
+            .populate('sender', 'fullName avatarUrl') // قد لا تكون ضرورية دائمًا هنا
+            .populate('recipient', 'fullName avatarUrl') // قد لا تكون ضرورية دائمًا هنا
+            .populate('relatedProduct', 'title')
+            .populate({ // لجلب اسم المشتري/البائع في وصف المعاملة إذا لزم الأمر
+                path: 'relatedMediationRequest',
+                populate: [
+                    { path: 'buyer', select: 'fullName' },
+                    { path: 'seller', select: 'fullName' }
+                ]
+            })
+            .sort({ createdAt: -1 })
+            .limit(20);
+
+        console.log(`[GetDashboardTxCtrl] Found ${transactions.length} transactions for dashboard.`);
+        res.status(200).json(transactions);
+
+    } catch (error) {
+        console.error("[GetDashboardTxCtrl] Error:", error.message, error.stack);
+        res.status(500).json({ msg: "Failed to retrieve dashboard transactions." });
+    }
+};

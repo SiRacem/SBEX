@@ -5,9 +5,10 @@ const Notification = require('../models/Notification');
 // --- [!!!] استيراد موديل طلب الوساطة [!!!] ---
 const MediationRequest = require('../models/MediationRequest');
 const mongoose = require('mongoose');
+const config = require('config');
 
-// تعريف سعر الصرف (يمكن جلبه من مكان آخر)
-const TND_TO_USD_RATE = 3.0;
+// --- سعر الصرف ---
+const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
 const MINIMUM_BALANCE_TO_PARTICIPATE = 6; // الحد الأدنى للمشاركة
 
 // --- [!!!] إضافة دالة formatCurrency هنا [!!!] ---
@@ -726,7 +727,7 @@ exports.placeBidOnProduct = async (req, res) => {
 
         const bidCurrency = product.currency;
         let bidAmountInTND;
-        if (bidCurrency === 'USD') { bidAmountInTND = numericAmount * TND_TO_USD_RATE; }
+        if (bidCurrency === 'USD') { bidAmountInTND = numericAmount * TND_USD_EXCHANGE_RATE; }
         else { bidAmountInTND = numericAmount; }
         if (bidder.balance < bidAmountInTND) {
             throw new Error(`Insufficient balance. You need ${bidAmountInTND.toFixed(2)} TND to cover this ${numericAmount.toFixed(2)} ${bidCurrency} bid, but you only have ${bidder.balance.toFixed(2)} TND.`);

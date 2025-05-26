@@ -13,6 +13,7 @@ const REWARD_INCREMENT_PER_LEVEL = 2;
 const DEFAULT_CURRENCY = 'TND';
 const MAX_LEVEL_CAP = 100;
 
+// --- Helper Functions (Internal or to be exported) ---
 function calculateCumulativePointsForLevel(targetLevel) {
     if (targetLevel <= 1) return 0;
     let totalPoints = 0;
@@ -32,7 +33,6 @@ function calculateRewardForLevel(targetLevel) {
     return { amount: rewardAmount, currency: DEFAULT_CURRENCY };
 }
 
-// --- Updated Badge Logic for Backend ---
 function determineReputationBadge(numericLevel) {
     if (numericLevel >= 35) return 'Mythic';
     if (numericLevel >= 30) return 'Legend';
@@ -42,11 +42,12 @@ function determineReputationBadge(numericLevel) {
     if (numericLevel >= 10) return 'Platinum';
     if (numericLevel >= 7) return 'Gold';
     if (numericLevel >= 5) return 'Silver';
-    if (numericLevel >= 3) return 'Bronze'; // البرونزية من المستوى 3
-    return 'Novice'; // للمستويات 1 و 2
+    if (numericLevel >= 3) return 'Bronze';
+    return 'Novice';
 }
 
-function updateUserLevelAndBadge(userDoc) {
+// --- Functions to be Exported ---
+const updateUserLevelAndBadge = (userDoc) => {
     if (!userDoc) return false;
     let madeChanges = false;
     let newNumericLevel = 1;
@@ -71,9 +72,9 @@ function updateUserLevelAndBadge(userDoc) {
         madeChanges = true;
     }
     return madeChanges;
-}
+};
 
-async function processLevelUpRewards(userDoc, oldNumericLevelBeforePointsUpdate, session) {
+const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, session) => {
     if (!userDoc) return false;
     let rewardProcessed = false;
     if (userDoc.level > oldNumericLevelBeforePointsUpdate) {
@@ -98,9 +99,9 @@ async function processLevelUpRewards(userDoc, oldNumericLevelBeforePointsUpdate,
         }
     }
     return rewardProcessed;
-}
+};
 
-exports.submitRating = async (req, res) => {
+const submitRating = async (req, res) => { // <<< تعريف الدالة هنا
     const raterId = req.user._id;
     const { ratedUserId, ratingType, comment, mediationRequestId } = req.body;
 
@@ -153,6 +154,14 @@ exports.submitRating = async (req, res) => {
         const rewardWasProcessed = await processLevelUpRewards(ratedUserDoc, oldNumericLevelBeforePointsUpdate, session);
 
         if (structuralChangesMade || rewardWasProcessed || ratingFieldToUpdate) {
+            if (structuralChangesMade && !rewardWasProcessed && oldNumericLevelBeforePointsUpdate === ratedUserDoc.level) {
+                await Notification.create([{
+                    user: ratedUserDoc._id, type: 'BADGE_UPDATED',
+                    title: `🏅 Reputation Update: You are now ${ratedUserDoc.reputationLevel}!`,
+                    message: `Your reputation level has been updated to ${ratedUserDoc.reputationLevel}.`,
+                    relatedEntity: { id: ratedUserDoc._id, modelName: 'User' }
+                }], { session });
+            }
             await ratedUserDoc.save({ session });
             console.log(`User ${ratedUserDoc._id} saved with updates.`);
         }
@@ -173,6 +182,8 @@ exports.submitRating = async (req, res) => {
                 level: ratedUserDoc.level, reputationLevel: ratedUserDoc.reputationLevel,
                 balance: ratedUserDoc.balance, positiveRatings: ratedUserDoc.positiveRatings,
                 negativeRatings: ratedUserDoc.negativeRatings, claimedLevelRewards: ratedUserDoc.claimedLevelRewards,
+                // أضف productsSoldCount إذا كان يتم تحديثه هنا أيضًا
+                productsSoldCount: ratedUserDoc.productsSoldCount
             };
             req.io.emit('user_profile_updated', updatedProfileSummary);
             console.log(`SOCKET: Emitted 'user_profile_updated' for user ${updatedProfileSummary._id}`);
@@ -188,7 +199,7 @@ exports.submitRating = async (req, res) => {
     }
 };
 
-exports.getRatingsForMediation = async (req, res) => {
+const getRatingsForMediation = async (req, res) => { // <<< تعريف الدالة هنا
     const { mediationRequestId } = req.params;
     try {
         if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
@@ -203,4 +214,16 @@ exports.getRatingsForMediation = async (req, res) => {
         console.error("Error fetching ratings for mediation:", error);
         res.status(500).json({ msg: "Server error fetching ratings.", errorDetails: error.message });
     }
+};
+
+// --- [!!!] تصدير الدوال بشكل صحيح [!!!] ---
+module.exports = {
+    submitRating,               // تصدير الدالة المعرفة أعلاه
+    getRatingsForMediation,     // تصدير الدالة المعرفة أعلاه
+    updateUserLevelAndBadge,    // تصدير الدالة المساعدة
+    processLevelUpRewards,      // تصدير الدالة المساعدة
+    // إذا أردت تصدير الدوال الأخرى، يمكنك إضافتها هنا أيضًا
+    // calculateCumulativePointsForLevel,
+    // calculateRewardForLevel,
+    // determineReputationBadge
 };

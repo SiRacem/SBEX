@@ -77,6 +77,9 @@ const NotificationSchema = new Schema({
             'MEDIATION_DISPUTED',
             'RATING_RECEIVED',
             'LEVEL_UP_REWARD',
+            'SALE_FUNDS_PENDING',
+            'MEDIATION_FEE_RECEIVED',
+            'PRODUCT_RECEIPT_CONFIRMED',
         ],
         required: true
     },
