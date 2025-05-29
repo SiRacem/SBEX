@@ -1968,3 +1968,310 @@ exports.uploadChatImage = async (req, res) => {
         return res.status(500).json({ msg: "Internal server error during image upload." });
     }
 };
+
+exports.adminResolveDisputeController = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    const { winnerId, loserId, resolutionNotes, cancelMediation } = req.body;
+    const adminUserId = req.user._id;
+    const adminFullName = req.user.fullName || `Admin (${adminUserId.toString().slice(-4)})`;
+
+    console.log(`--- Controller: adminResolveDispute for Mediation: ${mediationRequestId} by Admin: ${adminFullName} (ID: ${adminUserId}) ---`);
+    console.log(`   Received Data: winnerId=${winnerId}, loserId=${loserId}, cancelMediation=${cancelMediation}, resolutionNotes="${resolutionNotes}"`);
+
+    if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        console.warn(`[AdminResolveDispute] Invalid Mediation Request ID format: ${mediationRequestId}`);
+        return res.status(400).json({ msg: "Invalid Mediation Request ID." });
+    }
+    if (cancelMediation === undefined && (!winnerId || !loserId)) {
+        console.warn(`[AdminResolveDispute] Missing winnerId or loserId when not cancelling for ${mediationRequestId}.`);
+        return res.status(400).json({ msg: "Winner ID and Loser ID are required if not cancelling the mediation." });
+    }
+    if (cancelMediation !== true) {
+        if (!mongoose.Types.ObjectId.isValid(winnerId) || !mongoose.Types.ObjectId.isValid(loserId)) {
+            console.warn(`[AdminResolveDispute] Invalid winnerId or loserId format for ${mediationRequestId}.`);
+            return res.status(400).json({ msg: "Invalid Winner ID or Loser ID format." });
+        }
+        if (winnerId.toString() === loserId.toString()) {
+            console.warn(`[AdminResolveDispute] Winner and Loser IDs are the same for ${mediationRequestId}.`);
+            return res.status(400).json({ msg: "Winner and Loser cannot be the same user." });
+        }
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    console.log(`[AdminResolveDispute] MongoDB session started for ${mediationRequestId}.`);
+
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .populate('seller', '_id fullName email level reputationPoints reputationLevel claimedLevelRewards balance productsSoldCount sellerAvailableBalance sellerPendingBalance mediatorStatus')
+            .populate('buyer', '_id fullName email level reputationPoints reputationLevel claimedLevelRewards balance mediatorStatus')
+            .populate('mediator', '_id fullName email level reputationPoints reputationLevel claimedLevelRewards balance successfulMediationsCount mediatorStatus')
+            .populate('product', 'title _id price currency status currentMediationRequest agreedPrice') // جلب السعر والعملة الأصلية للمنتج و agreedPrice
+            .session(session);
+
+        if (!mediationRequest) {
+            await session.abortTransaction(); session.endSession();
+            console.warn(`[AdminResolveDispute] Mediation request ${mediationRequestId} not found.`);
+            return res.status(404).json({ msg: "Mediation request not found." });
+        }
+        if (mediationRequest.status !== 'Disputed') {
+            await session.abortTransaction(); session.endSession();
+            console.warn(`[AdminResolveDispute] Mediation ${mediationRequestId} is not in 'Disputed' status. Current status: ${mediationRequest.status}.`);
+            return res.status(400).json({ msg: `Cannot resolve. Mediation status is '${mediationRequest.status}', expected 'Disputed'.` });
+        }
+
+        const seller = mediationRequest.seller;
+        const buyer = mediationRequest.buyer;
+        const mediator = mediationRequest.mediator;
+        const product = mediationRequest.product; // المنتج المرتبط بالوساطة
+
+        if (!seller || !buyer || !product) { // المنتج ضروري لتحديد سعره
+            await session.abortTransaction(); session.endSession();
+            console.error(`[AdminResolveDispute] CRITICAL: Seller, Buyer, or Product object missing in populated mediation request ${mediationRequestId}.`);
+            return res.status(500).json({ msg: "Internal Server Error: Essential data missing for mediation." });
+        }
+
+        let finalStatus = 'AdminResolved';
+        let historyEvent = `Dispute resolved by Admin ${adminFullName}.`;
+        const usersToUpdateAndSave = new Map();
+        const addUserToUpdateList = (userDoc) => { if (userDoc && userDoc._id) usersToUpdateAndSave.set(userDoc._id.toString(), userDoc); };
+
+        if (cancelMediation === true) {
+            finalStatus = 'Cancelled';
+            historyEvent = `Mediation cancelled by Admin ${adminFullName}.`;
+            mediationRequest.resolutionDetails = resolutionNotes || "Mediation cancelled by administrator decision.";
+            console.log(`   [AdminResolveDispute] Mediation ${mediationRequestId} is being cancelled by admin.`);
+
+            if (mediationRequest.escrowedAmount > 0 && buyer && mediator) { // يجب وجود وسيط ومشتري ومبلغ مجمد
+                const totalEscrowedInOriginalCurrency = mediationRequest.escrowedAmount;
+                const escrowOriginalCurrency = mediationRequest.escrowedCurrency;
+
+                // 1. تحديد سعر المنتج (نفترض أنه بنفس عملة الضمان أو تم تحويله ليكون كذلك عند تجميد المبلغ)
+                let productPriceToRefundBuyerInOriginalCurrency = parseFloat(product.agreedPrice != null ? product.agreedPrice : product.price);
+
+                // تأكد أن عملة سعر المنتج تتطابق مع عملة الضمان أو قم بالتحويل
+                // هذا مهم إذا كان product.currency مختلفًا عن escrowOriginalCurrency
+                if (product.currency !== escrowOriginalCurrency) {
+                    console.warn(`   [AdminResolveDispute - Cancel] Product currency (${product.currency}) differs from escrow currency (${escrowOriginalCurrency}). Assuming product price needs conversion to escrow currency if not already done.`);
+                    if (product.currency === 'USD' && escrowOriginalCurrency === 'TND') {
+                        // هذا السيناريو غير منطقي إذا كان سعر المنتج بالدولار والمبلغ المجمد بالدينار، يجب أن يكون العكس
+                        // أو أن agreedPrice يجب أن يكون دائمًا بنفس عملة الضمان
+                    } else if (product.currency === 'TND' && escrowOriginalCurrency === 'USD') {
+                        productPriceToRefundBuyerInOriginalCurrency = productPriceToRefundBuyerInOriginalCurrency / TND_USD_EXCHANGE_RATE;
+                    }
+                    // يجب أن يكون لديك منطق واضح هنا لكيفية تحديد سعر المنتج بالعملة الصحيحة للضمان
+                }
+                productPriceToRefundBuyerInOriginalCurrency = parseFloat(productPriceToRefundBuyerInOriginalCurrency.toFixed(4));
+
+
+                // 2. المبلغ الذي سيحصل عليه الوسيط هو (المبلغ المجمد الكلي - سعر المنتج)
+                let mediatorFeeToPayNowInOriginalCurrency = totalEscrowedInOriginalCurrency - productPriceToRefundBuyerInOriginalCurrency;
+                mediatorFeeToPayNowInOriginalCurrency = parseFloat(mediatorFeeToPayNowInOriginalCurrency.toFixed(4));
+
+                console.log(`   [AdminResolveDispute - Cancel] Escrowed: ${totalEscrowedInOriginalCurrency.toFixed(2)} ${escrowOriginalCurrency}`);
+                console.log(`   [AdminResolveDispute - Cancel] Product Price to refund buyer: ${productPriceToRefundBuyerInOriginalCurrency.toFixed(2)} ${escrowOriginalCurrency}`);
+                console.log(`   [AdminResolveDispute - Cancel] Calculated Mediator Fee to pay: ${mediatorFeeToPayNowInOriginalCurrency.toFixed(2)} ${escrowOriginalCurrency}`);
+
+                if (mediatorFeeToPayNowInOriginalCurrency < 0) {
+                    console.warn(`   [AdminResolveDispute - Cancel] Mediator fee became negative. Escrow: ${totalEscrowedInOriginalCurrency}, Product Price: ${productPriceToRefundBuyerInOriginalCurrency}. Refunding full escrow to buyer, no fee to mediator.`);
+                    productPriceToRefundBuyerInOriginalCurrency = totalEscrowedInOriginalCurrency; // المشتري يسترد كل شيء
+                    mediatorFeeToPayNowInOriginalCurrency = 0; // الوسيط لا يحصل على شيء
+                }
+
+                // 3. دفع رسوم الوسيط (إذا كانت > 0)
+                if (mediatorFeeToPayNowInOriginalCurrency > 0) {
+                    let mediatorFeeInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency;
+                    if (escrowOriginalCurrency !== PLATFORM_BASE_CURRENCY) {
+                        if (escrowOriginalCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') mediatorFeeInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency * TND_USD_EXCHANGE_RATE;
+                        else if (escrowOriginalCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') mediatorFeeInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency / TND_USD_EXCHANGE_RATE;
+                    }
+                    mediatorFeeInPlatformCurrency = parseFloat(mediatorFeeInPlatformCurrency.toFixed(2));
+
+                    mediator.balance = parseFloat(((mediator.balance || 0) + mediatorFeeInPlatformCurrency).toFixed(2));
+                    addUserToUpdateList(mediator);
+                    const mediatorFeeTx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', amount: mediatorFeeInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', relatedMediationRequest: mediationRequestId, description: `Fee (admin cancel) for '${product.title}'` });
+                    await mediatorFeeTx.save({ session });
+                    console.log(`   [AdminResolveDispute - Cancel] Mediator (${mediator._id}) paid ${mediatorFeeInPlatformCurrency} ${PLATFORM_BASE_CURRENCY}.`);
+                }
+
+                // 4. إرجاع سعر المنتج للمشتري (إذا كان > 0)
+                if (productPriceToRefundBuyerInOriginalCurrency > 0) {
+                    let productPriceInPlatformCurrency = productPriceToRefundBuyerInOriginalCurrency;
+                    if (escrowOriginalCurrency !== PLATFORM_BASE_CURRENCY) {
+                        if (escrowOriginalCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') productPriceInPlatformCurrency = productPriceToRefundBuyerInOriginalCurrency * TND_USD_EXCHANGE_RATE;
+                        else if (escrowOriginalCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') productPriceInPlatformCurrency = productPriceToRefundBuyerInOriginalCurrency / TND_USD_EXCHANGE_RATE;
+                    }
+                    productPriceInPlatformCurrency = parseFloat(productPriceInPlatformCurrency.toFixed(2));
+
+                    buyer.balance = parseFloat(((buyer.balance || 0) + productPriceInPlatformCurrency).toFixed(2));
+                    addUserToUpdateList(buyer);
+                    const refundTransaction = new Transaction({ user: buyer._id, type: 'ESCROW_RETURNED_MEDIATION_CANCELLED', amount: productPriceInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Product price refund (admin cancel) for '${product.title}'`, relatedMediationRequest: mediationRequestId });
+                    await refundTransaction.save({ session });
+                    console.log(`   [AdminResolveDispute - Cancel] Buyer (${buyer._id}) refunded ${productPriceInPlatformCurrency} ${PLATFORM_BASE_CURRENCY}.`);
+                }
+                mediationRequest.escrowedAmount = 0;
+                mediationRequest.escrowedCurrency = null;
+            } else if (mediationRequest.escrowedAmount > 0 && buyer && !mediator) { // لا وسيط، أرجع كل شيء للمشتري
+                let amountToReturnToBuyerInPlatformCurrency = mediationRequest.escrowedAmount;
+                // ... (منطق تحويل العملة للمشتري كما كان) ...
+                if (mediationRequest.escrowedCurrency !== PLATFORM_BASE_CURRENCY) {
+                    if (mediationRequest.escrowedCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') amountToReturnToBuyerInPlatformCurrency = mediationRequest.escrowedAmount * TND_USD_EXCHANGE_RATE;
+                    else if (mediationRequest.escrowedCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') amountToReturnToBuyerInPlatformCurrency = mediationRequest.escrowedAmount / TND_USD_EXCHANGE_RATE;
+                }
+                amountToReturnToBuyerInPlatformCurrency = parseFloat(amountToReturnToBuyerInPlatformCurrency.toFixed(2));
+                buyer.balance = parseFloat(((buyer.balance || 0) + amountToReturnToBuyerInPlatformCurrency).toFixed(2));
+                addUserToUpdateList(buyer);
+                const refundTx = new Transaction({ user: buyer._id, type: 'ESCROW_RETURNED_MEDIATION_CANCELLED', amount: amountToReturnToBuyerInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Full escrow refund (no mediator, admin cancel) for '${product.title}'`, relatedMediationRequest: mediationRequestId });
+                await refundTx.save({ session });
+                mediationRequest.escrowedAmount = 0; mediationRequest.escrowedCurrency = null;
+                console.log(`   [AdminResolveDispute - Cancel] No mediator, full escrow returned to buyer ${buyer._id}.`);
+            } else {
+                console.log(`   [AdminResolveDispute - Cancel] No escrowed amount, or buyer/mediator missing. No funds distributed for mediation ${mediationRequestId}.`);
+            }
+        } else { // حالة فوز البائع أو المشتري
+            const winnerUserDoc = [seller, buyer].find(u => u._id.toString() === winnerId.toString());
+            const loserUserDoc = [seller, buyer].find(u => u._id.toString() === loserId.toString());
+
+            if (!winnerUserDoc || !loserUserDoc) { await session.abortTransaction(); session.endSession(); return res.status(404).json({ msg: "Winner or Loser user not found." }); }
+            if (mediator && (mediator._id.equals(winnerId) || mediator._id.equals(loserId))) { await session.abortTransaction(); session.endSession(); return res.status(400).json({ msg: "Mediator cannot be winner/loser." }); }
+
+            historyEvent += ` Ruled in favor of ${winnerUserDoc.fullName}.`;
+            mediationRequest.resolutionDetails = resolutionNotes || `Resolved by admin in favor of ${winnerUserDoc.fullName}.`;
+
+            const oldLevelWinner = winnerUserDoc.level;
+            winnerUserDoc.reputationPoints = (winnerUserDoc.reputationPoints || 0) + 1;
+            updateUserLevelAndBadge(winnerUserDoc);
+            await processLevelUpRewards(winnerUserDoc, oldLevelWinner, session);
+            addUserToUpdateList(winnerUserDoc);
+
+            loserUserDoc.reputationPoints = Math.max(0, (loserUserDoc.reputationPoints || 0) - 1);
+            updateUserLevelAndBadge(loserUserDoc);
+            addUserToUpdateList(loserUserDoc);
+
+            if (mediationRequest.escrowedAmount > 0) {
+                let amountInPlatformCurrency = mediationRequest.escrowedAmount;
+                if (mediationRequest.escrowedCurrency !== PLATFORM_BASE_CURRENCY) {
+                    if (mediationRequest.escrowedCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') amountInPlatformCurrency = mediationRequest.escrowedAmount * TND_USD_EXCHANGE_RATE;
+                    else if (mediationRequest.escrowedCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') amountInPlatformCurrency = mediationRequest.escrowedAmount / TND_USD_EXCHANGE_RATE;
+                }
+                amountInPlatformCurrency = parseFloat(amountInPlatformCurrency.toFixed(2));
+
+                if (buyer._id.toString() === winnerId.toString()) {
+                    buyer.balance = parseFloat(((buyer.balance || 0) + amountInPlatformCurrency).toFixed(2));
+                    addUserToUpdateList(buyer);
+                    const tx = new Transaction({ user: buyer._id, type: 'ESCROW_REFUND_DISPUTE_WON', amount: amountInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Escrow refund (won dispute) for '${product.title}'`, relatedMediationRequest: mediationRequestId });
+                    await tx.save({ session });
+                } else if (seller._id.toString() === winnerId.toString()) {
+                    const mediatorFeeInOriginalCurrency = parseFloat(mediationRequest.calculatedMediatorFee || 0);
+                    let netAmountForSellerInOriginalCurrency = mediationRequest.escrowedAmount - mediatorFeeInOriginalCurrency;
+                    if (netAmountForSellerInOriginalCurrency < 0) netAmountForSellerInOriginalCurrency = 0;
+
+                    let amountToSellerInPlatformCurrency = netAmountForSellerInOriginalCurrency;
+                    if (mediationRequest.escrowedCurrency !== PLATFORM_BASE_CURRENCY) { /* تحويل العملة */ }
+                    amountToSellerInPlatformCurrency = parseFloat(amountToSellerInPlatformCurrency.toFixed(2));
+
+                    seller.sellerAvailableBalance = parseFloat(((seller.sellerAvailableBalance || 0) + amountToSellerInPlatformCurrency).toFixed(2));
+                    seller.productsSoldCount = (seller.productsSoldCount || 0) + 1;
+                    addUserToUpdateList(seller);
+
+                    if (mediator && mediatorFeeInOriginalCurrency > 0) {
+                        let mediatorFeeInPlatformCurrency = mediatorFeeInOriginalCurrency;
+                        if (mediationRequest.mediationFeeCurrency !== PLATFORM_BASE_CURRENCY) { /* تحويل العملة */ }
+                        mediatorFeeInPlatformCurrency = parseFloat(mediatorFeeInPlatformCurrency.toFixed(2));
+                        mediator.balance = parseFloat(((mediator.balance || 0) + mediatorFeeInPlatformCurrency).toFixed(2));
+                        mediator.successfulMediationsCount = (mediator.successfulMediationsCount || 0) + 1;
+                        // addUserToUpdateList(mediator); // سيضاف لاحقاً لتحديث حالته
+                        const tx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_DISPUTE', amount: mediatorFeeInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', relatedMediationRequest: mediationRequestId, description: `Fee for dispute resolution of '${product.title}'` });
+                        await tx.save({ session });
+                    }
+                    const tx = new Transaction({ user: seller._id, type: 'DISPUTE_PAYOUT_SELLER_WON', amount: amountToSellerInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', relatedMediationRequest: mediationRequestId, description: `Payout (won dispute) for '${product.title}'` });
+                    await tx.save({ session });
+                }
+                mediationRequest.escrowedAmount = 0;
+                mediationRequest.escrowedCurrency = null;
+            }
+        }
+
+        mediationRequest.status = finalStatus;
+        mediationRequest.history.push({ event: historyEvent, userId: adminUserId, timestamp: new Date(), details: { resolutionNotes: resolutionNotes || "N/A" } });
+
+        if (product && product.status === 'Disputed') {
+            let newProductStatus = 'approved'; // الافتراضي
+            if (finalStatus === 'AdminResolved' && seller._id.toString() === winnerId.toString()) {
+                newProductStatus = 'sold';
+            }
+            await Product.findByIdAndUpdate(product._id, { $set: { status: newProductStatus, buyer: (newProductStatus === 'sold' ? buyer._id : null), soldAt: (newProductStatus === 'sold' ? new Date() : null), currentMediationRequest: null } }, { session });
+            console.log(`   [AdminResolveDispute] Product ${product._id} status updated to '${newProductStatus}'.`);
+        }
+
+        if (mediator) {
+            if (mediator.mediatorStatus === 'Busy' || mediator.mediatorStatus === 'Unavailable') {
+                mediator.mediatorStatus = 'Available';
+            }
+            addUserToUpdateList(mediator);
+        }
+
+        for (const userDoc of usersToUpdateAndSave.values()) {
+            if (userDoc.isModified()) {
+                await userDoc.save({ session });
+            }
+        }
+        await mediationRequest.save({ session });
+
+        await session.commitTransaction();
+        session.endSession(); // يجب أن تكون هنا بعد commit أو abort
+
+        // --- إرسال الإشعارات و Socket.IO (خارج المعاملة) ---
+        const involvedPartyIds = [seller._id, buyer._id];
+        if (mediator?._id) involvedPartyIds.push(mediator._id);
+        // ... (بقية منطق الإشعارات و Socket.IO كما كان في الرد السابق، مع التأكد من إرسال البيانات المحدثة) ...
+        // ... (تأكد من أن Socket.IO payload يشمل mediatorStatus و productsSoldCount و sellerAvailableBalance و balance المحدثة) ...
+        const uniquePartyIdsForNotification = [...new Set(involvedPartyIds.map(id => id.toString()))];
+        const productTitleNotif = product?.title || 'the transaction';
+        const notificationTitle = cancelMediation ? 'Mediation Cancelled by Admin' : 'Dispute Resolved by Admin';
+        let notificationMessageBase = cancelMediation ?
+            `The mediation regarding "${productTitleNotif}" has been cancelled by an administrator.` :
+            `The dispute regarding "${productTitleNotif}" has been resolved by an administrator.`;
+
+        if (resolutionNotes && resolutionNotes.trim() !== "") {
+            notificationMessageBase += ` Admin notes: ${resolutionNotes.trim()}`;
+        }
+
+        const notificationsToSend = uniquePartyIdsForNotification.map(partyId => {
+            let specificMessage = notificationMessageBase;
+            if (!cancelMediation && winnerId && loserId) {
+                if (partyId === winnerId.toString()) specificMessage += ` The decision was in your favor.`;
+                else if (partyId === loserId.toString()) specificMessage += ` The decision was not in your favor.`;
+            }
+            return { user: partyId, type: cancelMediation ? 'MEDIATION_CANCELLED_ADMIN' : 'DISPUTE_RESOLVED_ADMIN', title: notificationTitle, message: specificMessage, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } };
+        });
+        if (notificationsToSend.length > 0) { try { await Notification.insertMany(notificationsToSend); } catch (e) { console.error("Notif error:", e) } }
+
+        if (req.io) {
+            const finalPopulatedMediationRequest = await MediationRequest.findById(mediationRequestId).populate('product seller buyer mediator disputeOverseers chatMessages.sender chatMessages.readBy.readerId').lean();
+            if (finalPopulatedMediationRequest) req.io.to(mediationRequestId.toString()).emit('mediation_details_updated', { mediationRequestId: mediationRequestId.toString(), updatedMediationDetails: finalPopulatedMediationRequest });
+
+            for (const userDoc of usersToUpdateAndSave.values()) {
+                if (userDoc && req.onlineUsers && req.onlineUsers[userDoc._id.toString()]) {
+                    const freshUserForSocket = await User.findById(userDoc._id).select('-password').lean();
+                    if (freshUserForSocket) {
+                        const profileSummary = { _id: freshUserForSocket._id.toString(), balance: freshUserForSocket.balance, sellerAvailableBalance: freshUserForSocket.sellerAvailableBalance, sellerPendingBalance: freshUserForSocket.sellerPendingBalance, productsSoldCount: freshUserForSocket.productsSoldCount, reputationPoints: freshUserForSocket.reputationPoints, level: freshUserForSocket.level, reputationLevel: freshUserForSocket.reputationLevel, mediatorStatus: freshUserForSocket.mediatorStatus, mediatorEscrowGuarantee: freshUserForSocket.mediatorEscrowGuarantee, successfulMediationsCount: freshUserForSocket.successfulMediationsCount, claimedLevelRewards: freshUserForSocket.claimedLevelRewards, positiveRatings: freshUserForSocket.positiveRatings, negativeRatings: freshUserForSocket.negativeRatings, isMediatorQualified: freshUserForSocket.isMediatorQualified };
+                        req.io.to(req.onlineUsers[userDoc._id.toString()]).emit('user_profile_updated', profileSummary);
+                    }
+                }
+            }
+        }
+        // ----------------------------------------------------
+
+        const responseMediationRequest = await MediationRequest.findById(mediationRequestId).populate('product seller buyer mediator').lean();
+        res.status(200).json({ msg: `Dispute process completed: ${historyEvent}`, mediationRequest: responseMediationRequest });
+
+    } catch (error) {
+        if (session && session.inTransaction()) await session.abortTransaction();
+        console.error(`[AdminResolveDisputeController] CRITICAL Error:`, error.message, "\nFull Stack:", error.stack);
+        if (!res.headersSent) res.status(error.statusCode || error.status || 500).json({ msg: error.message || "Server error resolving dispute." });
+    } finally {
+        if (session && session.endSession) { try { await session.endSession(); } catch (e) { console.error("Session end error", e); } }
+        console.log(`[AdminResolveDisputeController] Session management completed for ${mediationRequestId}.`);
+    }
+};

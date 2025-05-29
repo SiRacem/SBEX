@@ -162,6 +162,52 @@
     /* Give loading state some height */
 }
 
+.profile-actions-dropdown .dropdown-toggle.no-caret::after {
+    display: none;
+    /* لإخفاء السهم الافتراضي للـ dropdown */
+}
+
+.profile-actions-dropdown .dropdown-toggle {
+    color: #6c757d;
+    /* لون أيقونة النقاط الثلاث */
+}
+
+.profile-actions-dropdown .dropdown-toggle:hover,
+.profile-actions-dropdown .dropdown-toggle:focus {
+    color: #343a40;
+    /* لون أغمق عند المرور */
+    box-shadow: none !important;
+    /* إزالة الظل عند التركيز */
+}
+
+/* في UserProfilePage.css أو ملف CSS عام */
+
+.report-user-icon-button {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0.25rem !important;
+    line-height: 1;
+}
+
+/* تأثير المرور فقط عندما لا يكون الزر معطلاً */
+.report-user-icon-button:not([disabled]) svg {
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.report-user-icon-button:not([disabled]):hover svg {
+    transform: scale(1.15);
+    /* اللون الأحمر الأغمق عند المرور للأيقونة النشطة (إذا أردت) */
+    /* color: #a71d2a !important;  */
+    /* اللون الحالي يتم التحكم به من style prop، لذا هذا قد لا يكون ضروريًا */
+}
+
+/* إذا أردت أن يكون للأيقونة المعطلة شكل مختلف قليلاً عند المرور (اختياري) */
+.report-user-icon-button[disabled]:hover svg {
+    /* لا يوجد تأثير تحويل أو تغيير لون إضافي */
+    /* اللون والشفافية يتم التحكم بهما من style prop */
+}
+
 /* Responsive adjustments */
 @media (max-width: 767px) {
     .profile-header {

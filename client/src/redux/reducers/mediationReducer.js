@@ -18,7 +18,8 @@ import {
     OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
-    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS, ADMIN_RESOLVE_DISPUTE_REQUEST,
+    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -92,6 +93,9 @@ const initialState = {
     activeMediationDetails: null,
     loadingActiveMediationDetails: false,
     errorActiveMediationDetails: null,
+
+    loadingResolveDispute: {}, // لتتبع حالة تحميل حل النزاع لكل طلب
+    errorResolveDispute: {},   // لتتبع أخطاء حل النزاع
 };
 
 const mediationReducer = (state = initialState, action) => {
@@ -553,7 +557,56 @@ const mediationReducer = (state = initialState, action) => {
                 loadingActiveMediationDetails: false,
                 errorActiveMediationDetails: null,
             };
-            
+
+        case ADMIN_RESOLVE_DISPUTE_REQUEST:
+            return {
+                ...state,
+                loadingResolveDispute: {
+                    ...state.loadingResolveDispute,
+                    [action.payload.mediationRequestId]: true,
+                },
+                errorResolveDispute: {
+                    ...state.errorResolveDispute,
+                    [action.payload.mediationRequestId]: null,
+                }
+            };
+        case ADMIN_RESOLVE_DISPUTE_SUCCESS:
+            // تحديث activeMediationDetails إذا كان هذا هو الطلب النشط
+            const updatedActiveDetails = state.activeMediationDetails?._id === action.payload.mediationRequestId
+                ? action.payload.updatedMediationRequest
+                : state.activeMediationDetails;
+
+            // (اختياري) تحديث قائمة النزاعات إذا كانت موجودة في هذا الـ reducer
+            // const updatedDisputedCases = (state.adminDisputedMediations?.requests || []).map(req =>
+            //     req._id === action.payload.mediationRequestId ? action.payload.updatedMediationRequest : req
+            // );
+
+            return {
+                ...state,
+                loadingResolveDispute: {
+                    ...state.loadingResolveDispute,
+                    [action.payload.mediationRequestId]: false,
+                },
+                activeMediationDetails: updatedActiveDetails,
+                // adminDisputedMediations: state.adminDisputedMediations ? {
+                //     ...state.adminDisputedMediations,
+                //     requests: updatedDisputedCases
+                // } : state.adminDisputedMediations,
+                // يمكنك أيضًا إزالة الطلب من قائمة النزاعات إذا أصبحت حالته "AdminResolved"
+            };
+        case ADMIN_RESOLVE_DISPUTE_FAIL:
+            return {
+                ...state,
+                loadingResolveDispute: {
+                    ...state.loadingResolveDispute,
+                    [action.payload.mediationRequestId]: false,
+                },
+                errorResolveDispute: {
+                    ...state.errorResolveDispute,
+                    [action.payload.mediationRequestId]: action.payload.error,
+                }
+            };
+
         default:
             return state;
     }

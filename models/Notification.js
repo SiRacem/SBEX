@@ -80,6 +80,10 @@ const NotificationSchema = new Schema({
             'SALE_FUNDS_PENDING',
             'MEDIATION_FEE_RECEIVED',
             'PRODUCT_RECEIPT_CONFIRMED',
+            'NEW_USER_REPORT',
+            'REPORT_STATUS_UPDATE',
+            'DISPUTE_RESOLVED_ADMIN',
+            'FUNDS_NOW_AVAILABLE',
         ],
         required: true
     },
@@ -88,7 +92,7 @@ const NotificationSchema = new Schema({
     relatedEntity: {
         id: { type: Schema.Types.ObjectId },
         // --- [!] إضافة MediationRequest هنا [!] ---
-        modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest'] }
+        modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest', 'Report'] }
         // --------------------------------------
     },
      // --- [!] إضافة حقل ثانوي للربط (مفيد للوساطة) [!] ---

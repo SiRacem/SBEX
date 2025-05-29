@@ -35,8 +35,8 @@ import {
   FaCheck,
   FaCrown,
   FaShieldAlt,
-  FaStar, // أيقونة للتقييم
-  FaArrowLeft, // أيقونة للرجوع
+  FaStar,
+  FaArrowLeft,
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
@@ -45,6 +45,7 @@ import {
   getMediationDetailsByIdAction,
   updateMediationDetailsFromSocket,
   clearActiveMediationDetails,
+  adminResolveDisputeAction,
 } from "../redux/actions/mediationAction";
 import { SocketContext } from "../App";
 import "./MediationChatPage.css";
@@ -204,7 +205,7 @@ const MediationChatPage = () => {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const [hasJoinedRoom, setHasJoinedRoom] = useState(false);
-  const joinTimeoutRef = useRef(null);
+  // const joinTimeoutRef = useRef(null); // <<< تم إزالته/تعديله
   const [showDetailsOffcanvas, setShowDetailsOffcanvas] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef(null);
@@ -217,8 +218,8 @@ const MediationChatPage = () => {
   const [isConfirmingReceipt, setIsConfirmingReceipt] = useState(false);
   const [isOpeningDispute, setIsOpeningDispute] = useState(false);
   const [resolutionNotes, setResolutionNotes] = useState("");
-
-  const [sidebarView, setSidebarView] = useState("details"); // 'details' or 'ratings'
+  const [sidebarView, setSidebarView] = useState("details");
+  const [isResolvingDispute, setIsResolvingDispute] = useState(false);
 
   const handleShowDetailsOffcanvas = () => setShowDetailsOffcanvas(true);
   const handleCloseDetailsOffcanvas = () => setShowDetailsOffcanvas(false);
@@ -229,8 +230,6 @@ const MediationChatPage = () => {
       mediationDetails.status === "Completed" &&
       sidebarView === "ratings"
     ) {
-      // Fetch ratings if viewing ratings panel and transaction is complete
-      // This is also called when switching to ratings panel
       dispatch(getRatingsForMediationAction(mediationDetails._id));
     }
   }, [dispatch, mediationDetails?._id, mediationDetails?.status, sidebarView]);
@@ -242,24 +241,19 @@ const MediationChatPage = () => {
       mediationDetails.status !== "Completed"
     )
       return [];
-
     const currentMediationRatings =
       mediationRatings && mediationRatings[mediationRequestId]
         ? mediationRatings[mediationRequestId]
         : [];
-
     const ratedUserIdsByCurrentUser = currentMediationRatings
       .filter(
         (rating) =>
           rating.rater === currentUserId || rating.rater?._id === currentUserId
       )
       .map((rating) => rating.ratedUser?._id || rating.ratedUser);
-
     const uniqueRatedUserIds = [...new Set(ratedUserIdsByCurrentUser)];
-
     const parties = [];
     const { seller, buyer, mediator } = mediationDetails;
-
     if (
       seller &&
       seller._id !== currentUserId &&
@@ -304,11 +298,11 @@ const MediationChatPage = () => {
     }
   }, [messages, isLoadingHistory, scrollToBottom]);
 
-  useEffect(() => {
-    if (!isLoadingHistory && messages.length > 0) {
-      scrollToBottom({ behavior: "auto" });
-    }
-  }, [isLoadingHistory, messages.length, scrollToBottom]);
+  // useEffect(() => { // يمكن دمج هذا مع السابق إذا كان السلوك "auto" مرغوبًا دائمًا
+  //   if (!isLoadingHistory && messages.length > 0) {
+  //     scrollToBottom({ behavior: "auto" });
+  //   }
+  // }, [isLoadingHistory, messages.length, scrollToBottom]);
 
   const markVisibleMessagesAsReadCallback = useCallback(() => {
     if (
@@ -327,8 +321,12 @@ const MediationChatPage = () => {
               !msg.readBy.some((r) => r.readerId === currentUserId))
         )
         .map((msg) => msg._id)
-        .filter((id) => id);
+        .filter((id) => id); // Ensure IDs are valid
       if (unreadReceivedMessageIds.length > 0) {
+        console.log(
+          "[MediationChatPage] Marking messages as read:",
+          unreadReceivedMessageIds
+        );
         socket.emit("mark_messages_read", {
           mediationRequestId,
           messageIds: unreadReceivedMessageIds,
@@ -355,22 +353,27 @@ const MediationChatPage = () => {
     };
   }, [markVisibleMessagesAsReadCallback]);
 
-  // جلب التفاصيل
   useEffect(() => {
     if (
       mediationRequestId &&
       currentUserId &&
       (!mediationDetails || mediationDetails._id !== mediationRequestId)
     ) {
+      console.log(
+        "[MediationChatPage] Fetching mediation details for ID:",
+        mediationRequestId
+      );
       dispatch(getMediationDetailsByIdAction(mediationRequestId));
     }
-  }, [dispatch, mediationRequestId, currentUserId, mediationDetails]); // Added mediationDetails to dependency to re-fetch if it changes unexpectedly
+  }, [dispatch, mediationRequestId, currentUserId, mediationDetails]);
 
-  // جلب سجل المحادثة
   const fetchChatHistory = useCallback(async () => {
-    // useCallback here
     setIsLoadingHistory(true);
     setChatError(null);
+    console.log(
+      "[MediationChatPage] Fetching chat history for:",
+      mediationRequestId
+    );
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Authentication token missing.");
@@ -380,68 +383,114 @@ const MediationChatPage = () => {
         config
       );
       setMessages(response.data || []);
+      console.log(
+        "[MediationChatPage] Chat history loaded, messages count:",
+        response.data?.length || 0
+      );
     } catch (err) {
+      console.error("[MediationChatPage] Error loading chat history:", err);
       setChatError(err.response?.data?.msg || "Failed to load chat history.");
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [mediationRequestId]); // mediationRequestId is a dependency
+  }, [mediationRequestId]);
 
   useEffect(() => {
     if (mediationDetails && mediationDetails._id === mediationRequestId) {
       fetchChatHistory();
     }
-  }, [mediationDetails, mediationRequestId, fetchChatHistory]); // Added fetchChatHistory
+  }, [mediationDetails, mediationRequestId, fetchChatHistory]);
 
-  // التنظيف
   useEffect(() => {
     return () => {
       dispatch(clearActiveMediationDetails());
     };
   }, [dispatch]);
 
-  // Socket Connection and Event Handling
+  // <<< تعديل: دالة الانضمام للغرفة أصبحت هنا ومستخدمة في useEffect الخاص بالـ socket
+  const handleJoinChatRoom = useCallback(() => {
+    if (
+      socket &&
+      socket.connected &&
+      mediationRequestId &&
+      currentUserId &&
+      currentUserRole
+    ) {
+      console.log(
+        `[MediationChatPage - handleJoinChatRoom] Attempting to join room: ${mediationRequestId} for user: ${currentUserId} (Role: ${currentUserRole})`
+      );
+      socket.emit("joinMediationChat", {
+        mediationRequestId,
+        userId: currentUserId,
+        userRole: currentUserRole,
+      });
+    } else {
+      console.warn(
+        "[MediationChatPage - handleJoinChatRoom] Could not attempt to join room due to missing data/connection. Socket connected:",
+        socket?.connected,
+        "MediationID:",
+        mediationRequestId,
+        "UserID:",
+        currentUserId,
+        "UserRole:",
+        currentUserRole
+      );
+    }
+  }, [socket, mediationRequestId, currentUserId, currentUserRole]);
+
   useEffect(() => {
     if (!socket || !currentUserId || !mediationRequestId || !mediationDetails) {
+      console.log(
+        "[MediationChatPage - Socket useEffect] Skipping setup: Missing socket, user, mediation ID, or details."
+      );
       return;
     }
-
-    const handleConnect = () => {
-      if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
-      joinTimeoutRef.current = setTimeout(() => {
-        if (socket.connected) {
-          socket.emit("joinMediationChat", {
-            mediationRequestId,
-            userId: currentUserId,
-            userRole: currentUserRole,
-          });
-        }
-      }, 300);
-    };
+    console.log(
+      "[MediationChatPage - Socket useEffect] Setting up socket event listeners for:",
+      mediationRequestId
+    );
 
     const handleJoinedSuccess = (data) => {
+      console.log(
+        "[MediationChatPage - Socket Event] 'joinedMediationChatSuccess':",
+        data
+      );
       setHasJoinedRoom(true);
-      setChatError(null);
+      setChatError(null); // Clear any previous chat errors on successful join
       markVisibleMessagesAsReadCallback();
     };
 
     const handleNewMessage = (message) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m._id === message._id)) return prev;
-        const newMessages = [...prev, message];
+      console.log(
+        "[MediationChatPage - Socket Event] 'newMediationMessage':",
+        message
+      );
+      setMessages((prevMessages) => {
+        if (prevMessages.some((m) => m._id === message._id)) {
+          console.log(
+            "[MediationChatPage - handleNewMessage] Duplicate message skipped:",
+            message._id
+          );
+          return prevMessages;
+        }
+        const newMessagesArray = [...prevMessages, message];
         if (
           message.sender?._id !== currentUserId &&
-          socket.connected &&
+          socket.connected && // Ensure socket is still connected
           document.visibilityState === "visible" &&
-          message._id
+          message._id // Ensure message has an ID
         ) {
+          console.log(
+            "[MediationChatPage - handleNewMessage] Auto-marking new incoming message as read:",
+            message._id
+          );
           socket.emit("mark_messages_read", {
             mediationRequestId,
             messageIds: [message._id],
             readerUserId: currentUserId,
           });
         }
-        return newMessages;
+        return newMessagesArray;
       });
 
       if (message.sender && message.sender._id) {
@@ -458,15 +507,44 @@ const MediationChatPage = () => {
 
     const handleMessagesStatusUpdated = ({
       mediationRequestId: updatedMedId,
-      updatedMessages,
+      updatedMessages, // Array of { _id, readBy: [{ readerId, timestamp, fullName, avatarUrl }] }
     }) => {
+      console.log(
+        "[MediationChatPage - Socket Event] 'messages_status_updated':",
+        { updatedMedId, updatedMessages }
+      );
       if (updatedMedId === mediationRequestId) {
-        setMessages((prev) =>
-          prev.map((msg) => {
-            const updatedMsg = updatedMessages.find(
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => {
+            const updatedMsgInfo = updatedMessages.find(
               (uMsg) => uMsg._id === msg._id
             );
-            return updatedMsg ? { ...msg, readBy: updatedMsg.readBy } : msg;
+            if (
+              updatedMsgInfo &&
+              updatedMsgInfo.readBy &&
+              updatedMsgInfo.readBy.length > 0
+            ) {
+              const newReaderEntry = updatedMsgInfo.readBy[0]; // Server sends the latest reader info
+              const existingReadBy = Array.isArray(msg.readBy)
+                ? msg.readBy
+                : [];
+
+              const alreadyReadByThisReader = existingReadBy.some(
+                (r) => r.readerId === newReaderEntry.readerId
+              );
+
+              if (!alreadyReadByThisReader) {
+                console.log(
+                  `[MediationChatPage - handleMessagesStatusUpdated] Adding reader ${newReaderEntry.readerId} to message ${msg._id}`
+                );
+                return { ...msg, readBy: [...existingReadBy, newReaderEntry] };
+              } else {
+                // Optional: update if newReaderEntry has more details (e.g. fullName/avatarUrl if missing)
+                // or if timestamp is significantly different. For now, just keep existing.
+                return msg;
+              }
+            }
+            return msg;
           })
         );
       }
@@ -476,18 +554,27 @@ const MediationChatPage = () => {
       mediationRequestId: updatedMedId,
       updatedMediationDetails,
     }) => {
+      console.log(
+        "[MediationChatPage - Socket Event] 'mediation_details_updated':",
+        { updatedMedId, updatedMediationDetails }
+      );
       if (updatedMedId === mediationRequestId) {
         dispatch(updateMediationDetailsFromSocket(updatedMediationDetails));
       }
     };
 
-    const handleChatError = (errorEvent) => {
+    const handleChatErrorEvent = (errorEvent) => {
+      console.error(
+        "[MediationChatPage - Socket Event] 'mediationChatError':",
+        errorEvent
+      );
       setChatError(errorEvent.message || "Chat error occurred.");
-      setHasJoinedRoom(false);
+      setHasJoinedRoom(false); // Assume join failed or connection problematic
     };
 
-    const handleDisconnect = (reason) => {
-      setChatError("Chat connection lost.");
+    const handleDisconnectEvent = (reason) => {
+      console.warn("[MediationChatPage - Socket Event] 'disconnect':", reason);
+      setChatError("Chat connection lost. Attempting to reconnect...");
       setHasJoinedRoom(false);
       setTypingUsers({});
     };
@@ -511,21 +598,37 @@ const MediationChatPage = () => {
       }
     };
 
-    socket.on("connect", handleConnect);
+    // Socket event listeners
+    socket.on("connect", handleJoinChatRoom); // <<< Re-join on connect/reconnect
     socket.on("joinedMediationChatSuccess", handleJoinedSuccess);
     socket.on("newMediationMessage", handleNewMessage);
     socket.on("messages_status_updated", handleMessagesStatusUpdated);
     socket.on("mediation_details_updated", handleMediationDetailsUpdated);
-    socket.on("mediationChatError", handleChatError);
-    socket.on("disconnect", handleDisconnect);
+    socket.on("mediationChatError", handleChatErrorEvent);
+    socket.on("disconnect", handleDisconnectEvent);
     socket.on("user_typing", handleUserTyping);
     socket.on("user_stopped_typing", handleUserStoppedTyping);
 
-    if (socket.connected) handleConnect();
+    // Attempt to join if already connected
+    if (socket.connected) {
+      console.log(
+        "[MediationChatPage - Socket useEffect] Socket already connected, calling handleJoinChatRoom."
+      );
+      handleJoinChatRoom();
+    }
 
     return () => {
-      if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
+      console.log(
+        "[MediationChatPage - Socket useEffect Cleanup] Removing listeners for:",
+        mediationRequestId
+      );
+      // if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current); // No longer needed
       if (socket && socket.connected && mediationRequestId) {
+        // Check if socket is defined before emitting
+        console.log(
+          "[MediationChatPage - Socket Cleanup] Emitting 'leaveMediationChat' for:",
+          mediationRequestId
+        );
         socket.emit("leaveMediationChat", { mediationRequestId });
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
@@ -533,13 +636,13 @@ const MediationChatPage = () => {
           typingTimeoutRef.current = null;
         }
       }
-      socket.off("connect", handleConnect);
+      socket.off("connect", handleJoinChatRoom);
       socket.off("joinedMediationChatSuccess", handleJoinedSuccess);
       socket.off("newMediationMessage", handleNewMessage);
       socket.off("messages_status_updated", handleMessagesStatusUpdated);
       socket.off("mediation_details_updated", handleMediationDetailsUpdated);
-      socket.off("mediationChatError", handleChatError);
-      socket.off("disconnect", handleDisconnect);
+      socket.off("mediationChatError", handleChatErrorEvent);
+      socket.off("disconnect", handleDisconnectEvent);
       socket.off("user_typing", handleUserTyping);
       socket.off("user_stopped_typing", handleUserStoppedTyping);
     };
@@ -547,10 +650,11 @@ const MediationChatPage = () => {
     socket,
     mediationRequestId,
     currentUserId,
-    currentUserRole,
-    mediationDetails,
-    markVisibleMessagesAsReadCallback,
+    //currentUserRole, // Included in handleJoinChatRoom's dependencies
+    mediationDetails, // To re-evaluate if user can join if details change
     dispatch,
+    markVisibleMessagesAsReadCallback,
+    handleJoinChatRoom, // <<< Added handleJoinChatRoom
   ]);
 
   const handleInputChange = (e) => {
@@ -562,6 +666,7 @@ const MediationChatPage = () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         if (socket?.connected) {
+          // Check connection again before emitting
           socket.emit("stop_typing", { mediationRequestId });
           typingTimeoutRef.current = null;
         }
@@ -571,6 +676,10 @@ const MediationChatPage = () => {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
+    console.log(
+      "[MediationChatPage] Attempting to send message. Content:",
+      newMessage.trim()
+    );
     if (
       newMessage.trim() &&
       socket?.connected &&
@@ -587,9 +696,18 @@ const MediationChatPage = () => {
         mediationRequestId,
         messageText: newMessage.trim(),
       });
+      console.log("[MediationChatPage] 'sendMediationMessage' emitted.");
       setNewMessage("");
       setShowEmojiPicker(false);
     } else {
+      console.warn(
+        "[MediationChatPage] Cannot send message. Conditions not met. Message:",
+        newMessage,
+        "Socket connected:",
+        socket?.connected,
+        "Joined room:",
+        hasJoinedRoom
+      );
       setChatError("Cannot send message. Check connection or chat status.");
     }
   };
@@ -616,7 +734,15 @@ const MediationChatPage = () => {
           }`}
           alt={sender?.fullName || "User"}
           onError={(e) => {
-            e.target.src = noUserAvatar;
+            console.warn(
+              `[MediationChatPage] Failed to load avatar for ${
+                sender?.fullName || "user"
+              }: ${avatar}. Using fallback.`
+            );
+            if (e.target.src !== noUserAvatar) {
+              e.target.onerror = null; // Prevent infinite loop if fallback fails
+              e.target.src = noUserAvatar;
+            }
           }}
         />
         {isAdmin && (
@@ -647,6 +773,7 @@ const MediationChatPage = () => {
     }
     const formData = new FormData();
     formData.append("image", fileToUpload);
+    console.log("[MediationChatPage] Uploading image:", fileToUpload.name);
     try {
       const response = await axios.post(
         `${BACKEND_URL}/mediation/chat/upload-image`,
@@ -655,9 +782,17 @@ const MediationChatPage = () => {
       );
       const { imageUrl } = response.data;
       if (imageUrl) {
+        console.log(
+          "[MediationChatPage] Image uploaded successfully, URL:",
+          imageUrl
+        );
         socket.emit("sendMediationMessage", { mediationRequestId, imageUrl });
+        console.log(
+          "[MediationChatPage] 'sendMediationMessage' with image emitted."
+        );
       }
     } catch (error) {
+      console.error("[MediationChatPage] Failed to upload image:", error);
       const errorMessage =
         error.response?.data?.msg || "Failed to upload image.";
       toast.error(errorMessage);
@@ -763,8 +898,8 @@ const MediationChatPage = () => {
           if (readerEntry) {
             indicators[lastReadByThisParticipantMessageId].push({
               readerId: participant.id,
-              fullName: readerEntry.fullName || participant.fullName || "User",
-              avatarUrl: readerEntry.avatarUrl || participant.avatarUrl,
+              fullName: readerEntry.fullName || participant.fullName || "User", // Use fullName from readBy if available
+              avatarUrl: readerEntry.avatarUrl || participant.avatarUrl, // Use avatarUrl from readBy if available
               readAt: readerEntry.readAt,
             });
           }
@@ -805,7 +940,7 @@ const MediationChatPage = () => {
         e.target.src = fallbackProductImageUrl;
       }
     },
-    [fallbackProductImageUrl]
+    [fallbackProductImageUrl] // fallbackProductImageUrl is stable
   );
 
   const handleConfirmReceipt = useCallback(async () => {
@@ -819,11 +954,8 @@ const MediationChatPage = () => {
       try {
         await dispatch(buyerConfirmReceipt(mediationDetails._id));
         toast.success("Receipt confirmed! Funds will be released.");
-        // Potentially reset sidebar view to details if it was on ratings
-        // setSidebarView('details');
       } catch (error) {
-        console.error("Error confirming receipt:", error);
-        // Error already handled by toast in action
+        console.error("[MediationChatPage] Error confirming receipt:", error);
       } finally {
         setIsConfirmingReceipt(false);
       }
@@ -849,8 +981,7 @@ const MediationChatPage = () => {
           "A dispute has been opened. A mediator/admin will review the case."
         );
       } catch (error) {
-        console.error("Error opening dispute:", error);
-        // Error already handled by toast in action
+        console.error("[MediationChatPage] Error opening dispute:", error);
       } finally {
         setIsOpeningDispute(false);
       }
@@ -862,54 +993,108 @@ const MediationChatPage = () => {
     isOpeningDispute,
   ]);
 
-  const handleResolveDispute = async (winner) => {
+  const handleResolveDispute = async (winnerRole) => {
     if (
       !mediationDetails?._id ||
       mediationDetails.status !== "Disputed" ||
-      currentUserRole !== "Admin"
+      currentUserRole !== "Admin" ||
+      isResolvingDispute
     ) {
-      toast.warn("Action not allowed or not in correct state.");
+      toast.warn(
+        "Action not allowed, already in progress, or not in correct state."
+      );
+      return;
+    }
+    if (!resolutionNotes.trim()) {
+      toast.warn("Resolution notes are required to resolve the dispute.");
+      return;
+    }
+    let winnerId, loserId;
+    if (winnerRole === "buyer") {
+      winnerId = mediationDetails.buyer?._id;
+      loserId = mediationDetails.seller?._id;
+    } else if (winnerRole === "seller") {
+      winnerId = mediationDetails.seller?._id;
+      loserId = mediationDetails.buyer?._id;
+    } else {
+      toast.error("Invalid winner role specified.");
+      return;
+    }
+    if (!winnerId || !loserId) {
+      toast.error(
+        "Could not determine winner or loser ID from mediation details."
+      );
       return;
     }
     if (
       !window.confirm(
-        `Are you sure you want to rule in favor of the ${winner}? Resolution notes: "${resolutionNotes}". This action is final.`
+        `Are you sure you want to rule in favor of the ${winnerRole}? Resolution notes: "${resolutionNotes}". This action is final.`
       )
     ) {
       return;
     }
-    // Replace with actual dispatch to backend
+    setIsResolvingDispute(true);
+    const resolutionData = {
+      winnerId,
+      loserId,
+      resolutionNotes: resolutionNotes.trim(),
+      cancelMediation: false,
+    };
     console.log(
-      `Admin resolving dispute. Winner: ${winner}, Notes: ${resolutionNotes}, Mediation ID: ${mediationDetails._id}`
+      `[MediationChatPage] Admin resolving dispute. Winner: ${winnerRole}, Notes: ${resolutionNotes}, Mediation ID: ${mediationDetails._id}`
     );
-    toast.info(
-      `Dispute resolution process for ${winner} initiated (Backend logic to be implemented).`
-    );
+    try {
+      await dispatch(
+        adminResolveDisputeAction(mediationDetails._id, resolutionData)
+      );
+    } catch (error) {
+      console.error(
+        "[MediationChatPage] Error resolving dispute from component:",
+        error
+      );
+    } finally {
+      setIsResolvingDispute(false);
+    }
   };
 
   const handleCancelMediationByAdmin = async () => {
     if (
       !mediationDetails?._id ||
-      mediationDetails.status !== "Disputed" || // Or any other relevant status
-      currentUserRole !== "Admin"
+      mediationDetails.status !== "Disputed" ||
+      currentUserRole !== "Admin" ||
+      isResolvingDispute
     ) {
       toast.warn("Action not allowed or not in correct state.");
       return;
     }
     if (
       !window.confirm(
-        "Are you sure you want to cancel this mediation? This is a drastic measure."
+        `Are you sure you want to cancel this mediation? This is a drastic measure. Notes: "${resolutionNotes}"`
       )
     ) {
       return;
     }
-    // Replace with actual dispatch to backend
+    setIsResolvingDispute(true);
+    const resolutionData = {
+      resolutionNotes:
+        resolutionNotes.trim() || "Mediation cancelled by admin.",
+      cancelMediation: true,
+    };
     console.log(
-      `Admin cancelling mediation. Mediation ID: ${mediationDetails._id}, Notes: ${resolutionNotes}`
+      `[MediationChatPage] Admin cancelling mediation. Mediation ID: ${mediationDetails._id}, Notes: ${resolutionNotes}`
     );
-    toast.info(
-      "Mediation cancellation process initiated (Backend logic to be implemented)."
-    );
+    try {
+      await dispatch(
+        adminResolveDisputeAction(mediationDetails._id, resolutionData)
+      );
+    } catch (error) {
+      console.error(
+        "[MediationChatPage] Error cancelling mediation from component:",
+        error
+      );
+    } finally {
+      setIsResolvingDispute(false);
+    }
   };
 
   const renderRatingsPanel = () => {
@@ -1228,7 +1413,7 @@ const MediationChatPage = () => {
     </>
   );
 
-  // Conditional Rendering for Page Content
+  // --- بداية العرض الرئيسي ---
   if (!currentUserId) {
     return (
       <Container className="text-center py-5">
@@ -1242,7 +1427,6 @@ const MediationChatPage = () => {
   }
 
   if (loadingDetails && !mediationDetails) {
-    // Show main loader only if no details yet
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" />
@@ -1252,7 +1436,6 @@ const MediationChatPage = () => {
   }
 
   if (errorDetails && !mediationDetails) {
-    // Show error if loading failed and no details
     return (
       <Container className="py-5">
         <Alert variant="danger">
@@ -1265,7 +1448,6 @@ const MediationChatPage = () => {
   }
 
   if (!mediationDetails && !loadingDetails && !errorDetails) {
-    // If still no details after loading attempt
     return (
       <Container className="py-5 text-center">
         <Alert variant="warning">Mediation details unavailable.</Alert>
@@ -1273,8 +1455,6 @@ const MediationChatPage = () => {
       </Container>
     );
   }
-  // Note: Removed chatError check that prevented rendering if !mediationDetails, as mediationDetails might load even if chat has an issue.
-  // Chat-specific error is handled within the chat area.
 
   return (
     <Container fluid className="mediation-chat-page-redesigned p-0">
@@ -1286,6 +1466,7 @@ const MediationChatPage = () => {
         >
           <Card className="flex-grow-1 d-flex flex-column m-0 border-0 rounded-0">
             <Card.Header className="bg-light border-bottom p-3">
+              {/* ... (جزء الـ Header الحالي بدون تغيير جوهري) ... */}
               <Row className="align-items-center">
                 <Col>
                   <h5 className="mb-0">
@@ -1326,7 +1507,7 @@ const MediationChatPage = () => {
               ref={chatContainerRef}
               className="chat-messages-area p-0"
             >
-              {chatError && ( // Show chat error if present, regardless of mediationDetails
+              {chatError && (
                 <Alert
                   variant="danger"
                   className="m-3 rounded-0 border-0 border-start border-danger border-4 small"
@@ -1354,6 +1535,7 @@ const MediationChatPage = () => {
                   const isMyMessage = msg.sender?._id === currentUserId;
 
                   if (msg.type === "system") {
+                    // ... (عرض رسائل النظام، بدون تغيير جوهري)
                     return (
                       <ListGroup.Item
                         key={msg._id || `msg-${index}`}
@@ -1396,7 +1578,7 @@ const MediationChatPage = () => {
                         style={
                           showAvatar || msg.type === "system"
                             ? {}
-                            : { paddingLeft: isMyMessage ? "0px" : "56px" } // Adjusted for sent messages too
+                            : { paddingLeft: isMyMessage ? "0px" : "56px" }
                         }
                       >
                         {!isMyMessage && (
@@ -1434,16 +1616,19 @@ const MediationChatPage = () => {
                                     ? msg.imageUrl
                                     : `${BACKEND_URL}${msg.imageUrl}`
                                 }
-                                alt="Chat"
+                                alt="Chat image" // <<< تعديل: نص بديل أوضح
                                 className="chat-image-preview"
+                                // <<< تعديل: معالج onError محسن
                                 onError={(e) => {
-                                  e.target.style.display = "none"; // Or show placeholder
-                                  const errorText =
-                                    document.createElement("span");
-                                  errorText.textContent =
-                                    "Image failed to load";
-                                  errorText.className = "text-danger small";
-                                  e.target.parentNode.appendChild(errorText);
+                                  console.warn(
+                                    `[MediationChatPage] Failed to load chat image: ${e.target.src}. Replacing with fallback.`
+                                  );
+                                  if (
+                                    e.target.src !== fallbackProductImageUrl
+                                  ) {
+                                    e.target.onerror = null; // لمنع حلقة لا نهائية
+                                    e.target.src = fallbackProductImageUrl;
+                                  }
                                 }}
                                 onClick={() =>
                                   handleShowImageInModal(
@@ -1468,10 +1653,9 @@ const MediationChatPage = () => {
                               {formatMessageTimestampForDisplay(msg.timestamp)}
                             </small>
                             {isMyMessage &&
-                              participants.length > 1 && // Ensure there are others to read it
+                              participants.length > 1 &&
                               (!avatarsForThisMessage ||
                                 avatarsForThisMessage.length === 0) && (
-                                // Show single check if sent but not yet read by anyone specific we are tracking
                                 <FaCheck
                                   title="Sent"
                                   className="text-muted ms-1"
@@ -1480,28 +1664,17 @@ const MediationChatPage = () => {
                               )}
                           </div>
                         </div>
-                        {isMyMessage && ( // Avatar for sent messages, if shown on right
-                          <div
-                            className="avatar-container ms-2 flex-shrink-0" // ms-2 for margin on left
-                            style={{
-                              width: "40px",
-                              height: "40px",
-                              visibility:
-                                showAvatar && msg.sender ? "visible" : "hidden",
-                            }}
-                          >
-                            {/* {showAvatar && msg.sender && renderMessageSenderAvatar(msg.sender)}  Decide if you want avatar for self */}
-                          </div>
-                        )}
+                        {/* ... (Avatar for sent messages - if you decide to show it) ... */}
                       </ListGroup.Item>
                       {isMyMessage &&
                         avatarsForThisMessage &&
                         avatarsForThisMessage.length > 0 && (
+                          // ... (عرض مؤشرات القراءة، بدون تغيير جوهري)
                           <div
                             className="d-flex justify-content-end pe-3 mb-2 read-indicators-wrapper"
                             style={{
                               paddingRight: showAvatar ? "56px" : "16px",
-                            }} // Adjust based on if self-avatar is shown
+                            }}
                           >
                             <div className="read-by-indicators-cluster d-flex align-items-center">
                               {avatarsForThisMessage.map((reader, idx) => (
@@ -1699,24 +1872,21 @@ const MediationChatPage = () => {
           lg={3}
           className="chat-sidebar-area bg-light border-start p-0 d-none d-md-flex flex-column order-md-2"
         >
-          {/* This div ensures the content inside can be flex and scroll correctly */}
           <div
             className="flex-grow-1 d-flex flex-column"
             style={{ minHeight: 0 }}
           >
-            {/* minHeight for flex scroll */}
-            {mediationDetails ? ( // Only render sidebar content if mediationDetails exist
+            {mediationDetails ? (
               sidebarView === "details" ? (
                 renderTransactionDetailsAndActions()
               ) : (
                 renderRatingsPanel()
               )
-            ) : loadingDetails ? ( // Show spinner if loading and no details yet
+            ) : loadingDetails ? (
               <div className="text-center p-3 flex-grow-1 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" />
               </div>
             ) : (
-              // Show placeholder/error if not loading and no details
               <div className="p-3">
                 <Alert variant="warning">
                   Details unavailable for sidebar.
@@ -1801,5 +1971,9 @@ const MediationChatPage = () => {
     </Container>
   );
 };
+
+// --- إعادة تصدير المكونات التي لم تتغير ---
+// (renderRatingsPanel و renderTransactionDetailsAndActions يجب أن تكونا داخل MediationChatPage أو يتم استيرادهما)
+// لأغراض هذا الرد، افترضت أنهما جزء من MediationChatPage. إذا كانا ملفات منفصلة، لا تغييرات هناك.
 
 export default MediationChatPage;

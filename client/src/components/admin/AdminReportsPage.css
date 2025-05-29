@@ -1,0 +1,59 @@
+/* AdminReportsPage.css أو App.css */
+.admin-reports-page .reports-table th[style*="cursor: pointer"]:hover {
+    background-color: #f0f0f0;
+}
+
+.admin-reports-page .reports-table .badge {
+    font-size: 0.8em;
+    padding: 0.4em 0.6em;
+}
+
+/* لصور البلاغات داخل المودال */
+.report-modal-images-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.report-modal-images-container img.thumbnail {
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s ease-out;
+}
+
+.report-modal-images-container img.thumbnail:hover {
+    transform: scale(1.05);
+    border-color: #007bff;
+}
+
+/* Lightbox للصور المرفقة بالبلاغ */
+.report-image-lightbox .modal-content {
+    background-color: rgba(20, 20, 20, 0.95);
+    /* خلفية داكنة جدًا */
+    border: none;
+}
+
+.report-image-lightbox .modal-header {
+    border-bottom: 1px solid #333;
+    color: #f8f9fa;
+}
+
+.report-image-lightbox .modal-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.report-image-lightbox .modal-body {
+    /* padding 0 is good */
+}
+
+.report-image-lightbox .modal-footer {
+    border-top: 1px solid #333;
+    background-color: rgba(10, 10, 10, 0.85);
+}
+
+.report-image-lightbox .modal-footer .btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}

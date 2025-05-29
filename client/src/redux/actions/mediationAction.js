@@ -19,7 +19,8 @@ import {
     OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
-    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS,ADMIN_RESOLVE_DISPUTE_REQUEST,
+    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL
 } from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
 import { getProfile } from './userAction'; // لجلب البروفايل المحدث (الرصيد)
 
@@ -191,7 +192,6 @@ export const mediatorAcceptAssignmentAction = (mediationRequestId) => async (dis
         return Promise.reject({ error: message });
     }
 };
-// ---------------------------------------------
 
 // --- [!!!] Action لرفض الوسيط للمهمة [!!!] ---
 export const mediatorRejectAssignmentAction = (mediationRequestId, reason) => async (dispatch) => {
@@ -647,3 +647,57 @@ export const updateMediationDetailsFromSocket = (updatedDetails) => ({
 export const clearActiveMediationDetails = () => ({
     type: CLEAR_ACTIVE_MEDIATION_DETAILS,
 });
+
+export const adminResolveDisputeAction = (mediationRequestId, resolutionData) => async (dispatch) => {
+    // resolutionData: { winnerId, loserId, resolutionNotes, cancelMediation (boolean) }
+    dispatch({ type: ADMIN_RESOLVE_DISPUTE_REQUEST, payload: { mediationRequestId } });
+    const config = getTokenConfig();
+    if (!config) {
+        const errorMsg = "Authorization Error. Please login as Admin.";
+        dispatch({ type: ADMIN_RESOLVE_DISPUTE_FAIL, payload: { mediationRequestId, error: errorMsg } });
+        toast.error(errorMsg);
+        throw new Error(errorMsg); // لإيقاف التنفيذ في المكون إذا لزم الأمر
+    }
+
+    try {
+        // المسار في الـ Backend يجب أن يكون مطابقًا لما هو معرف في mediation.router.js
+        // مثال: PUT /mediation/admin/resolve-dispute/:mediationRequestId
+        const { data } = await axios.put(
+            `${BACKEND_URL}/mediation/admin/resolve-dispute/${mediationRequestId}`, // <--- تأكد من هذا المسار
+            resolutionData,
+            config
+        );
+
+        dispatch({
+            type: ADMIN_RESOLVE_DISPUTE_SUCCESS,
+            payload: {
+                mediationRequestId,
+                updatedMediationRequest: data.mediationRequest, // الـ Backend يجب أن يعيد الطلب المحدث
+                // يمكنك أيضًا إرجاع المستخدمين المحدثين إذا كان الـ Backend يفعل ذلك
+            }
+        });
+        toast.success(data.msg || "Dispute resolved successfully!");
+
+        // مهم: تحديث بيانات المستخدمين المتأثرين (الفائز والخاسر)
+        // إذا كان الـ Backend يرسل user_profile_updated عبر Socket.IO،
+        // والـ Profile.jsx يستمع إليه، فقد يتم التحديث تلقائيًا.
+        // ولكن كإجراء احتياطي أو إذا لم يكن Socket.IO يغطي كل الحالات،
+        // يمكنك استدعاء getProfile للمستخدم الحالي إذا كان هو أحد الأطراف (نادرًا ما يكون الأدمن طرفًا).
+        // الأهم هو أن Socket.IO يجب أن يحدث ملفات تعريف الفائز والخاسر.
+        // أو إذا أعاد الـ Backend بيانات المستخدمين المحدثة هنا، يمكنك إرسال action لتحديثهم في Redux.
+
+        // لتحديث تفاصيل الوساطة في activeMediationDetails إذا كانت مفتوحة
+        // dispatch(updateMediationDetailsFromSocket(data.mediationRequest)); // أو طريقة مشابهة
+
+        return data; // أرجع البيانات للاستخدام في المكون إذا لزم الأمر
+
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to resolve dispute.';
+        dispatch({
+            type: ADMIN_RESOLVE_DISPUTE_FAIL,
+            payload: { mediationRequestId, error: message }
+        });
+        toast.error(`Dispute resolution failed: ${message}`);
+        throw error; // أعد رمي الخطأ ليتم التقاطه في المكون
+    }
+};

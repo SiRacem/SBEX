@@ -1,7 +1,6 @@
 // server/models/User.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-// --- [!!!] تأكد من وجود هذا الاستيراد [!!!] ---
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const UserSchema = new Schema({
@@ -17,7 +16,10 @@ const UserSchema = new Schema({
     sellerPendingBalance: { type: Number, default: 0, min: 0 },
     depositBalance: { type: Number, default: 0, min: 0 },
     withdrawalBalance: { type: Number, default: 0, min: 0 },
-    blocked: { type: Boolean, default: false, index: true }, // Added index
+    blocked: { type: Boolean, default: false, index: true },
+    blockReason: { type: String, trim: true, default: null }, // <-- أضف هذا
+    blockedAt: { type: Date, default: null }, // <-- اختياري: لتاريخ الحظر
+    blockedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null }, // <-- اختياري: من قام بالحظر
     avatarUrl: { type: String, default: null },
     escrowBalance: { type: Number, default: 0, min: 0 }, // رصيد المشتري المجمد للمعاملة
 

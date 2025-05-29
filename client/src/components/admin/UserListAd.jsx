@@ -1,5 +1,4 @@
 // src/components/admin/UserListAd.jsx
-// *** نسخة كاملة ومصححة لتحذيرات useSelector - بدون اختصارات ***
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -450,6 +449,9 @@ const UserListAd = ({ search }) => {
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const currentSearch = search !== undefined ? search : "";
+  const [showBlockReasonModal, setShowBlockReasonModal] = useState(false);
+  const [blockReason, setBlockReason] = useState("");
+  const [userToBlock, setUserToBlock] = useState(null); // لتخزين المستخدم الذي سيتم حظره
 
   useEffect(() => {
     dispatch(adminGetAllUsers());
@@ -467,15 +469,39 @@ const UserListAd = ({ search }) => {
   }, []);
   const handleCloseEdit = useCallback(() => setShowEditUserModal(false), []);
   const handleToggleBlock = useCallback(
-    (userId, currentBlockedStatus) => {
-      if (loadingStatusChange[userId]) return;
-      const action = currentBlockedStatus ? "unblock" : "block";
-      if (window.confirm(`Are you sure you want to ${action} this user?`)) {
-        dispatch(adminUpdateUserStatus(userId, !currentBlockedStatus));
+    (user) => {
+      // استقبل الكائن user كاملاً
+      if (loadingStatusChange[user._id]) return;
+
+      if (user.blocked) {
+        // إذا كان محظورًا بالفعل، قم بإلغاء الحظر مباشرة
+        if (
+          window.confirm(`Are you sure you want to unblock ${user.fullName}?`)
+        ) {
+          dispatch(adminUpdateUserStatus(user._id, false, null)); // أرسل null للسبب
+        }
+      } else {
+        // إذا لم يكن محظورًا، افتح مودال السبب
+        setUserToBlock(user);
+        setBlockReason(""); // أفرغ السبب السابق
+        setShowBlockReasonModal(true);
       }
     },
     [dispatch, loadingStatusChange]
   );
+
+  const handleConfirmBlock = () => {
+    if (!userToBlock || !blockReason.trim()) {
+      // يمكنك عرض رسالة خطأ هنا بأن السبب مطلوب
+      alert("Block reason is required.");
+      return;
+    }
+    dispatch(adminUpdateUserStatus(userToBlock._id, true, blockReason));
+    setShowBlockReasonModal(false);
+    setUserToBlock(null);
+    setBlockReason("");
+  };
+
   const handleSaveUserChanges = useCallback(
     async (userId, updatedData) => {
       console.log("Attempting to save changes for user:", userId, updatedData);
@@ -624,7 +650,7 @@ const UserListAd = ({ search }) => {
                             }
                             size="sm"
                             className="action-btn"
-                            onClick={() => handleToggleBlock(u._id, u.blocked)}
+                            onClick={() => handleToggleBlock(u)}
                             disabled={isChangingStatus || isChangingData}
                             title={u.blocked ? "Unblock User" : "Block User"}
                           >
@@ -653,6 +679,45 @@ const UserListAd = ({ search }) => {
           </Card.Body>
         </Card>
       )}
+      {/* Block Reason Modal */}
+      <Modal
+        show={showBlockReasonModal}
+        onHide={() => setShowBlockReasonModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Block User: {userToBlock?.fullName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>
+              Reason for blocking <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Enter the reason for blocking this user..."
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowBlockReasonModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleConfirmBlock}
+            disabled={!blockReason.trim()}
+          >
+            Confirm Block
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <UserDetailsModal
         show={showDetailsModal}
         onHide={handleCloseDetails}

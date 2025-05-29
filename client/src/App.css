@@ -203,6 +203,132 @@ body {
   color: #dc3545;
 }
 
+/* أنماط إضافية لمودال الإبلاغ */
+.report-image-previews {
+  background-color: #f8f9fa;
+  /* خلفية فاتحة لمنطقة المعاينة */
+}
+
+.report-image-preview-item {
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  /* لضمان أن زر الحذف لا يتجاوز الصورة المصغرة */
+}
+
+.report-image-preview-item img {
+  display: block;
+}
+
+.report-image-remove-btn {
+  width: 24px;
+  /* حجم ثابت لزر الحذف */
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+}
+
+.report-image-remove-btn svg {
+  /* لا حاجة لـ margin هنا لأن الزر نفسه صغير ومُركز */
+}
+
+/* أنماط إضافية لمودال الإبلاغ ومعرض الصور */
+.report-image-previews {
+  background-color: #f8f9fa;
+}
+
+.report-image-preview-item {
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  position: relative;
+  /* Needed for overlay */
+}
+
+.report-image-preview-item img {
+  display: block;
+  transition: transform 0.2s ease-out;
+}
+
+.report-image-preview-item:hover img {
+  transform: scale(1.05);
+}
+
+.report-image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  pointer-events: none;
+  /* Allow click through to item for opening lightbox */
+}
+
+.report-image-preview-item:hover .report-image-overlay {
+  opacity: 1;
+}
+
+
+.report-image-remove-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  z-index: 10;
+  /* Ensure it's above the overlay */
+}
+
+/* Lightbox Modal Styles */
+.report-lightbox-modal .modal-content {
+  background-color: rgba(0, 0, 0, 0.85);
+  /* Darker background for lightbox */
+  border: none;
+}
+
+.report-lightbox-modal .modal-header {
+  border-bottom: 1px solid #444;
+  color: #f8f9fa;
+  /* Light text for header */
+}
+
+.report-lightbox-modal .modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+  /* Make close button white */
+}
+
+.report-lightbox-modal .modal-body {
+  /* padding is already 0 */
+}
+
+.report-lightbox-modal .modal-footer {
+  border-top: 1px solid #444;
+  background-color: rgba(0, 0, 0, 0.7);
+  /* Slightly less dark footer */
+}
+
+.report-lightbox-modal .modal-footer .btn-light {
+  color: #f8f9fa;
+  background-color: transparent;
+  border-color: #6c757d;
+}
+
+.report-lightbox-modal .modal-footer .btn-light:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #adb5bd;
+}
+
 @media (max-width: 767.98px) {
   .app-container.layout-authenticated {
     display: block;
@@ -224,10 +350,13 @@ body {
 }
 
 .mediation-list-item .status-indicator-dot.unread {
-  background-color: var(--bs-danger); /* لون أحمر للإشارة لرسائل غير مقروءة */
+  background-color: var(--bs-danger);
+  /* لون أحمر للإشارة لرسائل غير مقروءة */
 }
 
 .mediation-list-item .status-indicator-dot.read {
-  background-color: var(--bs-gray-400); /* لون رمادي إذا كانت مقروءة أو لا يوجد جديد */
+  background-color: var(--bs-gray-400);
+  /* لون رمادي إذا كانت مقروءة أو لا يوجد جديد */
 }
+
 /* يمكنك تعديل الألوان لتناسب تصميمك */

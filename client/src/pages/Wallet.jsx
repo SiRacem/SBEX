@@ -332,6 +332,13 @@ const Wallet = () => {
       dispatch(getProfile());
       dispatch(getTransactions());
       setTimeout(handleCloseSendModal, 2500);
+      console.log("[Wallet Send Confirm] Preparing to send:", {
+        recipientId: recipientUser?._id,
+        amount: amountToSendNum,
+        currency: sendCurrency,
+        userBalanceTND: userBalanceTND, // للتحقق من الرصيد في الواجهة
+        totalDeductedTND: totalDeductedTND, // للتحقق من الحساب في الواجهة
+      });
     } catch (error) {
       const message =
         error.response?.data?.msg || error?.message || "Failed to send funds.";

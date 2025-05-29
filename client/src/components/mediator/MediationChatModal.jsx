@@ -193,7 +193,7 @@ const MediationChatModal = ({
     >
       <Modal.Header closeButton={!isJoiningRoom}>
         <Modal.Title>
-          Mediation Chat:{" "}
+          Mediation Chat :
           {productTitle || mediationRequest?.product?.title || "Transaction"}
           {isJoiningRoom && (
             <Spinner

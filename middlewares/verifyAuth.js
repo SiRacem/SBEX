@@ -100,3 +100,18 @@ exports.verifyAuth = async (req, res, next) => {
         }
     }
 };
+
+// --- [!!!] دالة verifyAdmin الجديدة [!!!] ---
+exports.verifyAdmin = async (req, res, next) => {
+    console.log(">>> DEBUG: verifyAdmin Middleware ---");
+    // نفترض أن verifyAuth قد تم استدعاؤها قبل هذا الـ middleware
+    // وأن req.user يحتوي على بيانات المستخدم المصادق عليه
+    if (req.user && req.user.userRole === 'Admin') {
+        console.log(`verifyAdmin: User ${req.user.email} is an Admin. Access granted.`);
+        next(); // المستخدم هو أدمن، اسمح بالمرور
+    } else {
+        console.warn(`verifyAdmin: Access denied. User ${req.user?.email || 'Unknown'} is not an Admin. Role: ${req.user?.userRole}`);
+        res.status(403).json({ msg: 'Access denied. Admin privileges required.' });
+    }
+};
+// --- نهاية دالة verifyAdmin ---

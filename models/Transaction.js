@@ -40,6 +40,11 @@ const TransactionSchema = new Schema({
             'OTHER_CREDIT',         // أي إضافة أخرى للرصيد
             'OTHER_DEBIT',           // أي خصم آخر من الرصيد
             'DEPOSIT', // إيداع مالي (مثل تحويل بنكي أو بطاقة ائتمان)
+            'ESCROW_REFUND_DISPUTE_WON', // استرداد الأموال من الضمان بسبب نزاع
+            'MEDIATION_FEE_DISPUTE', // رسوم الوساطة بسبب نزاع
+            'DISPUTE_PAYOUT_SELLER_WON', // دفع تعويض للبائع في حالة فوز النزاع
+            'TRANSFER', // تحويل أموال بين المستخدمين (يمكن أن يكون داخلي أو خارجي)
+            'ESCROW_RETURNED_MEDIATION_CANCELLED', // إرجاع الأموال من الضمان في حالة إلغاء الوساطة
         ],
         index: true
     },

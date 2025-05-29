@@ -1,5 +1,4 @@
 // src/pages/MainDashboard.jsx
-
 import React, {
   useEffect,
   useMemo,
@@ -26,21 +25,16 @@ import {
   FaGift,
   FaCheckCircle,
   FaQuestionCircle,
-  FaExternalLinkAlt, // أضفت FaExternalLinkAlt
+  FaExternalLinkAlt,
 } from "react-icons/fa";
+import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
-  BsClockHistory, // أيقونة لسجل الوقت
-  BsXCircle, // أيقونة للرفض أو الفشل
-  BsGearFill, // أيقونة للمعالجة
-} from "react-icons/bs";
-import {
-  FiArrowDownCircle, // للإيداع أو الاستلام
-  FiArrowUpCircle, // للسحب أو الإرسال
-  FiSend, // للإرسال
-  FiInbox, // للاستلام
+  FiArrowDownCircle,
+  FiArrowUpCircle,
+  FiSend,
+  FiInbox,
 } from "react-icons/fi";
-
-import { logoutUser, getProfile } from "../redux/actions/userAction";
+import { logoutUser, getProfile } from "../redux/actions/userAction"; // getProfile لا يزال مستورداً ولكنه غير مستخدم مباشرة هنا
 import { getNotifications } from "../redux/actions/notificationAction";
 import {
   Badge,
@@ -58,13 +52,12 @@ import {
 import useCurrencyDisplay from "../hooks/useCurrencyDisplay";
 import { getMyMediationSummaries } from "../redux/actions/mediationAction";
 import PendingFundsDetailsModal from "../components/commun/PendingFundsDetailsModal";
-import TransactionDetailsProduct from "../components/commun/TransactionDetailsProduct"; // <<< هذا هو الاستيراد
+import TransactionDetailsProduct from "../components/commun/TransactionDetailsProduct";
 import { getTransactionsForDashboard } from "../redux/actions/transactionAction";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-import { SocketContext } from "../App";
+import { SocketContext } from "../App"; // SocketContext سيتم توفيره من App.js
 
-// دالة تنسيق العملة
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
@@ -86,7 +79,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
 const MainDashboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const socket = useContext(SocketContext);
+  const socket = useContext(SocketContext); // احصل على الـ socket من الـ Context
 
   const currentUserState = useSelector((state) => state.userReducer);
   const user = currentUserState?.user;
@@ -134,9 +127,10 @@ const MainDashboard = () => {
   );
 
   const [showPendingFundsModal, setShowPendingFundsModal] = useState(false);
-  // --- [!!!] حالة لمودال تفاصيل المعاملة ---
-  const [showTransactionDetailsModal, setShowTransactionDetailsModal] = useState(false);
-  const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState(null);
+  const [showTransactionDetailsModal, setShowTransactionDetailsModal] =
+    useState(false);
+  const [selectedTransactionForDetails, setSelectedTransactionForDetails] =
+    useState(null);
 
   const handleLogout = useCallback(() => {
     if (window.confirm("Are you sure you want to logout?")) {
@@ -153,20 +147,16 @@ const MainDashboard = () => {
     }
   }, [dispatch, isAuth, user?._id]);
 
-  useEffect(() => {
-    if (socket && user?._id) {
-      const handleDashboardUpdate = () => {
-        console.log(
-          "SOCKET: Received 'dashboard_transactions_updated'. Refetching."
-        );
-        dispatch(getTransactionsForDashboard());
-        dispatch(getProfile());
-      };
-      socket.on("dashboard_transactions_updated", handleDashboardUpdate);
-      return () =>
-        socket.off("dashboard_transactions_updated", handleDashboardUpdate);
-    }
-  }, [socket, dispatch, user?._id]);
+  // تم نقل منطق الاستماع لـ 'dashboard_transactions_updated' و 'user_balances_updated'
+  // إلى App.js ليكون مركزيًا ويتجنب إعادة ربط المستمعين بشكل غير ضروري هنا
+  // أو استدعاء getProfile بشكل متكرر من هنا.
+  // سيعمل App.js على تحديث البيانات ذات الصلة في Redux store،
+  // و MainDashboard سيُعاد عرضه تلقائيًا بسبب التغييرات في useSelector.
+
+  // مثال: إذا تم تحديث الأرصدة عبر socket في App.js وتحديث user في Redux،
+  // فإن useCurrencyDisplay سيُعاد حسابه تلقائيًا.
+  // إذا تم تحديث dashboardTransactions عبر socket في App.js،
+  // فإن useSelector لـ dashboardTransactions سيُحدِّث الواجهة هنا.
 
   const handleShowPendingFundsDetails = () => {
     if (user?.userRole === "Vendor" || user?.userRole === "Admin")
@@ -174,11 +164,10 @@ const MainDashboard = () => {
     else toast.info("For sellers.");
   };
 
-  // --- [!!!] دالة لفتح مودال تفاصيل المعاملة ---
   const handleShowTransactionDetails = useCallback((transaction) => {
-    console.log("handleShowTransactionDetails called with:", transaction); // <<< أضف هذا للتحقق
+    console.log("handleShowTransactionDetails called with:", transaction);
     setSelectedTransactionForDetails(transaction);
-    setShowTransactionDetailsModal(true); // <<< تأكد أن هذه يتم استدعاؤها
+    setShowTransactionDetailsModal(true);
   }, []);
 
   const renderTransactionItem = (tx) => {
@@ -386,7 +375,13 @@ const MainDashboard = () => {
     );
   };
 
-  if (userLoading && !user)
+  // --- بداية قسم التحقق من حالة التحميل والمستخدم ---
+  // مهم جداً لتقديم تجربة مستخدم جيدة أثناء التحميل ومنع الاختفاء المفاجئ
+  if (userLoading && !user && !currentUserState.error) {
+    // إذا كان التحميل جاري ولم يتم جلب المستخدم بعد ولم يكن هناك خطأ بعد
+    console.log(
+      "[MainDashboard] Rendering global loading state (user loading, no user yet)"
+    );
     return (
       <Container
         fluid
@@ -398,28 +393,86 @@ const MainDashboard = () => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <span className="ms-3 fs-5">Loading Dashboard...</span>
+        <span className="ms-3 fs-5">Loading Dashboard Data...</span>
       </Container>
     );
-  if (!user && !isAuth && !userLoading)
+  }
+
+  if (!isAuth && !userLoading) {
+    // إذا لم يكن مصادقًا عليه وانتهى التحميل
+    console.log("[MainDashboard] Not authenticated, navigating to login.");
+    // لا تعرض شيئاً هنا، ProtectedRoute في App.js سيعيد التوجيه
+    // أو يمكنك عرض رسالة "الرجاء تسجيل الدخول" إذا كان هذا المكون يُعرض بطريقة ما بدون ProtectedRoute
     return (
       <Container fluid className="py-4 text-center">
-        <Alert variant="warning">Please login.</Alert>
+        <Alert variant="warning">Please login to view the dashboard.</Alert>
         <Button as={Link} to="/login" variant="primary">
           Login
         </Button>
       </Container>
     );
-  if (!user && isAuth && !userLoading && currentUserState.error)
+  }
+
+  if (isAuth && !user && !userLoading && currentUserState.error) {
+    // مصادق عليه ولكن فشل جلب بيانات المستخدم
+    console.log(
+      "[MainDashboard] Error fetching user profile:",
+      currentUserState.error
+    );
     return (
       <Container fluid className="py-4 text-center">
-        <Alert variant="danger">Error: {currentUserState.error}</Alert>
-        <Button onClick={() => dispatch(getProfile())} variant="primary">
-          Retry
+        <Alert variant="danger">
+          Error loading your profile: {currentUserState.error}. Please try
+          <Button
+            variant="link"
+            onClick={() => dispatch(getProfile())}
+            className="p-0 ms-1 me-1"
+          >
+            retrying
+          </Button>
+          or logging out and in again.
+        </Alert>
+        <Button onClick={handleLogout} variant="outline-secondary">
+          Logout
         </Button>
       </Container>
     );
-  if (!user) return null;
+  }
+
+  if (isAuth && !user && !userLoading && !currentUserState.error) {
+    // مصادق عليه ولكن لا يوجد بيانات مستخدم لسبب غير معروف (نادر جداً)
+    console.log(
+      "[MainDashboard] Authenticated, but no user data and no error. This is unusual."
+    );
+    return (
+      <Container fluid className="py-4 text-center">
+        <Alert variant="info">
+          Loading user data... If this persists, please try refreshing or
+          logging out and in again.
+        </Alert>
+        <Button
+          onClick={handleLogout}
+          variant="outline-secondary"
+          className="me-2"
+        >
+          Logout
+        </Button>
+        <Button
+          onClick={() => window.location.reload()}
+          variant="outline-primary"
+        >
+          Refresh Page
+        </Button>
+      </Container>
+    );
+  }
+
+  if (!user) {
+    // حالة افتراضية إذا لم يتمكن أي من الشروط السابقة من التعامل مع الوضع
+    console.log("[MainDashboard] No user data available to render dashboard.");
+    return null; // أو عرض مكون تحميل/خطأ عام أكثر
+  }
+  // --- نهاية قسم التحقق من حالة التحميل والمستخدم ---
 
   return (
     <div className="dashboard-container container-fluid py-4">
@@ -572,7 +625,7 @@ const MainDashboard = () => {
                     animation="border"
                     variant="primary"
                     style={{ width: "2rem", height: "2rem" }}
-                  />{" "}
+                  />
                   <span className="ms-2">Loading Activities...</span>
                 </div>
               ) : transactionsError ? (
@@ -644,17 +697,17 @@ const MainDashboard = () => {
         />
       )}
       {selectedTransactionForDetails && (
-        <TransactionDetailsProduct 
-            show={showTransactionDetailsModal}
-            onHide={() => {
-                setShowTransactionDetailsModal(false);
-                setSelectedTransactionForDetails(null); 
-            }}
-            transaction={selectedTransactionForDetails} // <<< تمرير المعاملة هنا
-            // currentUserId={user?._id} // إذا كان المودال يحتاجه
+        <TransactionDetailsProduct
+          show={showTransactionDetailsModal}
+          onHide={() => {
+            setShowTransactionDetailsModal(false);
+            setSelectedTransactionForDetails(null);
+          }}
+          transaction={selectedTransactionForDetails}
         />
       )}
     </div>
   );
 };
+
 export default MainDashboard;

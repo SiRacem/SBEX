@@ -145,7 +145,7 @@ const ReviewMediatorApplications = () => {
                     <td>{app.email}</td>
                     <td>{app.level || 1}</td>
                     {/* --- [!!!] استخدام formatCurrency للرصيد [!!!] --- */}
-                    <td>{formatCurrency(app.balance, "TND")}</td>
+                    <td>{formatCurrency(app.mediatorEscrowGuarantee, "TND")}</td>
                     <td>
                       {app.mediatorApplicationBasis === 'Reputation' && (
                           <Badge bg="info" text="dark" pill><FaStar className="me-1"/> Reputation</Badge>

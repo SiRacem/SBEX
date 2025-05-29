@@ -10,6 +10,7 @@ const {
     // --- [!!!] استيراد الدوال الجديدة [!!!] ---
     applyForMediator, adminGetPendingMediatorApplications,
     adminApproveMediatorApplication, adminRejectMediatorApplication,updateMyMediatorStatus,updateUserProfilePicture,
+    adminUpdateUserBlockStatus,
     // ------------------------------------
 } = require('../controllers/user.controller'); // <-- تأكد من المسار الصحيح
 // -------------------------------------------
@@ -42,6 +43,8 @@ router.post('/apply-mediator', verifyAuth, applyForMediator);
 router.get("/get_users", verifyAuth, /* isAdmin, */ getUsers);
 router.put('/update_users/:id', verifyAuth, /* isAdminOrSelf, */ updateUsers);
 router.delete('/delete_users/:id', verifyAuth, /* isAdmin, */ deleteUsers);
+
+router.put('/admin/users/:userId/block-status', verifyAuth, isAdmin, adminUpdateUserBlockStatus);
 
 // --- [!!!] إضافة مسار جديد للأدمن لجلب الوسطاء [!!!] ---
 router.get('/admin/mediators', verifyAuth, isAdmin, adminGetAvailableMediators);

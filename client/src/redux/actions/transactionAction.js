@@ -59,4 +59,3 @@ export const getTransactionsForDashboard = () => async (dispatch) => {
         dispatch({ type: GET_DASHBOARD_TRANSACTIONS_FAIL, payload: message });
     }
 };
-// ------------------------------------------------------

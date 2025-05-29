@@ -1,5 +1,4 @@
-// src/components/profile/MediatorApplication.jsx
-// *** نسخة مصححة مع نقل استدعاءات useCallback للأعلى ***
+// src/components/commun/MediatorApplication.jsx
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -28,7 +27,7 @@ import {
 
 } from "react-icons/fa";
 
-const MEDIATOR_REQUIRED_LEVEL = 3;
+const MEDIATOR_REQUIRED_LEVEL = 5; // المستوى المطلوب للوسيط
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.0;
 const TND_TO_USD_RATE = 3.0;
 const formatCurrency = (amount, currencyCode = "TND") => {

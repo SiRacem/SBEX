@@ -30,6 +30,7 @@ const {
     openDisputeController,
     getMediatorDisputedCasesController,
     adminGetDisputedCasesController,
+    adminResolveDisputeController
 } = require('../controllers/mediation.controller');
 const isQualifiedMediator = require('../middlewares/isQualifiedMediator'); // <--- استيراد الـ middleware الجديد
 
@@ -159,5 +160,8 @@ router.put('/open-dispute/:mediationRequestId', verifyAuth, openDisputeControlle
 router.get('/mediator/disputed-cases', verifyAuth, isQualifiedMediator, getMediatorDisputedCasesController); // افترض أن لديك middleware isQualifiedMediator
 
 router.get('/admin/disputed-cases', verifyAuth, isAdmin, adminGetDisputedCasesController);
+
+// مسار لحل النزاع من قبل الأدمن
+router.put('/admin/resolve-dispute/:mediationRequestId', verifyAuth, isAdmin, adminResolveDisputeController);
 
 module.exports = router;

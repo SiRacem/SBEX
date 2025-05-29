@@ -1,5 +1,4 @@
 // src/components/admin/ProductListAdmin.jsx
-// *** نسخة كاملة ومصححة لتحذيرات useSelector وحالات التحميل - بدون اختصارات ***
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -26,17 +25,16 @@ import {
   getPendingProducts,
   approveProduct,
   rejectProduct,
-} from "../../redux/actions/productAction"; // تأكد من المسار الصحيح
-import { toast } from "react-toastify"; // استيراد toast (اختياري، للتحذيرات)
-import "./ProductListAdmin.css"; // تأكد من المسار الصحيح
+} from "../../redux/actions/productAction";
+import { toast } from "react-toastify";
+import ImageGalleryModal from "./ImageGalleryModal"; // <--- استيراد المودال الجديد
+import "./ProductListAdmin.css";
 
-// --- تعريف الصور البديلة ---
 const fallbackImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>';
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
-// --- مكون لعرض تفاصيل المنتج في مودال ---
 const ProductDetailsModal = ({ show, onHide, product }) => {
   const formatCurrency = useCallback((amount, currencyCode = "TND") => {
     const numericAmount = Number(amount);
@@ -82,12 +80,26 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
                       fluid
                       rounded
                       onError={handleImageError}
+                      style={{
+                        maxHeight: "400px",
+                        width: "100%",
+                        objectFit: "contain",
+                      }}
                     />
                   </Carousel.Item>
                 ))}
               </Carousel>
             ) : (
-              <Image src={noImageUrl} fluid rounded />
+              <Image
+                src={noImageUrl}
+                fluid
+                rounded
+                style={{
+                  maxHeight: "400px",
+                  width: "100%",
+                  objectFit: "contain",
+                }}
+              />
             )}
           </Col>
           <Col md={6}>
@@ -100,8 +112,17 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
             <p>
               <strong>Description:</strong>
             </p>
-            <p>{product.description || "N/A"}</p>
-            <p>
+            <div
+              style={{
+                maxHeight: "150px",
+                overflowY: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              <p>{product.description || "N/A"}</p>
+            </div>
+            <p className="mt-2">
               <strong>Link Type:</strong> {product.linkType || "N/A"}
             </p>
             <p>
@@ -131,42 +152,37 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
   );
 };
 
-// --- المكون الرئيسي لصفحة الأدمن ---
 const ProductListAdmin = ({ search }) => {
   const dispatch = useDispatch();
 
-  // --- [!] Selectors محسّنة ومفصولة ---
   const pendingProducts = useSelector(
     (state) => state.productReducer?.pendingProducts ?? []
   );
   const loading = useSelector(
     (state) => state.productReducer?.loadingPending ?? false
-  ); // تحميل القائمة المعلقة
-  const error = useSelector((state) => state.productReducer?.errors ?? null); // خطأ عام
-  // حالات تحميل الموافقة/الرفض ككائنات
+  );
+  const error = useSelector((state) => state.productReducer?.errors ?? null);
   const loadingApprove = useSelector(
     (state) => state.productReducer?.loadingApprove || {}
   );
   const loadingReject = useSelector(
     (state) => state.productReducer?.loadingReject || {}
   );
-  // ------------------------------------
 
-  // --- State المحلي ---
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [galleryProductName, setGalleryProductName] = useState("");
 
-  // --- جلب المنتجات المعلقة ---
   useEffect(() => {
     dispatch(getPendingProducts());
-  }, [dispatch]); // اعتمادية dispatch فقط للجلب الأولي
+  }, [dispatch]);
 
-  // --- Handlers ---
   const handleApprove = useCallback(
     (productId) => {
-      // التحقق من عدم وجود تحميل جاري لهذا المنتج أو المنتج الآخر
       if (loadingApprove[productId] || loadingReject[productId] || !productId)
         return;
       if (window.confirm("Are you sure you want to approve this product?")) {
@@ -174,7 +190,7 @@ const ProductListAdmin = ({ search }) => {
       }
     },
     [dispatch, loadingApprove, loadingReject]
-  ); // إضافة loading كاعتماديات
+  );
 
   const openRejectModal = useCallback((product) => {
     setSelectedProduct(product);
@@ -187,7 +203,6 @@ const ProductListAdmin = ({ search }) => {
       toast.warn("Rejection reason is required.");
       return;
     }
-    // التحقق من عدم وجود تحميل جاري لهذا المنتج
     if (
       selectedProduct?._id &&
       !loadingReject[selectedProduct._id] &&
@@ -195,17 +210,30 @@ const ProductListAdmin = ({ search }) => {
     ) {
       dispatch(rejectProduct(selectedProduct._id, rejectReason));
       setShowRejectModal(false);
+      setRejectReason(""); // Clear reason after submission
     }
-  }, [dispatch, selectedProduct, rejectReason, loadingReject, loadingApprove]); // إضافة loading كاعتماديات
+  }, [dispatch, selectedProduct, rejectReason, loadingReject, loadingApprove]);
 
   const openDetailsModal = useCallback((product) => {
     setSelectedProduct(product);
     setShowDetailsModal(true);
   }, []);
 
-  const closeDetailsModal = useCallback(() => setShowDetailsModal(false), []);
+  const closeDetailsModal = useCallback(() => {
+    setShowDetailsModal(false);
+    setSelectedProduct(null); // Clear selected product
+  }, []);
 
-  // --- الفلترة باستخدام useMemo ---
+  const openImageGallery = useCallback((product) => {
+    setGalleryImages(Array.isArray(product.imageUrls) ? product.imageUrls : []);
+    setGalleryProductName(product.title || "Product");
+    setShowImageGallery(true);
+  }, []);
+
+  const closeImageGallery = useCallback(() => {
+    setShowImageGallery(false);
+  }, []);
+
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(pendingProducts)) return [];
     const currentSearch = search !== undefined ? search : "";
@@ -232,7 +260,6 @@ const ProductListAdmin = ({ search }) => {
         </Col>
       </Row>
 
-      {/* عرض حالة التحميل */}
       {loading && (
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
@@ -240,7 +267,6 @@ const ProductListAdmin = ({ search }) => {
         </div>
       )}
 
-      {/* عرض رسالة الخطأ */}
       {!loading && error && (
         <Alert variant="danger" className="text-center">
           Error loading products:{" "}
@@ -248,7 +274,6 @@ const ProductListAdmin = ({ search }) => {
         </Alert>
       )}
 
-      {/* عرض الجدول أو رسالة عدم وجود بيانات */}
       {!loading && !error && (
         <Card className="shadow-sm">
           <Card.Body className="p-0">
@@ -272,11 +297,9 @@ const ProductListAdmin = ({ search }) => {
               <tbody>
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((product, index) => {
-                    // --- [!] التحقق من التحميل للمنتج الحالي ---
                     const isApproving = loadingApprove[product._id] ?? false;
                     const isRejecting = loadingReject[product._id] ?? false;
-                    const isProcessing = isApproving || isRejecting; // هل المنتج قيد المعالجة؟
-                    // ---------------------------------------
+                    const isProcessing = isApproving || isRejecting;
                     return (
                       <tr
                         key={product._id}
@@ -292,8 +315,9 @@ const ProductListAdmin = ({ search }) => {
                             width={45}
                             height={45}
                             rounded
-                            className="table-product-image"
-                            style={{ objectFit: "cover" }}
+                            className="table-product-image clickable-image"
+                            style={{ objectFit: "cover", cursor: "pointer" }}
+                            onClick={() => openImageGallery(product)}
                             onError={(e) => {
                               e.target.onerror = null;
                               e.target.src = fallbackImageUrl;
@@ -321,7 +345,6 @@ const ProductListAdmin = ({ search }) => {
                             : "N/A"}
                         </td>
                         <td className="text-center action-cell">
-                          {/* --- تعطيل الأزرار أثناء المعالجة --- */}
                           <OverlayTrigger
                             placement="top"
                             overlay={<Tooltip>View Details</Tooltip>}
@@ -372,7 +395,6 @@ const ProductListAdmin = ({ search }) => {
                               )}
                             </Button>
                           </OverlayTrigger>
-                          {/* ----------------------------------- */}
                         </td>
                       </tr>
                     );
@@ -390,10 +412,13 @@ const ProductListAdmin = ({ search }) => {
         </Card>
       )}
 
-      {/* Reject Modal */}
       <Modal
         show={showRejectModal}
-        onHide={() => setShowRejectModal(false)}
+        onHide={() => {
+          setShowRejectModal(false);
+          setSelectedProduct(null); // Clear selected product on close
+          setRejectReason(""); // Clear reason on close
+        }}
         centered
       >
         <Modal.Header closeButton>
@@ -421,12 +446,15 @@ const ProductListAdmin = ({ search }) => {
         <Modal.Footer>
           <Button
             variant="secondary"
-            onClick={() => setShowRejectModal(false)}
+            onClick={() => {
+              setShowRejectModal(false);
+              setSelectedProduct(null);
+              setRejectReason("");
+            }}
             disabled={loadingReject[selectedProduct?._id]}
           >
             Cancel
-          </Button>{" "}
-          {/* تعطيل الإلغاء أثناء الرفض */}
+          </Button>
           <Button
             variant="danger"
             onClick={handleReject}
@@ -434,7 +462,6 @@ const ProductListAdmin = ({ search }) => {
               !rejectReason.trim() || loadingReject[selectedProduct?._id]
             }
           >
-            {/* استخدام حالة التحميل الخاصة بالمنتج المحدد */}
             {loadingReject[selectedProduct?._id] ? (
               <>
                 <Spinner size="sm" animation="border" /> Rejecting...
@@ -446,11 +473,17 @@ const ProductListAdmin = ({ search }) => {
         </Modal.Footer>
       </Modal>
 
-      {/* Details Modal */}
       <ProductDetailsModal
         show={showDetailsModal}
         onHide={closeDetailsModal}
         product={selectedProduct}
+      />
+
+      <ImageGalleryModal
+        show={showImageGallery}
+        onHide={closeImageGallery}
+        images={galleryImages}
+        productName={galleryProductName}
       />
     </Container>
   );
