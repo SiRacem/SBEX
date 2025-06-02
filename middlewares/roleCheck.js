@@ -54,3 +54,49 @@ exports.isAssignedMediator = async (req, res, next) => {
         res.status(500).json({ msg: "Server error during mediator authorization." });
     }
 };
+
+exports.canAccessAdminSubChat = async (req, res, next) => {
+    try {
+        const { mediationRequestId, subChatId } = req.params;
+        const userId = req.user._id;
+        const userRole = req.user.userRole; // افترض أن verifyAuth يضيف req.user مع userRole
+
+        if (!mongoose.Types.ObjectId.isValid(mediationRequestId) || !mongoose.Types.ObjectId.isValid(subChatId)) {
+            return res.status(400).json({ msg: "Invalid Mediation Request ID or Sub-Chat ID format." });
+        }
+
+        const mediationRequest = await MediationRequest.findOne({
+            _id: mediationRequestId,
+            'adminSubChats.subChatId': subChatId
+        }).select('adminSubChats.$ status seller buyer mediator'); // جلب الشات الفرعي المحدد فقط
+
+        if (!mediationRequest) {
+            return res.status(404).json({ msg: "Mediation request or sub-chat not found." });
+        }
+
+        const subChat = mediationRequest.adminSubChats[0]; // بما أننا فلترنا بـ subChatId، ستكون هي الأولى
+
+        if (!subChat) { // احتياطي إضافي
+            return res.status(404).json({ msg: "Sub-chat instance not found within the mediation request." });
+        }
+
+        // الأدمن الذي أنشأ الشات يمكنه الوصول دائمًا
+        // أو أي أدمن آخر إذا كانت سياسة المنصة تسمح بذلك (يمكن تعديل هذا الشرط)
+        const isAdminAllowed = userRole === 'Admin'; // حاليًا، أي أدمن يمكنه الوصول
+
+        // المستخدم العادي يجب أن يكون مشاركًا في الشات الفرعي
+        const isParticipant = subChat.participants.some(p => p.userId.equals(userId));
+
+        if (!isAdminAllowed && !isParticipant) {
+            return res.status(403).json({ msg: "Forbidden: You are not authorized to access this private admin chat." });
+        }
+
+        req.mediationRequest = mediationRequest; // الطلب الرئيسي (مفيد إذا احتجت سياقه)
+        req.adminSubChat = subChat; // الشات الفرعي المحدد (لتجنب جلبه مرة أخرى في الـ controller)
+        next();
+
+    } catch (error) {
+        console.error("Error in canAccessAdminSubChat middleware:", error);
+        res.status(500).json({ msg: "Server error during sub-chat authorization." });
+    }
+};

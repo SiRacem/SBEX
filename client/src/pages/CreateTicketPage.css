@@ -1,0 +1,103 @@
+/* In App.css or a dedicated tickets.css file */
+
+.create-ticket-page {
+    background-color: #f4f7f6;
+    /* خلفية أفتح قليلاً للصفحة */
+}
+
+.ticket-form-card {
+    border-radius: 12px;
+    /* حواف أكثر استدارة للبطاقة */
+    overflow: hidden;
+    /* لضمان تطبيق استدارة الحواف على الهيدر والفوتر */
+}
+
+.ticket-form-header {
+    /* background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* تدرج أزرق جذاب */
+    /* أو استخدم كلاس Bootstrap إذا كان لديك متغيرات معدلة */
+    padding: 1.5rem 2rem;
+    /* زيادة الحشو */
+}
+
+.ticket-form-header h3 {
+    font-weight: 600;
+}
+
+/* استخدام كلاس Bootstrap للتدرج إذا كان متاحًا ومُعرفًا */
+.bg-gradient-primary {
+    background: var(--bs-primary) linear-gradient(180deg, hsla(0, 0%, 100%, .15), hsla(0, 0%, 100%, 0)) !important;
+    /* هذا مثال، قد تحتاج لتعديل متغيرات Bootstrap إذا كنت تستخدم Sass */
+    /* إذا لم يكن، استخدم background: linear-gradient كما في التعليق أعلاه */
+}
+
+
+.form-label.fw-semibold {
+    color: #495057;
+    /* لون أغمق قليلاً للتسميات */
+    font-size: 0.95rem;
+}
+
+.form-control-lg,
+.form-select-lg {
+    /* للتناسق في حجم الحقول */
+    font-size: 1rem;
+    padding: 0.65rem 1rem;
+}
+
+.custom-file-upload {
+    border-style: dashed !important;
+    border-color: #ced4da !important;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.custom-file-upload:hover {
+    background-color: #e9ecef;
+}
+
+.custom-file-upload .x-small {
+    font-size: 0.75rem;
+}
+
+.attachment-list .list-group-item {
+    background-color: transparent;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.attachment-list .list-group-item:last-child {
+    border-bottom: none !important;
+}
+
+.attachment-list .file-name {
+    max-width: 200px;
+    /* أو أي قيمة مناسبة */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    /* للسماح بتطبيق max-width */
+    vertical-align: middle;
+}
+
+.attachment-list .btn-link.text-danger:hover svg {
+    transform: scale(1.1);
+}
+
+
+.ticket-submit-btn {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.ticket-submit-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* لتعديل لون الأيقونات داخل التسميات إذا أردت */
+.form-label svg {
+    color: var(--bs-primary);
+    /* أو أي لون آخر */
+    vertical-align: -2px;
+}

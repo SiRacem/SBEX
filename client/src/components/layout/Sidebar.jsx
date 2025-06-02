@@ -104,14 +104,6 @@ const Sidebar = ({ onSearchChange }) => {
           <FaUserCircle className="icon" />
           <span className="link-text">Profile</span>
         </NavLink>
-        <NavLink
-          className="sidebar-link"
-          to="/dashboard/support"
-          title="Support"
-        >
-          <FaHeadset className="icon" />
-          <span className="link-text">Support</span>
-        </NavLink>
 
         {isMediatorQualified && (
           <NavLink
@@ -139,6 +131,14 @@ const Sidebar = ({ onSearchChange }) => {
 
         {userRole === "Admin" && (
           <>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/tickets"
+              title="Support"
+            >
+              <FaHeadset className="icon" />
+              <span className="link-text">Support</span>
+            </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/products"
@@ -200,14 +200,24 @@ const Sidebar = ({ onSearchChange }) => {
         )}
 
         {(userRole === "User" || userRole === "Vendor") && (
-          <NavLink
-            className="sidebar-link"
-            to="/my-mediation-requests"
-            title="My Orders"
-          >
-            <FaClipboardList className="icon" />
-            <span className="link-text">My Orders</span>
-          </NavLink>
+          <>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/tickets"
+              title="Support"
+            >
+              <FaHeadset className="icon" />
+              <span className="link-text">Support</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/my-mediation-requests"
+              title="My Orders"
+            >
+              <FaClipboardList className="icon" />
+              <span className="link-text">My Orders</span>
+            </NavLink>
+          </>
         )}
       </nav>
       <div className="sidebar-footer">

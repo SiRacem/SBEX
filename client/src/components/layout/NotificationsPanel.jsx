@@ -130,9 +130,9 @@ const NotificationsPanel = () => {
             bg="danger"
             className="position-absolute top-0 start-100 translate-middle notification-badge"
           >
-            {unreadCount > 9 ? "9+" : unreadCount}{" "}
+            {unreadCount > 9 ? "9+" : unreadCount}
             {/* عرض العدد أو +9 إذا تجاوز */}
-            <span className="visually-hidden">unread notifications</span>{" "}
+            <span className="visually-hidden">unread notifications</span>
             {/* للنص المخفي لقارئات الشاشة */}
           </Badge>
         )}

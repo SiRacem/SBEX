@@ -25,17 +25,16 @@ const formatCurrency = (amount, currencyCode = "TND") => {
 
 // --- [!!!] تعديل دالة إرسال الرصيد [!!!] ---
 exports.sendFundsController = async (req, res) => {
-    const senderId = req.user._id; // يفترض أن verifyAuth middleware يضيف req.user
+    const senderId = req.user._id;
     const { recipientId, amount, currency } = req.body;
 
     console.log(`[WalletCtrl Send V2] Attempt: Sender=${senderId}, Recipient=${recipientId}, Amount=${amount} ${currency}`);
 
-    // --- التحقق الأساسي من المدخلات ---
     if (!recipientId || !mongoose.Types.ObjectId.isValid(recipientId)) {
         console.error("[WalletCtrl Send V2] Validation failed: Invalid or missing recipientId.", { recipientId });
         return res.status(400).json({ msg: 'Invalid or missing recipient ID.' });
     }
-    if (!amount || !currency || !['TND', 'USD'].includes(currency.toUpperCase())) { // تحويل currency إلى حروف كبيرة للمقارنة
+    if (!amount || !currency || !['TND', 'USD'].includes(currency.toUpperCase())) {
         console.error("[WalletCtrl Send V2] Validation failed: Missing or invalid amount/currency fields.", { amount, currency });
         return res.status(400).json({ msg: 'Amount and a valid currency (TND/USD) are required.' });
     }
@@ -53,84 +52,71 @@ exports.sendFundsController = async (req, res) => {
         console.error(`[WalletCtrl Send V2] Validation failed: Amount below minimum. Amount: ${numericAmount}, Min: ${minSend}, Currency: ${currency}`);
         return res.status(400).json({ msg: `Minimum send amount is ${formatCurrency(minSend, currency.toUpperCase())}.` });
     }
-    // --------------------------------------
 
     const session = await mongoose.startSession();
     session.startTransaction();
     console.log("[WalletCtrl Send V2] Transaction session started.");
 
-    let newTransaction; // سيتم تعيينه لاحقًا
+    let newTransaction;
     let sender;
     let recipient;
 
     try {
-        // --- 1. جلب المرسل والمستلم ---
         sender = await User.findById(senderId).session(session);
         recipient = await User.findById(recipientId).session(session);
 
-        if (!sender) {
-            throw new Error('Sender not found.'); // سيتم التقاطه بواسطة catch block
-        }
-        if (!recipient) {
-            throw new Error('Recipient not found.'); // سيتم التقاطه بواسطة catch block
-        }
+        if (!sender) throw new Error('Sender not found.');
+        if (!recipient) throw new Error('Recipient not found.');
+        
         console.log(`[WalletCtrl Send V2] Sender Balance (Before): ${sender.balance.toFixed(2)} TND`);
         console.log(`[WalletCtrl Send V2] Recipient Balance (Before): ${recipient.balance.toFixed(2)} TND`);
 
-        // --- 2. حساب الرسوم بنفس عملة الإرسال ---
         const transferFee = (numericAmount * TRANSFER_FEE_PERCENT) / 100;
         console.log(`[WalletCtrl Send V2] Calculated Fee: ${transferFee.toFixed(2)} ${currency.toUpperCase()}`);
 
-        // --- 3. حساب المبلغ الإجمالي للخصم (بالدينار TND) ---
         let totalDeductedTND;
         if (currency.toUpperCase() === 'USD') {
             totalDeductedTND = (numericAmount + transferFee) * TND_USD_EXCHANGE_RATE;
-        } else { // currency === 'TND'
+        } else {
             totalDeductedTND = numericAmount + transferFee;
         }
         totalDeductedTND = Number(totalDeductedTND.toFixed(2));
         console.log(`[WalletCtrl Send V2] Total to Deduct (TND): ${totalDeductedTND}`);
 
-        // --- 4. التحقق من رصيد المرسل ---
         if (sender.balance < totalDeductedTND) {
-            // لا ترمي خطأ هنا مباشرة، بل أرجع استجابة 400 برسالة واضحة
             console.error(`[WalletCtrl Send V2] Insufficient balance. Sender Balance: ${sender.balance.toFixed(2)} TND, Required: ${totalDeductedTND} TND`);
-            await session.abortTransaction();
-            session.endSession(); // تأكد من إنهاء الجلسة
+            await session.abortTransaction(); // يجب إلغاء المعاملة قبل إرجاع الخطأ
+            // لا حاجة لـ session.endSession() هنا، سيتم التعامل معها في finally
             return res.status(400).json({ msg: `Insufficient balance. You need ${formatCurrency(totalDeductedTND, PLATFORM_BASE_CURRENCY)} but only have ${formatCurrency(sender.balance, PLATFORM_BASE_CURRENCY)}.` });
         }
 
-        // --- 5. خصم المبلغ الإجمالي بالدينار من المرسل ---
         sender.balance -= totalDeductedTND;
         await sender.save({ session });
         console.log(`[WalletCtrl Send V2] Sender balance updated: ${sender.balance.toFixed(2)} TND`);
 
-        // --- 6. حساب المبلغ الصافي للمستلم (بالدينار TND) ---
         let netAmountForRecipientTND;
         if (currency.toUpperCase() === 'USD') {
             netAmountForRecipientTND = numericAmount * TND_USD_EXCHANGE_RATE;
-        } else { // currency === 'TND'
+        } else {
             netAmountForRecipientTND = numericAmount;
         }
         netAmountForRecipientTND = Number(netAmountForRecipientTND.toFixed(2));
         console.log(`[WalletCtrl Send V2] Net Amount for Recipient (TND): ${netAmountForRecipientTND}`);
 
-        // --- 7. إضافة المبلغ الصافي بالدينار لرصيد المستلم ---
         recipient.balance += netAmountForRecipientTND;
         await recipient.save({ session });
         console.log(`[WalletCtrl Send V2] Recipient balance updated: ${recipient.balance.toFixed(2)} TND`);
 
-        // --- 8. تسجيل المعاملة ---
         newTransaction = new Transaction({
-            user: senderId, // *** التعديل الرئيسي: تعيين حقل user إلى المرسل ***
+            user: senderId,
             sender: senderId,
             recipient: recipientId,
             amount: numericAmount,
             currency: currency.toUpperCase(),
             type: 'TRANSFER',
             status: 'COMPLETED',
-            description: `Transfer from ${sender.fullName || senderId} to ${recipient.fullName || recipientId}`,
-            metadata: { // يمكنك إضافة بيانات إضافية هنا إذا أردت
+            description: `Transfer from ${sender.fullName || sender.email} to ${recipient.fullName || recipient.email}`,
+            metadata: {
                 feeAmount: transferFee,
                 feeCurrency: currency.toUpperCase(),
                 totalDeductedTND: totalDeductedTND,
@@ -140,9 +126,8 @@ exports.sendFundsController = async (req, res) => {
         await newTransaction.save({ session });
         console.log("[WalletCtrl Send V2] Transaction logged. ID:", newTransaction._id);
 
-        // --- 9. إنشاء الإشعارات ---
-        const senderMsg = `You sent ${formatCurrency(numericAmount, currency.toUpperCase())} to ${recipient.fullName}. A fee of ${formatCurrency(transferFee, currency.toUpperCase())} was applied.`;
-        const recipientMsg = `You received ${formatCurrency(numericAmount, currency.toUpperCase())} from ${sender.fullName}.`;
+        const senderMsg = `You sent ${formatCurrency(numericAmount, currency.toUpperCase())} to ${recipient.fullName || recipient.email}. A fee of ${formatCurrency(transferFee, currency.toUpperCase())} was applied.`;
+        const recipientMsg = `You received ${formatCurrency(numericAmount, currency.toUpperCase())} from ${sender.fullName || sender.email}.`;
 
         await Promise.all([
             Notification.create([{ user: senderId, type: 'FUNDS_SENT', title: 'Funds Sent', message: senderMsg, relatedEntity: { id: newTransaction._id, modelName: 'Transaction' } }], { session }),
@@ -150,37 +135,57 @@ exports.sendFundsController = async (req, res) => {
         ]);
         console.log("[WalletCtrl Send V2] Notifications created.");
 
-        // --- 10. إرسال تحديثات Socket.IO ---
-        const senderSocketId = req.onlineUsers[senderId.toString()];
+        // --- [!!! التعديل هنا: إرسال تحديثات Socket.IO للمرسل والمستلم !!!] ---
+        const senderSocketId = req.onlineUsers ? req.onlineUsers[senderId.toString()] : null;
         if (senderSocketId && req.io) {
             req.io.to(senderSocketId).emit('user_balances_updated', {
-                _id: sender._id.toString(), // للتأكيد في الواجهة
+                _id: sender._id.toString(),
                 balance: sender.balance,
-                // أضف أي أرصدة أخرى قد تكون تغيرت للمرسل
+                // أي أرصدة أخرى مهمة للمرسل
             });
             console.log(`[WalletCtrl Send V2] Socket event 'user_balances_updated' emitted to sender ${senderId}.`);
+
+            req.io.to(senderSocketId).emit('dashboard_transactions_updated', {
+                message: `You sent funds to ${recipient.fullName || recipient.email}.`,
+                transactionType: 'FUNDS_SENT_UPDATE',
+                transactionId: newTransaction._id.toString()
+            });
+            console.log(`[WalletCtrl Send V2] Socket event 'dashboard_transactions_updated' emitted to sender ${senderId}.`);
         }
-        const recipientSocketId = req.onlineUsers[recipientId.toString()];
+
+        const recipientSocketId = req.onlineUsers ? req.onlineUsers[recipientId.toString()] : null;
+        const recipientNotificationForSocket = { // قم بإنشاء كائن الإشعار هنا
+            _id: new mongoose.Types.ObjectId(), // أو استخدم ID الإشعار من DB إذا كان لديك
+            user: recipientId,
+            type: 'FUNDS_RECEIVED',
+            title: 'Funds Received',
+            message: recipientMsg,
+            relatedEntity: { id: newTransaction._id, modelName: 'Transaction' },
+            isRead: false, // الإشعارات الجديدة غير مقروءة
+            createdAt: new Date()
+        };
+
         if (recipientSocketId && req.io) {
             req.io.to(recipientSocketId).emit('user_balances_updated', {
-                _id: recipient._id.toString(), // للتأكيد في الواجهة
+                _id: recipient._id.toString(),
                 balance: recipient.balance,
             });
-            // يمكنك إرسال إشعار فوري أيضًا
-            req.io.to(recipientSocketId).emit('new_notification', {
-                title: 'Funds Received',
-                message: recipientMsg,
-                type: 'FUNDS_RECEIVED', // أو أي نوع تستخدمه في الواجهة
-                createdAt: new Date()
-            });
+            req.io.to(recipientSocketId).emit('new_notification', recipientNotificationForSocket);
             console.log(`[WalletCtrl Send V2] Socket events 'user_balances_updated' and 'new_notification' emitted to recipient ${recipientId}.`);
+
+            req.io.to(recipientSocketId).emit('dashboard_transactions_updated', {
+                message: `You received funds from ${sender.fullName || sender.email}.`,
+                transactionType: 'FUNDS_RECEIVED_UPDATE',
+                transactionId: newTransaction._id.toString()
+            });
+            console.log(`[WalletCtrl Send V2] Socket event 'dashboard_transactions_updated' emitted to recipient ${recipientId}.`);
         }
-        // -------------------------------
+        // --- نهاية إرسال تحديثات Socket.IO ---
 
         await session.commitTransaction();
         console.log("[WalletCtrl Send V2] Transaction committed successfully.");
         res.status(200).json({
-            msg: `Successfully sent ${formatCurrency(numericAmount, currency.toUpperCase())} to ${recipient.fullName}.`,
+            msg: `Successfully sent ${formatCurrency(numericAmount, currency.toUpperCase())} to ${recipient.fullName || recipient.email}.`,
             newSenderBalance: sender.balance,
             transactionId: newTransaction._id
         });
@@ -190,29 +195,33 @@ exports.sendFundsController = async (req, res) => {
             await session.abortTransaction();
             console.error("[WalletCtrl Send V2] Transaction aborted due to error:", error.message, error.stack);
         } else {
-            // إذا لم تكن المعاملة نشطة، فقد يكون الخطأ حدث قبل بدء المعاملة
             console.error("[WalletCtrl Send V2] Error occurred (possibly before transaction start):", error.message, error.stack);
         }
 
         let userFriendlyError = 'Transaction failed. Please try again later.';
         if (error.message.includes('not found')) {
             userFriendlyError = 'Sender or Recipient user not found.';
+        } else if (error.message.includes('Insufficient balance')) { // للتحقق من الخطأ الخاص بالرصيد
+            userFriendlyError = error.message; // استخدم الرسالة التي تم إعدادها بالفعل
         } else if (error.name === 'ValidationError') {
             userFriendlyError = "Transaction data validation failed. Please check your inputs or contact support.";
-            // يمكنك إضافة تفاصيل أكثر هنا إذا أردت بناءً على error.errors
             console.error("[WalletCtrl Send V2] Mongoose Validation Error Details:", error.errors);
         } else {
-            // للأخطاء العامة الأخرى
             console.error("[WalletCtrl Send V2] Generic catch block error (not handled above):", error.message, error.stack);
         }
 
-        if (!res.headersSent) { // تأكد من عدم إرسال استجابة بالفعل
+        if (!res.headersSent) {
             res.status(400).json({ msg: userFriendlyError });
         }
     } finally {
-        // تأكد من أن الجلسة يتم إنهاؤها دائمًا
-        if (session && session.endSession) { // تحقق من وجود session و session.endSession
+        if (session && session.endSession) {
             try {
+                // لا تحاول إنهاء جلسة تم إلغاؤها بالفعل صراحة
+                // (على الرغم من أن Mongoose يجب أن يتعامل مع هذا بأمان)
+                if (session.inTransaction()) {
+                    console.warn("[WalletCtrl Send V2] Session was still in transaction in finally block. Aborting.");
+                    await session.abortTransaction();
+                }
                 await session.endSession();
                 console.log("[WalletCtrl Send V2] Session ended.");
             } catch (sessionEndError) {
@@ -223,7 +232,6 @@ exports.sendFundsController = async (req, res) => {
 };
 // ----------------------------------------------------------
 
-// --- دالة جلب المعاملات (تبقى كما هي) ---
 exports.getTransactionsController = async (req, res) => {
     const userId = req.user._id;
     console.log(`[WalletCtrl GetTx] Fetching transactions for User ID: ${userId}`);
@@ -232,13 +240,6 @@ exports.getTransactionsController = async (req, res) => {
             'DEPOSIT_COMPLETED',    // أو النوع الذي تستخدمه للإيداع المكتمل
             'WITHDRAWAL_COMPLETED', // أو النوع الذي تستخدمه للسحب المكتمل
             'TRANSFER', // تحويل أموال بين المستخدمين
-            // --- [!!! إضافة الأنواع الجديدة هنا !!!] ---
-            'DISPUTE_PAYOUT_SELLER_WON', // للبائع
-            'MEDIATION_FEE_DISPUTE',    // للوسيط (إذا كان هو المستخدم الحالي)
-            'ESCROW_REFUND_DISPUTE_WON',// للمشتري
-            'LEVEL_UP_REWARD_RECEIVED', // مكافآت الترقية قد تكون ذات صلة بالمحفظة
-            'PRODUCT_SALE_FUNDS_RELEASED' // عندما يتم فك تجميد أموال البائع
-            // -------------------------------------------
         ];
         const transactions = await Transaction.find({
             // ابحث عن المعاملات حيث المستخدم هو user أو sender أو recipient

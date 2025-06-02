@@ -671,7 +671,7 @@ const MainDashboard = () => {
               <ListGroup.Item
                 action
                 as={Link}
-                to="/dashboard/support"
+                to="/dashboard/tickets"
                 className="d-flex align-items-center option-item"
               >
                 <FaHeadset size={20} className="me-3 text-success icon" />

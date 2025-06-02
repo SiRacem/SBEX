@@ -98,15 +98,16 @@ const productReducer = (state = initialState, { type, payload }) => {
         case UPDATE_PRODUCT_REQUEST:
             return { ...state, loadingUpdate: { ...state.loadingUpdate, [payload.productId]: true }, productErrors: { ...state.productErrors, [payload.productId]: null } };
         case UPDATE_PRODUCT_SUCCESS:
-            const updatedProduct = payload;
+            const updatedProduct = payload; // payload هنا هو المنتج المحدث من استجابة الـ API
+            // إذا كان المنتج المحدث أصبح pending
             const updatedPending = updatedProduct.status === 'pending'
                 ? [updatedProduct, ...(state.pendingProducts || []).filter(p => p._id !== updatedProduct._id)].sort((a, b) => new Date(a.date_added || a.createdAt || 0) - new Date(b.date_added || b.createdAt || 0))
-                : (state.pendingProducts || []).filter(p => p._id !== updatedProduct._id);
+                : (state.pendingProducts || []).filter(p => p._id !== updatedProduct._id); // إذا لم يعد pending، أزله
             return {
                 ...state,
                 loadingUpdate: { ...state.loadingUpdate, [updatedProduct._id]: false },
-                Products: state.Products.map(p => p._id === updatedProduct._id ? updatedProduct : p),
-                pendingProducts: updatedPending,
+                Products: state.Products.map(p => p._id === updatedProduct._id ? updatedProduct : p), // تحديث في القائمة الرئيسية
+                pendingProducts: updatedPending, // تحديث قائمة pending
                 errors: null
             };
         case UPDATE_PRODUCT_FAIL:
@@ -116,7 +117,16 @@ const productReducer = (state = initialState, { type, payload }) => {
         case APPROVE_PRODUCT_REQUEST:
             return { ...state, loadingApprove: { ...state.loadingApprove, [payload.productId]: true }, productErrors: { ...state.productErrors, [payload.productId]: null } };
         case APPROVE_PRODUCT_SUCCESS:
-            return { ...state, loadingApprove: { ...state.loadingApprove, [payload.productId]: false }, pendingProducts: (state.pendingProducts || []).filter(p => p._id !== payload.productId), errors: null };
+            // payload هنا هو { productId }
+            // هذا يزيل المنتج من قائمة المنتجات المعلقة
+            // ولكننا نعتمد على حدث 'product_updated' من السوكيت لتحديث قائمة Products الرئيسية
+            return {
+                ...state,
+                loadingApprove: { ...state.loadingApprove, [payload.productId]: false },
+                pendingProducts: (state.pendingProducts || []).filter(p => p._id !== payload.productId),
+                // لا نعدل Products هنا مباشرة، دع السوكيت يعالج ذلك لضمان التناسق
+                errors: null
+            };
         case APPROVE_PRODUCT_FAIL:
             return { ...state, loadingApprove: { ...state.loadingApprove, [payload.productId]: false }, productErrors: { ...state.productErrors, [payload.productId]: payload.error } };
 
@@ -307,7 +317,7 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
         // --- نهاية تعديل حالة REJECT_BID_SUCCESS ---
 
-                // --- [!!!] حالة جديدة للتحديث المحلي المتفائل [!!!] ---
+        // --- [!!!] حالة جديدة للتحديث المحلي المتفائل [!!!] ---
         case UPDATE_SINGLE_PRODUCT_LOCALLY:
             if (!payload || !payload._id) {
                 console.warn("REDUCER: UPDATE_SINGLE_PRODUCT_LOCALLY - Invalid payload, cannot update product locally.");
@@ -322,17 +332,65 @@ const productReducer = (state = initialState, { type, payload }) => {
 
         case UPDATE_SINGLE_PRODUCT_IN_STORE:
             if (!payload || !payload._id) {
-                return state; // لا تفعل شيئًا إذا كان الـ payload غير صالح
+                console.warn("REDUCER: UPDATE_SINGLE_PRODUCT_IN_STORE - Invalid payload, cannot update/add product. Payload:", payload);
+                return state;
             }
+            const updatedProductData = payload;
+            console.log("REDUCER: UPDATE_SINGLE_PRODUCT_IN_STORE - Received payload:", updatedProductData);
+
+            let newProductsList = [...state.Products]; // ابدأ بنسخة من القائمة الحالية
+            let newPendingProductsList = [...(state.pendingProducts || [])]; // ابدأ بنسخة من القائمة الحالية
+
+            const existingProductIndexInProducts = newProductsList.findIndex(p => p._id === updatedProductData._id);
+
+            if (existingProductIndexInProducts > -1) {
+                // المنتج موجود في القائمة الرئيسية، قم بتحديثه بالكامل
+                newProductsList[existingProductIndexInProducts] = updatedProductData; // استبدال الكائن بالكامل
+                console.log("REDUCER: Updated product in Products list:", updatedProductData._id, "New status:", updatedProductData.status);
+            } else {
+                // المنتج غير موجود في القائمة الرئيسية
+                // إذا كان المنتج المحدث معتمدًا (أو أي حالة يجب أن تكون في القائمة الرئيسية)، أضفه
+                // عادةً، إذا كان 'approved', 'sold', 'rejected' (من قبل الأدمن)
+                if (['approved', 'sold', 'rejected', 'PendingMediatorSelection', 'MediatorAssigned', 'InProgress', 'Disputed', 'Completed'].includes(updatedProductData.status)) {
+                    newProductsList = [updatedProductData, ...newProductsList]; // أضفه في بداية القائمة
+                    console.log("REDUCER: Added new product to Products list:", updatedProductData._id, "Status:", updatedProductData.status);
+                }
+            }
+
+            // التعامل مع قائمة المنتجات المعلقة (pendingProducts)
+            const existingInPendingIndex = newPendingProductsList.findIndex(p => p._id === updatedProductData._id);
+
+            if (updatedProductData.status === 'pending') {
+                // إذا أصبح المنتج pending
+                if (existingInPendingIndex === -1) {
+                    // ولم يكن موجودًا في pending، أضفه
+                    newPendingProductsList = [updatedProductData, ...newPendingProductsList];
+                    console.log("REDUCER: Added product to pendingProducts list:", updatedProductData._id);
+                } else {
+                    // إذا كان موجودًا في pending، قم بتحديثه
+                    newPendingProductsList[existingInPendingIndex] = updatedProductData;
+                    console.log("REDUCER: Updated product in pendingProducts list:", updatedProductData._id);
+                }
+            } else {
+                // إذا لم يعد المنتج pending (مثلاً أصبح approved أو rejected من قبل Admin, أو تم تعديله من قبل البائع وكان pending وأصبح شيئًا آخر)
+                if (existingInPendingIndex > -1) {
+                    // قم بإزالته من pendingProducts
+                    newPendingProductsList = newPendingProductsList.filter(p => p._id !== updatedProductData._id);
+                    console.log("REDUCER: Removed product from pendingProducts list:", updatedProductData._id);
+                }
+            }
+
+            // فرز قائمة pending (اختياري ولكن جيد)
+            newPendingProductsList.sort((a, b) => new Date(a.date_added || a.createdAt || 0) - new Date(b.date_added || b.createdAt || 0));
+            // يمكنك أيضًا فرز newProductsList إذا أردت
+
             return {
                 ...state,
-                Products: state.Products.map(product =>
-                    product._id === payload._id
-                        ? { ...product, ...payload } // دمج التغييرات مع الحفاظ على خصائص المنتج الأخرى
-                        : product
-                ),
+                Products: newProductsList,
+                pendingProducts: newPendingProductsList,
             };
-
+        // --- نهاية تحديث المنتج محليًا ---
+        
         default:
             return state;
     }

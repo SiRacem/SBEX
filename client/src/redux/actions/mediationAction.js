@@ -19,567 +19,288 @@ import {
     OPEN_DISPUTE_FAIL, GET_MEDIATOR_DISPUTED_CASES_REQUEST, GET_MEDIATOR_DISPUTED_CASES_SUCCESS,
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
-    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS,ADMIN_RESOLVE_DISPUTE_REQUEST,
-    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL
-} from '../actionTypes/mediationActionTypes'; // تأكد من المسار الصحيح
-import { getProfile } from './userAction'; // لجلب البروفايل المحدث (الرصيد)
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS, ADMIN_RESOLVE_DISPUTE_REQUEST,
+    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL,
+    // --- Admin Sub-Chat ---
+    ADMIN_CREATE_SUBCHAT_REQUEST, ADMIN_CREATE_SUBCHAT_SUCCESS, ADMIN_CREATE_SUBCHAT_FAIL, ADMIN_CREATE_SUBCHAT_RESET,
+    ADMIN_GET_ALL_SUBCHATS_REQUEST, ADMIN_GET_ALL_SUBCHATS_SUCCESS, ADMIN_GET_ALL_SUBCHATS_FAIL,
+    ADMIN_GET_SUBCHAT_MESSAGES_REQUEST, ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS, ADMIN_GET_SUBCHAT_MESSAGES_FAIL,
+    CLEAR_ACTIVE_SUBCHAT_MESSAGES,
+    ADMIN_SUBCHAT_CREATED_SOCKET, NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET,
+    SET_ACTIVE_SUBCHAT_ID
+} from '../actionTypes/mediationActionTypes';
+import { getProfile } from './userAction';
 
-// تأكد من أن لديك axios مثبتًا في مشروعك
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"; // <-- أضف هذا إذا لم يكن موجودًا
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-// Helper للحصول على التوكن (يمكن استيراده من ملف مشترك)
 const getTokenConfig = () => {
     const token = localStorage.getItem('token');
     if (!token) return null;
     return { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } };
 };
 
-/**
- * [Admin] جلب طلبات الوساطة التي تنتظر تعيين وسيط
- */
 export const adminGetPendingAssignments = (params = {}) => async (dispatch) => {
     dispatch({ type: ADMIN_GET_PENDING_ASSIGNMENTS_REQUEST });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: ADMIN_GET_PENDING_ASSIGNMENTS_FAIL, payload: 'Authorization Error' });
-
     try {
-        // استدعاء المسار الصحيح في الـ Backend
-        const { data } = await axios.get('/mediation/admin/pending-assignment', { ...config, params });
-        console.log("Action: Received pending mediation assignments:", data);
-        // الـ Backend يرجع كائنًا يحتوي على requests, totalPages, etc.
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/admin/pending-assignment`, { ...config, params });
         dispatch({ type: ADMIN_GET_PENDING_ASSIGNMENTS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch pending mediation requests.';
-        console.error("Action Error: Fetching pending assignments:", error.response || error);
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch pending assignments.';
         dispatch({ type: ADMIN_GET_PENDING_ASSIGNMENTS_FAIL, payload: message });
-        toast.error(`Error fetching requests: ${message}`);
+        toast.error(message);
     }
 };
 
-/**
- * [Admin] تعيين وسيط لطلب محدد
- */
 export const adminAssignMediator = (requestId, mediatorId) => async (dispatch) => {
-    dispatch({ type: ADMIN_ASSIGN_MEDIATOR_REQUEST, payload: { requestId } }); // تشير إلى أن هذا الطلب قيد المعالجة
+    dispatch({ type: ADMIN_ASSIGN_MEDIATOR_REQUEST, payload: { requestId } });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: ADMIN_ASSIGN_MEDIATOR_FAIL, payload: { requestId, error: 'Authorization Error' } });
-
     try {
-        console.log(`Action: Assigning mediator ${mediatorId} to request ${requestId}`);
-        // استدعاء المسار الصحيح في الـ Backend وإرسال mediatorId في الـ body
-        const { data } = await axios.put(`/mediation/admin/assign/${requestId}`, { mediatorId }, config);
-        console.log("Action: Mediator assigned successfully:", data);
-
-        dispatch({
-            type: ADMIN_ASSIGN_MEDIATOR_SUCCESS,
-            payload: {
-                updatedRequest: data.mediationRequest // الطلب المحدث بعد التعيين
-            }
-        });
-        toast.success(data.msg || 'Mediator assigned successfully!');
-        // لا حاجة لإعادة الجلب هنا، الـ Reducer سيقوم بإزالة الطلب من قائمة Pending
-
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/admin/assign/${requestId}`, { mediatorId }, config);
+        dispatch({ type: ADMIN_ASSIGN_MEDIATOR_SUCCESS, payload: { updatedRequest: data.mediationRequest } });
+        toast.success(data.msg || 'Mediator assigned!');
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to assign mediator.';
-        console.error("Action Error: Assigning mediator:", error.response || error);
         dispatch({ type: ADMIN_ASSIGN_MEDIATOR_FAIL, payload: { requestId, error: message } });
-        toast.error(`Error assigning mediator: ${message}`);
+        toast.error(message);
     }
 };
 
-/**
- * إعادة تعيين حالة نجاح/فشل عملية تعيين الوسيط
- */
 export const adminResetAssignMediatorStatus = () => ({ type: ADMIN_ASSIGN_MEDIATOR_RESET });
-
-/**
- * مسح أخطاء عمليات الوساطة للأدمن
- */
 export const adminClearMediationErrors = () => ({ type: ADMIN_CLEAR_MEDIATION_ERRORS });
-
-// --- [!] تعديل userAction.js لإضافة جلب الوسطاء ---
-// أضف هذه الدالة إلى ملف src/redux/actions/userAction.js
-export const adminGetAvailableMediators = () => async (dispatch) => {
-    dispatch({ type: 'ADMIN_GET_MEDIATORS_REQUEST' }); // <-- تعريف هذا النوع في userActionTypes
-    const config = getTokenConfig();
-    if (!config) return dispatch({ type: 'ADMIN_GET_MEDIATORS_FAIL', payload: 'Auth Error' }); // <-- تعريف هذا النوع
-
-    try {
-        const { data } = await axios.get('/user/admin/mediators', config);
-        dispatch({ type: 'ADMIN_GET_MEDIATORS_SUCCESS', payload: data }); // <-- تعريف هذا النوع
-    } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch mediators.';
-        dispatch({ type: 'ADMIN_GET_MEDIATORS_FAIL', payload: message });
-        toast.error(`Error fetching mediators: ${message}`);
-    }
-};
 
 export const assignSelectedMediator = (mediationRequestId, selectedMediatorId) => async (dispatch) => {
     dispatch({ type: ASSIGN_MEDIATOR_REQUEST, payload: { mediationRequestId, selectedMediatorId } });
     const config = getTokenConfig();
-    if (!config) {
-        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
-        toast.error("Authorization required.");
-        return Promise.reject({ error: "Not authorized." });
-    }
-
+    if (!config) return dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
     try {
-        const { data } = await axios.put(
-            `/mediation/assign-selected/${mediationRequestId}`,
-            { selectedMediatorId }, // الـ body للطلب
-            config
-        );
-
-        dispatch({
-            type: ASSIGN_MEDIATOR_SUCCESS,
-            payload: { responseData: data, mediationRequestId } // تمرير requestId هنا أيضًا
-        });
-        toast.success(data.msg || "Mediator assigned successfully and notified!");
-        return Promise.resolve(data);
-
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/assign-selected/${mediationRequestId}`, { selectedMediatorId }, config);
+        dispatch({ type: ASSIGN_MEDIATOR_SUCCESS, payload: { responseData: data, mediationRequestId } });
+        toast.success(data.msg || "Mediator assigned!");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to assign mediator.';
         dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: message, mediationRequestId } });
-        toast.error(`Failed to assign mediator: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
 export const getMediatorAssignments = (page = 1, limit = 10) => async (dispatch) => {
     dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_REQUEST });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Not authorized to fetch assignments.";
-        dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_FAIL, payload: errorMsg });
-        // toast.error(errorMsg); // يمكن إزالة الـ toast من هنا إذا تم التعامل معه في المكون
-        return Promise.reject({ error: errorMsg });
-    }
+    if (!config) return dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_FAIL, payload: "Not authorized." });
     try {
-        const { data } = await axios.get(`/mediation/mediator/my-assignments?page=${page}&limit=${limit}`, config);
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/mediator/my-assignments?page=${page}&limit=${limit}`, config);
         dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_SUCCESS, payload: data });
-        return Promise.resolve(data);
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to fetch assignments.';
         dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_FAIL, payload: message });
-        toast.error(message); // الـ toast هنا جيد لإعلام المستخدم بالخطأ
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-// --- [!!!] Action لقبول الوسيط للمهمة [!!!] ---
 export const mediatorAcceptAssignmentAction = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: MEDIATOR_ACCEPT_ASSIGNMENT_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Not authorized to accept assignment.";
-        dispatch({ type: MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: errorMsg } });
-        toast.error(errorMsg);
-        return Promise.reject({ error: errorMsg });
-    }
-
+    if (!config) return dispatch({ type: MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: "Not authorized." } });
     try {
-        const { data } = await axios.put(`/mediation/mediator/accept/${mediationRequestId}`, {}, config); // لا يوجد body مطلوب للقبول
-        dispatch({
-            type: MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS,
-            payload: { mediationRequestId, responseData: data } // أرسل الـ ID لتحديث الحالة في الـ reducer
-        });
-        toast.success(data.msg || "Assignment accepted successfully!");
-        return Promise.resolve(data);
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/mediator/accept/${mediationRequestId}`, {}, config);
+        dispatch({ type: MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        toast.success(data.msg || "Assignment accepted!");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to accept assignment.';
         dispatch({ type: MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: message } });
-        toast.error(`Acceptance failed: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-// --- [!!!] Action لرفض الوسيط للمهمة [!!!] ---
 export const mediatorRejectAssignmentAction = (mediationRequestId, reason) => async (dispatch) => {
     dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Not authorized to reject assignment.";
-        dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: errorMsg } });
-        toast.error(errorMsg);
-        return Promise.reject({ error: errorMsg });
-    }
-
+    if (!config) return dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: "Not authorized." } });
     if (!reason || reason.trim() === "") {
         const errorMsg = "Rejection reason is required.";
         dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: errorMsg } });
-        toast.warn(errorMsg); // استخدام warn لخطأ إدخال
-        return Promise.reject({ error: errorMsg });
+        toast.warn(errorMsg);
+        throw new Error(errorMsg);
     }
-
     try {
-        const { data } = await axios.put(`/mediation/mediator/reject/${mediationRequestId}`, { reason }, config); // إرسال السبب في الـ body
-        dispatch({
-            type: MEDIATOR_REJECT_ASSIGNMENT_SUCCESS,
-            payload: { mediationRequestId, responseData: data } // أرسل الـ ID لتحديث الحالة في الـ reducer
-        });
-        toast.info(data.msg || "Assignment rejected successfully."); // استخدام info للرفض
-        return Promise.resolve(data);
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/mediator/reject/${mediationRequestId}`, { reason }, config);
+        dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        toast.info(data.msg || "Assignment rejected.");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to reject assignment.';
         dispatch({ type: MEDIATOR_REJECT_ASSIGNMENT_FAIL, payload: { mediationRequestId, error: message } });
-        toast.error(`Rejection failed: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
 export const getMediatorAcceptedAwaitingPartiesAction = (page = 1, limit = 10) => async (dispatch) => {
     dispatch({ type: GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_REQUEST });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Not authorized to fetch assignments.";
-        dispatch({ type: GET_MEDIATOR_ASSIGNMENTS_FAIL, payload: errorMsg });
-        // toast.error(errorMsg); // يمكن إزالة الـ toast من هنا إذا تم التعامل معه في المكون
-        return Promise.reject({ error: errorMsg });
-    }
+    if (!config) return dispatch({ type: GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL, payload: "Not authorized." });
     try {
-        const { data } = await axios.get(`/mediation/mediator/accepted-awaiting-parties?page=${page}&limit=${limit}`, config);
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/mediator/accepted-awaiting-parties?page=${page}&limit=${limit}`, config);
         dispatch({ type: GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_SUCCESS, payload: data });
-        return Promise.resolve(data);
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to fetch accepted assignments.';
         dispatch({ type: GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL, payload: message });
         toast.error(message);
-        return Promise.reject({ error: message });
+        throw error;
     }
 };
 
-// --- [!!!] Action لتأكيد استعداد البائع [!!!] ---
 export const sellerConfirmReadinessAction = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: SELLER_CONFIRM_READINESS_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-
-    if (!config) {
-        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
-        toast.error("Authorization required.");
-        return Promise.reject({ error: "Not authorized." });
-    }
-
+    if (!config) return dispatch({ type: SELLER_CONFIRM_READINESS_FAIL, payload: { error: "Not authorized." } });
     try {
-        const { data } = await axios.put(`/mediation/seller/confirm-readiness/${mediationRequestId}`, {}, config);
-        dispatch({
-            type: SELLER_CONFIRM_READINESS_SUCCESS,
-            payload: { mediationRequestId, responseData: data } // أرسل الـ ID وربما الطلب المحدث
-        });
-        toast.success(data.msg || "Your readiness has been confirmed!");
-        return Promise.resolve(data);
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/seller/confirm-readiness/${mediationRequestId}`, {}, config);
+        dispatch({ type: SELLER_CONFIRM_READINESS_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        toast.success(data.msg || "Readiness confirmed!");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to confirm readiness.';
         dispatch({ type: SELLER_CONFIRM_READINESS_FAIL, payload: { mediationRequestId, error: message } });
-        toast.error(`Confirmation failed: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-// --- [!!!] Action لتأكيد استعداد المشتري وتجميد الرصيد [!!!] ---
 export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: BUYER_CONFIRM_READINESS_ESCROW_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-
-    if (!config) {
-        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
-        toast.error("Authorization required.");
-        return Promise.reject({ error: "Not authorized." });
-    }
-
+    if (!config) return dispatch({ type: BUYER_CONFIRM_READINESS_ESCROW_FAIL, payload: { error: "Not authorized." } });
     try {
-        const { data } = await axios.put(`/mediation/buyer/confirm-readiness-and-escrow/${mediationRequestId}`, {}, config);
-        dispatch({
-            type: BUYER_CONFIRM_READINESS_ESCROW_SUCCESS,
-            payload: { mediationRequestId, responseData: data }
-        });
-        toast.success(data.msg || "Your readiness confirmed and funds are in escrow!");
-        // --- [!!!] مهم: تحديث رصيد المستخدم في Redux [!!!] ---
-        if (data.updatedBuyerBalance !== undefined) { // إذا أعاد الـ API الرصيد المحدث
-            dispatch({
-                type: 'UPDATE_USER_BALANCE', // ستحتاج لإنشاء هذا الـ action type والـ case في userReducer
-                payload: { balance: data.updatedBuyerBalance }
-            });
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/buyer/confirm-readiness-and-escrow/${mediationRequestId}`, {}, config);
+        dispatch({ type: BUYER_CONFIRM_READINESS_ESCROW_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        toast.success(data.msg || "Readiness confirmed & funds escrowed!");
+        if (data.updatedBuyerBalance !== undefined) {
+            dispatch({ type: 'UPDATE_USER_BALANCE', payload: { balance: data.updatedBuyerBalance } });
         } else {
-            // أو يمكنك استدعاء getProfile لجلب البروفايل بالكامل مع الرصيد المحدث
-            dispatch(getProfile()); // افترض أن getProfile موجودة في userActions
+            dispatch(getProfile());
         }
-        // ----------------------------------------------------
-        return Promise.resolve(data);
+        return data;
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to confirm or escrow funds.';
+        const message = error.response?.data?.msg || error.message || 'Failed to confirm or escrow.';
         dispatch({ type: BUYER_CONFIRM_READINESS_ESCROW_FAIL, payload: { mediationRequestId, error: message } });
-        toast.error(`Action failed: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-// --- [!!!] Action لجلب طلبات وساطة المشتري [!!!] ---
 export const getBuyerMediationRequestsAction = (page = 1, limit = 10, statusFilter = '') => async (dispatch) => {
-    console.log(`[Action getBuyerMediationRequestsAction] Dispatching REQUEST. Page: ${page}, Limit: ${limit}, StatusFilter: '${statusFilter}'`);
     dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_REQUEST });
-
     const config = getTokenConfig();
-
-    if (!config) {
-        const errorMsg = "Not authorized. Please login to view your mediation requests.";
-        console.error("[Action getBuyerMediationRequestsAction] Authorization error:", errorMsg);
-        dispatch({
-            type: GET_BUYER_MEDIATION_REQUESTS_FAIL,
-            payload: errorMsg
-        });
-        toast.error("Authorization required.");
-        return Promise.reject({ error: errorMsg });
-    }
-
-    // بناء كائن الـ query parameters
-    const queryParams = {
-        page: page,
-        limit: limit
-    };
-
-    // إذا تم توفير statusFilter (وليس سلسلة فارغة)، أضفه إلى الـ query parameters
+    if (!config) return dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: "Not authorized." });
+    const queryParams = { page, limit };
     if (statusFilter && typeof statusFilter === 'string' && statusFilter.trim() !== "") {
         queryParams.status = statusFilter.trim();
-        console.log("[Action getBuyerMediationRequestsAction] Applying status filter to queryParams:", queryParams.status);
-    } else {
-        console.log("[Action getBuyerMediationRequestsAction] No specific status filter provided by action call. Backend will use its default list of statuses.");
-        // لا نرسل queryParams.status إذا لم يتم توفير فلتر،
-        // ليعتمد الخادم على قائمته الافتراضية التي تشمل 'Disputed'.
     }
-
     try {
-        const baseUrl = `${BACKEND_URL}/mediation/buyer/my-requests`;
-        console.log(`[Action getBuyerMediationRequestsAction] Sending GET request to: ${baseUrl} with params:`, queryParams);
-
-        const { data } = await axios.get(baseUrl, {
-            ...config,      // دمج إعدادات التوكن (headers)
-            params: queryParams  // تمرير الـ query parameters هنا
-        });
-
-        console.log("[Action getBuyerMediationRequestsAction] Successfully fetched requests. Payload from server:", data);
-        dispatch({
-            type: GET_BUYER_MEDIATION_REQUESTS_SUCCESS,
-            payload: data // الـ payload هو الكائن المستلم من الخادم (يفترض أنه يحتوي على requests, totalPages, etc.)
-        });
-        return Promise.resolve(data); // أرجع Promise ناجحًا مع البيانات للاستخدام في المكون إذا لزم الأمر
-
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/buyer/my-requests`, { ...config, params: queryParams });
+        dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_SUCCESS, payload: data });
+        return data;
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || "Failed to fetch your mediation requests.";
-        const statusCode = error.response?.status;
-        console.error(`[Action getBuyerMediationRequestsAction] Error fetching requests (Status: ${statusCode}):`, message, error.response || error);
-
-        dispatch({
-            type: GET_BUYER_MEDIATION_REQUESTS_FAIL,
-            payload: message
-        });
-        toast.error(`Error fetching requests: ${message}`);
-        return Promise.reject({ error: message, statusCode }); // أرجع Promise مرفوضًا مع رسالة الخطأ وربما رمز الحالة
+        const message = error.response?.data?.msg || error.message || "Failed to fetch buyer's requests.";
+        dispatch({ type: GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-// --- [!!!] Action لرفض المشتري للوساطة [!!!] ---
 export const buyerRejectMediationAction = (mediationRequestId, reason) => async (dispatch) => {
     dispatch({ type: BUYER_REJECT_MEDIATION_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-
-    if (!config) {
-        dispatch({ type: ASSIGN_MEDIATOR_FAIL, payload: { error: "Not authorized." } });
-        toast.error("Authorization required.");
-        return Promise.reject({ error: "Not authorized." });
-    }
-
+    if (!config) return dispatch({ type: BUYER_REJECT_MEDIATION_FAIL, payload: { error: "Not authorized." } });
     if (!reason || reason.trim() === "") {
         const errorMsg = "Rejection reason is required.";
         dispatch({ type: BUYER_REJECT_MEDIATION_FAIL, payload: { mediationRequestId, error: errorMsg } });
         toast.warn(errorMsg);
-        return Promise.reject({ error: errorMsg });
+        throw new Error(errorMsg);
     }
-
     try {
-        const { data } = await axios.put(`/mediation/buyer/reject-mediation/${mediationRequestId}`, { reason }, config);
-        dispatch({
-            type: BUYER_REJECT_MEDIATION_SUCCESS,
-            payload: { mediationRequestId, responseData: data }
-        });
-        toast.info(data.msg || "Mediation has been cancelled.");
-        return Promise.resolve(data);
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/buyer/reject-mediation/${mediationRequestId}`, { reason }, config);
+        dispatch({ type: BUYER_REJECT_MEDIATION_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        toast.info(data.msg || "Mediation cancelled.");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to cancel mediation.';
         dispatch({ type: BUYER_REJECT_MEDIATION_FAIL, payload: { mediationRequestId, error: message } });
-        toast.error(`Cancellation failed: ${message}`);
-        return Promise.reject({ error: message });
+        toast.error(message);
+        throw error;
     }
 };
 
-/**
- * Action لجلب ملخصات الوساطات للمستخدم الحالي
- */
 export const getMyMediationSummaries = () => async (dispatch, getState) => {
+    dispatch({ type: GET_MY_MEDIATION_SUMMARIES_REQUEST });
+    const token = localStorage.getItem('token');
+    if (!token) return dispatch({ type: GET_MY_MEDIATION_SUMMARIES_FAIL, payload: "Not authenticated." });
+    const config = { headers: { Authorization: `Bearer ${token}` } };
     try {
-        dispatch({ type: GET_MY_MEDIATION_SUMMARIES_REQUEST });
-
-        // يمكنك استخدام getTokenConfig أو الحصول على التوكن مباشرة
-        const tokenFromState = getState().userReducer?.token; // افتراض أن التوكن مخزن في userReducer
-        const tokenFromStorage = localStorage.getItem('token');
-        const token = tokenFromState || tokenFromStorage;
-
-        if (!token) {
-            // يمكنك التعامل مع هذا بشكل أفضل، ربما dispatch لـ LOGOUT_USER
-            dispatch({
-                type: GET_MY_MEDIATION_SUMMARIES_FAIL,
-                payload: "User not authenticated for fetching mediation summaries.",
-            });
-            toast.error("Authentication required.");
-            return; // إنهاء التنفيذ إذا لم يكن هناك توكن
-        }
-
-        const config = {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        };
-
-        // Endpoint جديد سنقوم بإنشائه في الخادم
         const { data } = await axios.get(`${BACKEND_URL}/mediation/my-summaries`, config);
-        // نتوقع أن data يكون كائنًا يحتوي على:
-        // data.requests: مصفوفة من ملخصات الوساطات
-        // data.totalUnreadMessages: العدد الإجمالي للرسائل غير المقروءة عبر جميع الوساطات
-
-        dispatch({
-            type: GET_MY_MEDIATION_SUMMARIES_SUCCESS,
-            payload: data, // data = { requests: [], totalUnreadMessages: 0 }
-        });
-
+        dispatch({ type: GET_MY_MEDIATION_SUMMARIES_SUCCESS, payload: data });
     } catch (error) {
-        const errorMessage = error.response && error.response.data && error.response.data.msg
-            ? error.response.data.msg
-            : error.message;
-        console.error("Error fetching mediation summaries:", errorMessage, error.response || error);
-        dispatch({
-            type: GET_MY_MEDIATION_SUMMARIES_FAIL,
-            payload: errorMessage,
-        });
-        // لا تعرض toast هنا بالضرورة، يمكن للمكون الذي يستدعي هذا الـ action التعامل مع الخطأ
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch summaries.';
+        dispatch({ type: GET_MY_MEDIATION_SUMMARIES_FAIL, payload: message });
     }
 };
-// --- [!!!] نهاية الدالة المضافة [!!!] ---
 
-// Action (اختياري) لتحديث واجهة المستخدم عند فتح محادثة من القائمة
-// (لجعل عدد الرسائل غير المقروءة لتلك المحادثة = 0 فورًا في القائمة)
-export const markMediationAsReadInList = (mediationId) => (dispatch) => {
-    dispatch({
-        type: MARK_MEDIATION_AS_READ_IN_LIST,
-        payload: { mediationId },
-    });
-};
+export const markMediationAsReadInList = (mediationId) => ({ type: MARK_MEDIATION_AS_READ_IN_LIST, payload: { mediationId } });
+export const updateUnreadCountFromSocket = (mediationId, unreadCount, lastMessageTimestamp, productTitle, otherPartyForRecipient) => ({
+    type: UPDATE_UNREAD_COUNT_FROM_SOCKET,
+    payload: { mediationId, unreadCount, lastMessageTimestamp, productTitle, otherPartyForRecipient }
+});
 
-// Action (اختياري) لتحديث عدد الرسائل غير المقروءة عند استقبال رسالة جديدة عبر socket
-export const updateUnreadCountFromSocket = (mediationId, newUnreadCount) => (dispatch) => {
-    dispatch({
-        type: UPDATE_UNREAD_COUNT_FROM_SOCKET,
-        payload: { mediationId, unreadCount: newUnreadCount }
-    });
-};
 
 export const buyerConfirmReceipt = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: BUYER_CONFIRM_RECEIPT_REQUEST, payload: { mediationRequestId } });
-    const config = getTokenConfig(); // افترض أن لديك هذه الدالة المساعدة
-    if (!config) {
-        const errorMsg = "Authorization Error.";
-        dispatch({ type: BUYER_CONFIRM_RECEIPT_FAIL, payload: { error: errorMsg } });
-        toast.error(errorMsg);
-        throw new Error(errorMsg); // لكي يتمكن .catch في المكون من التقاط الخطأ
-    }
-
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: BUYER_CONFIRM_RECEIPT_FAIL, payload: { error: "Authorization Error." } });
     try {
-        const { data } = await axios.put(
-            `${BACKEND_URL}/mediation/buyer/confirm-receipt/${mediationRequestId}`,
-            {}, // لا يوجد body مطلوب عادةً
-            config
-        );
-
-        dispatch({
-            type: BUYER_CONFIRM_RECEIPT_SUCCESS,
-            payload: {
-                mediationRequestId,
-                updatedMediationRequest: data.mediationRequest, // الخادم يجب أن يعيد الطلب المحدث
-                // يمكنك أيضًا إرجاع أرصدة محدثة إذا كان الـ backend يفعل ذلك
-            }
-        });
-        toast.success(data.msg || "Receipt confirmed and funds processed!");
-
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/buyer/confirm-receipt/${mediationRequestId}`, {}, config);
+        dispatch({ type: BUYER_CONFIRM_RECEIPT_SUCCESS, payload: { mediationRequestId, updatedMediationRequest: data.mediationRequest } });
+        toast.success(data.msg || "Receipt confirmed!");
         dispatch(getProfile());
-
-        // --- [!!!] تحديث حالة المنتج في productReducer [!!!] ---
         if (data.mediationRequest && data.mediationRequest.product) {
-            const productId = typeof data.mediationRequest.product === 'string'
-                ? data.mediationRequest.product
-                : data.mediationRequest.product._id;
-            const buyerIdForProduct = typeof data.mediationRequest.buyer === 'string'
-                ? data.mediationRequest.buyer
-                : data.mediationRequest.buyer._id;
-
+            const productId = typeof data.mediationRequest.product === 'string' ? data.mediationRequest.product : data.mediationRequest.product._id;
+            const buyerIdForProduct = typeof data.mediationRequest.buyer === 'string' ? data.mediationRequest.buyer : data.mediationRequest.buyer._id;
             if (productId) {
-                dispatch({
-                    type: 'UPDATE_PRODUCT_STATUS_SOLD', // ستحتاج لإنشاء هذا الـ actionType والـ case في productReducer
-                    payload: {
-                        productId,
-                        newStatus: 'sold', // أو 'Completed'
-                        soldAt: new Date().toISOString(), // تاريخ البيع
-                        buyerId: buyerIdForProduct // مشتري المنتج
-                    }
-                });
+                dispatch({ type: 'UPDATE_PRODUCT_STATUS_SOLD', payload: { productId, newStatus: 'sold', soldAt: new Date().toISOString(), buyerId: buyerIdForProduct } });
             }
         }
-        // -----------------------------------------------------
         return data;
-
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to confirm receipt.';
-        dispatch({
-            type: BUYER_CONFIRM_RECEIPT_FAIL,
-            payload: { mediationRequestId, error: message }
-        });
+        dispatch({ type: BUYER_CONFIRM_RECEIPT_FAIL, payload: { mediationRequestId, error: message } });
         toast.error(message);
-        throw error; // إعادة رمي الخطأ ليتم التقاطه في المكون
+        throw error;
     }
 };
 
 export const openDisputeAction = (mediationRequestId, reason = null) => async (dispatch) => {
     dispatch({ type: OPEN_DISPUTE_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Authorization Error.";
-        dispatch({ type: OPEN_DISPUTE_FAIL, payload: { error: errorMsg } });
-        toast.error(errorMsg);
-        throw new Error(errorMsg);
-    }
-
+    if (!config) return dispatch({ type: OPEN_DISPUTE_FAIL, payload: { error: "Authorization Error." } });
     try {
         const body = reason ? { reason } : {};
-        const { data } = await axios.put(
-            `${BACKEND_URL}/mediation/open-dispute/${mediationRequestId}`,
-            body,
-            config
-        );
-
-        dispatch({
-            type: OPEN_DISPUTE_SUCCESS,
-            payload: {
-                mediationRequestId,
-                updatedMediationRequest: data.mediationRequest,
-            }
-        });
-        toast.info(data.msg || "Dispute opened successfully. A mediator will be notified.");
-        // لا حاجة لإعادة جلب البروفايل هنا عادةً، لكن يمكن إعادة جلب ملخصات الوساطة
-        // dispatch(getMyMediationSummaries()); 
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/open-dispute/${mediationRequestId}`, body, config);
+        dispatch({ type: OPEN_DISPUTE_SUCCESS, payload: { mediationRequestId, updatedMediationRequest: data.mediationRequest } });
+        toast.info(data.msg || "Dispute opened.");
         return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to open dispute.';
-        dispatch({
-            type: OPEN_DISPUTE_FAIL,
-            payload: { mediationRequestId, error: message }
-        });
+        dispatch({ type: OPEN_DISPUTE_FAIL, payload: { mediationRequestId, error: message } });
         toast.error(message);
         throw error;
     }
@@ -588,13 +309,11 @@ export const openDisputeAction = (mediationRequestId, reason = null) => async (d
 export const getMediatorDisputedCasesAction = (page = 1, limit = 10) => async (dispatch) => {
     dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_REQUEST });
     const config = getTokenConfig();
-    if (!config) { 
-    dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_FAIL, payload: 'Authorization Error' });
-        return; }
+    if (!config) return dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_FAIL, payload: 'Authorization Error' });
     try {
         const { data } = await axios.get(`${BACKEND_URL}/mediation/mediator/disputed-cases?page=${page}&limit=${limit}`, config);
         dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_SUCCESS, payload: data });
-    } catch (error) { 
+    } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to fetch disputed cases.';
         dispatch({ type: GET_MEDIATOR_DISPUTED_CASES_FAIL, payload: message });
         toast.error(message);
@@ -604,13 +323,8 @@ export const getMediatorDisputedCasesAction = (page = 1, limit = 10) => async (d
 export const adminGetDisputedMediationsAction = (page = 1, limit = 10) => async (dispatch) => {
     dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST });
     const config = getTokenConfig();
-    if (!config) {
-        dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, payload: 'Authorization Error' });
-        toast.error("Authorization required.");
-        return; }
-
+    if (!config) return dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, payload: 'Authorization Error' });
     try {
-        // Endpoint جديد للخادم لجلب جميع الوساطات المتنازع عليها
         const { data } = await axios.get(`${BACKEND_URL}/mediation/admin/disputed-cases?page=${page}&limit=${limit}`, config);
         dispatch({ type: ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS, payload: data });
     } catch (error) {
@@ -623,81 +337,127 @@ export const adminGetDisputedMediationsAction = (page = 1, limit = 10) => async 
 export const getMediationDetailsByIdAction = (mediationRequestId) => async (dispatch) => {
     dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    if (!config) {
-        dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_FAIL, payload: 'Authorization required.' });
-        return;
-    }
+    if (!config) return dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_FAIL, payload: 'Authorization required.' });
     try {
         const { data } = await axios.get(`${BACKEND_URL}/mediation/request-details/${mediationRequestId}`, config);
         dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_SUCCESS, payload: data.mediationRequest || data });
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to load mediation details.';
         dispatch({ type: GET_MEDIATION_DETAILS_BY_ID_FAIL, payload: message });
-        // toast.error(message); // يمكنك إضافة toast هنا إذا أردت
     }
 };
 
-// Action لتحديث التفاصيل من السوكيت
-export const updateMediationDetailsFromSocket = (updatedDetails) => ({
-    type: UPDATE_MEDIATION_DETAILS_FROM_SOCKET,
-    payload: updatedDetails,
-});
-
-// Action لمسح التفاصيل عند مغادرة الصفحة (اختياري لكن جيد)
-export const clearActiveMediationDetails = () => ({
-    type: CLEAR_ACTIVE_MEDIATION_DETAILS,
-});
+export const updateMediationDetailsFromSocket = (updatedDetails) => ({ type: UPDATE_MEDIATION_DETAILS_FROM_SOCKET, payload: updatedDetails });
+export const clearActiveMediationDetails = () => ({ type: CLEAR_ACTIVE_MEDIATION_DETAILS });
 
 export const adminResolveDisputeAction = (mediationRequestId, resolutionData) => async (dispatch) => {
-    // resolutionData: { winnerId, loserId, resolutionNotes, cancelMediation (boolean) }
     dispatch({ type: ADMIN_RESOLVE_DISPUTE_REQUEST, payload: { mediationRequestId } });
     const config = getTokenConfig();
-    if (!config) {
-        const errorMsg = "Authorization Error. Please login as Admin.";
-        dispatch({ type: ADMIN_RESOLVE_DISPUTE_FAIL, payload: { mediationRequestId, error: errorMsg } });
-        toast.error(errorMsg);
-        throw new Error(errorMsg); // لإيقاف التنفيذ في المكون إذا لزم الأمر
-    }
-
+    if (!config) return dispatch({ type: ADMIN_RESOLVE_DISPUTE_FAIL, payload: { mediationRequestId, error: "Admin authorization required." } });
     try {
-        // المسار في الـ Backend يجب أن يكون مطابقًا لما هو معرف في mediation.router.js
-        // مثال: PUT /mediation/admin/resolve-dispute/:mediationRequestId
-        const { data } = await axios.put(
-            `${BACKEND_URL}/mediation/admin/resolve-dispute/${mediationRequestId}`, // <--- تأكد من هذا المسار
-            resolutionData,
-            config
-        );
-
-        dispatch({
-            type: ADMIN_RESOLVE_DISPUTE_SUCCESS,
-            payload: {
-                mediationRequestId,
-                updatedMediationRequest: data.mediationRequest, // الـ Backend يجب أن يعيد الطلب المحدث
-                // يمكنك أيضًا إرجاع المستخدمين المحدثين إذا كان الـ Backend يفعل ذلك
-            }
-        });
-        toast.success(data.msg || "Dispute resolved successfully!");
-
-        // مهم: تحديث بيانات المستخدمين المتأثرين (الفائز والخاسر)
-        // إذا كان الـ Backend يرسل user_profile_updated عبر Socket.IO،
-        // والـ Profile.jsx يستمع إليه، فقد يتم التحديث تلقائيًا.
-        // ولكن كإجراء احتياطي أو إذا لم يكن Socket.IO يغطي كل الحالات،
-        // يمكنك استدعاء getProfile للمستخدم الحالي إذا كان هو أحد الأطراف (نادرًا ما يكون الأدمن طرفًا).
-        // الأهم هو أن Socket.IO يجب أن يحدث ملفات تعريف الفائز والخاسر.
-        // أو إذا أعاد الـ Backend بيانات المستخدمين المحدثة هنا، يمكنك إرسال action لتحديثهم في Redux.
-
-        // لتحديث تفاصيل الوساطة في activeMediationDetails إذا كانت مفتوحة
-        // dispatch(updateMediationDetailsFromSocket(data.mediationRequest)); // أو طريقة مشابهة
-
-        return data; // أرجع البيانات للاستخدام في المكون إذا لزم الأمر
-
+        const { data } = await axios.put(`${BACKEND_URL}/mediation/admin/resolve-dispute/${mediationRequestId}`, resolutionData, config);
+        dispatch({ type: ADMIN_RESOLVE_DISPUTE_SUCCESS, payload: { mediationRequestId, updatedMediationRequest: data.mediationRequest } });
+        toast.success(data.msg || "Dispute resolved!");
+        return data;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to resolve dispute.';
-        dispatch({
-            type: ADMIN_RESOLVE_DISPUTE_FAIL,
-            payload: { mediationRequestId, error: message }
-        });
-        toast.error(`Dispute resolution failed: ${message}`);
-        throw error; // أعد رمي الخطأ ليتم التقاطه في المكون
+        dispatch({ type: ADMIN_RESOLVE_DISPUTE_FAIL, payload: { mediationRequestId, error: message } });
+        toast.error(message);
+        throw error;
     }
 };
+
+
+// --- Admin Sub-Chat Actions ---
+export const adminCreateSubChat = (mediationRequestId, subChatData) => async (dispatch) => {
+    dispatch({ type: ADMIN_CREATE_SUBCHAT_REQUEST });
+    const config = getTokenConfig();
+    if (!config) {
+        dispatch({ type: ADMIN_CREATE_SUBCHAT_FAIL, payload: 'Authorization Error' });
+        toast.error('Authorization Error');
+        throw new Error('Authorization Error');
+    }
+    try {
+        const { data } = await axios.post(`${BACKEND_URL}/mediation/${mediationRequestId}/admin/subchats`, subChatData, config);
+        dispatch({ type: ADMIN_CREATE_SUBCHAT_SUCCESS, payload: data });
+        toast.success(data.msg || "Private chat created!");
+        return data.subChat;
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to create private chat.';
+        dispatch({ type: ADMIN_CREATE_SUBCHAT_FAIL, payload: message });
+        toast.error(message);
+        throw error;
+    }
+};
+
+export const adminResetCreateSubChat = () => ({ type: ADMIN_CREATE_SUBCHAT_RESET });
+
+export const adminGetAllSubChats = (mediationRequestId) => async (dispatch) => {
+    dispatch({ type: ADMIN_GET_ALL_SUBCHATS_REQUEST });
+    const config = getTokenConfig();
+    if (!config) {
+        dispatch({ type: ADMIN_GET_ALL_SUBCHATS_FAIL, payload: 'Authorization Error' });
+        return;
+    }
+    try {
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/${mediationRequestId}/admin/subchats`, config);
+        dispatch({ type: ADMIN_GET_ALL_SUBCHATS_SUCCESS, payload: data });
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch private chats.';
+        dispatch({ type: ADMIN_GET_ALL_SUBCHATS_FAIL, payload: message });
+    }
+};
+
+export const setActiveSubChatId = (subChatId) => ({ type: SET_ACTIVE_SUBCHAT_ID, payload: subChatId });
+
+export const adminGetSubChatMessages = (mediationRequestId, subChatId) => async (dispatch) => {
+    dispatch({ type: ADMIN_GET_SUBCHAT_MESSAGES_REQUEST, payload: { subChatId } });
+    const config = getTokenConfig();
+    if (!config) {
+        dispatch({ type: ADMIN_GET_SUBCHAT_MESSAGES_FAIL, payload: { subChatId, error: 'Authorization Error' } });
+        return;
+    }
+    try {
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/${mediationRequestId}/admin/subchats/${subChatId}/messages`, config);
+        dispatch({ type: ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS, payload: data });
+    } catch (error) {
+        const message = error.response?.data?.msg || error.message || 'Failed to fetch private chat messages.';
+        dispatch({ type: ADMIN_GET_SUBCHAT_MESSAGES_FAIL, payload: { subChatId, error: message } });
+    }
+};
+
+export const clearActiveSubChatMessages = () => ({ type: CLEAR_ACTIVE_SUBCHAT_MESSAGES });
+
+export const handleAdminSubChatCreatedSocket = (data) => ({ type: ADMIN_SUBCHAT_CREATED_SOCKET, payload: data });
+export const handleNewAdminSubChatMessageSocket = (data) => (dispatch, getState) => {
+    // data هنا هو { mediationRequestId, subChatId, message }
+    // message هو الكائن الكامل للرسالة مع sender object
+
+    // --- [!!!] تعديل مهم هنا [!!!] ---
+    dispatch({
+        type: NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, // استخدم نفس الـ type الذي لديك
+        payload: data, // أرسل 'data' بالكامل (يحتوي على subChatId و message)
+    });
+    // --- [!!!] نهاية التعديل [!!!] ---
+
+    // يمكنك الاحتفاظ بمنطق الإشعار (toast) هنا إذا أردت، أو نقله لـ useEffect في المكون
+    const { activeSubChat, activeMediationDetails } = getState().mediationReducer;
+    const currentUserId = getState().userReducer.user?._id;
+
+    if (activeMediationDetails?._id === data.mediationRequestId) {
+        if (activeSubChat.id !== data.subChatId) { // إذا لم يكن الشات الفرعي المستلم هو النشط
+            // منطق إظهار إشعار toast
+            const relevantSubChatFromDetails = activeMediationDetails?.adminSubChats?.find(sc => sc.subChatId === data.subChatId);
+            // يجب أيضًا البحث في adminSubChats.list إذا كان المستخدم أدمن ولم يتم تحميل التفاصيل بعد
+            const relevantSubChatFromList = getState().mediationReducer.adminSubChats.list.find(sc => sc.subChatId === data.subChatId);
+            const relevantSubChat = relevantSubChatFromDetails || relevantSubChatFromList;
+
+            const isCurrentUserParticipant = relevantSubChat?.participants.some(p => (p.userId?._id || p.userId) === currentUserId);
+
+            if (relevantSubChat && isCurrentUserParticipant && (data.message.sender?._id || data.message.sender) !== currentUserId) {
+                // toast.info(...) // يمكنك استدعاء toast من هنا إذا أردت
+            }
+        }
+    }
+};
+export const handleAdminSubChatMessagesStatusUpdatedSocket = (data) => ({ type: ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET, payload: data });

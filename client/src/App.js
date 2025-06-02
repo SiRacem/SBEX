@@ -10,7 +10,6 @@ import NotFound from './pages/NotFound';
 import UserListAd from './components/admin/UserListAd';
 import ProductListAdmin from './components/admin/ProductListAdmin';
 import NotificationsPage from './pages/NotificationsPage';
-import Support from './pages/Support';
 import Profile from './components/commun/Profile';
 import Comptes from './pages/Comptes';
 import Wallet from './pages/Wallet';
@@ -37,9 +36,15 @@ import './App.css';
 import './components/layout/Sidebar.css';
 import './pages/MainDashboard.css';
 import { FaComments } from 'react-icons/fa';
-import { getTransactionsForDashboard } from './redux/actions/transactionAction';
-import { clearNotifications } from './redux/actions/notificationAction'; // افترض وجود هذا الـ action
-import { clearTransactions as clearWalletTransactions } from './redux/actions/transactionAction'; // افترض وجود هذا الـ action
+import { getTransactionsForDashboard, getTransactions } from './redux/actions/transactionAction';
+import CreateTicketPage from './pages/CreateTicketPage';
+import TicketDetailsPage from './pages/TicketDetailsPage';
+import UserTicketsListPage from './pages/UserTicketsListPage';
+import AdminTicketsDashboardPage from './components/admin/AdminTicketsDashboardPage';
+import { getUserWithdrawalRequests } from './redux/actions/withdrawalRequestAction'; // <--- أضف هذا الاستيراد
+import { getUserDepositRequests } from './redux/actions/depositAction'; // <--- أضف هذا إذا كنت تعرض الإيداعات أيضًا وتحتاج تحديثها
+import { getBuyerMediationRequestsAction } from './redux/actions/mediationAction';
+
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -186,14 +191,17 @@ function App() {
 
         socketRef.current.on('user_balances_updated', (newBalances) => {
           console.log('[App.js Socket] Received "user_balances_updated":', newBalances);
+          // تأكد أن التحديث يخص المستخدم الحالي
           if (newBalances && currentUserId && newBalances._id === currentUserId) {
-            dispatch(updateUserBalances({
+            // أرسل action لتحديث الأرصدة في Redux store
+            dispatch(updateUserBalances({ // هذا action creator جديد ستقوم بإنشائه
               balance: newBalances.balance,
               sellerAvailableBalance: newBalances.sellerAvailableBalance,
-              sellerPendingBalance: newBalances.sellerPendingBalance,
+              sellerPendingBalance: newBalances.sellerPendingBalance
+              // أي حقول رصيد أخرى
             }));
-            // اختياري: يمكنك أيضًا إعادة جلب getProfile إذا كانت الأرصدة جزءًا هامًا منه ويجب أن تكون متزامنة تمامًا
-            // dispatch(getProfile()); // كن حذرًا من الحلقات إذا كان getProfile يطلق هذا الحدث!
+            // يمكنك أيضاً تحديث الإشعارات إذا كنت تريد إشعارًا خاصًا بتحديث الرصيد
+            // أو الاعتماد على الإشعار العام "DEPOSIT_APPROVED" الذي سترسله من الخلفية
           }
         });
 
@@ -203,12 +211,136 @@ function App() {
           // لا تستدعي getProfile هنا إلا إذا كان ضروريًا للغاية وتأكدت أنه لا يسبب حلقة
         });
 
+        socketRef.current.on('dashboard_transactions_updated', (data) => {
+          console.log("[App.js Socket] Received 'dashboard_transactions_updated'. Refetching relevant data.", data);
+
+          // 1. جلب المعاملات العامة (إرسال، استقبال، إيداع مكتمل، سحب مكتمل)
+          dispatch(getTransactions()); // <--- هذه للمعاملات التي تحدث transactionReducer
+
+          // 2. جلب قائمة طلبات السحب الخاصة بالمستخدم (Pending, Rejected, Approved)
+          dispatch(getUserWithdrawalRequests()); // <--- هذه لتحديث withdrawalRequestReducer.userRequests
+
+          // 3. جلب قائمة طلبات الإيداع الخاصة بالمستخدم (Pending, Rejected, Approved)
+          dispatch(getUserDepositRequests()); // <--- هذه لتحديث depositRequestReducer.userRequests
+
+          // ملاحظة: تحديث الرصيد (userReducer.user.balance) يجب أن يتم عبر مستمع `user_balances_updated`
+          // لا حاجة لـ getProfile() هنا بشكل عام إذا كان `user_balances_updated` يعمل بشكل صحيح.
+        });
+
+        // --- [!!! هذا هو المستمع المهم الذي يجب أن يكون موجودًا ويعمل !!!] ---
+        socketRef.current.on('product_updated', (updatedProductData) => {
+          console.log('[App.js Socket] Received "product_updated":', updatedProductData);
+
+          if (updatedProductData && updatedProductData._id) {
+            dispatch({
+              type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', // هذا هو نوع الأكشن الذي عرفته في productReducer.js
+              payload: updatedProductData             // المنتج المحدث بالكامل (بما في ذلك حالته الجديدة 'approved')
+            });
+            // يمكنك إضافة toast هنا إذا أردت إشعارًا إضافيًا بأن قائمة المنتجات تحدثت
+            // toast.info(`Product list updated: "${updatedProductData.title}" is now ${updatedProductData.status}.`);
+          } else {
+            console.warn('[App.js Socket] Received "product_updated" but data is invalid or missing _id. Payload:', updatedProductData);
+            // كخيار احتياطي، يمكنك إعادة جلب كل المنتجات، لكن هذا أقل كفاءة
+            // dispatch(getProducts()); 
+          }
+        });
+        // --- نهاية مستمع 'product_updated' ---
+
+        // --- [!!! إضافة مستمع جديد لطلبات الوساطة الجديدة للمسؤول !!!] ---
+        socketRef.current.on('new_pending_mediator_application', (newApplicationData) => {
+          console.log('[App.js Socket] Received "new_pending_mediator_application". Applicant Data:', JSON.stringify(newApplicationData, null, 2));
+
+          // تأكد أن المستخدم الحالي هو المسؤول قبل تحديث حالته
+          // user هو من useSelector(state => state.userReducer.user)
+          if (user && user.userRole === 'Admin') {
+            if (newApplicationData && newApplicationData._id) {
+              dispatch({
+                type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', // تأكد من تطابق هذا النوع
+                payload: newApplicationData
+              });
+              toast.info(`🔔 New mediator application from ${newApplicationData.fullName || 'a user'} is pending review.`);
+            } else {
+              console.warn("[App.js Socket] 'new_pending_mediator_application' received with invalid data.", newApplicationData);
+            }
+          }
+        });
+
+        // أو إذا كنت تستخدم حدثًا عامًا لإعادة الجلب
+        socketRef.current.on('refresh_mediator_applications_list', () => {
+          console.log('[App.js Socket] Received "refresh_mediator_applications_list"');
+          if (user && user.userRole === 'Admin') {
+            // dispatch(getPendingMediatorApplicationsAction());
+            dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' });
+            toast.info("Mediator applications list might have been updated.");
+          }
+        });
+        // --- نهاية المستمع الجديد ---
+
+        // --- [!!! وأيضًا، مستمع لحذف المنتج (إذا لم يكن موجودًا) !!!] ---
+        socketRef.current.on('product_deleted', (data) => {
+          console.log('[App.js Socket] Received "product_deleted":', data);
+          if (data && data.productId) {
+            dispatch({
+              type: 'DELETE_PRODUCT_SUCCESS', // استخدم نفس النوع من productReducer
+              payload: { productId: data.productId }
+            });
+            // toast.info(`A product has been removed from the list.`);
+          } else {
+            console.warn('[App.js Socket] Received "product_deleted" but productId is missing.');
+          }
+        });
+        // --- نهاية مستمع 'product_deleted' ---
+
+        socketRef.current.on('new_mediation_request_for_buyer', (data) => {
+          console.log('[App.js Socket] Received "new_mediation_request_for_buyer":', data);
+
+          // أبسط طريقة هي إعادة جلب قائمة طلبات الوساطة للمشتري
+          // نفترض أن المشتري الحالي هو من يجب أن يرى هذا التحديث
+          // (يمكنك إضافة تحقق من userId إذا أرسله الخادم مع الحدث)
+          if (isAuth && user && user.userRole !== 'Admin') { // أو أي تحقق آخر للتأكد أنه المشتري المعني
+            // استدعاء الأكشن الذي يجلب طلبات الوساطة للمشتري
+            // قد تحتاج لتمرير رقم الصفحة الحالي إذا كان الأكشن يدعم الترقيم
+            dispatch(getBuyerMediationRequestsAction(1, 10)); // مثال: جلب الصفحة الأولى، 10 عناصر
+            toast.info(data.message || "You have a new mediation request to review!");
+          }
+          // إذا أرسل الخادم newMediationRequestData، يمكنك محاولة إضافته مباشرة للـ state
+          // في mediationReducer، لكن إعادة الجلب أسهل للبدء.
+        });
+        // --- نهاية المستمع الجديد ---
+
+        // --- [!!! إضافة مستمع جديد لتحديثات طلبات الوساطة !!!] ---
+        socketRef.current.on('mediation_request_updated', (data) => {
+          // data = { mediationRequestId: '...', updatedMediationRequestData: { ... } }
+          console.log('[App.js Socket] Received "mediation_request_updated":', data);
+
+          if (data && data.updatedMediationRequestData && data.updatedMediationRequestData._id) {
+            // الخيار 1: تحديث طلب الوساطة المحدد في الـ state (أكثر كفاءة)
+            // ستحتاج إلى action و case في mediationReducer لهذا
+            dispatch({
+              type: 'UPDATE_SINGLE_MEDIATION_REQUEST_IN_STORE', // نوع أكشن جديد لإنشائه
+              payload: data.updatedMediationRequestData
+            });
+            toast.info(`Mediation request for product "${data.updatedMediationRequestData.product?.title || 'N/A'}" has been updated.`);
+
+            // الخيار 2: إعادة جلب قائمة طلبات الوساطة للمستخدم الحالي (أبسط إذا لم يكن لديك تحديث فردي)
+            // هذا سيعمل إذا كان المستخدم الحالي هو البائع أو المشتري المعني
+            // if (user && (user._id === data.updatedMediationRequestData.seller?._id || user._id === data.updatedMediationRequestData.buyer?._id)) {
+            //    dispatch(getBuyerMediationRequestsAction()); // أو أكشن عام يجلب طلبات المستخدم بناءً على دوره
+            //    dispatch(getSellerMediationRequestsAction()); // إذا كان لديك أكشن منفصل للبائع
+            // }
+
+          } else {
+            console.warn('[App.js Socket] Received "mediation_request_updated" but data is invalid.');
+          }
+        });
+        // --- نهاية المستمع الجديد ---
+
         socketRef.current.on('new_notification', (notification) => {
           console.log('[App.js Socket] Received "new_notification":', notification);
           toast.info(`🔔 ${notification.title || 'New Notification!'}`, { position: "top-right", autoClose: 3000 });
           dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
           // يمكنك أيضًا استدعاء getNotifications() لتحديث القائمة الكاملة إذا لزم الأمر
-          // dispatch(getNotifications());
+          // dispatch(getNotifications()); // فكر في هذا: هل تحتاجه أم أن ADD_NOTIFICATION_REALTIME كافٍ؟
         });
 
         socketRef.current.on('update_unread_summary', (data) => {
@@ -340,11 +472,13 @@ function App() {
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/dashboard/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             <Route path="/my-mediation-requests" element={<ProtectedRoute><MyMediationRequestsPage /></ProtectedRoute>} />
             <Route path="/dashboard/mediations" element={<ProtectedRoute><MediationsListPage /></ProtectedRoute>} />
             <Route path="/dashboard/comptes_bids" element={<ProtectedRoute requiredRole="Vendor"><CommandsListVendor search={search} /></ProtectedRoute>} />
+            <Route path="/dashboard/tickets" element={<ProtectedRoute><UserTicketsListPage /></ProtectedRoute>} />
+            <Route path="/dashboard/support/tickets/:ticketId" element={<ProtectedRoute><TicketDetailsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/support/create-ticket" element={<ProtectedRoute><CreateTicketPage /></ProtectedRoute>} />
 
             {/* Admin Routes */}
             <Route path="/dashboard/admin/products" element={<ProtectedRoute requiredRole="Admin"><ProductListAdmin search={search} /></ProtectedRoute>} />
@@ -355,6 +489,8 @@ function App() {
             <Route path="/dashboard/admin/payment-methods" element={<ProtectedRoute requiredRole="Admin"><AdminPaymentMethods search={search} /></ProtectedRoute>} />
             <Route path="/dashboard/admin/disputes" element={<ProtectedRoute requiredRole="Admin"><AdminDisputesPage /></ProtectedRoute>} />
             <Route path="/dashboard/admin/reports" element={<ProtectedRoute requiredRole="Admin"><AdminReportsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/tickets" element={<ProtectedRoute requiredRole="Admin"><AdminTicketsDashboardPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/ticket-view/:ticketId" element={<ProtectedRoute requiredRole="Admin"><TicketDetailsPage /></ProtectedRoute>} />
 
             {/* Mediator Routes */}
             <Route path="/dashboard/mediator/assignments" element={<ProtectedRoute isMediatorRoute={true}><MediatorDashboardPage /></ProtectedRoute>} />

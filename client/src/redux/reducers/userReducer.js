@@ -17,9 +17,8 @@ import {
   UPDATE_AVATAR_FAIL,
   UPDATE_AVATAR_RESET,
   SET_ONLINE_USERS,
-  SET_USER_BALANCES,
-  // تأكد من وجود هذه الأنواع إذا كنت تستخدمها في actions أخرى
-  // CLEAR_LOGIN_SUCCESS_MESSAGE, 
+  UPDATE_USER_BALANCES_SOCKET,
+  ADMIN_ADD_PENDING_MEDIATOR_APPLICATION,
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -160,7 +159,7 @@ const userReducer = (state = initialState, { type, payload }) => {
 
     case ADMIN_GET_MEDIATOR_APPS_REQUEST:
       return { ...state, loadingPendingApps: true, errorPendingApps: null };
-    case ADMIN_GET_MEDIATOR_APPS_SUCCESS:
+    case ADMIN_GET_MEDIATOR_APPS_SUCCESS: // هذه الحالة تجلب القائمة الكاملة
       return { ...state, loadingPendingApps: false, pendingMediatorApps: payload || { applications: [], totalPages: 0, currentPage: 1, totalApplications: 0 } };
     case ADMIN_GET_MEDIATOR_APPS_FAIL:
       return { ...state, loadingPendingApps: false, errorPendingApps: payload };
@@ -255,9 +254,8 @@ const userReducer = (state = initialState, { type, payload }) => {
         onlineUserIds: Array.isArray(payload) ? payload : [], // تأكد أنه دائمًا مصفوفة
       };
 
-    case SET_USER_BALANCES: // هذا لتحديث جميع الأرصدة من socket
-      console.log("[Reducer USER] Handling SET_USER_BALANCES. Payload:", payload, "Current user state:", state.user);
-      if (state.user) {
+    case UPDATE_USER_BALANCES_SOCKET:
+      if (state.user && payload) { // تأكد أن المستخدم موجود وأن هناك payload
         return {
           ...state,
           user: {
@@ -265,14 +263,66 @@ const userReducer = (state = initialState, { type, payload }) => {
             balance: payload.balance !== undefined ? payload.balance : state.user.balance,
             sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
             sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
-          }
+            // قم بتحديث أي حقول رصيد أخرى بنفس الطريقة
+          },
+          // قد ترغب في إعادة تعيين loading أو error إذا كان هذا التحديث يأتي بشكل مستقل
+          // loading: false,
+          // error: null
         };
       }
-      return state;
+      return state; // إذا لم يكن هناك مستخدم أو payload، أرجع الحالة كما هي
+
+    // --- [!!! الحالة الجديدة هنا !!!] ---
+    case ADMIN_ADD_PENDING_MEDIATOR_APPLICATION:
+      if (!payload || !payload._id) {
+        console.warn("REDUCER: ADMIN_ADD_PENDING_MEDIATOR_APPLICATION - Invalid payload. Payload:", payload);
+        return state;
+      }
+      // payload هنا هو applicantDataForSocket من الخادم
+      console.log("REDUCER: ADMIN_ADD_PENDING_MEDIATOR_APPLICATION - Adding application:", JSON.stringify(payload, null, 2));
+
+      const applicationExists = state.pendingMediatorApps.applications.some(
+        app => app._id === payload._id && app.mediatorApplicationStatus === 'Pending' // قد ترغب في التحقق من الحالة أيضًا
+      );
+
+      if (applicationExists) {
+        console.warn("REDUCER: ADMIN_ADD_PENDING_MEDIATOR_APPLICATION - Application already exists or is not pending anymore:", payload._id);
+        // إذا كان موجودًا بالفعل، يمكنك اختيار تحديثه بالبيانات الجديدة
+        // أو تجاهله إذا كان الهدف هو فقط إضافة الطلبات الجديدة
+        return {
+          ...state,
+          pendingMediatorApps: {
+            ...state.pendingMediatorApps,
+            applications: state.pendingMediatorApps.applications.map(app =>
+              app._id === payload._id ? payload : app // تحديث الطلب الموجود
+            ),
+          },
+        };
+      }
+
+      // تأكد أن الكائن 'payload' يحتوي على نفس بنية الكائنات الموجودة في 'applications'
+      // خاصة إذا كان 'applications' يتوقع كائنات مستخدم كاملة
+      // applicantDataForSocket كان يحتوي على حقول مختارة.
+      // إذا كان ReviewMediatorApplications يتوقع بنية معينة، قم بضبط payload هنا.
+      // المثال الحالي يفترض أن applicantDataForSocket كافٍ للعرض.
+      const newApplicationEntry = {
+        // افترض أن payload (applicantDataForSocket) يحتوي على كل ما يحتاجه الجدول
+        // مثل _id, fullName, email, level, mediatorEscrowGuarantee, mediatorApplicationBasis, updatedAt/createdAt
+        ...payload
+      };
+
+      return {
+        ...state,
+        pendingMediatorApps: {
+          ...state.pendingMediatorApps,
+          applications: [newApplicationEntry, ...state.pendingMediatorApps.applications],
+          totalApplications: state.pendingMediatorApps.totalApplications + 1,
+        },
+      };
+    // --- نهاية الحالة الجديدة ---
 
     default:
       return state;
   }
 };
-
 export default userReducer;

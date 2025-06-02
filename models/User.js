@@ -40,6 +40,9 @@ const UserSchema = new Schema({
         default: 0,
         min: 0
     },
+    mediatorApplicationSubmittedAt: {
+        type: Date
+    }, // تاريخ تقديم طلب الانضمام كوسيط
     successfulMediationsCount: { // عداد الوساطات الناجحة
         type: Number,
         default: 0,

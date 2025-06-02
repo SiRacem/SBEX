@@ -76,7 +76,7 @@ exports.verifyAuth = async (req, res, next) => {
             // Send 401 because the user associated with the valid token doesn't exist
             return res.status(401).json({ msg: "Unauthorized: User not found" });
         }
-        
+
         // 8. Attach user object to the request for subsequent handlers
         req.user = user;
         console.log(`User ${user.email} authenticated successfully and attached to req.user.`);
@@ -115,3 +115,27 @@ exports.verifyAdmin = async (req, res, next) => {
     }
 };
 // --- نهاية دالة verifyAdmin ---
+
+// --- [جديد] Middleware للتحقق من دور الدعم ---
+exports.verifySupport = async (req, res, next) => {
+    // console.log(">>> DEBUG: verifySupport Middleware ---");
+    if (req.user && req.user.userRole === 'Support') {
+        // console.log(`verifySupport: User ${req.user.email} is Support. Access granted.`);
+        next();
+    } else {
+        console.warn(`verifySupport: Access denied. User ${req.user?.email || 'Unknown'} is not Support. Role: ${req.user?.userRole}`);
+        res.status(403).json({ msg: 'Access denied. Support privileges required.' });
+    }
+};
+
+// --- [جديد] Middleware للتحقق من دور الأدمن أو الدعم ---
+exports.verifyAdminOrSupport = async (req, res, next) => {
+    // console.log(">>> DEBUG: verifyAdminOrSupport Middleware ---");
+    if (req.user && (req.user.userRole === 'Admin' || req.user.userRole === 'Support')) {
+        // console.log(`verifyAdminOrSupport: User ${req.user.email} is Admin/Support. Access granted.`);
+        next();
+    } else {
+        console.warn(`verifyAdminOrSupport: Access denied. User ${req.user?.email || 'Unknown'} is not Admin/Support. Role: ${req.user?.userRole}`);
+        res.status(403).json({ msg: 'Access denied. Admin or Support privileges required.' });
+    }
+};

@@ -510,8 +510,8 @@ exports.adminGetRequestDetails = async (req, res) => {
  */
 exports.adminCompleteWithdrawal = async (req, res) => {
     const { requestId } = req.params;
-    const { transactionReference, adminNotes } = req.body; // قد تتضمن معلومات إضافية من الأدمن
-    const adminUserId = req.user._id; // ID الأدمن الحالي
+    const { transactionReference, adminNotes } = req.body;
+    const adminUserId = req.user._id;
     console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Admin ${adminUserId} completing request ID: ${requestId}`);
 
     if (!mongoose.Types.ObjectId.isValid(requestId)) {
@@ -519,23 +519,21 @@ exports.adminCompleteWithdrawal = async (req, res) => {
     }
 
     try {
-        // استخدام findByIdAndUpdate لتحديث الحالة والمعلومات الأخرى دفعة واحدة
         const updatedRequest = await WithdrawalRequest.findOneAndUpdate(
-            { _id: requestId, status: { $in: ['Pending', 'Processing'] } }, // البحث عن الطلب بالحالة الصحيحة
+            { _id: requestId, status: { $in: ['Pending', 'Processing'] } },
             {
                 $set: {
                     status: 'Completed',
                     processedBy: adminUserId,
                     processedAt: new Date(),
-                    transactionReference: transactionReference || undefined, // تعيين القيمة فقط إذا كانت موجودة
+                    transactionReference: transactionReference || undefined,
                     adminNotes: adminNotes || undefined
                 }
             },
-            { new: true, runValidators: true } // إرجاع المستند المحدث وتشغيل التحقق
-        ).populate('paymentMethod user'); // جلب المعلومات المطلوبة للإشعار والرصيد التراكمي
+            { new: true, runValidators: true }
+        ).populate('paymentMethod user'); // 'user' هنا هو كائن المستخدم الكامل
 
         if (!updatedRequest) {
-            // محاولة البحث لمعرفة السبب (هل لم يتم العثور عليه أم كانت الحالة خاطئة؟)
             const existingRequest = await WithdrawalRequest.findById(requestId);
             if (!existingRequest) {
                 throw new Error("Request not found.");
@@ -546,27 +544,23 @@ exports.adminCompleteWithdrawal = async (req, res) => {
 
         console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Withdrawal request ${requestId} marked as completed.`);
 
-        // تحديث رصيد السحب التراكمي للمستخدم (اختياري ولكن مفيد للإحصائيات)
+        // تحديث رصيد السحب التراكمي للمستخدم (اختياري)
         try {
-            // لا نحتاج لجلسة هنا لأنها عملية منفصلة ولا تؤثر على نجاح الإكمال
-            const user = await User.findById(updatedRequest.user._id); // user تم جلبه من populate
+            const user = await User.findById(updatedRequest.user._id);
             if (user) {
-                user.withdrawalBalance = (user.withdrawalBalance || 0) + updatedRequest.amount; // amount هو الإجمالي بالدينار
-                await user.save();
+                user.withdrawalBalance = (user.withdrawalBalance || 0) + updatedRequest.amount;
+                await user.save(); // لا تحتاج لجلسة هنا إذا كانت هذه العملية منفصلة
                 console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Updated user withdrawal balance for user ${user._id}.`);
             } else {
                 console.warn(`[WithdrawCtrl - adminCompleteWithdrawal] User ${updatedRequest.user._id} not found for updating withdrawal balance.`);
             }
         } catch (userUpdateError) {
             console.error("[WithdrawCtrl - adminCompleteWithdrawal] Error updating user withdrawal balance:", userUpdateError);
-            // لا توقف العملية الرئيسية بسبب هذا الخطأ
         }
 
-
-        // إرسال إشعار للمستخدم بالإكمال (يستخدم القيم بالدينار)
+        // إرسال إشعار للمستخدم بالإكمال
         console.log("[WithdrawCtrl - adminCompleteWithdrawal] Attempting to notify user...");
         try {
-            // الرسالة تعكس المبلغ الصافي بالدينار الذي تم حسابه
             const userMessage = `Your withdrawal request via ${updatedRequest.paymentMethod?.displayName || 'N/A'} has been processed and completed. You should receive approx. ${formatCurrency(updatedRequest.netAmountToReceive, 'TND')} shortly.`;
             await notifyUserWithdrawalStatus(req, updatedRequest.user._id, 'WITHDRAWAL_COMPLETED', 'Withdrawal Completed', userMessage, updatedRequest._id);
             console.log("[WithdrawCtrl - adminCompleteWithdrawal] Finished attempting completion notification.");
@@ -574,7 +568,45 @@ exports.adminCompleteWithdrawal = async (req, res) => {
             console.error("[WithdrawCtrl - adminCompleteWithdrawal] >>> ERROR occurred during notification function call:", notificationError);
         }
 
-        res.status(200).json({ msg: "Withdrawal marked as completed.", updatedRequest: updatedRequest });
+        // --- [!!! التعديل هنا: إرسال تحديثات Socket.IO للمستخدم المعني !!!] ---
+        const userToNotify = updatedRequest.user; // userToNotify هو كائن المستخدم المأخوذ من updatedRequest.user
+        const userSocketId = req.onlineUsers ? req.onlineUsers[userToNotify._id.toString()] : null;
+
+        if (userSocketId && req.io) {
+            // 1. إرسال حدث لتحديث قائمة الأنشطة/الطلبات في المحفظة
+            req.io.to(userSocketId).emit('dashboard_transactions_updated', {
+                message: 'Your withdrawal request has been completed.',
+                transactionType: 'WITHDRAWAL_REQUEST_COMPLETED', // نوع مميز
+                requestId: updatedRequest._id.toString(),
+                status: 'Completed' // يمكن إضافة الحالة الجديدة هنا
+            });
+            console.log(`   [Socket] Sent 'dashboard_transactions_updated' (for completion) to user ${userToNotify._id}`);
+
+            // 2. إرسال تحديث الأرصدة (الرصيد الرئيسي للمستخدم لا يتغير عند الإكمال، بل عند الطلب)
+            // لكن إذا كنت تريد إرسال معلومات محدثة عن المستخدم بشكل عام، يمكنك فعل ذلك.
+            // حاليًا، `user_balances_updated` في `adminRejectWithdrawal` يرسل الرصيد المحدث بعد الإعادة.
+            // هنا، الرصيد الرئيسي لم يتغير.
+            /*
+            req.io.to(userSocketId).emit('user_balances_updated', {
+                _id: userToNotify._id.toString(),
+                balance: userToNotify.balance, // الرصيد الرئيسي (يفترض أنه لم يتغير هنا)
+                // أي أرصدة أخرى ذات صلة إذا أردت
+            });
+            console.log(`   [Socket] Sent 'user_balances_updated' (for completion info) to user ${userToNotify._id}`);
+            */
+        } else {
+            console.log(`   User ${userToNotify._id} is not online for real-time updates for withdrawal completion.`);
+        }
+        // --- نهاية إرسال تحديثات Socket.IO ---
+
+        // إرجاع الطلب المحدث (بعد populate) للـ frontend
+        const finalCompletedRequest = await WithdrawalRequest.findById(updatedRequest._id)
+            .populate('user', 'fullName email balance sellerAvailableBalance sellerPendingBalance') // أضف الحقول التي تحتاجها
+            .populate('paymentMethod')
+            .populate('processedBy', 'fullName email')
+            .lean();
+
+        res.status(200).json({ msg: "Withdrawal marked as completed.", updatedRequest: finalCompletedRequest });
 
     } catch (error) {
         console.error("[WithdrawCtrl - adminCompleteWithdrawal] Error completing withdrawal:", error);
@@ -588,10 +620,9 @@ exports.adminCompleteWithdrawal = async (req, res) => {
 exports.adminRejectWithdrawal = async (req, res) => {
     const { requestId } = req.params;
     const { rejectionReason } = req.body;
-    const adminUserId = req.user._id; // ID الأدمن الحالي
+    const adminUserId = req.user._id;
     console.log(`[WithdrawCtrl - adminRejectWithdrawal] Admin ${adminUserId} attempting to reject request ID: ${requestId}`);
 
-    // التحقق من المدخلات
     if (!mongoose.Types.ObjectId.isValid(requestId)) {
         return res.status(400).json({ msg: "Invalid request ID format." });
     }
@@ -599,72 +630,108 @@ exports.adminRejectWithdrawal = async (req, res) => {
         return res.status(400).json({ msg: "Rejection reason is required." });
     }
 
-    // بدء المعاملة لإعادة الرصيد وتحديث الطلب كوحدة واحدة
     const session = await mongoose.startSession();
     session.startTransaction();
-    console.log("[WithdrawCtrl - adminRejectWithdrawal] Transaction started.");
+    console.log("[WithdrawCtrl - adminRejectWithdrawal] Database transaction started.");
 
     try {
-        // البحث عن الطلب والتأكد من حالته داخل المعاملة
-        const withdrawalRequest = await WithdrawalRequest.findOne({ _id: requestId, status: 'Pending' }).session(session).populate('paymentMethod'); // جلب الطريقة للإشعار
+        const withdrawalRequest = await WithdrawalRequest.findOne({ _id: requestId, status: 'Pending' })
+            .session(session)
+            .populate('paymentMethod')
+            .populate('user'); // جلب كائن المستخدم الكامل
+
         if (!withdrawalRequest) {
-            // معرفة سبب عدم العثور عليه
-            const existingRequest = await WithdrawalRequest.findById(requestId).session(session); // ابحث بدونه حالة
+            const existingRequest = await WithdrawalRequest.findById(requestId).session(session);
             if (!existingRequest) throw new Error(`Withdrawal request with ID ${requestId} not found.`);
             else throw new Error(`Request is already ${existingRequest.status}. Cannot reject.`);
         }
 
-        // جلب المستخدم داخل المعاملة لإعادة الرصيد
-        const user = await User.findById(withdrawalRequest.user).session(session);
-        if (!user) throw new Error(`User with ID ${withdrawalRequest.user} associated with the request not found.`);
+        const userToRefund = withdrawalRequest.user;
+        if (!userToRefund) throw new Error(`User (ID: ${withdrawalRequest.user?._id || 'unknown'}) associated with the request not found.`);
 
-        // إعادة المبلغ الإجمالي المخصوم (المحفوظ بالدينار)
-        const amountToRefund = withdrawalRequest.amount;
-        const previousBalance = user.balance;
-        user.balance += amountToRefund;
-        await user.save({ session }); // حفظ رصيد المستخدم المسترد داخل المعاملة
-        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Refunding user ${user._id} TND ${amountToRefund}. Balance: ${previousBalance} -> ${user.balance}`);
+        const amountToRefundTND = withdrawalRequest.amount;
+        const previousBalance = userToRefund.balance;
 
-        // تحديث حالة الطلب ومعلومات الرفض داخل المعاملة
+        userToRefund.balance += amountToRefundTND;
+        await userToRefund.save({ session });
+        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Refunding user ${userToRefund._id} TND ${amountToRefundTND}. Balance: ${previousBalance} -> ${userToRefund.balance}`);
+
         withdrawalRequest.status = 'Rejected';
         withdrawalRequest.rejectionReason = rejectionReason.trim();
+        withdrawalRequest.adminNotes = rejectionReason.trim();
         withdrawalRequest.processedBy = adminUserId;
         withdrawalRequest.processedAt = new Date();
-        const updatedRequest = await withdrawalRequest.save({ session }); // حفظ الطلب المحدث داخل المعاملة
-        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Withdrawal request ${requestId} marked as rejected.`);
+        const updatedRequest = await withdrawalRequest.save({ session });
+        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Withdrawal request ${requestId} marked as 'Rejected'.`);
 
-        // إتمام المعاملة
         await session.commitTransaction();
-        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Transaction committed for rejected request ${requestId}.`);
+        console.log(`[WithdrawCtrl - adminRejectWithdrawal] Database transaction committed for rejected request ${requestId}.`);
 
-        // إرسال إشعار للمستخدم بالرفض (بعد الـ commit)
-        console.log("[WithdrawCtrl - adminRejectWithdrawal] Attempting to notify user...");
-        try {
-            // الرسالة تستخدم المبلغ المسترد بالدينار
-            const userMessage = `Your withdrawal request of ${formatCurrency(updatedRequest.originalAmount, updatedRequest.originalCurrency)} via ${paymentMethodDetails?.displayName || 'N/A'} has been processed and completed. You should receive approx. ${formatCurrency(netAmountToReceiveInOriginalCurrency, updatedRequest.originalCurrency)} shortly.`;
-            await notifyUserWithdrawalStatus(req, updatedRequest.user._id, 'WITHDRAWAL_COMPLETED', 'Withdrawal Completed', userMessage, updatedRequest._id);
-            console.log("[WithdrawCtrl - adminCompleteWithdrawal] Finished attempting completion notification.");
-        } catch (notificationError) {
-            console.error("[WithdrawCtrl - adminCompleteWithdrawal] >>> ERROR occurred during notification function call:", notificationError);
+        const userSocketId = req.onlineUsers ? req.onlineUsers[userToRefund._id.toString()] : null;
+
+        if (userSocketId && req.io) {
+            req.io.to(userSocketId).emit('user_balances_updated', {
+                _id: userToRefund._id.toString(),
+                balance: userToRefund.balance,
+                sellerAvailableBalance: userToRefund.sellerAvailableBalance,
+                sellerPendingBalance: userToRefund.sellerPendingBalance
+            });
+            console.log(`   [Socket] Sent 'user_balances_updated' to user ${userToRefund._id}`);
+
+            const userMessage = `Your withdrawal request of ${formatCurrency(updatedRequest.originalAmount, updatedRequest.originalCurrency)} via ${updatedRequest.paymentMethod?.displayName || 'N/A'} was rejected. Reason: ${rejectionReason.trim()}`;
+            await notifyUserWithdrawalStatus(req, userToRefund._id, 'WITHDRAWAL_REJECTED', 'Withdrawal Request Rejected', userMessage, updatedRequest._id);
+            // notifyUserWithdrawalStatus handles its own socket emit for 'new_notification'
+
+            req.io.to(userSocketId).emit('dashboard_transactions_updated', {
+                message: 'Your withdrawal request has been updated.',
+                transactionType: 'WITHDRAWAL_REQUEST_REJECTED',
+                requestId: updatedRequest._id.toString(),
+                status: 'Rejected' // يمكن إضافة الحالة الجديدة هنا
+            });
+            console.log(`   [Socket] Sent 'dashboard_transactions_updated' (for rejection) to user ${userToRefund._id}`);
+
+        } else {
+            console.log(`   User ${userToRefund._id} is not online for real-time updates after rejection.`);
+            // إذا لم يكن متصلاً، لا يزال إشعار الرفض يُحفظ في DB عبر notifyUserWithdrawalStatus
+            // وسيراه عند التحديث.
+            const userMessage = `Your withdrawal request of ${formatCurrency(updatedRequest.originalAmount, updatedRequest.originalCurrency)} via ${updatedRequest.paymentMethod?.displayName || 'N/A'} was rejected. Reason: ${rejectionReason.trim()}`;
+            await notifyUserWithdrawalStatus(req, userToRefund._id, 'WITHDRAWAL_REJECTED', 'Withdrawal Request Rejected', userMessage, updatedRequest._id);
+
         }
 
-        res.status(200).json({ msg: "Withdrawal rejected successfully.", updatedRequest: updatedRequest });
+        const finalRejectedRequest = await WithdrawalRequest.findById(updatedRequest._id)
+            .populate('user', 'fullName email balance sellerAvailableBalance sellerPendingBalance')
+            .populate('paymentMethod')
+            .populate('processedBy', 'fullName email')
+            .lean();
+
+        res.status(200).json({ msg: "Withdrawal rejected successfully. User balance has been refunded.", updatedRequest: finalRejectedRequest });
 
     } catch (error) {
-        // إذا حدث خطأ، قم بإلغاء المعاملة
         console.error("[WithdrawCtrl - adminRejectWithdrawal] Error occurred:", error);
         if (session.inTransaction()) {
             await session.abortTransaction();
-            console.log("[WithdrawCtrl - adminRejectWithdrawal] Transaction aborted.");
+            console.log("[WithdrawCtrl - adminRejectWithdrawal] Transaction aborted due to error.");
         }
-        // تحديد كود الحالة المناسب
         let statusCode = 500;
         if (error.message.includes("not found")) statusCode = 404;
         else if (error.message.includes("already")) statusCode = 400;
-        res.status(statusCode).json({ msg: error.message || "Failed to reject withdrawal request due to a server error." });
+        res.status(statusCode).json({ msg: error.message || "Failed to reject withdrawal request." });
     } finally {
-        // إنهاء الجلسة دائمًا
-        session.endSession();
-        console.log("[WithdrawCtrl - adminRejectWithdrawal] Session ended.");
+        // التأكد من أن الجلسة لم تعد نشطة قبل محاولة إنهائها
+        if (session.inTransaction()) {
+            console.warn("[WithdrawCtrl - adminRejectWithdrawal] Session was not committed or aborted explicitly before endSession. Aborting now.");
+            try {
+                await session.abortTransaction();
+            } catch (abortError) {
+                console.error("[WithdrawCtrl - adminRejectWithdrawal] Error aborting lingering transaction:", abortError);
+            }
+        }
+        try {
+            await session.endSession();
+            console.log("[WithdrawCtrl - adminRejectWithdrawal] Session ended.");
+        } catch (sessionEndError) {
+             console.error("[WithdrawCtrl - adminRejectWithdrawal] Error ending session (might have already ended):", sessionEndError);
+        }
     }
 };

@@ -84,6 +84,16 @@ const NotificationSchema = new Schema({
             'REPORT_STATUS_UPDATE',
             'DISPUTE_RESOLVED_ADMIN',
             'FUNDS_NOW_AVAILABLE',
+            'NEW_ADMIN_SUBCHAT_INVITATION',
+            'NEW_ADMIN_SUBCHAT_MESSAGE',
+            'NEW_TICKET_CREATED',
+            'TICKET_REPLY',
+            'TICKET_REPLY_UNASSIGNED',
+            'TICKET_CLOSED_BY_USER',
+            'TICKET_STATUS_UPDATED',
+            'TICKET_ASSIGNED_TO_YOU',
+            'TICKET_ASSIGNMENT_UPDATED',
+            'MEDIATION_CANCELLED_BY_BUYER',
         ],
         required: true
     },
@@ -92,10 +102,10 @@ const NotificationSchema = new Schema({
     relatedEntity: {
         id: { type: Schema.Types.ObjectId },
         // --- [!] إضافة MediationRequest هنا [!] ---
-        modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest', 'Report'] }
+        modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest', 'Report', 'Ticket',] }
         // --------------------------------------
     },
-     // --- [!] إضافة حقل ثانوي للربط (مفيد للوساطة) [!] ---
+    // --- [!] إضافة حقل ثانوي للربط (مفيد للوساطة) [!] ---
     secondaryRelatedEntity: {
         id: { type: Schema.Types.ObjectId },
         modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest'] }

@@ -92,30 +92,33 @@ exports.addProduct = async (req, res) => {
             try {
                 const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
                 if (admins.length > 0) {
-                    const notifications = admins.map(admin => ({
+                    const notificationDocs = admins.map(admin => ({
                         user: admin._id,
                         type: 'NEW_PRODUCT_PENDING',
                         title: 'New Product Pending Approval',
                         message: `Vendor "${req.user.fullName || 'Unknown'}" submitted a new product "${savedProduct.title || 'Untitled'}" for approval.`,
                         relatedEntity: { id: savedProduct._id, modelName: 'Product' }
                     }));
-                    await Notification.insertMany(notifications);
-                    console.log(`[addProduct] Sent ${notifications.length} pending product notifications to admins.`);
+                    // [!] انتظر حتى يتم إنشاء الإشعارات في قاعدة البيانات واحصل عليها مع الـ IDs
+                    const createdNotifications = await Notification.insertMany(notificationDocs);
+                    console.log(`[addProduct] Created ${createdNotifications.length} pending product notifications in DB.`);
 
-                    // --- [!] إرسال لحظي للأدمن (اختياري ولكن مفيد) ---
-                    admins.forEach(admin => {
-                        const adminSocketId = req.onlineUsers[admin._id.toString()];
+                    // --- [!] إرسال لحظي للأدمن ---
+                    createdNotifications.forEach(notificationFromDB => {
+                        // ابحث عن socketId الخاص بالأدمن
+                        const adminSocketId = req.onlineUsers[notificationFromDB.user.toString()];
                         if (adminSocketId) {
-                            // نرسل أول إشعار كمثال، أو يمكنك إرسال رسالة عامة
-                            req.io.to(adminSocketId).emit('new_notification', notifications[0]); // قد تحتاج لتعديل هذا حسب احتياجك
-                            console.log(`[addProduct] Sent real-time notification to admin ${admin._id} via socket ${adminSocketId}`);
+                            // أرسل كائن الإشعار الفعلي من قاعدة البيانات (الذي يحتوي على _id)
+                            req.io.to(adminSocketId).emit('new_notification', notificationFromDB.toObject());
+                            console.log(`[addProduct] Sent real-time notification to admin ${notificationFromDB.user.toString()} via socket ${adminSocketId}`);
+                        } else {
+                            console.log(`[addProduct] Admin ${notificationFromDB.user.toString()} not online for real-time notification.`);
                         }
                     });
                     // --- نهاية الإرسال اللحظي للأدمن ---
-
                 }
             } catch (notifyError) {
-                console.error("[addProduct] Error creating admin notifications for new product:", notifyError);
+                console.error("[addProduct] Error creating/sending admin notifications for new product:", notifyError);
             }
         }
         // --- نهاية إشعار المسؤولين ---
@@ -196,10 +199,11 @@ exports.updateProducts = async (req, res) => {
     const { title, description, imageUrls, linkType, category, price, currency, quantity, status } = req.body;
     let updateData = {};
 
+    // تعبئة updateData بالحقول التي تم توفيرها فقط
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (imageUrls !== undefined) {
-        if (!Array.isArray(imageUrls) || imageUrls.length === 0) return res.status(400).json({ msg: "Invalid image data." });
+        if (!Array.isArray(imageUrls) || imageUrls.length === 0) return res.status(400).json({ msg: "Invalid image data: imageUrls must be a non-empty array." });
         updateData.imageUrls = imageUrls;
     }
     if (linkType !== undefined) updateData.linkType = linkType;
@@ -212,83 +216,129 @@ exports.updateProducts = async (req, res) => {
     if (currency !== undefined) updateData.currency = currency;
     if (quantity !== undefined) {
         const parsedQuantity = parseInt(quantity, 10);
-        if (isNaN(parsedQuantity) || parsedQuantity < 1) return res.status(400).json({ msg: "Invalid quantity format." });
+        if (isNaN(parsedQuantity) || parsedQuantity < 1) return res.status(400).json({ msg: "Invalid quantity format (must be 1 or more)." });
         updateData.quantity = parsedQuantity;
     }
 
     let statusChangedToPending = false;
-    let wasApprovedByAdminUpdate = false; // متغير جديد لتتبع موافقة الأدمن هنا
+    let wasApprovedByAdminUpdate = false;
 
     try {
         const product = await Product.findById(productId);
         if (!product) { return res.status(404).json({ msg: "Product not found" }); }
 
+        // التحقق من الصلاحيات
         if (currentUserRole !== 'Admin' && product.user.toString() !== currentUserId.toString()) {
             return res.status(403).json({ msg: "Forbidden: You can only update your own products." });
         }
 
-        // --- منطق تحديث الحالة (تم تصحيحه ومراجعته) ---
-        if (currentUserRole === 'Admin' && status !== undefined) {
-            // الأدمن يمكنه تغيير الحالة
+        // --- منطق تحديث الحالة ---
+        if (currentUserRole === 'Admin' && status !== undefined) { // الأدمن يمكنه تغيير الحالة
             if (!['pending', 'approved', 'rejected'].includes(status)) {
-                return res.status(400).json({ msg: "Invalid status value." });
+                return res.status(400).json({ msg: "Invalid status value provided by admin." });
             }
             updateData.status = status;
-            // إذا وافق الأدمن على منتج غير موافق عليه
             if (status === 'approved' && product.status !== 'approved') {
                 updateData.approvedBy = currentUserId;
                 updateData.approvedAt = Date.now();
-                wasApprovedByAdminUpdate = true; // <-- الأدمن وافق هنا
+                wasApprovedByAdminUpdate = true;
             } else if (status === 'rejected' && product.status !== 'rejected') {
-                // يمكنك إضافة منطق إشعار الرفض هنا إذا أردت إرسال إشعار عند رفض التحديث
-                console.log(`[updateProducts] Admin rejected update for product ${productId}.`)
+                console.log(`[updateProducts] Admin rejected update for product ${productId}.`);
+                // يمكنك إضافة إشعار هنا إذا أردت إعلام البائع برفض التحديث
             }
         } else if (currentUserRole === 'Vendor') {
-            // البائع يقوم بتحديث
-            if (Object.keys(updateData).length > 0) { // فقط إذا كان هناك تغيير فعلي
-                if (product.status === 'approved') { // <-- هل المنتج الحالي معتمد؟
-                    console.log(`[updateProducts] Vendor update on approved product. Resetting status to 'pending'.`);
-                    updateData.status = 'pending'; // <-- ✅ تعيين الحالة إلى pending
-                    updateData.approvedBy = undefined;
+            // إذا كان البائع يقوم بتحديث أي من الحقول الرئيسية لمنتج معتمد، يجب أن يعود المنتج إلى pending
+            const criticalFieldsChanged = ['title', 'description', 'imageUrls', 'linkType', 'category', 'price', 'currency', 'quantity']
+                .some(field => updateData[field] !== undefined && updateData[field] !== product[field]);
+
+            if (criticalFieldsChanged) {
+                if (product.status === 'approved') {
+                    console.log(`[updateProducts] Vendor modified an approved product. Resetting status to 'pending'.`);
+                    updateData.status = 'pending';
+                    updateData.approvedBy = undefined; // إزالة الموافقة السابقة
                     updateData.approvedAt = undefined;
-                    statusChangedToPending = true;    // <-- ✅ تعيين متغير الإشعار
-                } else if (product.status === 'rejected') {
-                    console.log("[updateProducts] Vendor updating a rejected product. Setting status back to pending.");
-                    updateData.status = 'pending'; // <-- ✅ تعيين الحالة إلى pending
-                    statusChangedToPending = true; // <-- ✅ تعيين متغير الإشعار
+                    statusChangedToPending = true;
+                } else if (product.status === 'rejected') { // إذا كان البائع يعدل منتجًا مرفوضًا
+                    console.log("[updateProducts] Vendor updating a previously rejected product. Setting status back to 'pending'.");
+                    updateData.status = 'pending';
+                    statusChangedToPending = true;
                 } else if (product.status === 'pending') {
-                    console.log("[updateProducts] Vendor updating a pending product.");
-                    // لا نغير الحالة هنا، تبقى pending
+                    console.log("[updateProducts] Vendor updating an already pending product. Status remains 'pending'.");
+                    // لا حاجة لتغيير الحالة، ستبقى pending
                 }
             }
-            // --- *** المشكلة المحتملة هنا *** ---
-            // delete updateData.status; // <--- ❌❌❌ هذا السطر يحذف الحالة التي قمت بتعيينها أعلاه!
-            // --- *** نهاية المشكلة المحتملة *** ---
+            // إذا كان البائع يحاول تغيير الحالة مباشرة، تجاهل ذلك (الأدمن فقط يمكنه تغيير الحالة مباشرة)
+            if (updateData.status && currentUserRole === 'Vendor' && updateData.status !== 'pending' && product.status !== updateData.status) {
+                console.warn(`[updateProducts] Vendor attempted to change status directly to '${updateData.status}'. This is not allowed. Status will be determined by logic or remain as is if no critical fields changed.`);
+                // إذا لم يتم تغيير أي حقل حرج ولم يتم ضبط الحالة إلى pending أعلاه، احتفظ بالحالة الأصلية
+                if (!statusChangedToPending) delete updateData.status;
+            }
         }
         // --- نهاية منطق الحالة ---
 
-        // منع البائع من تغيير المالك
-        if (currentUserRole === 'Vendor') { delete updateData.user; }
-
-        // لا تحديث إذا لم يكن هناك بيانات للتحديث
-        if (Object.keys(updateData).length === 0) {
-            console.log("[updateProducts] No actual data changes provided. Skipping update.");
-            // أرجع المنتج الحالي بدون تغيير أو برسالة مناسبة
-            return res.status(200).json(product.toObject());
+        // منع البائع من تغيير مالك المنتج
+        if (currentUserRole === 'Vendor') {
+            delete updateData.user;
         }
 
-        // --- [!] تحديث المنتج أولاً ---
-        const updatedProductResult = await Product.findByIdAndUpdate(
+        // إذا لم يتم توفير أي بيانات للتحديث (بعد كل المنطق أعلاه)
+        if (Object.keys(updateData).length === 0) {
+            console.log("[updateProducts] No actual data changes provided or necessary. Skipping database update.");
+            // أرجع المنتج الحالي مع populate لضمان الاتساق مع الردود الأخرى
+            const currentProductPopulated = await Product.findById(productId)
+                .populate('user', 'fullName email avatarUrl')
+                .populate('bids.user', 'fullName email avatarUrl')
+                .populate('buyer', 'fullName email avatarUrl')
+                .populate({
+                    path: 'currentMediationRequest',
+                    select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                    populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
+                })
+                .lean();
+            return res.status(200).json(currentProductPopulated);
+        }
+
+        // --- تحديث المنتج في قاعدة البيانات ---
+        const productAfterUpdate = await Product.findByIdAndUpdate(
             productId,
-            { $set: updateData }, // <-- يتم استخدام updateData هنا
+            { $set: updateData },
             { new: true, runValidators: true }
-        ).populate('user', 'fullName email');
+        )
+            // --- [!!! Populate مهم جدًا هنا للبيانات المرسلة عبر السوكيت وفي الرد !!!] ---
+            .populate('user', 'fullName email avatarUrl')         // معلومات البائع
+            .populate('bids.user', 'fullName email avatarUrl') // معلومات المستخدمين في المزايدات
+            .populate('buyer', 'fullName email avatarUrl')         // معلومات المشتري (إذا تم البيع)
+            .populate({                                          // معلومات طلب الوساطة الحالي
+                path: 'currentMediationRequest',
+                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
+            });
+        // لا تستخدم .lean() هنا إذا كنت ستستدعي .save() أو طرق Mongoose أخرى لاحقًا،
+        // ولكن إذا كان هذا هو الإجراء الأخير قبل الإرسال، يمكنك استخدام .lean() ثم .toObject() أو إرساله مباشرة.
+        // للتبسيط، سنستخدم .toObject() عند الإرسال.
 
-        if (!updatedProductResult) { return res.status(404).json({ msg: "Product update failed (maybe validation error)." }); }
+        if (!productAfterUpdate) {
+            console.error(`[updateProducts] Product update failed for ID: ${productId}. findByIdAndUpdate returned null.`);
+            return res.status(404).json({ msg: "Product update failed (product not found after update or validation error)." });
+        }
 
-        console.log(`[updateProducts] Product ${productId} updated. New status: ${updatedProductResult.status}`);
+        console.log(`[updateProducts] Product ${productId} updated successfully in DB. New status: ${productAfterUpdate.status}`);
 
-        // --- إرسال إشعار للمسؤولين إذا أعاد البائع المنتج للحالة المعلقة ---
+        // --- [!!! هذا هو السطر المفقود والمهم جدًا !!!] ---
+        // إرسال حدث Socket.IO لإعلام جميع العملاء المتصلين بتحديث المنتج
+        if (req.io) {
+            const productToSendViaSocket = productAfterUpdate.toObject(); // تحويل مستند Mongoose إلى كائن عادي للإرسال
+            console.log("[ProductCtrl Update] Emitting 'product_updated' with data:", JSON.stringify(productToSendViaSocket, null, 2));
+            req.io.emit('product_updated', productToSendViaSocket);
+            console.log(`[ProductCtrl Update] Successfully emitted 'product_updated' for product ID: ${productAfterUpdate._id}`);
+        } else {
+            console.warn("[ProductCtrl Update] req.io (Socket.IO instance) is not available. Cannot emit 'product_updated' event.");
+        }
+        // --- نهاية إضافة سطر Socket.IO ---
+
+
+        // --- إرسال الإشعارات كما في الكود الأصلي ---
+        // إشعار للمسؤولين إذا أعاد البائع المنتج للحالة المعلقة
         if (statusChangedToPending) {
             try {
                 const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
@@ -296,61 +346,66 @@ exports.updateProducts = async (req, res) => {
                     const notifications = admins.map(admin => ({
                         user: admin._id, type: 'PRODUCT_UPDATE_PENDING',
                         title: 'Product Update Requires Re-Approval',
-                        message: `Vendor "${req.user.fullName || 'Unknown'}" updated product "${updatedProductResult.title}". It requires re-approval.`,
-                        relatedEntity: { id: updatedProductResult._id, modelName: 'Product' }
+                        message: `Vendor "${req.user.fullName || 'Unknown'}" updated product "${productAfterUpdate.title}". It now requires re-approval.`,
+                        relatedEntity: { id: productAfterUpdate._id, modelName: 'Product' }
                     }));
-                    await Notification.insertMany(notifications);
-                    console.log("[updateProducts] Sent updated product pending notifications to admins.");
-                    // يمكنك إضافة إرسال Socket.IO للأدمن هنا أيضاً إذا أردت
+                    const createdNotifications = await Notification.insertMany(notifications);
+                    // إرسال لحظي للأدمن
+                    if (req.io && req.onlineUsers) {
+                        createdNotifications.forEach(notificationFromDB => {
+                            const adminSocketId = req.onlineUsers[notificationFromDB.user.toString()];
+                            if (adminSocketId) {
+                                req.io.to(adminSocketId).emit('new_notification', notificationFromDB.toObject());
+                            }
+                        });
+                    }
+                    console.log("[updateProducts] Sent 'PRODUCT_UPDATE_PENDING' notifications to admins.");
                 }
-            } catch (notifyError) { console.error("[updateProducts] Error creating admin notifications for updated product:", notifyError); }
+            } catch (notifyError) { console.error("[updateProducts] Error creating/sending admin notifications for product update requiring re-approval:", notifyError); }
         }
-        // --- نهاية إشعار المسؤولين ---
 
-        // --- [!] إرسال إشعار للبائع إذا وافق الأدمن على التحديث ---
-        if (wasApprovedByAdminUpdate) { // <-- استخدم المتغير الصحيح
-            const sellerId = updatedProductResult.user?._id;
+        // إشعار للبائع إذا وافق الأدمن على التحديث (هذا السيناريو يحدث عندما يغير الأدمن الحالة إلى approved)
+        if (wasApprovedByAdminUpdate) {
+            const sellerId = productAfterUpdate.user?._id; // ID البائع
             const adminFullName = req.user?.fullName || 'Admin';
 
-            if (sellerId && sellerId.toString() !== currentUserId.toString()) { // تأكد أن الأدمن لا يوافق على منتجه بنفسه
+            if (sellerId && sellerId.toString() !== currentUserId.toString()) { // تأكد أن الأدمن لا يوافق على منتجه
                 try {
                     const updateApprovalNotification = new Notification({
                         user: sellerId,
-                        type: 'PRODUCT_APPROVED', // نفس نوع إشعار الموافقة
-                        title: `Product Update Approved: ${updatedProductResult.title}`,
-                        message: `Your updated product "${updatedProductResult.title}" has been approved by administrator "${adminFullName}".`,
-                        relatedEntity: { id: updatedProductResult._id, modelName: 'Product' }
+                        type: 'PRODUCT_APPROVED', // يمكن استخدام نفس نوع إشعار الموافقة الأولية
+                        title: `Product Update Approved: ${productAfterUpdate.title}`,
+                        message: `Your updated product "${productAfterUpdate.title}" has been approved by administrator "${adminFullName}".`,
+                        relatedEntity: { id: productAfterUpdate._id, modelName: 'Product' }
                     });
                     await updateApprovalNotification.save();
                     console.log(`[updateProducts] Update approval notification saved for user ${sellerId}.`);
 
-                    // --- [!] إرسال عبر Socket ---
-                    console.log(`[updateProducts] Attempting to send update approval notification to seller: ${sellerId}`);
-                    const sellerSocketId = req.onlineUsers[sellerId.toString()];
-                    console.log(`[updateProducts] Seller Socket ID found: ${sellerSocketId}`);
-                    console.log('[updateProducts] Current onlineUsers:', req.onlineUsers);
-
-                    if (sellerSocketId) {
-                        req.io.to(sellerSocketId).emit('new_notification', updateApprovalNotification.toObject());
-                        console.log(`[updateProducts] Socket update approval notification sent to user ${sellerId} via socket ${sellerSocketId}`);
-                    } else {
-                        console.log(`[updateProducts] User ${sellerId} not found in onlineUsers for update approval. Notification saved to DB.`);
+                    if (req.io && req.onlineUsers) {
+                        const sellerSocketId = req.onlineUsers[sellerId.toString()];
+                        if (sellerSocketId) {
+                            req.io.to(sellerSocketId).emit('new_notification', updateApprovalNotification.toObject());
+                            console.log(`[updateProducts] Socket update approval notification sent to user ${sellerId}`);
+                        }
                     }
-                    // --- نهاية إرسال Socket ---
-
                 } catch (notifyError) {
                     console.error(`[updateProducts] Error creating/sending update approval notification for user ${sellerId}:`, notifyError);
                 }
             }
         }
-        // --- نهاية إشعار قبول التحديث ---
+        // --- نهاية إرسال الإشعارات ---
 
-        res.status(200).json(updatedProductResult.toObject());
+        // إرجاع المنتج المحدث للعميل الذي قام بالطلب
+        res.status(200).json(productAfterUpdate.toObject()); // أرجع الكائن المحول
 
     } catch (error) {
-        console.error("Error updating product:", error);
-        if (error.name === 'ValidationError') return res.status(400).json({ errors: error.message });
-        if (!res.headersSent) res.status(500).json({ errors: "Failed to update product." });
+        console.error("Error updating product in controller:", error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ errors: error.message });
+        }
+        if (!res.headersSent) { // تأكد من عدم إرسال استجابة بالفعل
+            res.status(500).json({ errors: "Failed to update product due to a server error." });
+        }
     }
 };
 
@@ -359,7 +414,7 @@ exports.deleteProducts = async (req, res) => {
     const productId = req.params.id;
     const currentUserId = req.user?._id;
     const currentUserRole = req.user?.userRole;
-    const reason = req.body?.reason;
+    const reason = req.body?.reason; // سبب الحذف إذا قدمه الأدمن
 
     console.log(`--- Controller: deleteProducts for ID: ${productId} by User: ${currentUserId} (${currentUserRole}) ---`);
     if (reason) { console.log("Reason provided:", reason); }
@@ -369,15 +424,36 @@ exports.deleteProducts = async (req, res) => {
     if (!currentUserId) { return res.status(401).json({ msg: "Unauthorized" }); }
 
     try {
-        const product = await Product.findById(productId).populate('user', 'fullName');
+        const product = await Product.findById(productId).populate('user', 'fullName'); // جلب المنتج للتحقق من الملكية وللإشعار
         if (!product) { return res.status(404).json({ msg: "Product not found" }); }
 
+        // التحقق من صلاحيات الحذف
         if (currentUserRole !== 'Admin' && product.user._id.toString() !== currentUserId.toString()) {
             return res.status(403).json({ msg: "Forbidden: You can only delete your own products." });
         }
 
-        await Product.findByIdAndDelete(productId);
+        // --- [!] حذف المنتج من قاعدة البيانات ---
+        const deletedProductResult = await Product.findByIdAndDelete(productId);
+        // findByIdAndDelete يرجع المنتج المحذوف أو null إذا لم يتم العثور عليه
+
+        if (!deletedProductResult) {
+            // هذا لا ينبغي أن يحدث إذا كان التحقق الأول من المنتج ناجحًا، لكن كإجراء احترازي
+            console.warn(`[deleteProducts] Product ${productId} was not found for deletion, though it was found earlier.`);
+            return res.status(404).json({ msg: "Product could not be deleted (not found)." });
+        }
         console.log("[deleteProducts] Product deleted successfully from database.");
+
+
+        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO !!!] ---
+        if (req.io) {
+            // أرسل فقط ID المنتج المحذوف
+            req.io.emit('product_deleted', { productId: productId }); // استخدم productId من req.params
+            console.log(`[ProductCtrl Delete] Emitted 'product_deleted' for product ID: ${productId} to all clients.`);
+        } else {
+            console.warn("[ProductCtrl Delete] Socket.IO (req.io) not available. Skipping socket emission for product_deleted.");
+        }
+        // --- نهاية التعديل ---
+
 
         // --- إنشاء إشعار للمالك (إذا حذف المسؤول منتج البائع) ---
         const productOwnerId = product.user?._id;
@@ -387,36 +463,33 @@ exports.deleteProducts = async (req, res) => {
                 const deletionNotification = new Notification({
                     user: productOwnerId,
                     type: 'PRODUCT_DELETED',
-                    title: `Product Deleted: ${product.title}`,
+                    title: `Product Deleted: ${product.title}`, // استخدم product.title من الكائن الذي تم جلبه قبل الحذف
                     message: `Your product "${product.title}" was deleted by administrator "${req.user.fullName}". Reason: ${reason || 'No specific reason provided.'}`,
-                    relatedEntity: { id: productId, modelName: 'Product' } // ID المنتج المحذوف
+                    relatedEntity: { id: productId, modelName: 'Product' }
                 });
                 await deletionNotification.save();
                 console.log("[deleteProducts] Deletion notification saved successfully.");
 
-                // --- [!] إرسال عبر Socket ---
-                console.log(`[deleteProducts] Attempting to send deletion notification to user: ${productOwnerId}`);
-                const ownerSocketId = req.onlineUsers[productOwnerId.toString()];
-                console.log(`[deleteProducts] Owner Socket ID found: ${ownerSocketId}`);
-                console.log('[deleteProducts] Current onlineUsers:', req.onlineUsers);
-
-                if (ownerSocketId) {
-                    req.io.to(ownerSocketId).emit('new_notification', deletionNotification.toObject());
-                    console.log(`[deleteProducts] Socket deletion notification sent to user ${productOwnerId} via socket ${ownerSocketId}`);
-                } else {
-                    console.log(`[deleteProducts] User ${productOwnerId} not found in onlineUsers for deletion. Notification saved to DB.`);
+                // إرسال عبر Socket للمالك
+                if (req.io && req.onlineUsers) {
+                    const ownerSocketId = req.onlineUsers[productOwnerId.toString()];
+                    if (ownerSocketId) {
+                        req.io.to(ownerSocketId).emit('new_notification', deletionNotification.toObject());
+                        console.log(`[deleteProducts] Socket deletion notification sent to user ${productOwnerId}`);
+                    }
                 }
-                // --- نهاية إرسال Socket ---
-
             } catch (notifyError) { console.error("[deleteProducts] Error creating/sending deletion notification:", notifyError); }
         }
         // --- نهاية الإشعار ---
 
+        // إرجاع رسالة نجاح و ID المنتج المحذوف
         res.status(200).json({ msg: "Product deleted successfully.", productId: productId });
 
     } catch (error) {
         console.error("Error in deleteProducts controller:", error);
-        if (!res.headersSent) res.status(500).json({ errors: "Failed to delete product." });
+        if (!res.headersSent) {
+            res.status(500).json({ errors: "Failed to delete product." });
+        }
     }
 };
 
@@ -463,6 +536,19 @@ exports.approveProduct = async (req, res) => {
 
         if (product.status !== 'pending') {
             console.log(`[approveProduct] Product status is not 'pending'. Aborting approval.`);
+            // إذا كان المنتج معتمدًا بالفعل، يمكنك إرجاع المنتج كما هو أو رسالة تفيد بذلك
+            if (product.status === 'approved') {
+                const alreadyApprovedProduct = await Product.findById(product._id)
+                    .populate('user', 'fullName email avatarUrl')
+                    .populate('buyer', 'fullName email avatarUrl')
+                    .populate({
+                        path: 'currentMediationRequest',
+                        select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                        populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
+                    })
+                    .lean();
+                return res.status(200).json(alreadyApprovedProduct);
+            }
             return res.status(400).json({ msg: `Product is already processed (Current status: ${product.status}).` });
         }
 
@@ -473,8 +559,31 @@ exports.approveProduct = async (req, res) => {
         const updatedProduct = await product.save();
         console.log(`[approveProduct] Product saved. New status: ${updatedProduct.status}`);
 
-        // --- [!] إنشاء وإرسال إشعار للبائع ---
-        const sellerId = updatedProduct.user; // <-- ID البائع
+        // جلب المنتج المحدث مع كل البيانات اللازمة (populate)
+        const populatedAndApprovedProduct = await Product.findById(updatedProduct._id)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('buyer', 'fullName email avatarUrl') // قد لا يكون هناك مشتري في هذه المرحلة
+            .populate({
+                path: 'currentMediationRequest',
+                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
+            })
+            .populate('bids.user', 'fullName email avatarUrl') // مهم إذا كنت تريد عرض المزايدات فورًا
+            .lean();
+
+
+        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO !!!] ---
+        if (req.io && populatedAndApprovedProduct) {
+            req.io.emit('product_updated', populatedAndApprovedProduct); // أرسل المنتج المعتمد بالكامل
+            console.log(`[ProductCtrl Approve] Emitted 'product_updated' for approved product ID: ${populatedAndApprovedProduct._id} to all clients.`);
+        } else {
+            console.warn("[ProductCtrl Approve] Socket.IO (req.io) not available or populatedAndApprovedProduct is null. Skipping socket emission.");
+        }
+        // --- نهاية التعديل ---
+
+
+        // --- إنشاء وإرسال إشعار للبائع ---
+        const sellerId = populatedAndApprovedProduct.user?._id; // استخدم المنتج المأهول بالبيانات
 
         if (sellerId && sellerId.toString() !== adminUserId.toString()) {
             console.log(`[approveProduct] Creating approval notification for seller: ${sellerId}`);
@@ -482,42 +591,27 @@ exports.approveProduct = async (req, res) => {
                 const approvalNotification = new Notification({
                     user: sellerId,
                     type: 'PRODUCT_APPROVED',
-                    title: `Product Approved: ${updatedProduct.title}`,
-                    message: `Congratulations! Your product "${updatedProduct.title || 'Untitled'}" has been approved by administrator "${adminFullName}".`,
-                    relatedEntity: { id: updatedProduct._id, modelName: 'Product' }
+                    title: `Product Approved: ${populatedAndApprovedProduct.title}`,
+                    message: `Congratulations! Your product "${populatedAndApprovedProduct.title || 'Untitled'}" has been approved by administrator "${adminFullName}".`,
+                    relatedEntity: { id: populatedAndApprovedProduct._id, modelName: 'Product' }
                 });
                 await approvalNotification.save();
                 console.log(`[approveProduct] Approval notification saved to DB for user ${sellerId}.`);
 
-                // --- [!] إرسال عبر Socket ---
-                console.log(`[approveProduct] Attempting to send approval notification to seller: ${sellerId}`);
-                const sellerSocketId = req.onlineUsers[sellerId.toString()]; // البحث عن socket id للبائع
-                console.log(`[approveProduct] Seller Socket ID found: ${sellerSocketId}`); // <--- طباعة ID الذي تم العثور عليه
-                console.log('[approveProduct] Current onlineUsers:', req.onlineUsers); // <--- طباعة كل المسجلين للمقارنة
-
-                if (sellerSocketId) {
-                    req.io.to(sellerSocketId).emit('new_notification', approvalNotification.toObject());
-                    console.log(`[approveProduct] Socket approval notification sent to user ${sellerId} via socket ${sellerSocketId}`);
-                } else {
-                    console.log(`[approveProduct] User ${sellerId} not found in onlineUsers. Notification only saved to DB.`); // <--- تحقق من هذه الرسالة
+                if (req.io && req.onlineUsers) {
+                    const sellerSocketId = req.onlineUsers[sellerId.toString()];
+                    if (sellerSocketId) {
+                        req.io.to(sellerSocketId).emit('new_notification', approvalNotification.toObject());
+                        console.log(`[approveProduct] Socket approval notification sent to user ${sellerId}`);
+                    }
                 }
-                // --- نهاية إرسال Socket ---
-
             } catch (notifyError) {
                 console.error(`[approveProduct] Error creating/sending approval notification for user ${sellerId}:`, notifyError);
             }
-        } else if (sellerId && sellerId.toString() === adminUserId.toString()) {
-            console.log("[approveProduct] Skipping notification: Admin approved their own product.");
-        } else {
-            console.log("[approveProduct] Skipping notification: Seller ID not found on the product.");
         }
         // --- نهاية إنشاء الإشعار ---
 
-        const populatedProduct = await Product.findById(updatedProduct._id)
-            .populate('user', 'fullName email')
-            .lean();
-
-        res.status(200).json(populatedProduct || updatedProduct.toObject());
+        res.status(200).json(populatedAndApprovedProduct);
 
     } catch (error) {
         console.error("Error approving product:", error);
@@ -697,103 +791,215 @@ exports.toggleLikeProduct = async (req, res) => {
 
 // --- Place Bid On Product ---
 exports.placeBidOnProduct = async (req, res) => {
-    const { productId } = req.params;
-    const bidderId = req.user._id;
-    const bidderFullName = req.user.fullName;
-    const { amount } = req.body;
+    const { productId } = req.params; // ID المنتج من مسار الطلب
+    const bidderId = req.user._id; // ID المستخدم الحالي (المزايد) من المصادقة
+    const bidderFullName = req.user.fullName; // اسم المزايد الكامل للإشعارات
+    const { amount } = req.body; // المبلغ المقدم في المزايدة من جسم الطلب
 
     console.log(`--- Controller: placeOrUpdateBid on Product: ${productId} by User: ${bidderId} for Amount: ${amount} ---`);
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) return res.status(400).json({ msg: "Invalid Product ID format." });
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) return res.status(400).json({ msg: 'Invalid bid amount specified (must be a positive number).' });
+    // 1. التحقق الأولي من المدخلات
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+        console.warn("   Validation Error: Invalid Product ID format.");
+        return res.status(400).json({ msg: "Invalid Product ID format." });
+    }
+    const numericAmount = Number(amount); // تحويل المبلغ إلى رقم
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+        console.warn("   Validation Error: Invalid bid amount (not a positive number).");
+        return res.status(400).json({ msg: 'Invalid bid amount specified (must be a positive number).' });
+    }
 
+    // 2. بدء معاملة قاعدة البيانات لضمان التناسق (Atomicity)
     const session = await mongoose.startSession();
     session.startTransaction();
-    let isNewBid = true;
+    console.log("   MongoDB session started for placeBidOnProduct.");
+
+    let isNewBid = true; // متغير لتتبع ما إذا كانت هذه مزايدة جديدة أم تحديث لمزايدة موجودة
 
     try {
-        const product = await Product.findById(productId).session(session);
+        // 3. جلب المنتج والمستخدم المزايد من قاعدة البيانات باستخدام الجلسة
+        console.log("   Fetching product and bidder details from database...");
+        const product = await Product.findById(productId).session(session); // لا نحتاج لـ populate هنا الآن
         const bidder = await User.findById(bidderId).session(session);
 
-        if (!product) throw new Error('Product not found.');
-        if (!bidder) throw new Error('Bidder (User) not found.');
-        if (product.user.equals(bidderId)) throw new Error('You cannot bid on your own product.');
-        if (product.status !== 'approved') throw new Error('Bids can only be placed on approved products.');
+        // 4. التحقق من وجود المنتج والمزايد، وصلاحيات المزايدة
+        if (!product) {
+            console.error("   Error: Product not found in database.");
+            throw new Error('Product not found.'); // سيتم التقاط هذا الخطأ في catch block
+        }
+        if (!bidder) {
+            console.error("   Error: Bidder (User) not found in database.");
+            throw new Error('Bidder (User) not found.');
+        }
+        if (product.user.equals(bidderId)) { // التحقق مما إذا كان المزايد هو مالك المنتج
+            console.warn("   Authorization Error: User cannot bid on their own product.");
+            throw new Error('You cannot bid on your own product.');
+        }
+        if (product.status !== 'approved') { // التحقق من أن المنتج معتمد وقابل للمزايدة
+            console.warn(`   Validation Error: Product status is '${product.status}', not 'approved'.`);
+            throw new Error('Bids can only be placed on approved products.');
+        }
+        // التحقق من أن رصيد المزايد كافٍ للمشاركة (حد أدنى عام)
         if (bidder.balance < MINIMUM_BALANCE_TO_PARTICIPATE) {
-            const requiredCurrency = bidder.currency || 'TND';
-            throw new Error(`You need at least ${MINIMUM_BALANCE_TO_PARTICIPATE.toFixed(2)} ${requiredCurrency} in your balance to place any bid.`);
+            const requiredCurrencyForParticipation = bidder.currency || 'TND'; // استخدام عملة المستخدم أو الافتراضية
+            console.warn(`   Validation Error: Bidder balance (${bidder.balance} TND) is less than MINIMUM_BALANCE_TO_PARTICIPATE (${MINIMUM_BALANCE_TO_PARTICIPATE}).`);
+            throw new Error(`You need at least ${formatCurrency(MINIMUM_BALANCE_TO_PARTICIPATE, requiredCurrencyForParticipation)} in your balance to place any bid.`);
         }
 
-        const bidCurrency = product.currency;
-        let bidAmountInTND;
-        if (bidCurrency === 'USD') { bidAmountInTND = numericAmount * TND_USD_EXCHANGE_RATE; }
-        else { bidAmountInTND = numericAmount; }
+        // 5. التحقق من أن رصيد المزايد يغطي مبلغ المزايدة (بعد تحويل العملة إذا لزم الأمر)
+        const bidCurrency = product.currency; // عملة المزايدة هي نفسها عملة المنتج
+        let bidAmountInTND; // حساب قيمة المزايدة بالدينار التونسي للمقارنة مع رصيد المستخدم
+        if (bidCurrency === 'USD') {
+            bidAmountInTND = numericAmount * TND_USD_EXCHANGE_RATE;
+        } else { // يفترض أن العملة هي TND إذا لم تكن USD
+            bidAmountInTND = numericAmount;
+        }
+        bidAmountInTND = Number(bidAmountInTND.toFixed(2)); // تقريب لـ 2 خانات عشرية
+
         if (bidder.balance < bidAmountInTND) {
-            throw new Error(`Insufficient balance. You need ${bidAmountInTND.toFixed(2)} TND to cover this ${numericAmount.toFixed(2)} ${bidCurrency} bid, but you only have ${bidder.balance.toFixed(2)} TND.`);
+            console.warn(`   Validation Error: Insufficient balance. Bidder needs ${bidAmountInTND} TND, but has ${bidder.balance} TND.`);
+            throw new Error(`Insufficient balance. You need ${formatCurrency(bidAmountInTND, 'TND')} (approx. ${formatCurrency(numericAmount, bidCurrency)}) to cover this bid, but you only have ${formatCurrency(bidder.balance, 'TND')}.`);
         }
+        console.log(`   Balance check passed. Bidder balance: ${bidder.balance} TND, Bid in TND: ${bidAmountInTND} TND.`);
 
+        // 6. التحقق مما إذا كان المستخدم قد قدم مزايدة سابقة على هذا المنتج
         const existingBidIndex = product.bids.findIndex(bid => bid.user.equals(bidderId));
 
         if (existingBidIndex > -1) {
-            isNewBid = false;
-            if (product.bids[existingBidIndex].amount === numericAmount) {
-                await session.commitTransaction();
-                session.endSession();
-                console.log(`Bid amount for user ${bidderId} is already ${numericAmount}. No update needed.`);
-                const currentBids = await Product.findById(productId).select('bids').populate('bids.user', 'fullName email');
-                return res.status(200).json({ msg: "Bid amount is the same as your current bid.", bids: currentBids.bids });
+            // إذا وجدت مزايدة سابقة، فهذا تحديث لمزايدة
+            isNewBid = false; // تعيين المتغير للدلالة على تحديث
+            const existingBidAmount = product.bids[existingBidIndex].amount;
+            if (existingBidAmount === numericAmount) {
+                // إذا كان المبلغ الجديد هو نفس المبلغ القديم، لا داعي للتحديث
+                console.log(`   Bid amount (${numericAmount}) for user ${bidderId} is the same as current bid. No update needed.`);
+                await session.commitTransaction(); // إنهاء المعاملة بنجاح لأنه لا يوجد تغيير فعلي
+                // لا حاجة لـ session.endSession() هنا، سيتم في finally
+                const currentBidsPopulatedNoChange = await Product.findById(productId).select('bids').populate('bids.user', 'fullName email avatarUrl'); // جلب المزايدات الحالية
+                return res.status(200).json({ msg: "Bid amount is the same as your current bid.", bids: currentBidsPopulatedNoChange.bids });
             }
-            console.log(`Updating existing bid for user ${bidderId}. Old: ${product.bids[existingBidIndex].amount}, New: ${numericAmount}`);
+            // تحديث مبلغ المزايدة وتاريخها
+            console.log(`   Updating existing bid for user ${bidderId}. Old amount: ${existingBidAmount}, New amount: ${numericAmount}`);
             product.bids[existingBidIndex].amount = numericAmount;
-            product.bids[existingBidIndex].createdAt = new Date();
+            product.bids[existingBidIndex].currency = bidCurrency; // تأكيد العملة
+            product.bids[existingBidIndex].createdAt = new Date(); // تحديث وقت المزايدة
         } else {
-            isNewBid = true;
-            console.log(`Adding new bid for user ${bidderId}. Amount: ${numericAmount}`);
-            const newBid = { user: bidderId, amount: numericAmount, currency: bidCurrency, createdAt: new Date() };
-            product.bids.push(newBid);
+            // إذا لم توجد مزايدة سابقة، فهذه مزايدة جديدة
+            isNewBid = true; // المتغير مضبوط بالفعل على true
+            console.log(`   Adding new bid for user ${bidderId}. Amount: ${numericAmount} ${bidCurrency}`);
+            const newBidObject = {
+                user: bidderId,
+                amount: numericAmount,
+                currency: bidCurrency,
+                createdAt: new Date()
+            };
+            product.bids.push(newBidObject); // إضافة المزايدة الجديدة إلى مصفوفة المزايدات
         }
 
+        // 7. فرز مصفوفة المزايدات دائمًا (من الأعلى إلى الأقل) بعد أي إضافة أو تعديل
         product.bids.sort((a, b) => b.amount - a.amount);
-        await product.save({ session });
-        console.log(`Product bids updated successfully.`);
 
-        if (product.user) {
-            let notificationMessage; let notificationTitle; let notificationType;
+        // 8. حفظ التغييرات في المنتج (بما في ذلك المزايدات المحدثة) داخل الجلسة
+        await product.save({ session });
+        console.log(`   Product bids updated and saved successfully in database within session.`);
+
+        // 9. إنشاء إشعار للبائع
+        if (product.user) { // التأكد من أن للمنتج بائع
+            let notificationMessage;
+            let notificationTitle;
+            let notificationType;
+
             if (isNewBid) {
                 notificationTitle = 'New Bid Received!';
-                notificationMessage = `User "${bidderFullName}" placed a new bid of ${numericAmount.toFixed(2)} ${bidCurrency} on your product "${product.title}".`;
+                notificationMessage = `User "${bidderFullName}" placed a new bid of ${formatCurrency(numericAmount, bidCurrency)} on your product "${product.title}".`;
                 notificationType = 'NEW_BID';
-            } else {
+            } else { // تحديث مزايدة
                 notificationTitle = 'Bid Updated!';
-                notificationMessage = `User "${bidderFullName}" updated their bid to ${numericAmount.toFixed(2)} ${bidCurrency} on your product "${product.title}".`;
-                notificationType = 'BID_UPDATED'; // تأكد من إضافة هذا النوع لـ Notification.js
+                notificationMessage = `User "${bidderFullName}" updated their bid to ${formatCurrency(numericAmount, bidCurrency)} on your product "${product.title}".`;
+                notificationType = 'BID_UPDATED'; // تأكد من وجود هذا النوع في نموذج الإشعارات
             }
-            await Notification.create([{
-                user: product.user, type: notificationType, title: notificationTitle,
-                message: notificationMessage, relatedEntity: { id: productId, modelName: 'Product' }
-            }], { session });
-            console.log(`Notification created for seller ${product.user}. Type: ${notificationType}`);
+
+            const notificationForSeller = new Notification({
+                user: product.user, // ID بائع المنتج
+                type: notificationType,
+                title: notificationTitle,
+                message: notificationMessage,
+                relatedEntity: { id: productId, modelName: 'Product' }
+            });
+            await notificationForSeller.save({ session }); // حفظ الإشعار داخل الجلسة
+            console.log(`   Notification for bid action (type: ${notificationType}) created for seller ${product.user}.`);
+
+            // إرسال الإشعار الفوري للبائع إذا كان متصلاً
+            if (req.io && req.onlineUsers) {
+                const sellerSocketId = req.onlineUsers[product.user.toString()];
+                if (sellerSocketId) {
+                    req.io.to(sellerSocketId).emit('new_notification', notificationForSeller.toObject());
+                    console.log(`   [Socket] Sent 'new_notification' for bid to seller ${product.user} via socket ${sellerSocketId}.`);
+                } else {
+                    console.log(`   Seller ${product.user} not online for real-time bid notification.`);
+                }
+            }
+        } else {
+            console.warn("   Product does not have an associated seller (product.user is null/undefined). Skipping seller notification.");
         }
 
+        // 10. إتمام المعاملة (Commit) لحفظ كل التغييرات في قاعدة البيانات
         await session.commitTransaction();
-        console.log("Place/Update bid transaction committed.");
+        console.log("   Place/Update bid transaction committed successfully.");
 
-        const updatedProductWithBids = await Product.findById(productId).select('bids').populate('bids.user', 'fullName email');
-        res.status(isNewBid ? 201 : 200).json({
+        // 11. جلب المنتج المحدث بالكامل مع كل البيانات اللازمة (populate) لإرساله
+        // هذا يضمن أن البيانات المرسلة للسوكيت وللرد هي الأحدث وتحتوي على كل التفاصيل.
+        const finalUpdatedProduct = await Product.findById(productId)
+            .populate('user', 'fullName email avatarUrl')         // معلومات البائع
+            .populate('bids.user', 'fullName email avatarUrl') // معلومات المستخدمين في المزايدات
+            .populate('buyer', 'fullName email avatarUrl')         // معلومات المشتري (إذا تم البيع)
+            .populate({                                          // معلومات طلب الوساطة الحالي
+                path: 'currentMediationRequest',
+                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
+            })
+            .lean(); // .lean() للحصول على كائن JavaScript عادي بدلاً من مستند Mongoose
+
+        // 12. إرسال حدث Socket.IO لجميع العملاء المتصلين لإعلامهم بتحديث المنتج (بما في ذلك المزايدات)
+        if (req.io && finalUpdatedProduct) {
+            // إرسال الكائن المحول لـ JavaScript العادي
+            req.io.emit('product_updated', finalUpdatedProduct); // لا حاجة لـ .toObject() لأننا استخدمنا .lean()
+            console.log(`   [Socket] Emitted 'product_updated' after bid for product ID: ${finalUpdatedProduct._id} to all clients.`);
+        } else {
+            console.warn("   Socket.IO (req.io) not available or finalUpdatedProduct is null. Skipping socket emission.");
+        }
+
+        // 13. إرسال استجابة ناجحة للعميل الذي قام بالمزايدة
+        res.status(isNewBid ? 201 : 200).json({ // 201 للمزايدة الجديدة، 200 للتحديث
             msg: isNewBid ? "Bid placed successfully!" : "Bid updated successfully!",
-            bids: updatedProductWithBids.bids
+            bids: finalUpdatedProduct ? finalUpdatedProduct.bids : [], // أرجع مصفوفة المزايدات المحدثة
+            updatedProduct: finalUpdatedProduct // أرجع المنتج المحدث بالكامل
         });
 
     } catch (error) {
-        await session.abortTransaction();
-        console.error("--- Controller: placeBidOnProduct ERROR ---:", error); // Log الخطأ الكامل
-        // --- [!] إرجاع رسالة الخطأ المحددة التي تم رميها ---
-        res.status(400).json({ msg: error.message || 'Failed to place/update bid.' });
-        // --------------------------------------------------
+        // 14. في حالة حدوث أي خطأ، قم بإلغاء المعاملة (Abort)
+        if (session.inTransaction()) { // تحقق أولاً أن المعاملة لا تزال نشطة
+            await session.abortTransaction();
+            console.error("   Transaction aborted due to error:", error.message);
+        } else {
+            console.error("   Error occurred, but transaction was not active (already committed or aborted).");
+        }
+        console.error("--- Controller: placeBidOnProduct ERROR ---:", error); // طباعة الخطأ الكامل
+        // إرجاع رسالة الخطأ التي تم رميها في try block أو رسالة عامة
+        res.status(400).json({ msg: error.message || 'Failed to place/update bid due to a server error.' });
     } finally {
-        session.endSession();
-        console.log("--- Controller: placeBidOnProduct END --- Session ended.");
+        // 15. إنهاء جلسة قاعدة البيانات دائمًا في كتلة finally
+        if (session && typeof session.endSession === 'function') { // تحقق من وجود الجلسة وأنها تحتوي على دالة endSession
+            // إذا كانت المعاملة لا تزال نشطة هنا (وهو أمر غير متوقع)، أجهضها
+            if (session.inTransaction()) {
+                console.warn("   [placeBidOnProduct Finally] Session was still in transaction. Aborting now before ending session.");
+                await session.abortTransaction();
+            }
+            await session.endSession();
+            console.log("   MongoDB session ended for placeBidOnProduct.");
+        } else {
+            console.warn("   Session object or endSession method not available in finally block.");
+        }
+        console.log("--- Controller: placeBidOnProduct END ---");
     }
 };
 // --- نهاية دالة وضع/تعديل المزايدة ---
@@ -938,7 +1144,7 @@ exports.acceptBid = async (req, res) => {
         product.buyer = buyer._id;
         product.agreedPrice = numericBidAmount;
         product.currentMediationRequest = newMediationRequest._id;
-        
+
         await product.save({ session });
         console.log(`   Product ${productId} updated: Status to 'PendingMediatorSelection', buyer set, agreedPrice set, currentMediationRequest linked.`);
 
@@ -973,8 +1179,41 @@ exports.acceptBid = async (req, res) => {
         await session.commitTransaction();
         console.log("   acceptBid transaction committed successfully.");
 
-        // 8. إرجاع المنتج المحدث بالكامل لـ Redux لتحديث الحالة بسهولة
-        const populatedUpdatedProduct = await Product.findById(product._id)
+        // --- [!!! التعديل المهم هنا: إرسال حدث للمشتري لتحديث قائمة طلبات الوساطة !!!] ---
+        if (req.io && req.onlineUsers && buyer && buyer._id) {
+            const buyerSocketId = req.onlineUsers[buyer._id.toString()];
+            if (buyerSocketId) {
+                // يمكنك إرسال newMediationRequest.toObject() إذا كنت تريد أن يقوم العميل بإضافته محليًا
+                // أو يمكنك فقط إرسال إشارة لإعادة الجلب
+                req.io.to(buyerSocketId).emit('new_mediation_request_for_buyer', {
+                    message: "You have a new mediation request.",
+                    mediationRequestId: newMediationRequest._id.toString(), // أرسل ID الطلب الجديد
+                    // يمكنك إرسال newMediationRequest.toObject() هنا إذا أردت أن يقوم العميل بإضافته مباشرة للـ state
+                    // newMediationRequestData: newMediationRequest.toObject()
+                });
+                console.log(`   [Socket] Emitted 'new_mediation_request_for_buyer' to buyer ${buyer._id}`);
+            }
+        }
+        // --- نهاية التعديل ---
+
+        const populatedUpdatedProductForSocket = await Product.findById(product._id)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('buyer', 'fullName email avatarUrl')
+            .populate({
+                path: 'currentMediationRequest',
+                select: '_id status' // أضف الحقول التي تحتاجها الواجهة
+            })
+            .lean();
+
+        if (req.io && populatedUpdatedProductForSocket) {
+            req.io.emit('product_updated', populatedUpdatedProductForSocket);
+            console.log(`   [Socket] Emitted 'product_updated' for product ${product._id} after bid acceptance.`);
+        }
+        // --- نهاية إرسال product_updated ---
+
+
+        // 8. إرجاع المنتج المحدث للبائع (الذي قام بالإجراء)
+        const populatedUpdatedProductForResponse = await Product.findById(product._id) // نفس populatedUpdatedProductForSocket
             .populate('user', 'fullName email avatarUrl')
             .populate('buyer', 'fullName email avatarUrl')
             .populate({
@@ -983,10 +1222,10 @@ exports.acceptBid = async (req, res) => {
             })
             .lean();
 
-        console.log("   Returning updated product:", JSON.stringify(populatedUpdatedProduct, null, 2));
+        console.log("   Returning updated product:", JSON.stringify(populatedUpdatedProductForResponse, null, 2));
         res.status(200).json({
             msg: "Bid accepted successfully! Please select a mediator to proceed.",
-            updatedProduct: populatedUpdatedProduct
+            updatedProduct: populatedUpdatedProductForResponse
         });
 
     } catch (error) {
@@ -1014,7 +1253,7 @@ exports.rejectBid = async (req, res) => {
     console.log(`--- Controller: rejectBid START ---`);
     console.log(`   ProductId: ${productId}, SellerId: ${sellerId}, BidUserId (Rejected): ${bidUserId}, Reason: ${reason}`);
 
-    // 1. التحقق من المدخلات
+    // 1. التحقق من المدخلات (كما هو)
     if (!mongoose.Types.ObjectId.isValid(productId) || !mongoose.Types.ObjectId.isValid(bidUserId) || !reason || reason.trim() === '') {
         console.error("   Validation Error: Invalid IDs or missing rejection reason.");
         return res.status(400).json({ msg: "Invalid IDs or missing rejection reason." });
@@ -1027,8 +1266,8 @@ exports.rejectBid = async (req, res) => {
     try {
         // 2. جلب المنتج والمستخدم المزايد (للحصول على اسمه للإشعار)
         console.log("   Fetching product and rejected bidder details...");
-        const product = await Product.findById(productId).session(session);
-        const bidUser = await User.findById(bidUserId).select('fullName').session(session); // جلب اسم المزايد فقط
+        const product = await Product.findById(productId).session(session); // لا حاجة لـ populate هنا الآن
+        const bidUser = await User.findById(bidUserId).select('fullName').session(session);
 
         if (!product) {
             console.error("   Error: Product not found.");
@@ -1048,16 +1287,14 @@ exports.rejectBid = async (req, res) => {
         const bidIndex = product.bids.findIndex(b => b.user && b.user.equals(bidUserId));
         if (bidIndex === -1) {
             console.warn(`   Warning: Bid from user ${bidUserId} not found on product ${productId}. No action taken on bids.`);
-            // يمكنك أن تقرر إما إرجاع خطأ أو المتابعة بإنشاء الإشعارات فقط
+            // يمكنك إرجاع خطأ أو المتابعة. حاليًا، سنفترض أنه إذا لم توجد المزايدة، فلا مشكلة ونكمل.
             // throw new Error("Specified bid not found on this product.");
         } else {
-            const rejectedBidAmount = product.bids[bidIndex].amount; // لحفظه في الإشعار
-            const bidCurrency = product.bids[bidIndex].currency; // لحفظه في الإشعار
             product.bids.splice(bidIndex, 1); // إزالة المزايدة من المصفوفة
-            await product.save({ session });
-            console.log(`   Bid from ${bidUserId} (Amount: ${rejectedBidAmount} ${bidCurrency}) removed from product ${productId}.`);
+            await product.save({ session }); // حفظ المنتج بعد إزالة المزايدة
+            console.log(`   Bid from ${bidUserId} removed from product ${productId}.`);
         }
-        
+
         // 4. إنشاء وإرسال الإشعارات
         console.log("   Creating rejection notifications...");
         const bidderFullName = bidUser.fullName || 'Bidder';
@@ -1068,28 +1305,52 @@ exports.rejectBid = async (req, res) => {
             { user: bidUserId, type: 'BID_REJECTED', title: 'Your Bid Was Rejected', message: buyerMessage, relatedEntity: { id: productId, modelName: 'Product' } },
             { user: sellerId, type: 'BID_REJECTED_BY_YOU', title: 'You Rejected a Bid', message: sellerMessage, relatedEntity: { id: productId, modelName: 'Product' } }
         ];
-        // --- [!!!] استخدام insertMany مع الخيارات الصحيحة داخل الجلسة [!!!] ---
-        await Notification.insertMany(notificationsToCreate, { session: session, ordered: true });
-        console.log("   Rejection notifications created and saved successfully using insertMany.");
+        const createdNotifications = await Notification.insertMany(notificationsToCreate, { session: session, ordered: true });
+        console.log("   Rejection notifications created and saved successfully.");
+
+        // إرسال الإشعارات الفورية عبر السوكيت
+        if (req.io && req.onlineUsers) {
+            createdNotifications.forEach(notificationDoc => {
+                const targetUserSocketId = req.onlineUsers[notificationDoc.user.toString()];
+                if (targetUserSocketId) {
+                    req.io.to(targetUserSocketId).emit('new_notification', notificationDoc.toObject());
+                    console.log(`   [Socket] Sent 'new_notification' for bid rejection to user ${notificationDoc.user}`);
+                }
+            });
+        }
+
 
         // 5. إتمام المعاملة
         await session.commitTransaction();
         console.log("   rejectBid transaction committed successfully.");
 
-        // 6. إرجاع المنتج المحدث (مع المزايدات المحدثة)
-        const updatedProductAfterReject = await Product.findById(productId)
+        // 6. جلب المنتج المحدث بالكامل مع populate لإرساله
+        const finalUpdatedProductAfterReject = await Product.findById(productId)
             .populate('user', 'fullName email avatarUrl')
             .populate('bids.user', 'fullName email avatarUrl') // Populate المزايدات المتبقية
-            .populate({ // Populate طلب الوساطة إذا كان موجودًا (قد لا يكون له علاقة مباشرة بالرفض ولكن جيد للاتساق)
+            .populate('buyer', 'fullName email avatarUrl')
+            .populate({
                 path: 'currentMediationRequest',
-                select: '_id status'
+                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
+                populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
             })
-            .lean();
+            .lean(); // .lean() للحصول على كائن JavaScript عادي
 
-        console.log("   Returning updated product after rejection:", JSON.stringify(updatedProductAfterReject, null, 2));
-        res.status(200).json({ 
+        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO لتحديث المنتج للجميع !!!] ---
+        if (req.io && finalUpdatedProductAfterReject) {
+            req.io.emit('product_updated', finalUpdatedProductAfterReject); // لا حاجة لـ .toObject() بسبب .lean()
+            console.log(`   [Socket] Emitted 'product_updated' after bid rejection for product ID: ${finalUpdatedProductAfterReject._id} to all clients.`);
+        } else {
+            console.warn("   Socket.IO (req.io) not available or finalUpdatedProductAfterReject is null. Skipping socket emission for product_updated.");
+        }
+        // --- نهاية التعديل ---
+
+
+        // 7. إرجاع المنتج المحدث (مع المزايدات المحدثة)
+        console.log("   Returning updated product after rejection:", JSON.stringify(finalUpdatedProductAfterReject, null, 2));
+        res.status(200).json({
             msg: "Bid rejected successfully.",
-            updatedProduct: updatedProductAfterReject // إرجاع المنتج المحدث لـ Redux
+            updatedProduct: finalUpdatedProductAfterReject // إرجاع المنتج المحدث لـ Redux
         });
 
     } catch (error) {
@@ -1097,10 +1358,14 @@ exports.rejectBid = async (req, res) => {
             await session.abortTransaction();
             console.log("[ProductCtrl rejectBid] Transaction aborted due to error:", error.message);
         }
-        console.error("--- Controller: rejectBid ERROR ---", error); // طباعة الخطأ الكامل
+        console.error("--- Controller: rejectBid ERROR ---", error);
         res.status(400).json({ msg: error.message || "Failed to reject bid." });
     } finally {
-        if (session && session.endSession && typeof session.endSession === 'function') {
+        if (session && typeof session.endSession === 'function') {
+            if (session.inTransaction()) {
+                console.warn("[rejectBid Finally] Session was still in transaction. Aborting.");
+                await session.abortTransaction();
+            }
             await session.endSession();
         }
         console.log("--- Controller: rejectBid END --- Session ended.");

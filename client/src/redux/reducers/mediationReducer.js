@@ -19,98 +19,67 @@ import {
     GET_MEDIATOR_DISPUTED_CASES_FAIL, ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST, ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS,
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
     UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS, ADMIN_RESOLVE_DISPUTE_REQUEST,
-    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL
+    ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL, UPDATE_SINGLE_MEDIATION_REQUEST_IN_STORE,
+    // --- Admin Sub-Chat ---
+    ADMIN_CREATE_SUBCHAT_REQUEST, ADMIN_CREATE_SUBCHAT_SUCCESS, ADMIN_CREATE_SUBCHAT_FAIL, ADMIN_CREATE_SUBCHAT_RESET,
+    ADMIN_GET_ALL_SUBCHATS_REQUEST, ADMIN_GET_ALL_SUBCHATS_SUCCESS, ADMIN_GET_ALL_SUBCHATS_FAIL,
+    ADMIN_GET_SUBCHAT_MESSAGES_REQUEST, ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS, ADMIN_GET_SUBCHAT_MESSAGES_FAIL,
+    CLEAR_ACTIVE_SUBCHAT_MESSAGES,
+    ADMIN_SUBCHAT_CREATED_SOCKET, NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET,
+    SET_ACTIVE_SUBCHAT_ID
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
-    // حالة خاصة بمهام الأدمن
-    pendingAssignmentsAdmin: { // تم تغيير الاسم ليكون أوضح أنه للأدمن
-        requests: [],
-        totalPages: 0,
-        currentPage: 1,
-        totalRequests: 0,
-    },
+    pendingAssignmentsAdmin: { requests: [], totalPages: 0, currentPage: 1, totalRequests: 0 },
     loadingPendingAdmin: false,
     errorPendingAdmin: null,
-
-    // حالة خاصة بتعيين الوسيط (سواء من الأدمن أو البائع)
-    assigningMediator: {}, // { [requestId]: true }
+    assigningMediator: {},
     errorAssign: null,
     successAssign: false,
-
-    // حالة خاصة بمهام الوسيط الحالية التي تنتظر قراره
-    pendingDecisionAssignments: {
-        list: [],
-        totalPages: 1,
-        currentPage: 1,
-        totalCount: 0,
-    },
+    pendingDecisionAssignments: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingPendingDecision: false,
     errorPendingDecision: null,
-
-    // حالة خاصة بالمهام التي قبلها الوسيط وتنتظر تأكيد الأطراف
-    acceptedAwaitingPartiesAssignments: {
-        list: [],
-        totalPages: 1,
-        currentPage: 1,
-        totalCount: 0,
-    },
+    acceptedAwaitingPartiesAssignments: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingAcceptedAwaitingParties: false,
     errorAcceptedAwaitingParties: null,
-
-    // حالة لعمليات القبول/الرفض التي يقوم بها الوسيط
     actionLoading: false,
     actionError: null,
     actionSuccess: false,
-
-    buyerRequests: { // <--- حالة جديدة لطلبات المشتري
-        list: [],
-        totalPages: 1,
-        currentPage: 1,
-        totalCount: 0,
-    },
+    buyerRequests: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
+    sellerRequests: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingBuyerRequests: false,
     errorBuyerRequests: null,
-
-    confirmingReadiness: false, // مثال لحالة تحميل عامة لتأكيد الاستعداد
+    confirmingReadiness: false,
     confirmReadinessError: null,
-
-    myMediationSummaries: {
-        requests: [], // كان اسمه mediationRequests، تم توحيده مع payload
-        loading: false,
-        error: null,
-        totalUnreadMessagesCount: 0,
-    },
-
+    myMediationSummaries: { requests: [], loading: false, error: null, totalUnreadMessagesCount: 0 },
     disputedCases: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingDisputedCases: false,
     errorDisputedCases: null,
-
     adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 },
     loadingAdminDisputed: false,
     errorAdminDisputed: null,
-
     activeMediationDetails: null,
     loadingActiveMediationDetails: false,
     errorActiveMediationDetails: null,
-
-    loadingResolveDispute: {}, // لتتبع حالة تحميل حل النزاع لكل طلب
-    errorResolveDispute: {},   // لتتبع أخطاء حل النزاع
+    loadingResolveDispute: {},
+    errorResolveDispute: {},
+    // --- Admin Sub-Chat State ---
+    adminSubChats: { list: [], loading: false, error: null },
+    activeSubChat: { details: null, messages: [], loadingMessages: false, errorMessages: null, id: null },
+    creatingSubChat: false,
+    errorCreatingSubChat: null,
+    successCreatingSubChat: false,
 };
 
 const mediationReducer = (state = initialState, action) => {
     const { type, payload } = action;
 
     switch (type) {
-        // --- Admin: Get Pending Assignments (لتعيين الوسيط من قبل الأدمن) ---
+        // --- Admin: Get Pending Assignments ---
         case ADMIN_GET_PENDING_ASSIGNMENTS_REQUEST:
             return { ...state, loadingPendingAdmin: true, errorPendingAdmin: null };
         case ADMIN_GET_PENDING_ASSIGNMENTS_SUCCESS:
-            return {
-                ...state,
-                loadingPendingAdmin: false,
-                pendingAssignmentsAdmin: payload || { requests: [], totalPages: 0, currentPage: 1, totalRequests: 0 }
-            };
+            return { ...state, loadingPendingAdmin: false, pendingAssignmentsAdmin: payload || { requests: [], totalPages: 0, currentPage: 1, totalRequests: 0 } };
         case ADMIN_GET_PENDING_ASSIGNMENTS_FAIL:
             return { ...state, loadingPendingAdmin: false, errorPendingAdmin: payload };
 
@@ -127,15 +96,14 @@ const mediationReducer = (state = initialState, action) => {
                     requests: state.pendingAssignmentsAdmin.requests.filter(req => req._id !== assignedRequestIdAdmin),
                     totalRequests: Math.max(0, state.pendingAssignmentsAdmin.totalRequests - 1)
                 },
-                successAssign: true,
-                errorAssign: null
+                successAssign: true, errorAssign: null
             };
         case ADMIN_ASSIGN_MEDIATOR_FAIL:
             return { ...state, assigningMediator: { ...state.assigningMediator, [payload.requestId]: false }, errorAssign: payload.error, successAssign: false };
         case ADMIN_ASSIGN_MEDIATOR_RESET:
             return { ...state, successAssign: false, errorAssign: null };
         case ADMIN_CLEAR_MEDIATION_ERRORS:
-            return { ...state, errorPendingAdmin: null, errorAssign: null };
+            return { ...state, errorPendingAdmin: null, errorAssign: null, actionError: null, errorCreatingSubChat: null };
 
         // --- Seller: Assign Selected Mediator ---
         case ASSIGN_MEDIATOR_REQUEST:
@@ -145,37 +113,19 @@ const mediationReducer = (state = initialState, action) => {
         case ASSIGN_MEDIATOR_FAIL:
             return { ...state, assigningMediator: { ...state.assigningMediator, [payload.mediationRequestId]: false }, errorAssign: payload.error, successAssign: false };
 
-        // --- Mediator: Get Own Assignments (Pending Decision - Status: MediatorAssigned) ---
+        // --- Mediator: Get Own Assignments (Pending Decision) ---
         case GET_MEDIATOR_ASSIGNMENTS_REQUEST:
-            return { ...state, loadingPendingDecision: true, errorPendingDecision: null, actionSuccess: false }; // إعادة تعيين actionSuccess
+            return { ...state, loadingPendingDecision: true, errorPendingDecision: null, actionSuccess: false };
         case GET_MEDIATOR_ASSIGNMENTS_SUCCESS:
-            return {
-                ...state,
-                loadingPendingDecision: false,
-                pendingDecisionAssignments: {
-                    list: payload.assignments || [],
-                    totalPages: payload.totalPages || 1,
-                    currentPage: payload.currentPage || 1,
-                    totalCount: payload.totalAssignments || 0,
-                }
-            };
+            return { ...state, loadingPendingDecision: false, pendingDecisionAssignments: { list: payload.assignments || [], totalPages: payload.totalPages || 1, currentPage: payload.currentPage || 1, totalCount: payload.totalAssignments || 0 } };
         case GET_MEDIATOR_ASSIGNMENTS_FAIL:
             return { ...state, loadingPendingDecision: false, errorPendingDecision: payload, pendingDecisionAssignments: { ...initialState.pendingDecisionAssignments } };
 
-        // --- Mediator: Get Accepted Assignments Awaiting Parties (Status: MediationOfferAccepted) ---
+        // --- Mediator: Get Accepted Assignments Awaiting Parties ---
         case GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_REQUEST:
             return { ...state, loadingAcceptedAwaitingParties: true, errorAcceptedAwaitingParties: null, actionSuccess: false };
         case GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_SUCCESS:
-            return {
-                ...state,
-                loadingAcceptedAwaitingParties: false,
-                acceptedAwaitingPartiesAssignments: {
-                    list: payload.assignments || [],
-                    totalPages: payload.totalPages || 1,
-                    currentPage: payload.currentPage || 1,
-                    totalCount: payload.totalAssignments || 0,
-                }
-            };
+            return { ...state, loadingAcceptedAwaitingParties: false, acceptedAwaitingPartiesAssignments: { list: payload.assignments || [], totalPages: payload.totalPages || 1, currentPage: payload.currentPage || 1, totalCount: payload.totalAssignments || 0 } };
         case GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL:
             return { ...state, loadingAcceptedAwaitingParties: false, errorAcceptedAwaitingParties: payload, acceptedAwaitingPartiesAssignments: { ...initialState.acceptedAwaitingPartiesAssignments } };
 
@@ -184,17 +134,12 @@ const mediationReducer = (state = initialState, action) => {
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
         case MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS:
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true,
+                ...state, actionLoading: false, actionSuccess: true,
                 pendingDecisionAssignments: {
                     ...state.pendingDecisionAssignments,
-                    list: state.pendingDecisionAssignments.list.filter(
-                        (assignment) => assignment._id !== payload.mediationRequestId
-                    ),
+                    list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
                     totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
                 },
-                // لا نحدّث acceptedAwaitingPartiesAssignments هنا مباشرة، نعتمد على إعادة الجلب أو تحديث متفائل إذا لزم الأمر
             };
         case MEDIATOR_ACCEPT_ASSIGNMENT_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
@@ -204,14 +149,10 @@ const mediationReducer = (state = initialState, action) => {
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
         case MEDIATOR_REJECT_ASSIGNMENT_SUCCESS:
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true,
+                ...state, actionLoading: false, actionSuccess: true,
                 pendingDecisionAssignments: {
                     ...state.pendingDecisionAssignments,
-                    list: state.pendingDecisionAssignments.list.filter(
-                        (assignment) => assignment._id !== payload.mediationRequestId
-                    ),
+                    list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
                     totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
                 },
             };
@@ -222,20 +163,13 @@ const mediationReducer = (state = initialState, action) => {
         case SELLER_CONFIRM_READINESS_REQUEST:
             return { ...state, confirmingReadiness: true, confirmReadinessError: null, actionSuccess: false };
         case SELLER_CONFIRM_READINESS_SUCCESS:
-            // تحديث حالة طلب الوساطة المعني في إحدى القوائم إذا لزم الأمر
-            // الـ backend يعيد mediationRequest المحدث، يمكن استخدامه لتحديث الحالة محليًا
-            // أو الاعتماد على getProducts/getAssignments لإعادة الجلب
             return {
-                ...state,
-                confirmingReadiness: false,
-                actionSuccess: true, // للإشارة إلى نجاح العملية
-                // مثال لتحديث الطلب في قائمة acceptedAwaitingPartiesAssignments إذا كان موجودًا هناك
+                ...state, confirmingReadiness: false, actionSuccess: true,
                 acceptedAwaitingPartiesAssignments: {
                     ...state.acceptedAwaitingPartiesAssignments,
-                    list: state.acceptedAwaitingPartiesAssignments.list.map(req =>
-                        req._id === payload.mediationRequestId ? payload.responseData.mediationRequest : req
-                    )
-                }
+                    list: state.acceptedAwaitingPartiesAssignments.list.map(req => req._id === payload.mediationRequestId ? payload.responseData.mediationRequest : req)
+                },
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.responseData.mediationRequest : state.activeMediationDetails,
             };
         case SELLER_CONFIRM_READINESS_FAIL:
             return { ...state, confirmingReadiness: false, confirmReadinessError: payload.error, actionSuccess: false };
@@ -245,146 +179,65 @@ const mediationReducer = (state = initialState, action) => {
             return { ...state, confirmingReadiness: true, confirmReadinessError: null, actionSuccess: false };
         case BUYER_CONFIRM_READINESS_ESCROW_SUCCESS:
             return {
-                ...state,
-                confirmingReadiness: false,
-                actionSuccess: true,
+                ...state, confirmingReadiness: false, actionSuccess: true,
                 acceptedAwaitingPartiesAssignments: {
                     ...state.acceptedAwaitingPartiesAssignments,
-                    list: state.acceptedAwaitingPartiesAssignments.list.map(req =>
-                        req._id === payload.mediationRequestId ? payload.responseData.mediationRequest : req
-                    )
-                }
+                    list: state.acceptedAwaitingPartiesAssignments.list.map(req => req._id === payload.mediationRequestId ? payload.responseData.mediationRequest : req)
+                },
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.responseData.mediationRequest : state.activeMediationDetails,
             };
         case BUYER_CONFIRM_READINESS_ESCROW_FAIL:
             return { ...state, confirmingReadiness: false, confirmReadinessError: payload.error, actionSuccess: false };
 
-        // --- [!!!] تأكد من وجود هذه الحالات [!!!] ---
+        // --- Get Buyer Mediation Requests ---
         case GET_BUYER_MEDIATION_REQUESTS_REQUEST:
             return { ...state, loadingBuyerRequests: true, errorBuyerRequests: null };
         case GET_BUYER_MEDIATION_REQUESTS_SUCCESS:
-            return {
-                ...state,
-                loadingBuyerRequests: false,
-                buyerRequests: {
-                    list: payload.requests || [],
-                    totalPages: payload.totalPages || 1,
-                    currentPage: payload.currentPage || 1,
-                    totalCount: payload.totalRequests || 0,
-                },
-                errorBuyerRequests: null, // مسح أي خطأ سابق عند النجاح
-            };
+            return { ...state, loadingBuyerRequests: false, buyerRequests: { list: payload.requests || [], totalPages: payload.totalPages || 1, currentPage: payload.currentPage || 1, totalCount: payload.totalRequests || 0 }, errorBuyerRequests: null };
         case GET_BUYER_MEDIATION_REQUESTS_FAIL:
-            return {
-                ...state,
-                loadingBuyerRequests: false,
-                errorBuyerRequests: payload,
-                buyerRequests: { ...initialState.buyerRequests } // إعادة للقيم الأولية عند الفشل
-            };
+            return { ...state, loadingBuyerRequests: false, errorBuyerRequests: payload, buyerRequests: { ...initialState.buyerRequests } };
 
         // --- Buyer Reject Mediation ---
         case BUYER_REJECT_MEDIATION_REQUEST:
-            return { ...state, actionLoading: true, actionError: null, actionSuccess: false }; // استخدام actionLoading العام
+            return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
         case BUYER_REJECT_MEDIATION_SUCCESS:
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true, // للإشارة إلى نجاح عملية الرفض
-                // إزالة الطلب الملغى من قائمة المشتري
+                ...state, actionLoading: false, actionSuccess: true,
                 buyerRequests: {
                     ...state.buyerRequests,
                     list: state.buyerRequests.list.filter(req => req._id !== payload.mediationRequestId),
                     totalCount: Math.max(0, state.buyerRequests.totalCount - 1),
-                }
+                },
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.responseData.mediationRequest : state.activeMediationDetails,
             };
         case BUYER_REJECT_MEDIATION_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 
-        // --- Get My Mediation Summaries (for messages/chats list) ---
+        // --- Get My Mediation Summaries ---
         case GET_MY_MEDIATION_SUMMARIES_REQUEST:
-            return {
-                ...state,
-                myMediationSummaries: {
-                    ...state.myMediationSummaries, // الحفاظ على البيانات القديمة أثناء التحميل
-                    loading: true,
-                    error: null,
-                },
-            };
+            return { ...state, myMediationSummaries: { ...state.myMediationSummaries, loading: true, error: null } };
         case GET_MY_MEDIATION_SUMMARIES_SUCCESS:
-            return {
-                ...state,
-                myMediationSummaries: {
-                    requests: payload.requests || [],
-                    loading: false,
-                    error: null,
-                    // payload.totalUnreadMessagesCount هو الاسم الذي تستخدمه في MainDashboard
-                    // payload.totalUnreadMessages هو الاسم الذي استخدمته في مثال سابق للخادم
-                    // تأكد من تطابق هذا الاسم مع ما يرسله الخادم getMyMediationSummariesController
-                    totalUnreadMessagesCount: payload.totalUnreadMessagesCount || payload.totalUnreadMessages || 0,
-                },
-            };
+            return { ...state, myMediationSummaries: { requests: payload.requests || [], loading: false, error: null, totalUnreadMessagesCount: payload.totalUnreadMessagesCount || 0 } };
         case GET_MY_MEDIATION_SUMMARIES_FAIL:
-            return {
-                ...state,
-                myMediationSummaries: {
-                    ...state.myMediationSummaries, // الحفاظ على البيانات القديمة عند الخطأ
-                    requests: [], // أو الحفاظ على البيانات القديمة
-                    loading: false,
-                    error: payload,
-                    totalUnreadMessagesCount: 0, // أو الحفاظ على القيمة القديمة
-                },
-            };
+            return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: [], loading: false, error: payload, totalUnreadMessagesCount: 0 } };
         case MARK_MEDIATION_AS_READ_IN_LIST:
-            // payload: { mediationId }
-            const updatedRequestsMarkRead = state.myMediationSummaries.requests.map(med =>
-                med._id === payload.mediationId
-                    ? { ...med, unreadMessagesCount: 0 } // تصفير العداد لهذه الوساطة
-                    : med
-            );
-            const newTotalUnreadMarkRead = updatedRequestsMarkRead.reduce((total, med) => {
-                return total + (med.unreadMessagesCount || 0);
-            }, 0);
-
-            return {
-                ...state,
-                myMediationSummaries: {
-                    ...state.myMediationSummaries,
-                    requests: updatedRequestsMarkRead,
-                    totalUnreadMessagesCount: newTotalUnreadMarkRead
-                }
-            };
+            const updatedRequestsMarkRead = state.myMediationSummaries.requests.map(med => med._id === payload.mediationId ? { ...med, unreadMessagesCount: 0 } : med);
+            const newTotalUnreadMarkRead = updatedRequestsMarkRead.reduce((total, med) => total + (med.unreadMessagesCount || 0), 0);
+            return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: updatedRequestsMarkRead, totalUnreadMessagesCount: newTotalUnreadMarkRead } };
         case UPDATE_UNREAD_COUNT_FROM_SOCKET:
-            console.log("[Reducer MEDIATION] Handling UPDATE_UNREAD_COUNT_FROM_SOCKET. Payload:", payload);
             let foundMediation = false;
             const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
                 if (med._id === payload.mediationId) {
                     foundMediation = true;
-                    return {
-                        ...med,
-                        unreadMessagesCount: payload.unreadCount,
-                        lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp
-                    };
+                    return { ...med, unreadMessagesCount: payload.unreadCount, lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp };
                 }
                 return med;
             });
-
             let finalRequests = updatedRequestsSocket;
-            let newTotalUnreadSocket = 0; // سيتم إعادة حسابه
-
             if (!foundMediation && payload.productTitle && payload.otherPartyForRecipient) {
-                const newMediationSummary = {
-                    _id: payload.mediationId,
-                    product: { title: payload.productTitle, imageUrl: payload.otherPartyForRecipient?.avatarUrl /* مثال */ },
-                    status: 'InProgress', // أو الحالة التي تأتي من payload إذا كانت موجودة
-                    otherParty: payload.otherPartyForRecipient,
-                    unreadMessagesCount: payload.unreadCount,
-                    lastMessageTimestamp: payload.lastMessageTimestamp,
-                    updatedAt: payload.lastMessageTimestamp,
-                };
+                const newMediationSummary = { _id: payload.mediationId, product: { title: payload.productTitle, imageUrl: payload.otherPartyForRecipient?.avatarUrl }, status: 'InProgress', otherParty: payload.otherPartyForRecipient, unreadMessagesCount: payload.unreadCount, lastMessageTimestamp: payload.lastMessageTimestamp, updatedAt: payload.lastMessageTimestamp };
                 finalRequests = [newMediationSummary, ...updatedRequestsSocket];
-                console.log("[Reducer MEDIATION] Added new mediation summary from socket:", newMediationSummary);
             }
-
-            // إعادة ترتيب القائمة
             finalRequests.sort((a, b) => {
                 if (a._id === payload.mediationId && b._id !== payload.mediationId) return -1;
                 if (a._id !== payload.mediationId && b._id === payload.mediationId) return 1;
@@ -392,219 +245,373 @@ const mediationReducer = (state = initialState, action) => {
                 if (a.unreadMessagesCount === 0 && b.unreadMessagesCount > 0) return 1;
                 return new Date(b.lastMessageTimestamp) - new Date(a.lastMessageTimestamp);
             });
-
-            // إعادة حساب الإجمالي بناءً على finalRequests المحدثة
-            newTotalUnreadSocket = finalRequests.reduce((total, med) => {
-                return total + (med.unreadMessagesCount || 0);
-            }, 0);
-
-            console.log("[Reducer MEDIATION] New totalUnreadMessagesCount:", newTotalUnreadSocket);
-            console.log("[Reducer MEDIATION] Final requests for summary:", finalRequests);
-
-            return {
-                ...state,
-                myMediationSummaries: {
-                    ...state.myMediationSummaries,
-                    requests: finalRequests, // <--- استخدام finalRequests المحدثة
-                    totalUnreadMessagesCount: newTotalUnreadSocket, // <--- استخدام الإجمالي الجديد
-                    loading: false, // تأكد من أن loading false إذا لم يكن هناك طلب API هنا
-                    error: null,   // مسح أي خطأ سابق
-                }
-            };
+            const newTotalUnreadSocket = finalRequests.reduce((total, med) => total + (med.unreadMessagesCount || 0), 0);
+            return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: finalRequests, totalUnreadMessagesCount: newTotalUnreadSocket, loading: false, error: null } };
 
         // --- Buyer Confirm Receipt ---
         case BUYER_CONFIRM_RECEIPT_REQUEST:
-            return {
-                ...state,
-                // يمكنك استخدام actionLoading العام أو حالة تحميل مخصصة
-                actionLoading: true,
-                actionError: null,
-                // confirmingReceipt: { ...state.confirmingReceipt, [payload.mediationRequestId]: true },
-            };
+            return { ...state, actionLoading: true, actionError: null };
         case BUYER_CONFIRM_RECEIPT_SUCCESS:
-            // تحديث حالة الوساطة في قائمة الملخصات (myMediationSummaries.requests)
-            // وتحديثها في أي مكان آخر قد تكون موجودة فيه (مثل buyerRequests إذا كانت مختلفة)
-            const updateRequestInList = (list) => list.map(req =>
-                req._id === payload.mediationRequestId
-                    ? payload.updatedMediationRequest // استخدام الطلب المحدث بالكامل من الخادم
-                    : req
-            );
-
+            const updateListWithConfirmed = (list) => list.map(req => req._id === payload.mediationRequestId ? payload.updatedMediationRequest : req);
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true, // للإشارة العامة لنجاح عملية ما
-                myMediationSummaries: {
-                    ...state.myMediationSummaries,
-                    requests: updateRequestInList(state.myMediationSummaries.requests),
-                },
-                buyerRequests: { // إذا كان لديك buyerRequests منفصل
-                    ...state.buyerRequests,
-                    list: updateRequestInList(state.buyerRequests.list),
-                },
-                // يمكنك تحديث تفاصيل الوساطة الحالية إذا كانت معروضة في مكان ما
-                // currentMediationDetails: state.currentMediationDetails?._id === payload.mediationRequestId 
-                //    ? payload.updatedMediationRequest 
-                //    : state.currentMediationDetails,
+                ...state, actionLoading: false, actionSuccess: true,
+                myMediationSummaries: { ...state.myMediationSummaries, requests: updateListWithConfirmed(state.myMediationSummaries.requests) },
+                buyerRequests: { ...state.buyerRequests, list: updateListWithConfirmed(state.buyerRequests.list) },
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.updatedMediationRequest : state.activeMediationDetails,
             };
         case BUYER_CONFIRM_RECEIPT_FAIL:
-            return {
-                ...state,
-                actionLoading: false,
-                actionError: payload.error,
-            };
+            return { ...state, actionLoading: false, actionError: payload.error };
 
         // --- Open Dispute ---
         case OPEN_DISPUTE_REQUEST:
-            return {
-                ...state,
-                actionLoading: true,
-                actionError: null,
-            };
+            return { ...state, actionLoading: true, actionError: null };
         case OPEN_DISPUTE_SUCCESS:
-            const updateRequestInListsOpenDispute = (list) => list.map(req =>
-                req._id === payload.mediationRequestId
-                    ? payload.updatedMediationRequest
-                    : req
-            );
+            const updateListWithDisputed = (list) => list.map(req => req._id === payload.mediationRequestId ? payload.updatedMediationRequest : req);
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true,
-                myMediationSummaries: {
-                    ...state.myMediationSummaries,
-                    requests: updateRequestInListsOpenDispute(state.myMediationSummaries.requests),
-                },
-                buyerRequests: { // إذا كان لديك buyerRequests منفصل
-                    ...state.buyerRequests,
-                    list: updateRequestInListsOpenDispute(state.buyerRequests.list),
-                },
-                // يمكنك تحديث أي قائمة أخرى قد تحتوي على هذا الطلب
+                ...state, actionLoading: false, actionSuccess: true,
+                myMediationSummaries: { ...state.myMediationSummaries, requests: updateListWithDisputed(state.myMediationSummaries.requests) },
+                buyerRequests: { ...state.buyerRequests, list: updateListWithDisputed(state.buyerRequests.list) },
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.updatedMediationRequest : state.activeMediationDetails,
             };
         case OPEN_DISPUTE_FAIL:
-            return {
-                ...state,
-                actionLoading: false,
-                actionError: payload.error,
-            };
+            return { ...state, actionLoading: false, actionError: payload.error };
 
+        // --- Mediator Get Disputed Cases ---
         case GET_MEDIATOR_DISPUTED_CASES_REQUEST:
             return { ...state, loadingDisputedCases: true, errorDisputedCases: null };
         case GET_MEDIATOR_DISPUTED_CASES_SUCCESS:
-            return {
-                ...state,
-                loadingDisputedCases: false,
-                disputedCases: {
-                    list: payload.assignments || payload.requests || [], // تأكد من اسم الحقل من الخادم
-                    totalPages: payload.totalPages || 1,
-                    currentPage: payload.currentPage || 1,
-                    totalCount: payload.totalAssignments || payload.totalRequests || 0,
-                }
-            };
+            return { ...state, loadingDisputedCases: false, disputedCases: { list: payload.assignments || payload.requests || [], totalPages: payload.totalPages || 1, currentPage: payload.currentPage || 1, totalCount: payload.totalAssignments || payload.totalRequests || 0 } };
         case GET_MEDIATOR_DISPUTED_CASES_FAIL:
-            return { ...state, loadingDisputedCases: false, errorDisputedCases: payload, disputedCases: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 } };
+            return { ...state, loadingDisputedCases: false, errorDisputedCases: payload, disputedCases: { ...initialState.disputedCases } };
 
+        // --- Admin Get Disputed Mediations ---
         case ADMIN_GET_DISPUTED_MEDIATIONS_REQUEST:
             return { ...state, loadingAdminDisputed: true, errorAdminDisputed: null };
         case ADMIN_GET_DISPUTED_MEDIATIONS_SUCCESS:
-            return {
-                ...state,
-                loadingAdminDisputed: false,
-                adminDisputedMediations: {
-                    list: payload.requests || payload.mediations || [],
-                    totalPages: payload.totalPages || 1,
-                    currentPage: payload.currentPage || 1,
-                    totalCount: payload.totalRequests || payload.totalMediations || 0,
-                },
-            };
+            return { ...state, loadingAdminDisputed: false, adminDisputedMediations: { list: payload.requests || payload.mediations || [], totalPages: payload.totalPages || 1, currentPage: payload.currentPage || 1, totalCount: payload.totalRequests || payload.totalMediations || 0 } };
         case ADMIN_GET_DISPUTED_MEDIATIONS_FAIL:
-            return { ...state, loadingAdminDisputed: false, errorAdminDisputed: payload, adminDisputedMediations: { list: [], totalPages: 1, currentPage: 1, totalCount: 0 } };
+            return { ...state, loadingAdminDisputed: false, errorAdminDisputed: payload, adminDisputedMediations: { ...initialState.adminDisputedMediations } };
 
+        // --- Get Mediation Details By ID ---
         case GET_MEDIATION_DETAILS_BY_ID_REQUEST:
-            return {
-                ...state,
-                loadingActiveMediationDetails: true,
-                errorActiveMediationDetails: null,
-                // يمكنك اختيار مسح التفاصيل القديمة هنا أو عند النجاح فقط
-                // activeMediationDetails: null,
-            };
+            return { ...state, loadingActiveMediationDetails: true, errorActiveMediationDetails: null };
         case GET_MEDIATION_DETAILS_BY_ID_SUCCESS:
+            // عند جلب تفاصيل الوساطة، قد تحتوي على adminSubChats
+            // نخزنها في activeMediationDetails.adminSubChats
+            // ونقوم بتحديث adminSubChats.list أيضًا إذا كان هذا هو النزاع النشط
+            const currentAdmin = state.userReducer?.user; // افترض أن لديك userReducer
+            const currentAdminId = currentAdmin?._id;
             return {
                 ...state,
                 loadingActiveMediationDetails: false,
                 activeMediationDetails: payload,
+                adminSubChats: {
+                    ...state.adminSubChats,
+                    list: (payload.adminSubChats || []).map(sc => {
+                        let unreadCount = 0;
+                        if (sc.messages && currentAdminId) {
+                            sc.messages.forEach(msg => {
+                                if (msg.sender?._id !== currentAdminId && (!msg.readBy || !msg.readBy.some(r => r.readerId === currentAdminId))) {
+                                    unreadCount++;
+                                }
+                            });
+                        }
+                        return { ...sc, unreadMessagesCount: unreadCount };
+                    }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)),
+                    loading: false,
+                    error: null,
+                },
             };
         case GET_MEDIATION_DETAILS_BY_ID_FAIL:
-            return {
-                ...state,
-                loadingActiveMediationDetails: false,
-                errorActiveMediationDetails: payload,
-            };
+            return { ...state, loadingActiveMediationDetails: false, errorActiveMediationDetails: payload };
         case UPDATE_MEDIATION_DETAILS_FROM_SOCKET:
-            // تأكد من أن الـ payload هو كائن تفاصيل الوساطة المحدث
-            // وأن الـ ID يطابق الوساطة النشطة الحالية (إذا كان هناك واحدة)
             if (state.activeMediationDetails && state.activeMediationDetails._id === payload._id) {
+                const currentAdminForSocket = state.userReducer?.user;
+                const currentAdminIdForSocket = currentAdminForSocket?._id;
                 return {
                     ...state,
                     activeMediationDetails: payload,
+                    adminSubChats: { // تحديث قائمة الشاتات الفرعية أيضًا إذا تغيرت
+                        ...state.adminSubChats,
+                        list: (payload.adminSubChats || []).map(sc => {
+                            let unreadCount = 0;
+                            if (sc.messages && currentAdminIdForSocket) {
+                                sc.messages.forEach(msg => {
+                                    if (msg.sender?._id !== currentAdminIdForSocket && (!msg.readBy || !msg.readBy.some(r => r.readerId === currentAdminIdForSocket))) {
+                                        unreadCount++;
+                                    }
+                                });
+                            }
+                            return { ...sc, unreadMessagesCount: unreadCount };
+                        }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)),
+                    }
                 };
             }
-            return state; // إذا لم تكن الوساطة النشطة أو لا يوجد payload
+            return state;
         case CLEAR_ACTIVE_MEDIATION_DETAILS:
-            return {
-                ...state,
-                activeMediationDetails: null,
-                loadingActiveMediationDetails: false,
-                errorActiveMediationDetails: null,
-            };
+            return { ...state, activeMediationDetails: null, loadingActiveMediationDetails: false, errorActiveMediationDetails: null, adminSubChats: { ...initialState.adminSubChats }, activeSubChat: { ...initialState.activeSubChat } };
 
+        // --- Admin Resolve Dispute ---
         case ADMIN_RESOLVE_DISPUTE_REQUEST:
-            return {
-                ...state,
-                loadingResolveDispute: {
-                    ...state.loadingResolveDispute,
-                    [action.payload.mediationRequestId]: true,
-                },
-                errorResolveDispute: {
-                    ...state.errorResolveDispute,
-                    [action.payload.mediationRequestId]: null,
-                }
-            };
+            return { ...state, loadingResolveDispute: { ...state.loadingResolveDispute, [payload.mediationRequestId]: true }, errorResolveDispute: { ...state.errorResolveDispute, [payload.mediationRequestId]: null } };
         case ADMIN_RESOLVE_DISPUTE_SUCCESS:
-            // تحديث activeMediationDetails إذا كان هذا هو الطلب النشط
-            const updatedActiveDetails = state.activeMediationDetails?._id === action.payload.mediationRequestId
-                ? action.payload.updatedMediationRequest
-                : state.activeMediationDetails;
-
-            // (اختياري) تحديث قائمة النزاعات إذا كانت موجودة في هذا الـ reducer
-            // const updatedDisputedCases = (state.adminDisputedMediations?.requests || []).map(req =>
-            //     req._id === action.payload.mediationRequestId ? action.payload.updatedMediationRequest : req
-            // );
-
-            return {
-                ...state,
-                loadingResolveDispute: {
-                    ...state.loadingResolveDispute,
-                    [action.payload.mediationRequestId]: false,
-                },
-                activeMediationDetails: updatedActiveDetails,
-                // adminDisputedMediations: state.adminDisputedMediations ? {
-                //     ...state.adminDisputedMediations,
-                //     requests: updatedDisputedCases
-                // } : state.adminDisputedMediations,
-                // يمكنك أيضًا إزالة الطلب من قائمة النزاعات إذا أصبحت حالته "AdminResolved"
-            };
+            const updatedActiveDetails = state.activeMediationDetails?._id === payload.mediationRequestId ? payload.updatedMediationRequest : state.activeMediationDetails;
+            return { ...state, loadingResolveDispute: { ...state.loadingResolveDispute, [payload.mediationRequestId]: false }, activeMediationDetails: updatedActiveDetails };
         case ADMIN_RESOLVE_DISPUTE_FAIL:
+            return { ...state, loadingResolveDispute: { ...state.loadingResolveDispute, [payload.mediationRequestId]: false }, errorResolveDispute: { ...state.errorResolveDispute, [payload.mediationRequestId]: payload.error } };
+
+        // --- Admin Create Sub-Chat ---
+        case ADMIN_CREATE_SUBCHAT_REQUEST:
+            return { ...state, creatingSubChat: true, errorCreatingSubChat: null, successCreatingSubChat: false };
+        case ADMIN_CREATE_SUBCHAT_SUCCESS:
+            const newSubChatData = payload.subChat;
+            return {
+                ...state, creatingSubChat: false, successCreatingSubChat: true,
+                activeMediationDetails: state.activeMediationDetails ? { ...state.activeMediationDetails, adminSubChats: [...(state.activeMediationDetails.adminSubChats || []), newSubChatData].sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)) } : state.activeMediationDetails,
+                adminSubChats: { ...state.adminSubChats, list: [...state.adminSubChats.list, { ...newSubChatData, unreadMessagesCount: 0 }].sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)) }
+            };
+        case ADMIN_CREATE_SUBCHAT_FAIL:
+            return { ...state, creatingSubChat: false, errorCreatingSubChat: payload, successCreatingSubChat: false };
+        case ADMIN_CREATE_SUBCHAT_RESET:
+            return { ...state, creatingSubChat: false, errorCreatingSubChat: null, successCreatingSubChat: false };
+
+        // --- Admin Get All Sub-Chats ---
+        case ADMIN_GET_ALL_SUBCHATS_REQUEST:
+            return { ...state, adminSubChats: { ...state.adminSubChats, loading: true, error: null } };
+        case ADMIN_GET_ALL_SUBCHATS_SUCCESS:
+            const currentAdminForAllSub = state.userReducer?.user;
+            const currentAdminIdForAllSub = currentAdminForAllSub?._id;
             return {
                 ...state,
-                loadingResolveDispute: {
-                    ...state.loadingResolveDispute,
-                    [action.payload.mediationRequestId]: false,
-                },
-                errorResolveDispute: {
-                    ...state.errorResolveDispute,
-                    [action.payload.mediationRequestId]: action.payload.error,
+                adminSubChats: {
+                    list: (payload.subChats || []).map(sc => {
+                        let unreadCount = 0;
+                        if (sc.messages && currentAdminIdForAllSub) {
+                            sc.messages.forEach(msg => {
+                                if (msg.sender && msg.sender._id && msg.sender._id.toString() !== currentAdminIdForAllSub.toString() &&
+                                    (!msg.readBy || !msg.readBy.some(r => r.readerId && r.readerId.toString() === currentAdminIdForAllSub.toString()))) {
+                                    unreadCount++;
+                                }
+                            });
+                        }
+                        const otherParticipantsDisplay = sc.participants?.filter(p => p.userId?._id?.toString() !== currentAdminIdForAllSub?.toString()).map(p => p.userId?.fullName).join(', ') || "participants";
+                        const lastMessage = sc.messages && sc.messages.length > 0 ? sc.messages[sc.messages.length - 1] : null;
+                        let lastMessageSnippet = "No messages yet.";
+                        if (lastMessage) {
+                            if (lastMessage.type === 'text' && lastMessage.message) {
+                                lastMessageSnippet = lastMessage.message.substring(0, 30) + (lastMessage.message.length > 30 ? "..." : "");
+                            } else if (lastMessage.type === 'image') {
+                                lastMessageSnippet = "[Image]";
+                            } else if (lastMessage.type === 'file') {
+                                lastMessageSnippet = "[File]";
+                            } else if (lastMessage.type === 'system' && lastMessage.message) {
+                                lastMessageSnippet = `[System] ${lastMessage.message.substring(0, 20)}...`;
+                            }
+                        }
+                        return { ...sc, unreadMessagesCount: unreadCount, otherPartyDisplay: otherParticipantsDisplay, lastMessageSnippet: lastMessageSnippet };
+                    }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)),
+                    loading: false, error: null
                 }
+            };
+        case ADMIN_GET_ALL_SUBCHATS_FAIL:
+            return { ...state, adminSubChats: { ...state.adminSubChats, list: [], loading: false, error: payload } };
+
+        // --- Admin Get Messages for a Specific Sub-Chat ---
+        case SET_ACTIVE_SUBCHAT_ID:
+            return { ...state, activeSubChat: { ...initialState.activeSubChat, id: payload } };
+        case ADMIN_GET_SUBCHAT_MESSAGES_REQUEST:
+            return { ...state, activeSubChat: { ...state.activeSubChat, id: payload.subChatId, loadingMessages: true, errorMessages: null, messages: state.activeSubChat.id === payload.subChatId ? state.activeSubChat.messages : [] } };
+        case ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS:
+            if (state.activeSubChat.id === payload.subChatId) {
+                return { ...state, activeSubChat: { details: { subChatId: payload.subChatId, title: payload.title, createdBy: payload.createdBy, participants: payload.participants }, messages: payload.messages || [], loadingMessages: false, errorMessages: null, id: payload.subChatId } };
+            }
+            return state;
+        case ADMIN_GET_SUBCHAT_MESSAGES_FAIL:
+            if (state.activeSubChat.id === payload.subChatId) {
+                return { ...state, activeSubChat: { ...state.activeSubChat, loadingMessages: false, errorMessages: payload.error } };
+            }
+            return state;
+        case CLEAR_ACTIVE_SUBCHAT_MESSAGES:
+            return { ...state, activeSubChat: { ...initialState.activeSubChat } };
+
+        // --- Socket IO Updates for Admin Sub-Chats ---
+        case ADMIN_SUBCHAT_CREATED_SOCKET:
+            // payload هو { mediationRequestId, subChat }
+            // subChat هو الكائن الكامل للشات الفرعي الجديد مع populated participants, createdBy, messages
+            if (state.activeMediationDetails?._id === payload.mediationRequestId) {
+                const newSubChatFromSocket = { ...payload.subChat, unreadMessagesCount: 0 }; // افترض أن الشات الجديد ليس به رسائل غير مقروءة للمستقبل عند الإنشاء
+                const currentUserIdForCreated = state.userReducer?.user?._id;
+                const isAdminUser = state.userReducer?.user?.userRole === 'Admin';
+
+                // تحقق إذا كان المستخدم الحالي مشاركًا في هذا الشات الجديد أو هو أدمن
+                const isCurrentUserParticipantOrAdmin = isAdminUser ||
+                    newSubChatFromSocket.participants.some(p => p.userId?._id === currentUserIdForCreated);
+
+                if (isCurrentUserParticipantOrAdmin) {
+                    const existingActiveMediationSubChats = state.activeMediationDetails.adminSubChats || [];
+                    // تجنب إضافة الشات إذا كان موجودًا بالفعل (قد يحدث إذا كان الأدمن هو من أنشأه وتلقى الحدث أيضًا)
+                    if (existingActiveMediationSubChats.some(sc => sc.subChatId === newSubChatFromSocket.subChatId)) {
+                        return state;
+                    }
+                    const updatedAdminSubChatsForDetails = [...existingActiveMediationSubChats, newSubChatFromSocket]
+                        .sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
+
+                    let updatedAdminListForAdminUser = state.adminSubChats.list;
+                    if (isAdminUser) {
+                        if (!state.adminSubChats.list.some(sc => sc.subChatId === newSubChatFromSocket.subChatId)) {
+                            updatedAdminListForAdminUser = [...state.adminSubChats.list, newSubChatFromSocket]
+                                .sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
+                        }
+                    }
+
+                    return {
+                        ...state,
+                        activeMediationDetails: {
+                            ...state.activeMediationDetails,
+                            adminSubChats: updatedAdminSubChatsForDetails
+                        },
+                        adminSubChats: isAdminUser ? {
+                            ...state.adminSubChats,
+                            list: updatedAdminListForAdminUser
+                        } : state.adminSubChats
+                    };
+                }
+            }
+            return state;
+
+        case NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET:
+            const { mediationRequestId: receivedMedId, subChatId: receivedSubChatId, message: newMessage } = payload;
+            const currentUserIdForReducer = state.userReducer?.user?._id; // افترض وجود userReducer في root state
+
+            let updatedActiveSubChatMessages = state.activeSubChat.messages;
+            let updatedActiveSubChatDetails = state.activeSubChat.details;
+
+            // 1. تحديث الشات النشط إذا كان هو المستهدف
+            if (state.activeSubChat.id === receivedSubChatId && state.activeMediationDetails?._id === receivedMedId) {
+                // تجنب إضافة الرسالة إذا كانت موجودة بالفعل (للأمان، نادرًا ما يحدث)
+                if (!state.activeSubChat.messages.some(m => m._id === newMessage._id)) {
+                    updatedActiveSubChatMessages = [...state.activeSubChat.messages, newMessage];
+                }
+                if (updatedActiveSubChatDetails) {
+                    updatedActiveSubChatDetails = {
+                        ...updatedActiveSubChatDetails,
+                        lastMessageAt: newMessage.timestamp,
+                        // إذا كنت تخزن الرسائل في details أيضًا، قم بتحديثها
+                        messages: updatedActiveSubChatDetails.messages ?
+                            (updatedActiveSubChatDetails.messages.some(m => m._id === newMessage._id) ?
+                                updatedActiveSubChatDetails.messages :
+                                [...updatedActiveSubChatDetails.messages, newMessage]
+                            ) : [newMessage]
+                    };
+                }
+            }
+
+            const updateSubChatInList = (subChatList) => {
+                return subChatList.map(sc => {
+                    if (sc.subChatId === receivedSubChatId) {
+                        let unreadCount = sc.unreadMessagesCount || 0;
+                        if (newMessage.sender && newMessage.sender._id !== currentUserIdForReducer && state.activeSubChat.id !== receivedSubChatId) {
+                            unreadCount++;
+                        }
+                        const updatedMessagesArray = sc.messages ?
+                            (sc.messages.some(m => m._id === newMessage._id) ? sc.messages : [...sc.messages, newMessage])
+                            : [newMessage];
+
+                        return {
+                            ...sc,
+                            messages: updatedMessagesArray.slice(-30), // احتفظ بآخر 30 رسالة مثلاً
+                            lastMessageAt: newMessage.timestamp,
+                            unreadMessagesCount: unreadCount
+                        };
+                    }
+                    return sc;
+                }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)); // إعادة الترتيب
+            };
+
+            // 2. تحديث قائمة الشاتات العامة (adminSubChats.list) إذا كان المستخدم أدمن
+            let finalAdminSubChatsList = state.adminSubChats.list;
+            if (state.userReducer?.user?.userRole === 'Admin') {
+                finalAdminSubChatsList = updateSubChatInList(state.adminSubChats.list);
+            }
+
+            // 3. تحديث الشاتات ضمن activeMediationDetails (لجميع المشاركين في النزاع النشط)
+            let finalActiveMediationSubChats = state.activeMediationDetails?.adminSubChats;
+            if (state.activeMediationDetails?._id === receivedMedId && state.activeMediationDetails?.adminSubChats) {
+                finalActiveMediationSubChats = updateSubChatInList(state.activeMediationDetails.adminSubChats);
+            }
+
+            return {
+                ...state,
+                activeSubChat: {
+                    ...state.activeSubChat,
+                    messages: updatedActiveSubChatMessages,
+                    details: updatedActiveSubChatDetails
+                },
+                adminSubChats: {
+                    ...state.adminSubChats,
+                    list: finalAdminSubChatsList
+                },
+                activeMediationDetails: state.activeMediationDetails ? {
+                    ...state.activeMediationDetails,
+                    adminSubChats: finalActiveMediationSubChats || state.activeMediationDetails.adminSubChats
+                } : null
+            };
+
+        case ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET:
+            if (state.activeMediationDetails?._id === payload.mediationRequestId && state.activeSubChat.id === payload.subChatId) {
+                return {
+                    ...state,
+                    activeSubChat: {
+                        ...state.activeSubChat,
+                        messages: state.activeSubChat.messages.map(msg => {
+                            const updateInfo = payload.updatedMessages.find(um => um._id === msg._id);
+                            if (updateInfo) {
+                                const existingReadBy = msg.readBy || [];
+                                const newReadByEntries = updateInfo.readBy.filter(newEntry =>
+                                    !existingReadBy.some(existingEntry => existingEntry.readerId === newEntry.readerId)
+                                );
+                                return { ...msg, readBy: [...existingReadBy, ...newReadByEntries] };
+                            }
+                            return msg;
+                        })
+                    }
+                };
+            }
+            return state;
+
+
+        case UPDATE_SINGLE_MEDIATION_REQUEST_IN_STORE:
+            const updatedRequest = action.payload;
+            if (!updatedRequest || !updatedRequest._id) return state;
+
+            // تحديث قائمة طلبات المشتري
+            const buyerList = state.buyerRequests.list || []; // تأكد من وجود قائمة ابتدائية
+            const buyerRequestExists = buyerList.some(req => req._id === updatedRequest._id);
+            let updatedBuyerRequestsList;
+
+            if (buyerRequestExists) {
+                updatedBuyerRequestsList = buyerList.map(req =>
+                    req._id === updatedRequest._id ? updatedRequest : req
+                );
+            } else {
+                // إذا كان هذا الطلب يخص المشتري الحالي، أضفه (مهم لسيناريو 'new_mediation_request_for_buyer')
+                // وفي هذا السيناريو (mediatorAcceptAssignment)، الطلب يجب أن يكون موجودًا بالفعل في قائمة المشتري.
+                // ولكن، لن يضر التحقق والإضافة إذا لم يكن موجودًا لسبب ما.
+                if (updatedRequest.buyer?._id === state.userReducer?.user?._id) { // تأكد من وجود state.userReducer.user
+                    updatedBuyerRequestsList = [updatedRequest, ...buyerList];
+                } else {
+                    updatedBuyerRequestsList = buyerList;
+                }
+            }
+
+            // يمكنك إضافة منطق مماثل لتحديث قائمة البائع sellerRequests إذا كانت لديك
+            return {
+                ...state,
+                buyerRequests: {
+                    ...state.buyerRequests, // حافظ على بقية خصائص buyerRequests مثل totalPages
+                    list: updatedBuyerRequestsList
+                },
+                // sellerRequests: { ... }
             };
 
         default:

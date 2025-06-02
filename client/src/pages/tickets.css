@@ -1,0 +1,19 @@
+.ticket-list-item:hover {
+    background-color: #f8f9fa;
+    /* لون خفيف عند المرور */
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.ticket-item-title {
+    color: var(--bs-primary);
+    /* أو لونك الأساسي */
+    font-weight: 600;
+}
+
+.ticket-status-badge {
+    font-size: 0.75rem;
+    min-width: 80px;
+    /* لتوحيد عرض الشارات قليلاً */
+    text-align: center;
+}

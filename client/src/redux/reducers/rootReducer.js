@@ -11,6 +11,7 @@ import depositRequestReducer from "./depositRequestReducer";
 import withdrawalRequestReducer from "./withdrawalRequestReducer";
 import mediationReducer from "./mediationReducer";
 import ratingReducer from './ratingReducer';
+import { ticketReducer } from './ticketReducer';
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
     // --- [!!!] إضافة الـ Reducer الجديد [!!!] ---
     mediationReducer,
     ratingReducer,
+    ticketReducer,
     // orderReducer,
     // cartReducer,
 });

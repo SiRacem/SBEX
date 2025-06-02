@@ -15,7 +15,7 @@ import {
     UPDATE_AVATAR_FAIL,
     UPDATE_AVATAR_RESET,
     SET_ONLINE_USERS,
-    SET_USER_BALANCES,
+    UPDATE_USER_BALANCES_SOCKET,
 } from "../actionTypes/userActionType";
 import { toast } from 'react-toastify';
 import { clearNotifications } from './notificationAction';
@@ -273,9 +273,9 @@ export const setOnlineUsers = (onlineUserIds) => ({
     payload: onlineUserIds,
 });
 
-export const updateUserBalances = (balances) => (dispatch) => {
-    dispatch({
-        type: SET_USER_BALANCES,
-        payload: balances
-    });
+export const updateUserBalances = (balanceData) => (dispatch) => {
+  dispatch({
+    type: UPDATE_USER_BALANCES_SOCKET,
+    payload: balanceData
+  });
 };

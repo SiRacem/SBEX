@@ -1,15 +1,14 @@
-// server/router/mediation.router.js
 const express = require('express');
 const router = express.Router();
 const { verifyAuth } = require('../middlewares/verifyAuth');
-const multer = require("multer");
+const multer = require("multer"); // ستحتاجه إذا أردت إرفاق ملفات في الشات الفرعي
 const path = require("path");
 const fs = require("fs");
-const { uploadChatImage } = require("../controllers/mediation.controller");
-const { isAdmin, isAssignedMediator } = require('../middlewares/roleCheck');
-// const uploadChatImage = require('../middlewares/uploadChatImage');
-const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck'); // Middleware جديد
+
+// استيراد middleware و controllers
+const { isAdmin, isAssignedMediator, canAccessAdminSubChat } = require('../middlewares/roleCheck'); // أضف canAccessAdminSubChat
 const {
+    // ... (جميع الـ controllers الموجودة لديك) ...
     adminGetPendingAssignmentRequests,
     adminAssignMediator,
     getAvailableRandomMediators,
@@ -24,16 +23,25 @@ const {
     buyerRejectMediation,
     getMediationChatHistory,
     getMediationRequestDetailsController,
-    handleChatImageUpload,
+    uploadChatImage, // <--- تأكد من أن هذا هو الـ controller وليس الـ middleware مباشرة
+    handleChatImageUpload, // أو إذا كان اسم الدالة هكذا
     getMyMediationSummariesController,
     buyerConfirmReceiptController,
     openDisputeController,
     getMediatorDisputedCasesController,
     adminGetDisputedCasesController,
-    adminResolveDisputeController
-} = require('../controllers/mediation.controller');
-const isQualifiedMediator = require('../middlewares/isQualifiedMediator'); // <--- استيراد الـ middleware الجديد
+    adminResolveDisputeController,
 
+    // --- [!!!] Controllers جديدة للشات الفرعي [!!!] ---
+    adminCreateSubChatController,
+    adminSendSubChatMessageController,
+    adminGetSubChatMessagesController,
+    adminGetAllSubChatsForDisputeController, // لجلب قائمة الشاتات الفرعية للأدمن
+    adminMarkSubChatMessagesReadController // لقراءة الرسائل
+
+} = require('../controllers/mediation.controller');
+const isQualifiedMediator = require('../middlewares/isQualifiedMediator');
+const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck');
 // --- مسارات الأدمن ---
 
 // GET /mediation/admin/pending-assignment - جلب الطلبات التي تنتظر تعيين وسيط
@@ -163,5 +171,49 @@ router.get('/admin/disputed-cases', verifyAuth, isAdmin, adminGetDisputedCasesCo
 
 // مسار لحل النزاع من قبل الأدمن
 router.put('/admin/resolve-dispute/:mediationRequestId', verifyAuth, isAdmin, adminResolveDisputeController);
+
+// --- [!!!] مسارات جديدة للشات الفرعي الخاص بالأدمن [!!!] ---
+
+// (Admin) إنشاء شات فرعي جديد داخل نزاع
+router.post(
+    '/:mediationRequestId/admin/subchats',
+    verifyAuth,
+    isAdmin, // فقط الأدمن يمكنه إنشاء شات فرعي
+    adminCreateSubChatController
+);
+
+// (Admin) جلب جميع الشاتات الفرعية لنزاع معين (لعرض قائمة بها للأدمن)
+router.get(
+    '/:mediationRequestId/admin/subchats',
+    verifyAuth,
+    isAdmin, // فقط الأدمن يمكنه رؤية قائمة جميع الشاتات الفرعية
+    adminGetAllSubChatsForDisputeController
+);
+
+// (Admin/Participant) إرسال رسالة في شات فرعي محدد
+router.post(
+    '/:mediationRequestId/admin/subchats/:subChatId/messages',
+    verifyAuth,
+    canAccessAdminSubChat, // الأدمن أو المشارك في الشChat الفرعي
+    // يمكنك استخدام نفس middleware رفع الصور للشات الرئيسي هنا إذا أردت
+    // upload.single("image"), // إذا كنت ستسمح برفع الصور
+    adminSendSubChatMessageController
+);
+
+// (Admin/Participant) جلب رسائل شات فرعي محدد
+router.get(
+    '/:mediationRequestId/admin/subchats/:subChatId/messages',
+    verifyAuth,
+    canAccessAdminSubChat, // الأدمن أو المشارك في الشChat الفرعي
+    adminGetSubChatMessagesController
+);
+
+// (Admin/Participant) وضع علامة على الرسائل كمقروءة في شات فرعي
+router.post(
+    '/:mediationRequestId/admin/subchats/:subChatId/messages/read',
+    verifyAuth,
+    canAccessAdminSubChat,
+    adminMarkSubChatMessagesReadController
+);
 
 module.exports = router;

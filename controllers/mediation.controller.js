@@ -1,4 +1,4 @@
-// server/controllers/mediation.controller.js
+// controllers/mediation.controller.js
 const MediationRequest = require('../models/MediationRequest');
 const User = require('../models/User');
 const Product = require('../models/Product');
@@ -377,16 +377,47 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
         await session.commitTransaction();
         console.log("   sellerAssignSelectedMediator transaction committed successfully.");
 
-        const finalResponseRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
-            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency')
-            .populate('seller', 'fullName avatarUrl')
-            .populate('buyer', 'fullName avatarUrl')
-            .populate('mediator', 'fullName avatarUrl')
+        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO لتحديث تفاصيل الوساطة والمنتج !!!] ---
+        // جلب النسخة النهائية المحدثة من طلب الوساطة والمنتج المرتبط به
+        const finalPopulatedMediationRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
+            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency user buyer bids.user') // Populate Product بشكل كامل
+            .populate('seller', 'fullName avatarUrl _id')
+            .populate('buyer', 'fullName avatarUrl _id')
+            .populate('mediator', 'fullName avatarUrl _id') // الوسيط المختار
             .lean();
+
+        if (req.io && finalPopulatedMediationRequest) {
+            // 1. إرسال تحديث لطلب الوساطة لجميع الأطراف المعنية به
+            const involvedUserIds = [
+                finalPopulatedMediationRequest.seller?._id?.toString(),
+                finalPopulatedMediationRequest.buyer?._id?.toString(),
+                finalPopulatedMediationRequest.mediator?._id?.toString() // الوسيط الآن جزء من الأطراف المعنية
+            ].filter(id => id); // إزالة القيم الفارغة
+
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
+
+            uniqueInvolvedUserIds.forEach(involvedUserIdString => {
+                if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
+                    req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
+                        mediationRequestId: finalPopulatedMediationRequest._id.toString(),
+                        updatedMediationRequestData: finalPopulatedMediationRequest // أرسل طلب الوساطة المحدث بالكامل
+                    });
+                    console.log(`   [Socket] Emitted 'mediation_request_updated' to user ${involvedUserIdString} for request ${finalPopulatedMediationRequest._id}`);
+                }
+            });
+
+            // 2. إرسال تحديث للمنتج (لأن حالته و currentMediationRequest تغيرتا)
+            if (finalPopulatedMediationRequest.product) {
+                req.io.emit('product_updated', finalPopulatedMediationRequest.product);
+                console.log(`   [Socket] Emitted 'product_updated' for product ${finalPopulatedMediationRequest.product._id} after mediator assignment.`);
+            }
+        }
+        // --- نهاية التعديل ---
+
 
         res.status(200).json({
             msg: `Mediator ${mediatorUser.fullName} has been assigned. They will be notified.`,
-            mediationRequest: finalResponseRequest
+            mediationRequest: finalPopulatedMediationRequest // أرجع طلب الوساطة المحدث بالكامل
         });
 
     } catch (error) {
@@ -470,12 +501,12 @@ exports.mediatorAcceptAssignment = async (req, res) => {
 
         // جلب البيانات المعبأة للإشعارات
         const populatedRequest = await MediationRequest.findById(mediationRequest._id)
-            .populate('product', 'title')
-            .populate('seller', '_id fullName') // نحتاج _id و fullName
-            .populate('buyer', '_id fullName')  // نحتاج _id و fullName
-            .populate('mediator', '_id fullName')// نحتاج _id و fullName
-            .lean() // استخدام lean هنا آمن لأننا لا نعدل الكائن بعد الآن
-            .session(session);
+            .populate('product', 'title _id status agreedPrice imageUrls currency')
+            .populate('seller', '_id fullName avatarUrl') // تأكد من وجود _id
+            .populate('buyer', '_id fullName avatarUrl')   // <--- تأكد من وجود _id هنا
+            .populate('mediator', '_id fullName avatarUrl')
+            .lean()
+            .session(session); // إذا كان لا يزال ضمن session
 
         if (!populatedRequest) {
             // هذا لا يجب أن يحدث
@@ -523,6 +554,34 @@ exports.mediatorAcceptAssignment = async (req, res) => {
 
         await session.commitTransaction();
         console.log("   mediatorAcceptAssignment transaction committed.");
+
+        // --- [!!! استخدام 'populatedRequest' هنا بدلاً من الاسم الخاطئ !!!] ---
+        if (req.io && populatedRequest) { // تحقق من populatedRequest
+            const involvedUserIds = [
+                populatedRequest.seller?._id?.toString(),
+                populatedRequest.buyer?._id?.toString(),
+                populatedRequest.mediator?._id?.toString()
+            ].filter(id => id);
+
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
+
+            uniqueInvolvedUserIds.forEach(involvedUserIdString => {
+                if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
+                    req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
+                        mediationRequestId: populatedRequest._id.toString(),
+                        updatedMediationRequestData: populatedRequest // أرسل populatedRequest
+                    });
+                    console.log(`   [Socket] Emitted 'mediation_request_updated' to user ${involvedUserIdString} for request ${populatedRequest._id} after mediator accepted.`);
+                }
+            });
+
+            // (اختياري) إرسال تحديث للمنتج
+            if (populatedRequest.product) {
+                req.io.emit('product_updated', populatedRequest.product);
+                console.log(`   [Socket] Emitted 'product_updated' for product ${populatedRequest.product._id} after mediator accepted (if status changed).`);
+            }
+        }
+        // --- نهاية التعديل ---
 
         res.status(200).json({
             msg: "Mediation assignment accepted successfully. Parties will be notified to confirm readiness.",
@@ -1180,55 +1239,233 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
 // --- Buyer: Reject Mediation ---
 exports.buyerRejectMediation = async (req, res) => {
-    // ... (الكود الكامل لهذه الدالة كما قدمته سابقاً، بدون تغييرات هنا) ...
-    const { mediationRequestId } = req.params;
-    const buyerId = req.user._id;
-    const { reason } = req.body;
+    const { mediationRequestId } = req.params; // ID طلب الوساطة من مسار الطلب
+    const buyerId = req.user._id; // ID المستخدم الحالي (المشتري) من المصادقة
+    const { reason } = req.body; // سبب الإلغاء من جسم الطلب
+    const buyerFullName = req.user.fullName || `Buyer (${buyerId.toString().slice(-4)})`; // اسم المشتري الكامل للإشعارات
+
+    console.log(`--- Controller: buyerRejectMediation for Request: ${mediationRequestId} by Buyer: ${buyerId} ---`);
+    console.log(`   Reason for cancellation: "${reason}"`);
+
+    // 1. التحقق الأولي من المدخلات
+    if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        console.warn("   Validation Error: Invalid Mediation Request ID format.");
+        return res.status(400).json({ msg: "Invalid Mediation Request ID." });
+    }
+    if (!reason || reason.trim() === "") {
+        console.warn("   Validation Error: Rejection reason is required.");
+        return res.status(400).json({ msg: "Rejection reason is required to cancel mediation." });
+    }
+
+    // 2. بدء معاملة قاعدة البيانات
     const session = await mongoose.startSession();
     session.startTransaction();
-    try {
-        const mediationRequest = await MediationRequest.findById(mediationRequestId).populate('product', 'title _id user').populate('seller', 'fullName _id').populate('mediator', 'fullName _id').session(session);
-        if (!mediationRequest) throw new Error("Mediation request not found.");
-        if (!mediationRequest.buyer.equals(buyerId)) throw new Error("Forbidden: Not the buyer.");
-        if (!['MediatorAssigned', 'MediationOfferAccepted'].includes(mediationRequest.status)) throw new Error(`Action not allowed. Status is '${mediationRequest.status}'.`);
-        if (!reason || reason.trim() === "") throw new Error("Rejection reason required.");
+    console.log("   MongoDB session started for buyerRejectMediation.");
 
+    let productIdThatWasUpdated = null; // متغير لتخزين ID المنتج إذا تم تحديث حالته
+
+    try {
+        // 3. جلب طلب الوساطة مع populate للمنتج، البائع، والوسيط
+        console.log("   Fetching mediation request details from database...");
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .populate('product', 'title _id user status currentMediationRequest') // 'user' هنا هو ID بائع المنتج
+            .populate('seller', '_id fullName') // معلومات البائع
+            .populate('mediator', '_id fullName') // معلومات الوسيط (إذا كان معينًا)
+            .session(session);
+
+        // 4. التحقق من وجود طلب الوساطة وصلاحيات المشتري
+        if (!mediationRequest) {
+            console.error(`   Error: Mediation request ${mediationRequestId} not found.`);
+            throw new Error("Mediation request not found.");
+        }
+        if (!mediationRequest.buyer.equals(buyerId)) {
+            console.warn(`   Authorization Error: User ${buyerId} is not the buyer for request ${mediationRequestId}.`);
+            throw new Error("Forbidden: You are not the buyer for this request.");
+        }
+
+        // 5. التحقق من أن حالة الطلب تسمح بالإلغاء من قبل المشتري
+        // (مثال: يمكن الإلغاء إذا كان الوسيط قد تم تعيينه أو قبل المهمة، ولكن قبل أن يؤكد المشتري الدفع)
+        const allowedStatusesForBuyerCancellation = ['MediatorAssigned', 'MediationOfferAccepted'];
+        if (!allowedStatusesForBuyerCancellation.includes(mediationRequest.status)) {
+            console.warn(`   Action Not Allowed: Cannot cancel mediation. Current status is '${mediationRequest.status}'.`);
+            throw new Error(`Action not allowed. Current mediation status is '${mediationRequest.status}'.`);
+        }
+
+        // 6. تحديث حالة طلب الوساطة إلى 'Cancelled'
         const originalStatus = mediationRequest.status;
         mediationRequest.status = 'Cancelled';
-        mediationRequest.history.push({ event: "Buyer rejected/cancelled mediation", userId: buyerId, details: { reason, previousStatus: originalStatus }, timestamp: new Date() });
-        const updatedRequest = await mediationRequest.save({ session });
+        mediationRequest.cancellationDetails = { // إضافة تفاصيل الإلغاء
+            cancelledBy: buyerId,
+            cancelledByType: 'Buyer',
+            reason: reason.trim(), // سبب الإلغاء
+            cancelledAt: new Date()
+        };
+        if (!Array.isArray(mediationRequest.history)) {
+            mediationRequest.history = [];
+        }
+        mediationRequest.history.push({
+            event: "Buyer cancelled mediation",
+            userId: buyerId,
+            details: { reason: reason.trim(), previousStatus: originalStatus },
+            timestamp: new Date()
+        });
 
+        const updatedMediationRequestDoc = await mediationRequest.save({ session });
+        console.log(`   MediationRequest ${updatedMediationRequestDoc._id} status updated to 'Cancelled'.`);
+
+        // 7. إعادة المنتج المرتبط إلى حالة 'approved' إذا كان لا يزال مرتبطًا بهذا الطلب ولم يتم بيعه/إكماله
         if (mediationRequest.product?._id) {
             const productDoc = await Product.findById(mediationRequest.product._id).session(session);
-            if (productDoc && !['sold', 'Completed'].includes(productDoc.status)) {
-                productDoc.status = 'approved';
-                productDoc.currentMediationRequest = null;
+            if (productDoc &&
+                !['sold', 'Completed'].includes(productDoc.status) && // المنتج لم يباع أو يكتمل
+                productDoc.currentMediationRequest && productDoc.currentMediationRequest.equals(mediationRequest._id) // المنتج لا يزال مرتبطًا بهذا الطلب
+            ) {
+                productDoc.status = 'approved'; // إعادة المنتج ليكون متاحًا
+                productDoc.currentMediationRequest = null; // إزالة الارتباط بطلب الوساطة الملغى
+                productDoc.buyer = null; // إزالة المشتري المرتبط بهذا العرض السابق
+                productDoc.agreedPrice = null; // إزالة السعر المتفق عليه
                 await productDoc.save({ session });
+                productIdThatWasUpdated = productDoc._id; // احفظ ID المنتج الذي تم تحديثه
+                console.log(`   Product ${productDoc._id} status reset to 'approved', mediation link and buyer info removed.`);
+            } else if (productDoc) {
+                console.log(`   Product ${productDoc._id} not reset. Current status: ${productDoc.status}. Linked mediation: ${productDoc.currentMediationRequest}`);
             }
         }
+
+        // 8. تحديث حالة الوسيط (إذا كان معينًا) إلى 'Available' إذا لم يكن لديه مهام أخرى نشطة
         if (mediationRequest.mediator?._id) {
-            const otherActive = await MediationRequest.countDocuments({ mediator: mediationRequest.mediator._id, status: { $in: ['MediatorAssigned', 'MediationOfferAccepted', 'InProgress', 'PartiesConfirmed'] } }).session(session);
-            if (otherActive === 0) {
+            const otherActiveAssignmentsForMediator = await MediationRequest.countDocuments({
+                mediator: mediationRequest.mediator._id,
+                status: { $in: ['MediatorAssigned', 'MediationOfferAccepted', 'InProgress', 'PartiesConfirmed', 'EscrowFunded'] }
+            }).session(session);
+
+            if (otherActiveAssignmentsForMediator === 0) {
                 await User.findByIdAndUpdate(mediationRequest.mediator._id, { $set: { mediatorStatus: 'Available' } }, { session });
+                console.log(`   Mediator ${mediationRequest.mediator._id} status updated to 'Available'.`);
+            } else {
+                console.log(`   Mediator ${mediationRequest.mediator._id} has ${otherActiveAssignmentsForMediator} other active assignments, status remains unchanged.`);
             }
         }
 
-        const productTitle = mediationRequest.product?.title || 'transaction';
-        const buyerName = req.user.fullName || 'Buyer';
-        await Notification.create([
-            { user: mediationRequest.seller._id, type: 'MEDIATION_REJECTED_BY_BUYER', title: 'Mediation Cancelled by Buyer', message: `${buyerName} cancelled mediation for "${productTitle}". Reason: "${reason}".`, relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' } },
-            ...(mediationRequest.mediator?._id ? [{ user: mediationRequest.mediator._id, type: 'MEDIATION_CANCELLED_BY_PARTY', title: 'Mediation Cancelled by Buyer', message: `Mediation for "${productTitle}" cancelled by buyer ${buyerName}. Reason: "${reason}".`, relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' } }] : []),
-            { user: buyerId, type: 'MEDIATION_CANCELLATION_CONFIRMED', title: 'Cancellation Confirmed', message: `You cancelled mediation for "${productTitle}".`, relatedEntity: { id: updatedRequest._id, modelName: 'MediationRequest' } }
-        ], { session });
+        // 9. إنشاء وإرسال الإشعارات للأطراف المعنية
+        const productTitleForNotification = mediationRequest.product?.title || 'the transaction';
+        const notifications = [
+            { // إشعار للبائع
+                user: mediationRequest.seller._id,
+                type: 'MEDIATION_CANCELLED_BY_BUYER', // نوع مميز
+                title: 'Mediation Cancelled by Buyer',
+                message: `${buyerFullName} has cancelled the mediation for product "${productTitleForNotification}". Reason: "${reason.trim()}". The product may now be available for new bids.`,
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            },
+            { // إشعار للمشتري (تأكيد الإلغاء)
+                user: buyerId,
+                type: 'MEDIATION_CANCELLATION_CONFIRMED',
+                title: 'Mediation Cancellation Confirmed',
+                message: `You have successfully cancelled the mediation for product "${productTitleForNotification}".`,
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            }
+        ];
+        if (mediationRequest.mediator?._id) { // إذا كان هناك وسيط، أرسل له إشعارًا
+            notifications.push({
+                user: mediationRequest.mediator._id,
+                type: 'MEDIATION_CANCELLED_BY_PARTY',
+                title: 'Mediation Cancelled by Buyer',
+                message: `The mediation for product "${productTitleForNotification}" (between seller ${mediationRequest.seller.fullName} and buyer ${buyerFullName}) has been cancelled by the buyer. Reason: "${reason.trim()}".`,
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            });
+        }
 
+        const createdNotifications = await Notification.insertMany(notifications, { session, ordered: true });
+        console.log("   Cancellation notifications created and saved in DB.");
+
+        // إرسال إشعارات السوكيت الفورية
+        if (req.io && req.onlineUsers) {
+            createdNotifications.forEach(notificationDoc => {
+                const targetUserSocketId = req.onlineUsers[notificationDoc.user.toString()];
+                if (targetUserSocketId) {
+                    req.io.to(targetUserSocketId).emit('new_notification', notificationDoc.toObject());
+                    console.log(`   [Socket] Sent 'new_notification' for cancellation to user ${notificationDoc.user}.`);
+                }
+            });
+        }
+
+        // 10. إتمام المعاملة (Commit)
         await session.commitTransaction();
-        res.status(200).json({ msg: "Mediation cancelled.", mediationRequest: await MediationRequest.findById(updatedRequest._id).populate('product seller buyer mediator').lean() });
+        console.log("   buyerRejectMediation transaction committed successfully.");
+
+        // --- [!!! إرسال أحداث Socket.IO بعد الـ Commit لتحديث الواجهات !!!] ---
+        // 10.1. إرسال تحديث لطلب الوساطة الملغى
+        const finalPopulatedMediationRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
+            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency user buyer bids.user')
+            .populate('seller', 'fullName avatarUrl _id')
+            .populate('buyer', 'fullName avatarUrl _id')
+            .populate('mediator', 'fullName avatarUrl _id') // سيكون null إذا لم يتم تعيينه أو أُزيل
+            .lean();
+
+        if (req.io && finalPopulatedMediationRequest) {
+            const involvedUserIds = [
+                finalPopulatedMediationRequest.seller?._id?.toString(),
+                finalPopulatedMediationRequest.buyer?._id?.toString(),
+                finalPopulatedMediationRequest.mediator?._id?.toString() // قد يكون الوسيط null
+            ].filter(id => id); // إزالة القيم الفارغة (مثل الوسيط إذا كان null)
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
+
+            uniqueInvolvedUserIds.forEach(involvedUserIdString => {
+                if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
+                    req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
+                        mediationRequestId: finalPopulatedMediationRequest._id.toString(),
+                        updatedMediationRequestData: finalPopulatedMediationRequest
+                    });
+                    console.log(`   [Socket] Emitted 'mediation_request_updated' to user ${involvedUserIdString} for cancelled request ${finalPopulatedMediationRequest._id}.`);
+                }
+            });
+        }
+
+        // 2. إرسال تحديث للمنتج إذا تم تحديثه
+        if (req.io && productIdThatWasUpdated) {
+            // --- [!!! جلب المنتج المحدث بالكامل مرة أخرى لإرساله عبر السوكيت !!!] ---
+            const productToSendViaSocket = await Product.findById(productIdThatWasUpdated)
+                .populate('user', 'fullName email avatarUrl')
+                .populate('bids.user', 'fullName email avatarUrl')
+                .populate('buyer', 'fullName email avatarUrl') // سيكون null
+                .populate({ path: 'currentMediationRequest', select: '_id status' }) // سيكون null
+                .lean();
+
+            if (productToSendViaSocket) {
+                console.log(`   [Socket buyerRejectMediation] Emitting 'product_updated' with product data:`, JSON.stringify(productToSendViaSocket, null, 2));
+                req.io.emit('product_updated', productToSendViaSocket); // أرسل المنتج المحدث بالكامل
+            } else {
+                console.warn(`   [Socket buyerRejectMediation] Product ${productIdThatWasUpdated} (after status reset) not found for socket emit.`);
+            }
+        }
+        // --- نهاية إرسال أحداث Socket.IO ---
+
+        // 11. إرسال استجابة ناجحة للعميل
+        res.status(200).json({
+            msg: "Mediation cancelled successfully.",
+            mediationRequest: finalPopulatedMediationRequest // أرجع طلب الوساطة المحدث (الملغى)
+        });
+
     } catch (error) {
-        if (session.inTransaction()) await session.abortTransaction();
-        console.error("Error in buyerRejectMediation:", error);
-        res.status(400).json({ msg: error.message || 'Failed to cancel mediation.' });
+        // 12. في حالة حدوث أي خطأ، قم بإلغاء المعاملة
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+            console.error("   Transaction aborted due to error:", error.message);
+        }
+        console.error("--- Controller: buyerRejectMediation ERROR ---", error);
+        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Action not allowed") ? 400 : 500;
+        res.status(statusCode).json({ msg: error.message || 'Failed to cancel mediation.' });
     } finally {
-        if (session.endSession) await session.endSession();
+        // 13. إنهاء جلسة قاعدة البيانات دائمًا
+        if (session && typeof session.endSession === 'function') {
+            if (session.inTransaction()) {
+                console.warn("   [buyerRejectMediation Finally] Session was still in transaction. Aborting.");
+                await session.abortTransaction();
+            }
+            await session.endSession();
+            console.log("   MongoDB session ended for buyerRejectMediation.");
+        }
+        console.log("--- Controller: buyerRejectMediation END ---");
     }
 };
 
@@ -1241,7 +1478,7 @@ exports.getMediationChatHistory = async (req, res) => {
 
         const request = await MediationRequest.findById(mediationRequestId)
             .select('seller buyer mediator status chatMessages disputeOverseers') // أضفت disputeOverseers
-            .populate('chatMessages.sender', 'fullName avatarUrl _id');
+            .populate('chatMessages.sender', 'fullName avatarUrl _id userRole');
         // يمكنك إضافة populate لـ disputeOverseers إذا أردت عرض معلوماتهم هنا أيضًا
 
         if (!request) return res.status(404).json({ msg: "Request not found." });
@@ -2273,5 +2510,632 @@ exports.adminResolveDisputeController = async (req, res) => {
     } finally {
         if (session && session.endSession) { try { await session.endSession(); } catch (e) { console.error("Session end error", e); } }
         console.log(`[AdminResolveDisputeController] Session management completed for ${mediationRequestId}.`);
+    }
+};
+
+// --- [!!!] دوال جديدة للشات الفرعي الخاص بالأدمن [!!!] ---
+exports.adminCreateSubChatController = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    // participantUserIds: مصفوفة من user IDs للمستخدمين الذين يريد الأدمن إضافتهم (باستثناء الأدمن نفسه)
+    const { participantUserIds, title } = req.body;
+    const adminUserId = req.user._id; // ID الأدمن الحالي
+    const adminFullNameForMessage = req.user.fullName || `Admin (${adminUserId.toString().slice(-4)})`; // اسم الأدمن للرسائل
+
+    console.log(`[Ctrl-CreateSubChat] Admin ${adminUserId} attempting to create/find sub-chat for Mediation ${mediationRequestId}`);
+    console.log(`   Participants to add (excluding admin): ${participantUserIds}, Title: ${title}`);
+
+    if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
+        return res.status(400).json({ msg: "Invalid Mediation Request ID." });
+    }
+    if (!Array.isArray(participantUserIds) || participantUserIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+        return res.status(400).json({ msg: "Invalid participant user IDs format." });
+    }
+    if (participantUserIds.length === 0) {
+        return res.status(400).json({ msg: "At least one participant (other than admin) must be selected to start a private chat." });
+    }
+    if (participantUserIds.includes(adminUserId.toString())) {
+        return res.status(400).json({ msg: "Admin cannot select themselves as a participant to add." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .populate('product', 'title') // Populate product للرسالة في حالة الإنشاء
+            .populate('seller', '_id fullName') // للحصول على معلومات الأطراف للتحقق
+            .populate('buyer', '_id fullName')
+            .populate('mediator', '_id fullName')
+            // لا نحتاج لـ populate الشاتات الفرعية هنا بشكل كامل لأننا سنقوم بالبحث اليدوي
+            // populate الأولي للشاتات الموجودة سيتم لاحقًا إذا تم العثور على شات موجود
+            .session(session);
+
+        if (!mediationRequest) {
+            await session.abortTransaction();
+            console.warn(`[Ctrl-CreateSubChat] Mediation request ${mediationRequestId} not found.`);
+            return res.status(404).json({ msg: "Mediation request not found." });
+        }
+        if (mediationRequest.status !== 'Disputed') {
+            await session.abortTransaction();
+            console.warn(`[Ctrl-CreateSubChat] Mediation ${mediationRequestId} not 'Disputed'. Status: ${mediationRequest.status}.`);
+            return res.status(400).json({ msg: `Cannot create sub-chat. Mediation status is '${mediationRequest.status}', expected 'Disputed'.` });
+        }
+
+        const validPartyIdsInDispute = [
+            mediationRequest.seller?._id?.toString(),
+            mediationRequest.buyer?._id?.toString(),
+            mediationRequest.mediator?._id?.toString()
+        ].filter(id => id); // إزالة القيم الفارغة إذا كان طرف ما غير موجود
+
+        for (const pId of participantUserIds) {
+            if (!validPartyIdsInDispute.includes(pId.toString())) {
+                await session.abortTransaction();
+                console.warn(`[Ctrl-CreateSubChat] Participant ${pId} not valid for ${mediationRequestId}.`);
+                return res.status(400).json({ msg: `User ID ${pId} is not a valid party in this mediation.` });
+            }
+        }
+
+        const allIntendedParticipantIdsInNewChatSorted = [adminUserId.toString(), ...participantUserIds.map(id => id.toString())].sort();
+
+        // البحث في adminSubChats الموجودة في mediationRequest
+        // existingSubChatFromDoc هو subdocument غير مأهول بالكامل بعد
+        const existingSubChatFromDoc = mediationRequest.adminSubChats.find(sc => {
+            const currentSubChatParticipantIdsSorted = sc.participants.map(p => p.userId.toString()).sort();
+            const participantsMatch = currentSubChatParticipantIdsSorted.length === allIntendedParticipantIdsInNewChatSorted.length &&
+                currentSubChatParticipantIdsSorted.every((id, index) => id === allIntendedParticipantIdsInNewChatSorted[index]);
+            if (participantsMatch) {
+                // إذا تطابقت قائمة المشاركين تمامًا
+                // الآن تحقق من العنوان (إذا تم توفير عنوان للبحث)
+                const requestedTitle = title ? title.trim().toLowerCase() : null;
+                const existingTitle = sc.title ? sc.title.trim().toLowerCase() : null;
+
+                if (!requestedTitle) { // إذا لم يطلب الأدمن عنوانًا محددًا، أي شات بنفس المشاركين يعتبر مطابقًا
+                    return true;
+                }
+                // إذا طلب الأدمن عنوانًا، فيجب أن يتطابق العنوان أيضًا
+                return requestedTitle === existingTitle;
+            }
+            return false;
+        });
+
+        if (existingSubChatFromDoc) {
+            console.log(`[Ctrl-CreateSubChat] Found existing sub-chat ID ${existingSubChatFromDoc.subChatId} for Mediation ${mediationRequestId}. Re-populating for response.`);
+            // لا نحتاج لـ abortTransaction هنا إذا كنا فقط سنعيد الشات الموجود
+            // لكن إذا كنا سنوقف العملية تمامًا ونعيد الشات الموجود، يمكن استخدام abort.
+            // هنا، سنفترض أننا سنعيد الشات الموجود ولن ننشئ جديدًا، لذا لا حاجة لـ abort إلا إذا فشل populate.
+            // الـ commit سيتم تجاهله لأننا سنعيد الاستجابة قبل الوصول إليه.
+
+            // أعد جلب الطلب مع populate محدد للشات الموجود
+            // لا يمكننا استخدام .session() هنا لأننا خرجنا من الـ transaction ضمنيًا بالـ return
+            // إذا أردت البقاء في الـ transaction، يجب أن يكون هذا الـ findById داخل try/catch خاص به
+            // أو لا تستخدم session هنا. للتبسيط الآن، سنقوم بالـ populate خارج الـ transaction.
+            await session.commitTransaction(); // Commit التغييرات التي لم تحدث (لا يوجد تغييرات) أو abort إذا كنت تفضل
+            session.endSession(); // أغلق الجلسة قبل الـ populate التالي
+
+            const populatedMediationForExisting = await MediationRequest.findById(mediationRequestId)
+                .populate({
+                    path: 'adminSubChats',
+                    match: { subChatId: existingSubChatFromDoc.subChatId },
+                    populate: [
+                        { path: 'participants.userId', select: 'fullName avatarUrl userRole' },
+                        { path: 'createdBy', select: 'fullName avatarUrl userRole' },
+                        { path: 'messages.sender', select: 'fullName avatarUrl userRole' } // Populate لآخر رسالة إذا لزم الأمر
+                    ]
+                })
+                .select('adminSubChats.$')
+                .lean();
+
+            let finalExistingSubChatForResponse = null;
+            if (populatedMediationForExisting && populatedMediationForExisting.adminSubChats && populatedMediationForExisting.adminSubChats.length > 0) {
+                finalExistingSubChatForResponse = populatedMediationForExisting.adminSubChats[0];
+            } else {
+                console.error("[Ctrl-CreateSubChat] CRITICAL: Could not re-populate existing sub-chat after finding it. Falling back.");
+                // كحل بديل، أرجع الشات بمعلومات أقل
+                finalExistingSubChatForResponse = {
+                    subChatId: existingSubChatFromDoc.subChatId,
+                    title: existingSubChatFromDoc.title,
+                    createdBy: existingSubChatFromDoc.createdBy, // سيكون ID فقط
+                    participants: existingSubChatFromDoc.participants, // سيكونون IDs فقط
+                    messages: [], // قد لا تحتاج لإرسال الرسائل هنا
+                    createdAt: existingSubChatFromDoc.createdAt,
+                    lastMessageAt: existingSubChatFromDoc.lastMessageAt
+                };
+            }
+
+            return res.status(200).json({
+                msg: "An existing private chat with these participants and title (if provided) was found.",
+                subChat: finalExistingSubChatForResponse,
+                existing: true // علامة للواجهة الأمامية
+            });
+        }
+
+        // إذا لم يتم العثور على شات مطابق، قم بإنشاء واحد جديد
+        const newSubChatId = new mongoose.Types.ObjectId();
+        const participantsForNewSubChatObject = [{ userId: adminUserId }];
+        participantUserIds.forEach(pId => {
+            participantsForNewSubChatObject.push({ userId: new mongoose.Types.ObjectId(pId) });
+        });
+
+        const initialSystemMessage = {
+            _id: new mongoose.Types.ObjectId(),
+            sender: adminUserId,
+            message: `Private chat started by Admin ${adminFullNameForMessage}.`,
+            type: 'system',
+            timestamp: new Date(),
+            readBy: [{ readerId: adminUserId, readAt: new Date() }]
+        };
+
+        const newSubChatData = {
+            subChatId: newSubChatId,
+            createdBy: adminUserId,
+            title: title ? title.trim() : `Discussion (${mediationRequest.adminSubChats.length + 1})`,
+            participants: participantsForNewSubChatObject,
+            messages: [initialSystemMessage],
+            createdAt: new Date(),
+            lastMessageAt: new Date()
+        };
+
+        mediationRequest.adminSubChats.push(newSubChatData);
+        await mediationRequest.save({ session });
+        await session.commitTransaction();
+        // session.endSession() سيتم استدعاؤها في finally
+
+        // Populate الشات الجديد *بعد* الحفظ والـ commit
+        const newlyCreatedAndPopulated = await MediationRequest.findOne({ _id: mediationRequestId, "adminSubChats.subChatId": newSubChatId })
+            .populate({
+                path: 'adminSubChats',
+                match: { subChatId: newSubChatId },
+                populate: [
+                    { path: 'participants.userId', select: 'fullName avatarUrl userRole' },
+                    { path: 'createdBy', select: 'fullName avatarUrl userRole' },
+                    { path: 'messages.sender', select: 'fullName avatarUrl userRole' }
+                ]
+            })
+            .select('adminSubChats.$')
+            .lean();
+
+        let finalNewSubChatForResponse = null;
+        if (newlyCreatedAndPopulated && newlyCreatedAndPopulated.adminSubChats && newlyCreatedAndPopulated.adminSubChats.length > 0) {
+            finalNewSubChatForResponse = newlyCreatedAndPopulated.adminSubChats[0];
+        } else {
+            console.error("[Ctrl-CreateSubChat] CRITICAL: Could not populate newly created sub-chat. Sending unpopulated.");
+            // البحث عن الشات الذي تم إضافته للتو في mediationRequest.adminSubChats
+            const justAddedSubChat = mediationRequest.adminSubChats.find(sc => sc.subChatId.equals(newSubChatId));
+            finalNewSubChatForResponse = justAddedSubChat ? justAddedSubChat.toObject() : null;
+        }
+
+        // إرسال إشعارات للمشاركين (باستثناء الأدمن الذي أنشأه)
+        const productTitleForNotif = mediationRequest.product?.title || 'the ongoing dispute';
+        const notificationPromises = [];
+        participantsForNewSubChatObject.forEach(p => {
+            if (p.userId && !p.userId.equals(adminUserId)) { // تأكد من أن p.userId ليس null
+                notificationPromises.push(
+                    Notification.create({
+                        user: p.userId,
+                        type: 'NEW_ADMIN_SUBCHAT_INVITATION',
+                        title: 'New Private Chat with Admin',
+                        message: `Admin ${adminFullNameForMessage} has started a private chat with you regarding "${productTitleForNotif}". Topic: ${finalNewSubChatForResponse?.title || 'Discussion'}`,
+                        relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
+                        metadata: { subChatId: newSubChatId.toString() }
+                    })
+                );
+            }
+        });
+        if (notificationPromises.length > 0) {
+            await Promise.all(notificationPromises).catch(err => console.error("Error sending subchat creation notifications (non-critical):", err));
+        }
+
+        if (req.io && finalNewSubChatForResponse) {
+            finalNewSubChatForResponse.participants.forEach(p => {
+                if (p.userId && p.userId._id) {
+                    const targetSocketId = req.onlineUsers[p.userId._id.toString()];
+                    if (targetSocketId) {
+                        req.io.to(targetSocketId).emit('admin_sub_chat_created', {
+                            mediationRequestId: mediationRequestId.toString(),
+                            subChat: finalNewSubChatForResponse
+                        });
+                    }
+                }
+            });
+            console.log(`[Ctrl-CreateSubChat] Emitted 'admin_sub_chat_created' for SubChat ${newSubChatId}`);
+        }
+
+        res.status(201).json({
+            msg: "Admin sub-chat created successfully.",
+            subChat: finalNewSubChatForResponse
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) {
+            try {
+                await session.abortTransaction();
+            } catch (abortError) {
+                console.error("[Ctrl-CreateSubChat] Error aborting transaction:", abortError);
+            }
+        }
+        console.error("[Ctrl-CreateSubChat] Error in main try-catch:", error.message, error.stack);
+        res.status(error.status || 500).json({ msg: error.message || "Server error creating admin sub-chat.", errorDetails: error.message });
+    } finally {
+        if (session) {
+            try {
+                await session.endSession();
+            } catch (endSessionError) {
+                console.error("[Ctrl-CreateSubChat] Error ending session:", endSessionError);
+            }
+        }
+    }
+};
+
+// (Admin) جلب جميع الشاتات الفرعية لنزاع معين
+exports.adminGetAllSubChatsForDisputeController = async (req, res) => {
+    const { mediationRequestId } = req.params;
+    const adminUserId = req.user._id; // للتأكد أن الأدمن هو من يطلب
+
+    console.log(`[Ctrl-GetAllSubChats] Admin ${adminUserId} fetching all sub-chats for Mediation ${mediationRequestId}`);
+
+    try {
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .select('adminSubChats status product buyer seller mediator') // اختر الحقول المطلوبة
+            .populate('adminSubChats.createdBy', 'fullName avatarUrl')
+            .populate('adminSubChats.participants.userId', 'fullName avatarUrl')
+            .populate('adminSubChats.messages.sender', 'fullName avatarUrl') // Populate sender of last message if needed
+            .populate('product', 'title')
+            .populate('buyer', 'fullName')
+            .populate('seller', 'fullName')
+            .populate('mediator', 'fullName')
+            .lean(); // .lean() للأداء
+
+        if (!mediationRequest) {
+            return res.status(404).json({ msg: "Mediation request not found." });
+        }
+        // يمكن إضافة تحقق إضافي إذا كان الأدمن الحالي هو مشرف على النزاع أو ما شابه
+
+        // ترتيب الشاتات الفرعية حسب آخر رسالة (الأحدث أولاً)
+        const sortedSubChats = mediationRequest.adminSubChats.sort((a, b) => {
+            return new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt);
+        });
+
+        // إضافة معلومات عن الطرف الآخر في كل شات فرعي
+        const subChatsWithOtherPartyInfo = sortedSubChats.map(sc => {
+            const otherParticipants = sc.participants.filter(p => !p.userId._id.equals(adminUserId));
+            let otherPartyNames = "Participants";
+            if (otherParticipants.length > 0) {
+                otherPartyNames = otherParticipants.map(p => p.userId.fullName || "Unknown User").join(', ');
+            }
+
+            const lastMessage = sc.messages && sc.messages.length > 0 ? sc.messages[sc.messages.length - 1] : null;
+            let unreadCount = 0;
+            if (lastMessage) {
+                sc.messages.forEach(msg => {
+                    if (msg.sender && !msg.sender._id.equals(adminUserId) &&
+                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(adminUserId)))
+                    ) {
+                        unreadCount++;
+                    }
+                });
+            }
+
+
+            return {
+                ...sc,
+                otherPartyDisplay: otherPartyNames, // اسم الطرف/الأطراف الأخرى
+                lastMessageSnippet: lastMessage ? (lastMessage.type === 'text' ? lastMessage.message.substring(0, 50) + "..." : `[${lastMessage.type}]`) : "No messages yet.",
+                unreadMessagesCount: unreadCount // للأدمن الحالي
+            };
+        });
+
+
+        res.status(200).json({
+            subChats: subChatsWithOtherPartyInfo,
+            mediationStatus: mediationRequest.status, // لإعطاء سياق للحالة
+            productTitle: mediationRequest.product?.title,
+            parties: { // معلومات الأطراف الرئيسية للنزاع
+                seller: mediationRequest.seller,
+                buyer: mediationRequest.buyer,
+                mediator: mediationRequest.mediator
+            }
+        });
+
+    } catch (error) {
+        console.error("[Ctrl-GetAllSubChats] Error:", error);
+        res.status(500).json({ msg: "Server error fetching admin sub-chats.", errorDetails: error.message });
+    }
+};
+
+// (Admin/Participant) إرسال رسالة في شات فرعي محدد
+exports.adminSendSubChatMessageController = async (req, res) => {
+    const { mediationRequestId, subChatId } = req.params;
+    const { messageText, imageUrl } = req.body; // imageUrl إذا تم رفع صورة عبر مسار آخر أولاً
+    const senderId = req.user._id;
+    const senderFullName = req.user.fullName; // من verifyAuth
+    const senderAvatarUrl = req.user.avatarUrl; // من verifyAuth
+
+    // req.adminSubChat و req.mediationRequest يجب أن يكونا متاحين من middleware `canAccessAdminSubChat`
+    const subChat = req.adminSubChat;
+    // const mediationRequest = req.mediationRequest; //  MediationRequest الرئيسي إذا لزم الأمر
+
+    if ((!messageText || messageText.trim() === "") && !imageUrl) {
+        return res.status(400).json({ msg: "Message content or image URL is required." });
+    }
+
+    try {
+        const newMessageObjectId = new mongoose.Types.ObjectId();
+        const newMessageData = {
+            _id: newMessageObjectId,
+            sender: senderId,
+            message: (imageUrl && !messageText) ? null : messageText?.trim(), // إذا صورة فقط، النص null
+            imageUrl: imageUrl || null,
+            type: imageUrl ? 'image' : 'text',
+            timestamp: new Date(),
+            readBy: [{ readerId: senderId, readAt: new Date() }] // المرسل يقرأ رسالته تلقائيًا
+        };
+
+        if (newMessageData.type === 'text' && (!newMessageData.message || newMessageData.message.trim() === "")) {
+            return res.status(400).json({ msg: "Cannot send empty text message." });
+        }
+
+
+        // تحديث الرسالة في الشات الفرعي وتاريخ آخر رسالة
+        const updateResult = await MediationRequest.updateOne(
+            { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+            {
+                $push: { "adminSubChats.$.messages": newMessageData },
+                $set: { "adminSubChats.$.lastMessageAt": newMessageData.timestamp }
+            }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            return res.status(404).json({ msg: "Mediation request or sub-chat not found." });
+        }
+        if (updateResult.modifiedCount === 0) {
+            // هذا قد يحدث إذا كان هناك خطأ في $addToSet أو شرط آخر
+            console.warn(`[Ctrl-SendSubChatMessage] Message might not have been pushed. SubChatID: ${subChatId}`);
+            // يمكنك محاولة إعادة جلب الطلب للتحقق
+        }
+
+        // إرسال إشعار + Socket.IO event
+        const populatedMessageForEmit = {
+            ...newMessageData,
+            sender: { _id: senderId, fullName: senderFullName, avatarUrl: senderAvatarUrl }
+        };
+
+        const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+        if (req.io) {
+            req.io.to(subChatRoomName).emit('new_admin_sub_chat_message', {
+                mediationRequestId: mediationRequestId.toString(),
+                subChatId: subChatId.toString(),
+                message: populatedMessageForEmit
+            });
+            console.log(`[Ctrl-SendSubChatMessage] Emitted 'new_admin_sub_chat_message' to room ${subChatRoomName}`);
+        }
+
+        // إرسال إشعارات للمشاركين الآخرين في الشات الفرعي
+        const currentMediationRequest = await MediationRequest.findById(mediationRequestId)
+            .select('adminSubChats product')
+            .populate('adminSubChats.participants.userId', '_id')
+            .populate('product', 'title')
+            .lean();
+
+        const targetSubChat = currentMediationRequest.adminSubChats.find(sc => sc.subChatId.equals(subChatId));
+
+        if (targetSubChat && targetSubChat.participants) {
+            const productTitle = currentMediationRequest.product?.title || 'the dispute';
+            const notificationPromises = targetSubChat.participants
+                .filter(p => p.userId && !p.userId._id.equals(senderId)) // استبعاد المرسل
+                .map(p => {
+                    // تحقق مما إذا كان المستخدم متصلاً بنفس غرفة الشات الفرعي هذه
+                    let isUserInSubChatRoom = false;
+                    const targetSocketId = req.onlineUsers[p.userId._id.toString()];
+                    if (targetSocketId && req.io.sockets.sockets.get(targetSocketId)?.rooms.has(subChatRoomName)) {
+                        isUserInSubChatRoom = true;
+                    }
+
+                    if (!isUserInSubChatRoom) { // أرسل إشعارًا فقط إذا لم يكن المستخدم في الغرفة
+                        return Notification.create({
+                            user: p.userId._id,
+                            type: 'NEW_ADMIN_SUBCHAT_MESSAGE',
+                            title: `New Message in Private Chat (${targetSubChat.title || 'Admin Chat'})`,
+                            message: `${senderFullName} sent a new message regarding "${productTitle}".`,
+                            relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
+                            metadata: { subChatId: subChatId.toString(), messageId: newMessageObjectId.toString() }
+                        });
+                    }
+                    return null;
+                }).filter(Boolean); // إزالة القيم null
+            if (notificationPromises.length > 0) {
+                await Promise.all(notificationPromises);
+                console.log(`[Ctrl-SendSubChatMessage] Sent ${notificationPromises.length} notifications for new sub-chat message.`);
+            }
+        }
+
+        res.status(201).json({
+            msg: "Message sent to admin sub-chat.",
+            message: populatedMessageForEmit
+        });
+
+    } catch (error) {
+        console.error("[Ctrl-SendSubChatMessage] Error:", error);
+        res.status(500).json({ msg: "Server error sending message to admin sub-chat.", errorDetails: error.message });
+    }
+};
+
+// (Admin/Participant) جلب رسائل شات فرعي محدد
+exports.adminGetSubChatMessagesController = async (req, res) => {
+    const { mediationRequestId, subChatId } = req.params; // من الـ URL
+    const currentUserId = req.user._id;
+
+    // req.adminSubChat يجب أن يكون متاحًا من middleware `canAccessAdminSubChat`
+    const subChat = req.adminSubChat;
+
+    if (!subChat) { // هذا لا يجب أن يحدث إذا كان الـ middleware يعمل بشكل صحيح
+        return res.status(404).json({ msg: "Sub-chat not found in request context." });
+    }
+
+    try {
+        // جلب طلب الوساطة الأصلي مع populate للـ subChat المحدد ورسائله ومرسليها وقارئيها
+        const mediationRequestWithPopulatedSubChat = await MediationRequest.findOne(
+            { _id: mediationRequestId, "adminSubChats.subChatId": subChatId }
+        )
+            .populate({
+                path: 'adminSubChats',
+                match: { subChatId: subChatId }, // مطابقة الشات الفرعي المحدد
+                populate: [
+                    { path: 'messages.sender', select: 'fullName avatarUrl userRole' },
+                    { path: 'messages.readBy.readerId', select: 'fullName avatarUrl' },
+                    { path: 'participants.userId', select: 'fullName avatarUrl userRole' }, // لجلب معلومات المشاركين
+                    { path: 'createdBy', select: 'fullName avatarUrl userRole' } // لجلب معلومات منشئ الشات
+                ]
+            })
+            .select('adminSubChats.$') // جلب الشات الفرعي المطابق فقط
+            .lean();
+
+        if (!mediationRequestWithPopulatedSubChat || !mediationRequestWithPopulatedSubChat.adminSubChats || mediationRequestWithPopulatedSubChat.adminSubChats.length === 0) {
+            return res.status(404).json({ msg: "Sub-chat messages not found or access denied." });
+        }
+
+        const populatedSubChat = mediationRequestWithPopulatedSubChat.adminSubChats[0];
+
+        // (اختياري) تحديث readBy للرسائل التي لم يقرأها المستخدم الحالي بعد
+        // هذا يمكن أن يتم هنا أو عبر Socket.IO عند فتح الشات
+        const now = new Date();
+        let messagesMarkedAsRead = 0;
+        const messageIdsToUpdateReadStatus = [];
+
+        populatedSubChat.messages.forEach(message => {
+            // إذا كانت الرسالة ليست من المستخدم الحالي ولم يقرأها بعد
+            if (message.sender && !message.sender._id.equals(currentUserId) &&
+                (!message.readBy || !message.readBy.some(rb => rb.readerId && rb.readerId._id.equals(currentUserId)))) {
+                messageIdsToUpdateReadStatus.push(message._id);
+            }
+        });
+
+        if (messageIdsToUpdateReadStatus.length > 0) {
+            const updateReadResult = await MediationRequest.updateOne(
+                { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+                {
+                    $addToSet: {
+                        "adminSubChats.$[outer].messages.$[inner].readBy": {
+                            readerId: currentUserId,
+                            readAt: now
+                        }
+                    }
+                },
+                {
+                    arrayFilters: [
+                        { "outer.subChatId": subChatId },
+                        { "inner._id": { $in: messageIdsToUpdateReadStatus }, "inner.readBy.readerId": { $ne: currentUserId } }
+                    ]
+                }
+            );
+            if (updateReadResult.modifiedCount > 0) {
+                messagesMarkedAsRead = messageIdsToUpdateReadStatus.length; // تقديري، العدد الفعلي قد يختلف
+                console.log(`[Ctrl-GetSubChatMessages] Marked ${updateReadResult.modifiedCount} messages as read by ${currentUserId} in SubChat ${subChatId}`);
+                // إرسال تحديث عبر Socket.IO بأن الرسائل قُرئت
+                if (req.io) {
+                    const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+                    const updatedMessageInfos = messageIdsToUpdateReadStatus.map(msgId => ({
+                        _id: msgId,
+                        readBy: [{ readerId: currentUserId, readAt: now, fullName: req.user.fullName, avatarUrl: req.user.avatarUrl }]
+                    }));
+                    req.io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', {
+                        mediationRequestId: mediationRequestId.toString(),
+                        subChatId: subChatId.toString(),
+                        updatedMessages: updatedMessageInfos
+                    });
+                }
+            }
+        }
+
+        // إعادة جلب الرسائل بعد تحديث حالة القراءة (إذا كنت تريد أحدث بيانات readBy فورًا في الاستجابة)
+        // أو يمكنك تحديث الكائن populatedSubChat يدويًا في الذاكرة
+        // للتبسيط الآن، سنفترض أن العميل سيتعامل مع التحديث عبر Socket.IO أو سيعيد الجلب إذا لزم الأمر
+
+        res.status(200).json({
+            subChatId: populatedSubChat.subChatId,
+            title: populatedSubChat.title,
+            createdBy: populatedSubChat.createdBy,
+            participants: populatedSubChat.participants,
+            messages: populatedSubChat.messages,
+            messagesMarkedAsReadCount: messagesMarkedAsRead // عدد الرسائل التي تم تحديثها للتو
+        });
+
+    } catch (error) {
+        console.error("[Ctrl-GetSubChatMessages] Error:", error);
+        res.status(500).json({ msg: "Server error fetching admin sub-chat messages.", errorDetails: error.message });
+    }
+};
+
+// (Admin/Participant) وضع علامة على الرسائل كمقروءة في شات فرعي
+exports.adminMarkSubChatMessagesReadController = async (req, res) => {
+    const { mediationRequestId, subChatId } = req.params;
+    const { messageIds } = req.body; // مصفوفة من IDs للرسائل
+    const readerUserId = req.user._id;
+    const readerFullName = req.user.fullName;
+    const readerAvatarUrl = req.user.avatarUrl;
+
+    if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        return res.status(400).json({ msg: "Message IDs array is required." });
+    }
+    if (messageIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+        return res.status(400).json({ msg: "Invalid message ID format found in array." });
+    }
+
+    // req.adminSubChat متاح من middleware
+    const subChat = req.adminSubChat;
+    if (!subChat) return res.status(404).json({ msg: "Sub-chat context not found." });
+
+    try {
+        const objectMessageIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
+        const now = new Date();
+
+        const updateResult = await MediationRequest.updateOne(
+            { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+            {
+                $addToSet: {
+                    "adminSubChats.$[outer].messages.$[inner].readBy": {
+                        readerId: readerUserId,
+                        readAt: now
+                    }
+                }
+            },
+            {
+                arrayFilters: [
+                    { "outer.subChatId": subChatId },
+                    { "inner._id": { $in: objectMessageIds }, "inner.readBy.readerId": { $ne: readerUserId } }
+                ]
+            }
+        );
+
+        if (updateResult.matchedCount === 0) {
+            return res.status(404).json({ msg: "Mediation request or sub-chat not found for marking messages." });
+        }
+
+        console.log(`[Ctrl-MarkSubRead] User ${readerUserId} marked messages in SubChat ${subChatId}. Matched: ${updateResult.matchedCount}, Modified: ${updateResult.modifiedCount}`);
+
+        if (updateResult.modifiedCount > 0) {
+            // إرسال تحديث عبر Socket.IO
+            if (req.io) {
+                const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+                const updatedMessageInfos = objectMessageIds.map(msgId => ({
+                    _id: msgId,
+                    readBy: [{ readerId: readerUserId, readAt: now, fullName: readerFullName, avatarUrl: readerAvatarUrl }]
+                }));
+                req.io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', {
+                    mediationRequestId: mediationRequestId.toString(),
+                    subChatId: subChatId.toString(),
+                    updatedMessages: updatedMessageInfos // أرسل فقط IDs الرسائل التي تم تحديثها ومعلومات القارئ الجديد
+                });
+                console.log(`[Ctrl-MarkSubRead] Emitted 'admin_sub_chat_messages_status_updated' to ${subChatRoomName}`);
+            }
+        }
+
+        res.status(200).json({
+            msg: "Messages marked as read successfully.",
+            modifiedCount: updateResult.modifiedCount
+        });
+
+    } catch (error) {
+        console.error("[Ctrl-MarkSubRead] Error:", error);
+        res.status(500).json({ msg: "Server error marking messages as read.", errorDetails: error.message });
     }
 };

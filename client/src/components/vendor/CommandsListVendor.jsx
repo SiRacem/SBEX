@@ -143,6 +143,7 @@ const CommandsListVendor = () => {
   );
   const mediationProducts = useMemo(() => {
     return myProducts.filter((p) => {
+      
       if (!p) return false;
       const productStatus = String(p.status).trim();
       const mediationRequestStatus = p.currentMediationRequest?.status;

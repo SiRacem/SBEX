@@ -77,7 +77,7 @@ exports.createDepositRequest = async (req, res) => {
         console.log(`     Amount: ${numericAmount}`);
         console.log(`     Currency: ${currency}`);
         // --------------------------------
-        
+
         const { fee, netAmount } = calculateCommissionServer(paymentMethodDoc, numericAmount, currency); // حساب العمولة هنا
 
         // --- [!!!] أضف تسجيل هنا [!!!] ---
@@ -110,10 +110,10 @@ exports.createDepositRequest = async (req, res) => {
         const admins = await User.find({ userRole: 'Admin' }).select('_id').lean().session(session);
         const notifications = [];
         notifications.push({ user: userId, type: 'DEPOSIT_PENDING', title: 'Deposit Pending', message: `Request for ${formatCurrency(numericAmount, currency)} is pending.`, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } });
-admins.forEach(admin => {
-             const adminNotifMsg = `User ${userFullName} requested ${formatCurrency(numericAmount, currency)}. Fee: ${formatCurrency(fee, currency)}`;
-             console.log(`   [DEBUG] Admin Notification Message: ${adminNotifMsg}`); // <-- تحقق من الرسالة
-             notifications.push({ user: admin._id, type: 'NEW_DEPOSIT_REQUEST', title: 'New Deposit', message: adminNotifMsg, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } })
+        admins.forEach(admin => {
+            const adminNotifMsg = `User ${userFullName} requested ${formatCurrency(numericAmount, currency)}. Fee: ${formatCurrency(fee, currency)}`;
+            console.log(`   [DEBUG] Admin Notification Message: ${adminNotifMsg}`); // <-- تحقق من الرسالة
+            notifications.push({ user: admin._id, type: 'NEW_DEPOSIT_REQUEST', title: 'New Deposit', message: adminNotifMsg, relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' } })
         });
         const createdNotifications = await Notification.insertMany(notifications, { session });
         console.log(`   ${createdNotifications.length} notifications saved.`);
@@ -220,7 +220,6 @@ exports.adminGetDepositRequests = async (req, res) => {
         res.status(500).json({ msg: "Server error fetching requests." });
     }
 };
-// -------------------------------------------------------------
 
 // --- الموافقة على طلب الإيداع ---
 exports.adminApproveDeposit = async (req, res) => {
@@ -231,79 +230,134 @@ exports.adminApproveDeposit = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const depositRequest = await DepositRequest.findById(id).populate('paymentMethod').session(session); // Populate method for message
+        const depositRequest = await DepositRequest.findById(id)
+            .populate('paymentMethod') // للتأكد من وجود معلومات طريقة الدفع
+            .populate('user', 'balance sellerAvailableBalance sellerPendingBalance') // [!] مهم: جلب الأرصدة الحالية للمستخدم
+            .session(session);
+
         if (!depositRequest) throw new Error("Request not found.");
         if (depositRequest.status !== 'pending') throw new Error(`Request already ${depositRequest.status}.`);
-        console.log(`   Found pending request. Net: ${depositRequest.netAmountCredited} ${depositRequest.currency}, User: ${depositRequest.user}`);
 
-        // حساب المبلغ المضاف مع تحويل العملة
+        const userToUpdate = depositRequest.user; // هذا هو كائن المستخدم الذي سيتم تحديثه
+        if (!userToUpdate) throw new Error("User associated with the deposit request not found.");
+
+        console.log(`   Found pending request. Net: ${depositRequest.netAmountCredited} ${depositRequest.currency}, User ID: ${userToUpdate._id}`);
+
         let amountToAdd = depositRequest.netAmountCredited;
         const userBalanceCurrency = 'TND'; // افترض أن عملة الرصيد هي TND
+
         if (depositRequest.currency !== userBalanceCurrency) {
             console.log(`   Converting ${depositRequest.currency} to ${userBalanceCurrency}`);
             if (depositRequest.currency === 'USD') amountToAdd = depositRequest.netAmountCredited * TND_USD_EXCHANGE_RATE;
-            else if (depositRequest.currency === 'TND') amountToAdd = depositRequest.netAmountCredited / TND_USD_EXCHANGE_RATE; // Example if balance was USD
-            else throw new Error("Unsupported currency conversion.");
-            amountToAdd = Number(amountToAdd.toFixed(2)); // تقريب بعد التحويل
-            console.log(`   Converted amount: ${amountToAdd} ${userBalanceCurrency}`);
+            // أضف تحويلات أخرى إذا لزم الأمر
+            else throw new Error(`Unsupported currency conversion from ${depositRequest.currency} to ${userBalanceCurrency}.`);
+            amountToAdd = Number(amountToAdd.toFixed(2));
+            console.log(`   Converted amount to add: ${amountToAdd} ${userBalanceCurrency}`);
         }
 
-        // تحديث رصيد المستخدم
-        const userUpdateResult = await User.updateOne({ _id: depositRequest.user }, { $inc: { balance: amountToAdd, depositBalance: amountToAdd } }, { session, runValidators: true });
-        if (userUpdateResult.matchedCount === 0) throw new Error("User not found for balance update.");
-        console.log(`   User balance update command sent.`);
+        // --- [!] تحديث رصيد المستخدم في قاعدة البيانات ---
+        const updatedUserAfterDeposit = await User.findByIdAndUpdate(
+            userToUpdate._id,
+            { $inc: { balance: amountToAdd, depositBalance: amountToAdd } },
+            { session, new: true, runValidators: true } // new: true لإرجاع المستند المحدث
+        ).select('balance sellerAvailableBalance sellerPendingBalance'); // جلب الأرصدة المحدثة فقط
 
-        // تحديث طلب الإيداع
+        if (!updatedUserAfterDeposit) throw new Error("User not found or failed to update balance.");
+        console.log(`   User balance updated. New main balance: ${updatedUserAfterDeposit.balance}`);
+
         depositRequest.status = 'approved';
         depositRequest.processedAt = new Date();
         depositRequest.processedBy = adminUserId;
         await depositRequest.save({ session });
-        console.log("   Deposit request updated to 'approved'.");
+        console.log("   Deposit request status updated to 'approved'.");
 
-        // --- [!!!] أضف إنشاء المعاملة المكتملة هنا ---
         const completedTransaction = new Transaction({
-            user: depositRequest.user,
-            amount: amountToAdd, // المبلغ الفعلي المضاف للرصيد بالعملة الأساسية (TND)
-            currency: userBalanceCurrency, // عملة الرصيد
-            type: 'DEPOSIT',
-            status: 'COMPLETED', // الحالة مكتملة
-            description: `Approved Deposit via ${depositRequest.paymentMethod?.name || 'N/A'}`,
-            relatedDepositRequest: depositRequest._id
-            // يمكنك إضافة حقول أخرى إذا لزم الأمر
+            user: userToUpdate._id,
+            amount: amountToAdd,
+            currency: userBalanceCurrency,
+            type: 'DEPOSIT', // تأكد أن النوع هو 'DEPOSIT' إذا كنت تستخدمه للفلترة
+            status: 'COMPLETED',
+            description: `Approved Deposit: ${formatCurrency(depositRequest.amount, depositRequest.currency)} via ${depositRequest.paymentMethod?.name || 'N/A'}`,
+            relatedDepositRequest: depositRequest._id,
+            metadata: { // إضافة بيانات وصفية مفيدة
+                originalAmount: depositRequest.amount,
+                originalCurrency: depositRequest.currency,
+                feeAmount: depositRequest.feeAmount,
+                netAmountCreditedOriginal: depositRequest.netAmountCredited,
+                paymentMethodName: depositRequest.paymentMethod?.name,
+                adminApproverId: adminUserId,
+            }
         });
         await completedTransaction.save({ session });
         console.log("   Completed Transaction saved:", completedTransaction._id);
-        // -------------------------------------------
 
-        // تحديث المعاملة
-        /*const transactionUpdateResult = await Transaction.updateOne({ relatedDepositRequest: id, status: 'PENDING' }, { $set: { status: 'COMPLETED', amount: depositRequest.netAmountCredited } }, { session });
-        if (transactionUpdateResult.matchedCount > 0) console.log(`   Transaction status updated to 'COMPLETED'.`);
-        else console.warn(`   Warning: PENDING transaction not found for request ${id}.`);*/
-
-        // إنشاء وإرسال الإشعار
-        const notification = new Notification({
-            user: depositRequest.user, type: 'DEPOSIT_APPROVED', title: 'Deposit Approved',
-            message: `Deposit of ${formatCurrency(depositRequest.amount, depositRequest.currency)} approved. ${formatCurrency(amountToAdd, userBalanceCurrency)} added to balance.`,
+        // --- [!] إنشاء وإرسال إشعار الموافقة للمستخدم ---
+        const approvalNotification = new Notification({
+            user: userToUpdate._id, type: 'DEPOSIT_APPROVED', title: 'Deposit Approved',
+            message: `Your deposit of ${formatCurrency(depositRequest.amount, depositRequest.currency)} has been approved. ${formatCurrency(amountToAdd, userBalanceCurrency)} was added to your balance.`,
             relatedEntity: { id: depositRequest._id, modelName: 'DepositRequest' }
         });
-        await notification.save({ session });
-        console.log("   Notification created.");
+        await approvalNotification.save({ session });
+        console.log("   Approval notification created for user.");
+
+        // --- [!!!] الالتزام بالمعاملة قبل إرسال أحداث Socket ---
         await session.commitTransaction();
-        console.log("   Transaction committed.");
-        const targetSocketId = req.onlineUsers ? req.onlineUsers[notification.user.toString()] : null;
-        if (targetSocketId) req.io.to(targetSocketId).emit('new_notification', notification.toObject());
-        const finalUpdatedRequest = await DepositRequest.findById(id).populate('user', 'fullName email balance phone').populate('paymentMethod').lean();
-        res.status(200).json({ msg: "Deposit approved.", request: finalUpdatedRequest });
+        console.log("   Database transaction committed successfully.");
+
+        // --- [!!!] إرسال أحداث Socket.IO بعد الالتزام بالمعاملة ---
+        const userSocketId = req.onlineUsers ? req.onlineUsers[userToUpdate._id.toString()] : null;
+
+        if (userSocketId) {
+            // 1. إرسال إشعار الموافقة العام
+            req.io.to(userSocketId).emit('new_notification', approvalNotification.toObject());
+            console.log(`   [Socket] Sent 'new_notification' (DEPOSIT_APPROVED) to user ${userToUpdate._id}`);
+
+            // 2. إرسال حدث تحديث الأرصدة
+            req.io.to(userSocketId).emit('user_balances_updated', {
+                _id: userToUpdate._id.toString(), // ليتأكد العميل أنه هو المقصود
+                balance: updatedUserAfterDeposit.balance,
+                sellerAvailableBalance: updatedUserAfterDeposit.sellerAvailableBalance, // إذا كانت موجودة
+                sellerPendingBalance: updatedUserAfterDeposit.sellerPendingBalance   // إذا كانت موجودة
+                // أرسل أي أرصدة أخرى قمت بتحديثها أو ذات صلة
+            });
+            console.log(`   [Socket] Sent 'user_balances_updated' to user ${userToUpdate._id}`);
+
+            // 3. (اختياري ولكن جيد) إرسال حدث لتحديث قائمة المعاملات إذا كان المستخدم في صفحة تظهرها
+            // هذا يفترض أن العميل يستمع لهذا الحدث ويعيد جلب المعاملات
+            req.io.to(userSocketId).emit('dashboard_transactions_updated', {
+                message: 'Your deposit has been processed.',
+                transactionType: 'DEPOSIT',
+                transactionId: completedTransaction._id.toString()
+            });
+            console.log(`   [Socket] Sent 'dashboard_transactions_updated' to user ${userToUpdate._id}`);
+
+        } else {
+            console.log(`   User ${userToUpdate._id} is not online. Socket events not sent.`);
+        }
+        // --- نهاية إرسال أحداث Socket.IO ---
+
+        const finalUpdatedRequest = await DepositRequest.findById(id)
+            .populate('user', 'fullName email balance phone depositBalance sellerAvailableBalance sellerPendingBalance') // تأكد من جلب كل الأرصدة
+            .populate('paymentMethod')
+            .lean();
+        res.status(200).json({ msg: "Deposit approved and balance updated.", request: finalUpdatedRequest });
+
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) { // تحقق إذا كانت الجلسة لا تزال نشطة قبل الإجهاض
+            await session.abortTransaction();
+            console.log("   Transaction aborted due to error.");
+        }
         console.error("--- ApproveDeposit ERROR ---:", error);
         res.status(400).json({ msg: error.message || "Approval failed." });
     } finally {
+        if (session.inTransaction()) { // تحقق مرة أخرى قبل إنهاء الجلسة
+            console.warn("   ApproveDeposit Session was not committed or aborted explicitly before endSession.");
+            await session.abortTransaction(); // محاولة إجهاض آمنة
+        }
         session.endSession();
         console.log("   ApproveDeposit Session Ended.");
     }
 };
-// -------------------------------------------------------------
 
 // --- رفض طلب إيداع ---
 exports.adminRejectDeposit = async (req, res) => {

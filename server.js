@@ -36,7 +36,9 @@ const depositRoute = require('./router/deposit.router');
 const uploadRoute = require('./router/upload.router');
 const withdrawalRoute = require('./router/withdrawal.router');
 const mediationRoute = require('./router/mediation.router');
+const ticketRoute = require('./router/ticket.router');
 const reportRoute = require('./router/report');
+const Notification = require('./models/Notification');
 
 // --- Model Imports ---
 const MediationRequest = require('./models/MediationRequest');
@@ -179,7 +181,22 @@ io.on('connection', (socket) => {
         const senderId = socket.userIdForChat;
         const senderFullName = socket.userFullNameForChat || 'User (Socket)';
         const senderAvatarUrl = socket.userAvatarUrlForChat;
-        console.log(`[Socket Event - sendMediationMessage] Received. Room: ${mediationRequestId}, SenderID: ${senderId}, Text: ${messageText ? 'Yes' : 'No'}, Image: ${imageUrl ? 'Yes' : 'No'}`);
+        // --- [!!!] إضافة جلب userRole للمرسل [!!!] ---
+        let senderUserRole = 'User'; // قيمة افتراضية
+        if (senderId) {
+            try {
+                const userDoc = await User.findById(senderId).select('userRole').lean();
+                if (userDoc) {
+                    senderUserRole = userDoc.userRole;
+                }
+            } catch (err) {
+                console.error(`[Socket SendMainMsg] Error fetching userRole for ${senderId}:`, err);
+            }
+        }
+        // --- [!!!] نهاية الإضافة [!!!] ---
+
+
+        console.log(`[Socket Event - sendMediationMessage] Received. Room: ${mediationRequestId}, SenderID: ${senderId}, Role: ${senderUserRole}`);
         if (!senderId || !mongoose.Types.ObjectId.isValid(senderId)) {
             console.error(`[sendMediationMessage] Invalid or missing senderId: ${senderId}`);
             return socket.emit('mediationChatError', { message: "Invalid sender information." });
@@ -204,7 +221,7 @@ io.on('connection', (socket) => {
                 return socket.emit('mediationChatError', { message: "Mediation request not found to save message." });
             }
             if (updateResult.modifiedCount === 0) console.warn(`[sendMediationMessage] Message might not have been pushed to ${mediationRequestId}, though matched. UpdateResult:`, updateResult);
-            const populatedMessageForEmit = { ...newMessageData, sender: { _id: senderId, fullName: senderFullName, avatarUrl: senderAvatarUrl } };
+            const populatedMessageForEmit = { ...newMessageData, sender: { _id: senderId, fullName: senderFullName, avatarUrl: senderAvatarUrl, userRole: senderUserRole } };
             if (!populatedMessageForEmit.sender.fullName) {
                 console.warn(`[sendMediationMessage] Broadcasting message for ${senderId} without full sender name. Attempting quick fetch.`);
                 try {
@@ -275,6 +292,314 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- [!!!] معالجات Socket.IO جديدة للشات الفرعي للأدمن [!!!] ---
+
+    socket.on('joinAdminSubChat', async ({ mediationRequestId, subChatId, userId, userRole }) => {
+        const currentUserIdFromSocket = socket.userIdForChat || userId; // <--- استخدم هذا المتغير
+        const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+
+        console.log(`[Socket JoinAdminSubChat] User ${currentUserIdFromSocket} attempting to join ${subChatRoomName}`); // <--- تم التصحيح
+
+        if (!currentUserIdFromSocket || !mediationRequestId || !subChatId ||
+            !mongoose.Types.ObjectId.isValid(currentUserIdFromSocket) || // <--- تم التصحيح
+            !mongoose.Types.ObjectId.isValid(mediationRequestId) ||
+            !mongoose.Types.ObjectId.isValid(subChatId)) {
+            console.warn(`[Socket JoinAdminSubChat] Invalid IDs. User: ${currentUserIdFromSocket}, Mediation: ${mediationRequestId}, SubChat: ${subChatId}`);
+            return socket.emit('adminSubChatError', { subChatId, message: "Missing or invalid IDs for joining sub-chat." });
+        }
+
+        try {
+            const mRequest = await MediationRequest.findOne({
+                _id: mediationRequestId,
+                "adminSubChats.subChatId": subChatId
+            }).select('adminSubChats.$ status').lean();
+
+            if (!mRequest || !mRequest.adminSubChats || mRequest.adminSubChats.length === 0) {
+                return socket.emit('adminSubChatError', { subChatId, message: "Sub-chat not found." });
+            }
+
+            const subChatInstance = mRequest.adminSubChats[0];
+            const isAdmin = userRole === 'Admin';
+            // التأكد من أن currentUserIdFromSocket هو string للمقارنة مع participant.userId._id.toString()
+            const isParticipant = subChatInstance.participants.some(p => p.userId && p.userId._id.toString() === currentUserIdFromSocket.toString());
+
+            if (!isAdmin && !isParticipant) {
+                console.warn(`[Socket JoinAdminSubChat] User ${currentUserIdFromSocket} UNAUTHORIZED for ${subChatRoomName}. Not admin and not participant.`);
+                return socket.emit('adminSubChatError', { subChatId, message: "Unauthorized to join this private admin chat." });
+            }
+
+            socket.join(subChatRoomName);
+            console.log(`[Socket JoinAdminSubChat] User ${currentUserIdFromSocket} (Socket: ${socket.id}) successfully JOINED room ${subChatRoomName}. Sockets in room now: ${io.sockets.adapter.rooms.get(subChatRoomName)?.size || 0}`);
+            socket.emit('joinedAdminSubChatSuccess', {
+                mediationRequestId: mediationRequestId.toString(),
+                subChatId: subChatId.toString(),
+                roomName: subChatRoomName,
+                message: `Successfully joined private admin chat for subChat: ${subChatInstance.title || subChatId}.`
+            });
+
+            // (اختياري) إرسال رسالة نظام عند دخول أدمن غير المنشئ للشات
+            if (isAdmin && !subChatInstance.createdBy.equals(currentUserIdFromSocket) && subChatInstance.participants.some(p => p.userId.equals(currentUserIdFromSocket))) { // <--- تم التصحيح
+                const adminName = socket.userFullNameForChat || userRole;
+                const systemMessageContent = `🛡️ Admin ${adminName} has joined this private discussion.`;
+                const systemMessage = {
+                    _id: new mongoose.Types.ObjectId(),
+                    sender: null, // نظام
+                    message: systemMessageContent,
+                    type: 'system',
+                    timestamp: new Date(),
+                    readBy: []
+                };
+                // لا نحفظ رسالة النظام هذه في الداتا بيز هنا، هي فقط لـ socket
+                // io.to(subChatRoomName).emit('new_admin_sub_chat_message', { mediationRequestId, subChatId, message: systemMessage });
+            }
+
+
+        } catch (error) {
+            console.error(`[Socket JoinAdminSubChat] Error for ${subChatRoomName}:`, error);
+            socket.emit('adminSubChatError', { subChatId, message: "Error joining private admin chat." });
+        }
+    });
+
+    socket.on('joinAdminSubChat', (data) => {
+        console.log(`User ${data.userId} joined sub-chat ${data.subChatId}`);
+    });
+
+    socket.on('sendAdminSubChatMessage', async ({ mediationRequestId, subChatId, messageText, imageUrl }) => {
+        const senderId = socket.userIdForChat; // هذا يجب أن يكون ID المستخدم الحالي من socket.userIdForChat
+        let senderFullName = socket.userFullNameForChat || 'User (Socket Default)';
+        let senderAvatarUrl = socket.userAvatarUrlForChat;
+        let senderUserRole = 'User (Role Default)'; // قيمة افتراضية إذا لم يتمكن من جلب الدور
+
+        if (!senderId || !mongoose.Types.ObjectId.isValid(senderId)) {
+            console.error(`[Socket SendAdminSubMsg] Invalid or missing senderId on socket: ${socket.id}`);
+            return socket.emit('adminSubChatError', { subChatId, message: "Invalid sender information (socket)." });
+        }
+
+        // جلب أحدث بيانات للمرسل للتأكد من صحتها (اختياري إذا كنت تثق بـ socket.userFullNameForChat)
+        try {
+            const userDoc = await User.findById(senderId).select('userRole fullName avatarUrl').lean();
+            if (userDoc) {
+                senderUserRole = userDoc.userRole;
+                senderFullName = userDoc.fullName;
+                senderAvatarUrl = userDoc.avatarUrl;
+            } else {
+                console.warn(`[Socket SendAdminSubMsg] User document not found for ID: ${senderId} during message send. Using defaults/socket properties.`);
+            }
+        } catch (err) {
+            console.error(`[Socket SendAdminSubMsg] Error fetching fresh user details for ${senderId}:`, err);
+        }
+
+        const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+        console.log(`[Socket SendAdminSubMsg] User ${senderId} ('${senderFullName}') sending to ${subChatRoomName}. Text: ${!!messageText}, Image: ${!!imageUrl}`);
+
+        if ((!messageText || messageText.trim() === "") && !imageUrl) {
+            return socket.emit('adminSubChatError', { subChatId, message: "Cannot send empty message." });
+        }
+
+        try {
+            const newMessageObjectId = new mongoose.Types.ObjectId();
+            const newMessageData = { // هذه هي البيانات التي ستُحفظ في DB
+                _id: newMessageObjectId,
+                sender: new mongoose.Types.ObjectId(senderId), // يُحفظ كـ ObjectId
+                message: (imageUrl && !messageText) ? null : messageText?.trim(),
+                imageUrl: imageUrl || null,
+                type: imageUrl ? 'image' : 'text',
+                timestamp: new Date(),
+                readBy: [{ readerId: new mongoose.Types.ObjectId(senderId), readAt: new Date() }] // المرسل يقرأ رسالته
+            };
+
+            const updateResult = await MediationRequest.updateOne(
+                { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+                {
+                    $push: { "adminSubChats.$.messages": newMessageData },
+                    $set: { "adminSubChats.$.lastMessageAt": newMessageData.timestamp }
+                }
+            );
+
+            if (updateResult.matchedCount === 0) {
+                return socket.emit('adminSubChatError', { subChatId, message: "Sub-chat not found to save message." });
+            }
+            if (updateResult.modifiedCount === 0) {
+                console.warn(`[Socket SendAdminSubMsg] DB update modifiedCount 0 for ${subChatRoomName}`);
+            }
+
+            // **تكوين الرسالة للإرسال عبر Socket مع معلومات المرسل الكاملة**
+            const populatedMessageForEmit = {
+                ...newMessageData, // تحتوي على _id, message, imageUrl, type, timestamp, readBy
+                sender: { // **مهم جداً: يجب أن يكون كائن كامل**
+                    _id: senderId.toString(), // أرسله كنص إذا كان العميل يتوقع ذلك، أو ObjectId
+                    fullName: senderFullName,
+                    avatarUrl: senderAvatarUrl,
+                    userRole: senderUserRole
+                }
+            };
+
+            console.log(`[Socket SendAdminSubMsg] Emitting 'new_admin_sub_chat_message' to ${subChatRoomName} with payload:`, JSON.stringify(populatedMessageForEmit));
+            io.to(subChatRoomName).emit('new_admin_sub_chat_message', {
+                mediationRequestId: mediationRequestId.toString(),
+                subChatId: subChatId.toString(),
+                message: populatedMessageForEmit // الرسالة مع معلومات المرسل المضمنة
+            });
+
+            // إرسال إشعارات للمشاركين الآخرين (كما في الـ controller)
+            const mRequest = await MediationRequest.findById(mediationRequestId)
+                .select('adminSubChats product')
+                .populate({ // Populate دقيق
+                    path: 'adminSubChats',
+                    match: { subChatId: new mongoose.Types.ObjectId(subChatId) },
+                    populate: { path: 'participants.userId', select: '_id fullName userRole avatarUrl' }
+                })
+                .populate('product', 'title')
+                .lean();
+
+            if (mRequest && mRequest.adminSubChats && mRequest.adminSubChats.length > 0) {
+                const currentSubChat = mRequest.adminSubChats[0];
+                const productTitle = mRequest.product?.title || 'the dispute';
+                const notificationPromises = currentSubChat.participants
+                    .filter(p => p.userId && !p.userId._id.equals(senderId))
+                    .map(p => {
+                        let isUserInSubChatRoom = false;
+                        const targetSocketId = onlineUsers[p.userId._id.toString()];
+                        if (targetSocketId && io.sockets.sockets.get(targetSocketId)?.rooms.has(subChatRoomName)) {
+                            isUserInSubChatRoom = true;
+                        }
+                        if (!isUserInSubChatRoom) {
+                            return Notification.create({ /* ... نفس تفاصيل الإشعار ... */
+                                user: p.userId._id,
+                                type: 'NEW_ADMIN_SUBCHAT_MESSAGE',
+                                title: `New Message in Private Chat (${currentSubChat.title || 'Admin Chat'})`,
+                                message: `${senderFullName} sent a new message regarding "${productTitle}".`,
+                                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
+                                metadata: { subChatId: subChatId.toString(), messageId: newMessageObjectId.toString() }
+                            });
+                        }
+                        return null;
+                    }).filter(Boolean);
+                if (notificationPromises.length > 0) {
+                    await Promise.all(notificationPromises);
+                    console.log(`[Socket SendAdminSubMsg] Sent ${notificationPromises.length} offline notifications.`);
+                }
+            }
+
+        } catch (error) {
+            console.error(`[Socket SendAdminSubMsg] Error for ${subChatRoomName}:`, error);
+            socket.emit('adminSubChatError', { subChatId, message: "Error sending message to private admin chat." });
+        }
+    });
+
+    socket.on('markAdminSubChatMessagesRead', async ({ mediationRequestId, subChatId, messageIds }) => {
+        const readerUserId = socket.userIdForChat;
+        const readerFullName = socket.userFullNameForChat;
+        const readerAvatarUrl = socket.userAvatarUrlForChat;
+
+        const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+        console.log(`[Socket MarkAdminRead] User ${readerUserId} marking messages in ${subChatRoomName}`);
+
+        if (!readerUserId || !Array.isArray(messageIds) || messageIds.length === 0) {
+            return socket.emit('adminSubChatError', { subChatId, message: "Invalid parameters for marking messages read." });
+        }
+        if (messageIds.some(id => !mongoose.Types.ObjectId.isValid(id))) {
+            return socket.emit('adminSubChatError', { subChatId, message: "Invalid message ID format." });
+        }
+
+        try {
+            const objectMessageIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
+            const now = new Date();
+
+            const updateResult = await MediationRequest.updateOne(
+                { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+                {
+                    $addToSet: {
+                        "adminSubChats.$[outer].messages.$[inner].readBy": {
+                            readerId: new mongoose.Types.ObjectId(readerUserId),
+                            readAt: now
+                        }
+                    }
+                },
+                {
+                    arrayFilters: [
+                        { "outer.subChatId": new mongoose.Types.ObjectId(subChatId) },
+                        { "inner._id": { $in: objectMessageIds }, "inner.readBy.readerId": { $ne: new mongoose.Types.ObjectId(readerUserId) } }
+                    ]
+                }
+            );
+
+            if (updateResult.modifiedCount > 0) {
+                const updatedMessageInfos = objectMessageIds.map(msgId => ({
+                    _id: msgId.toString(), // أرسل ID كنص للعميل
+                    readBy: [{ readerId: readerUserId.toString(), readAt: now, fullName: readerFullName, avatarUrl: readerAvatarUrl }]
+                }));
+
+                io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', {
+                    mediationRequestId: mediationRequestId.toString(),
+                    subChatId: subChatId.toString(),
+                    updatedMessages: updatedMessageInfos
+                });
+                console.log(`[Socket MarkAdminRead] Emitted 'admin_sub_chat_messages_status_updated' to ${subChatRoomName}`);
+            } else {
+                console.log(`[Socket MarkAdminRead] No messages updated for read status in ${subChatRoomName} (modifiedCount: 0).`);
+            }
+        } catch (error) {
+            console.error(`[Socket MarkAdminRead] Error for ${subChatRoomName}:`, error);
+            socket.emit('adminSubChatError', { subChatId, message: "Error marking messages as read." });
+        }
+    });
+
+    socket.on("adminSubChatStartTyping", async ({ mediationRequestId, subChatId }) => {
+        if (mediationRequestId && subChatId && socket.userIdForChat) {
+            const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+
+            let fullName = socket.userFullNameForChat;
+            let avatarUrl = socket.userAvatarUrlForChat;
+
+            // لا حاجة لجلبها مرة أخرى هنا إذا كانت موجودة بالفعل في socket.userFullNameForChat
+            // إلا إذا كنت تريد التأكد من أنها الأحدث دائمًا
+            // if (!fullName || !avatarUrl) { // يمكنك إضافة هذا الشرط إذا أردت
+            try {
+                const userDoc = await User.findById(socket.userIdForChat).select('fullName avatarUrl').lean();
+                if (userDoc) {
+                    fullName = userDoc.fullName;
+                    avatarUrl = userDoc.avatarUrl;
+                    // قم بتحديثها على السوكيت إذا كانت مختلفة للاستخدامات المستقبلية ضمن نفس الاتصال
+                    socket.userFullNameForChat = fullName;
+                    socket.userAvatarUrlForChat = avatarUrl;
+                } else {
+                    fullName = fullName || "A user";
+                }
+            } catch (error) {
+                console.error(`[AdminTyping] Error fetching user details for ${socket.userIdForChat}:`, error);
+                fullName = fullName || "A user";
+            }
+            // }
+            console.log(`[Socket Typing START] User ${socket.userIdForChat} ('${fullName}') is typing in ${subChatRoomName}`); // DEBUG
+            socket.to(subChatRoomName).emit("adminSubChatUserTyping", {
+                subChatId,
+                userId: socket.userIdForChat,
+                fullName: fullName,
+                avatarUrl: avatarUrl
+            });
+        }
+    });
+
+    socket.on("adminSubChatStopTyping", ({ mediationRequestId, subChatId }) => {
+        if (mediationRequestId && subChatId && socket.userIdForChat) {
+            const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+            console.log(`[Socket Typing STOP] User ${socket.userIdForChat} stopped typing in ${subChatRoomName}`); // DEBUG
+            socket.to(subChatRoomName).emit("adminSubChatUserStoppedTyping", {
+                subChatId,
+                userId: socket.userIdForChat
+            });
+        }
+    });
+
+    socket.on('leaveAdminSubChat', ({ mediationRequestId, subChatId }) => {
+        if (socket.userIdForChat && mediationRequestId && subChatId) {
+            const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+            socket.leave(subChatRoomName);
+            console.log(`[Socket LeaveAdminSubChat] User ${socket.userIdForChat} (Socket: ${socket.id}) left room ${subChatRoomName}.`);
+        }
+    });
+
     socket.on('disconnect', (reason) => {
         console.log(`🔥: Socket ${socket.id} (User: ${socket.userIdForChat || 'Unknown'}) disconnected. Reason: ${reason}. Was in rooms: ${Array.from(socket.rooms)}`);
         if (socket.userIdForChat) {
@@ -337,6 +662,7 @@ app.use('/uploads', uploadRoute);
 app.use('/withdrawals', withdrawalRoute);
 app.use('/mediation', mediationRoute);
 app.use('/reports', reportRoute);
+app.use('/support', ticketRoute);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to SBEX API!' }));
 
