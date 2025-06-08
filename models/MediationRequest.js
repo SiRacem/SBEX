@@ -3,12 +3,16 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const mongoosePaginate = require('mongoose-paginate-v2');
 
-const SubChatMessageSchema = new Schema({ // Schema فرعي لرسائل الشات الفرعي
-    sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+const SubChatMessageSchema = new Schema({
+    sender: { 
+        type: Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: function() { return this.type !== 'system'; } // The Fix
+    },
     message: {
         type: String,
         trim: true,
-        required: function () { return this.type !== 'image' && this.type !== 'file'; },
+        required: function () { return this.type !== 'image' && this.type !== 'file' && this.type !== 'system'; },
     },
     timestamp: { type: Date, default: Date.now, index: true },
     type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
@@ -20,20 +24,19 @@ const SubChatMessageSchema = new Schema({ // Schema فرعي لرسائل الش
         }],
         default: []
     },
-    _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() } // لضمان وجود ID لكل رسالة
+    _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() }
 });
 
-const AdminSubChatSchema = new Schema({ // Schema للشات الفرعي الواحد
-    subChatId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId(), index: true }, // ID فريد للشات الفرعي
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }, // الأدمن الذي أنشأ الشات
-    title: { type: String, trim: true }, // عنوان اختياري يضعه الأدمن (مثال: "نقاش حول الدليل X مع البائع")
-    participants: [{ // المشاركون في هذا الشات الفرعي المحدد (الأدمن + المستخدمون المختارون)
+const AdminSubChatSchema = new Schema({
+    subChatId: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId(), index: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    title: { type: String, trim: true },
+    participants: [{
         userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-        // يمكنك إضافة دور المشارك في النزاع هنا إذا أردت, مثال: roleInDispute: String
     }],
-    messages: [SubChatMessageSchema], // مصفوفة رسائل هذا الشات الفرعي
+    messages: [SubChatMessageSchema],
     createdAt: { type: Date, default: Date.now },
-    lastMessageAt: { type: Date, default: Date.now, index: true } // لتسهيل ترتيب الشاتات الفرعية
+    lastMessageAt: { type: Date, default: Date.now, index: true }
 });
 
 
@@ -51,7 +54,7 @@ const MediationRequestSchema = new Schema({
             'PendingMediatorSelection',
             'MediatorAssigned',
             'MediationOfferAccepted',
-            'PartiesConfirmed', // <<< تأكد من أن هذه الحالة موجودة إذا كنت ستستخدمها
+            'PartiesConfirmed',
             'EscrowFunded',
             'InProgress',
             'PendingSellerAction',
@@ -61,7 +64,6 @@ const MediationRequestSchema = new Schema({
             'Cancelled',
             'Disputed',
             'AdminResolved',
-            // 'PartiesConfirmed', // <<< مكررة، احذف واحدة
         ],
         default: 'PendingMediatorSelection'
     },
@@ -77,9 +79,13 @@ const MediationRequestSchema = new Schema({
         }],
         default: []
     },
-    chatMessages: [ // هذا هو الشات الرئيسي للنزاع
+    chatMessages: [
         {
-            sender: { type: Schema.Types.ObjectId, ref: 'User' },
+            sender: { 
+                type: Schema.Types.ObjectId, 
+                ref: 'User',
+                required: function() { return this.type !== 'system'; } // The Fix
+            },
             message: {
                 type: String,
                 trim: true,
@@ -95,7 +101,6 @@ const MediationRequestSchema = new Schema({
                 }],
                 default: []
             },
-            // _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() } // تأكد من وجود ID للرسائل الرئيسية أيضاً
         }
     ],
     previouslySuggestedMediators: {
@@ -105,10 +110,7 @@ const MediationRequestSchema = new Schema({
         }],
         default: []
     },
-    suggestionRefreshCount: {
-        type: Number,
-        default: 0
-    },
+    suggestionRefreshCount: { type: Number, default: 0 },
     sellerMediationFeePaid: { type: Boolean, default: false },
     buyerMediationFeePaid: { type: Boolean, default: false },
     sellerConfirmedStart: { type: Boolean, default: false },
@@ -118,20 +120,17 @@ const MediationRequestSchema = new Schema({
     calculatedMediatorFee: { type: Number, default: 0 },
     calculatedBuyerFeeShare: { type: Number, default: 0 },
     calculatedSellerFeeShare: { type: Number, default: 0 },
-    chatId: { type: String }, // هل ما زلت تستخدم هذا؟ إذا كان الشات مدمجًا، قد لا يكون ضروريًا
+    chatId: { type: String },
     resolutionDetails: { type: String },
     adminNotes: { type: String },
-    adminJoinMessageSent: { type: Boolean, default: false }, // للشات الرئيسي
-
-    // --- [!!!] الحقل الجديد للشاتات الفرعية للأدمن [!!!] ---
-    adminSubChats: [AdminSubChatSchema], // مصفوفة من الشاتات الفرعية
+    adminJoinMessageSent: { type: Boolean, default: false },
+    adminSubChats: [AdminSubChatSchema],
 
 }, { timestamps: true });
 
 MediationRequestSchema.index({ status: 1, mediator: 1 });
-MediationRequestSchema.index({ "adminSubChats.subChatId": 1 }); // فهرس للبحث السريع عن شات فرعي
+MediationRequestSchema.index({ "adminSubChats.subChatId": 1 });
 
-// إضافة _id تلقائيًا لـ chatMessages إذا لم يكن موجودًا
 MediationRequestSchema.pre('save', function (next) {
     if (this.chatMessages && this.chatMessages.length > 0) {
         this.chatMessages.forEach(msg => {
@@ -142,7 +141,6 @@ MediationRequestSchema.pre('save', function (next) {
     }
     next();
 });
-
 
 MediationRequestSchema.plugin(mongoosePaginate);
 

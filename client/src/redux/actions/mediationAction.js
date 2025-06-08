@@ -1,4 +1,3 @@
-// src/redux/actions/mediationAction.js
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import {
@@ -21,7 +20,6 @@ import {
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
     UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS, ADMIN_RESOLVE_DISPUTE_REQUEST,
     ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL,
-    // --- Admin Sub-Chat ---
     ADMIN_CREATE_SUBCHAT_REQUEST, ADMIN_CREATE_SUBCHAT_SUCCESS, ADMIN_CREATE_SUBCHAT_FAIL, ADMIN_CREATE_SUBCHAT_RESET,
     ADMIN_GET_ALL_SUBCHATS_REQUEST, ADMIN_GET_ALL_SUBCHATS_SUCCESS, ADMIN_GET_ALL_SUBCHATS_FAIL,
     ADMIN_GET_SUBCHAT_MESSAGES_REQUEST, ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS, ADMIN_GET_SUBCHAT_MESSAGES_FAIL,
@@ -429,35 +427,24 @@ export const adminGetSubChatMessages = (mediationRequestId, subChatId) => async 
 export const clearActiveSubChatMessages = () => ({ type: CLEAR_ACTIVE_SUBCHAT_MESSAGES });
 
 export const handleAdminSubChatCreatedSocket = (data) => ({ type: ADMIN_SUBCHAT_CREATED_SOCKET, payload: data });
+
 export const handleNewAdminSubChatMessageSocket = (data) => (dispatch, getState) => {
-    // data هنا هو { mediationRequestId, subChatId, message }
-    // message هو الكائن الكامل للرسالة مع sender object
-
-    // --- [!!!] تعديل مهم هنا [!!!] ---
-    dispatch({
-        type: NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, // استخدم نفس الـ type الذي لديك
-        payload: data, // أرسل 'data' بالكامل (يحتوي على subChatId و message)
-    });
-    // --- [!!!] نهاية التعديل [!!!] ---
-
-    // يمكنك الاحتفاظ بمنطق الإشعار (toast) هنا إذا أردت، أو نقله لـ useEffect في المكون
-    const { activeSubChat, activeMediationDetails } = getState().mediationReducer;
     const currentUserId = getState().userReducer.user?._id;
 
-    if (activeMediationDetails?._id === data.mediationRequestId) {
-        if (activeSubChat.id !== data.subChatId) { // إذا لم يكن الشات الفرعي المستلم هو النشط
-            // منطق إظهار إشعار toast
-            const relevantSubChatFromDetails = activeMediationDetails?.adminSubChats?.find(sc => sc.subChatId === data.subChatId);
-            // يجب أيضًا البحث في adminSubChats.list إذا كان المستخدم أدمن ولم يتم تحميل التفاصيل بعد
-            const relevantSubChatFromList = getState().mediationReducer.adminSubChats.list.find(sc => sc.subChatId === data.subChatId);
-            const relevantSubChat = relevantSubChatFromDetails || relevantSubChatFromList;
-
-            const isCurrentUserParticipant = relevantSubChat?.participants.some(p => (p.userId?._id || p.userId) === currentUserId);
-
-            if (relevantSubChat && isCurrentUserParticipant && (data.message.sender?._id || data.message.sender) !== currentUserId) {
-                // toast.info(...) // يمكنك استدعاء toast من هنا إذا أردت
-            }
-        }
+    if (!currentUserId) {
+        console.warn("handleNewAdminSubChatMessageSocket: Could not find currentUserId in state. Aborting dispatch.");
+        return;
     }
+
+    dispatch({
+        type: NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET,
+        payload: { ...data, currentUserId },
+    });
 };
+
 export const handleAdminSubChatMessagesStatusUpdatedSocket = (data) => ({ type: ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET, payload: data });
+
+export const markSubChatAsReadInList = (subChatId) => ({
+    type: 'MARK_SUBCHAT_AS_READ_IN_LIST',
+    payload: { subChatId },
+});

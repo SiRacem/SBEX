@@ -1,4 +1,3 @@
-// src/redux/reducers/mediationReducer.js
 import {
     ADMIN_GET_PENDING_ASSIGNMENTS_REQUEST, ADMIN_GET_PENDING_ASSIGNMENTS_SUCCESS, ADMIN_GET_PENDING_ASSIGNMENTS_FAIL,
     ADMIN_ASSIGN_MEDIATOR_REQUEST, ADMIN_ASSIGN_MEDIATOR_SUCCESS, ADMIN_ASSIGN_MEDIATOR_FAIL,
@@ -20,13 +19,14 @@ import {
     ADMIN_GET_DISPUTED_MEDIATIONS_FAIL, GET_MEDIATION_DETAILS_BY_ID_REQUEST, GET_MEDIATION_DETAILS_BY_ID_SUCCESS, GET_MEDIATION_DETAILS_BY_ID_FAIL,
     UPDATE_MEDIATION_DETAILS_FROM_SOCKET, CLEAR_ACTIVE_MEDIATION_DETAILS, ADMIN_RESOLVE_DISPUTE_REQUEST,
     ADMIN_RESOLVE_DISPUTE_SUCCESS, ADMIN_RESOLVE_DISPUTE_FAIL, UPDATE_SINGLE_MEDIATION_REQUEST_IN_STORE,
-    // --- Admin Sub-Chat ---
     ADMIN_CREATE_SUBCHAT_REQUEST, ADMIN_CREATE_SUBCHAT_SUCCESS, ADMIN_CREATE_SUBCHAT_FAIL, ADMIN_CREATE_SUBCHAT_RESET,
     ADMIN_GET_ALL_SUBCHATS_REQUEST, ADMIN_GET_ALL_SUBCHATS_SUCCESS, ADMIN_GET_ALL_SUBCHATS_FAIL,
     ADMIN_GET_SUBCHAT_MESSAGES_REQUEST, ADMIN_GET_SUBCHAT_MESSAGES_SUCCESS, ADMIN_GET_SUBCHAT_MESSAGES_FAIL,
     CLEAR_ACTIVE_SUBCHAT_MESSAGES,
     ADMIN_SUBCHAT_CREATED_SOCKET, NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET,
-    SET_ACTIVE_SUBCHAT_ID
+    SET_ACTIVE_SUBCHAT_ID,
+    ADD_SUB_CHAT_TO_MEDIATION,
+    UPDATE_SUBCHAT_MESSAGES_READ_STATUS
 } from '../actionTypes/mediationActionTypes';
 
 const initialState = {
@@ -63,7 +63,6 @@ const initialState = {
     errorActiveMediationDetails: null,
     loadingResolveDispute: {},
     errorResolveDispute: {},
-    // --- Admin Sub-Chat State ---
     adminSubChats: { list: [], loading: false, error: null },
     activeSubChat: { details: null, messages: [], loadingMessages: false, errorMessages: null, id: null },
     creatingSubChat: false,
@@ -293,35 +292,49 @@ const mediationReducer = (state = initialState, action) => {
             return { ...state, loadingAdminDisputed: false, errorAdminDisputed: payload, adminDisputedMediations: { ...initialState.adminDisputedMediations } };
 
         // --- Get Mediation Details By ID ---
-        case GET_MEDIATION_DETAILS_BY_ID_REQUEST:
-            return { ...state, loadingActiveMediationDetails: true, errorActiveMediationDetails: null };
-        case GET_MEDIATION_DETAILS_BY_ID_SUCCESS:
-            // عند جلب تفاصيل الوساطة، قد تحتوي على adminSubChats
-            // نخزنها في activeMediationDetails.adminSubChats
-            // ونقوم بتحديث adminSubChats.list أيضًا إذا كان هذا هو النزاع النشط
-            const currentAdmin = state.userReducer?.user; // افترض أن لديك userReducer
-            const currentAdminId = currentAdmin?._id;
+        case GET_MEDIATION_DETAILS_BY_ID_SUCCESS: {
+            const currentUserId = state.userReducer?.user?._id;
+
+            const processedSubChats = (payload.adminSubChats || []).map(sc => {
+                let unreadCount = 0;
+                const lastMessage = sc.messages && sc.messages.length > 0 ? sc.messages[sc.messages.length - 1] : null;
+
+                if (sc.messages && currentUserId) {
+                    sc.messages.forEach(msg => {
+                        if (msg.sender?._id !== currentUserId &&
+                            (!msg.readBy || !msg.readBy.some(r => r.readerId === currentUserId))) {
+                            unreadCount++;
+                        }
+                    });
+                }
+
+                const createSnippet = (msg) => {
+                    if (!msg) return "No messages yet.";
+                    if (msg.type === 'system') return "Chat started.";
+                    if (msg.type === 'image') return "[Image]";
+                    if (msg.message) return msg.message.substring(0, 25) + (msg.message.length > 25 ? "..." : "");
+                    return "New message";
+                };
+
+                return {
+                    ...sc,
+                    unreadMessagesCount: unreadCount,
+                    lastMessageSnippet: createSnippet(lastMessage),
+                };
+            }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
+
             return {
                 ...state,
                 loadingActiveMediationDetails: false,
-                activeMediationDetails: payload,
+                activeMediationDetails: { ...payload, adminSubChats: processedSubChats },
                 adminSubChats: {
                     ...state.adminSubChats,
-                    list: (payload.adminSubChats || []).map(sc => {
-                        let unreadCount = 0;
-                        if (sc.messages && currentAdminId) {
-                            sc.messages.forEach(msg => {
-                                if (msg.sender?._id !== currentAdminId && (!msg.readBy || !msg.readBy.some(r => r.readerId === currentAdminId))) {
-                                    unreadCount++;
-                                }
-                            });
-                        }
-                        return { ...sc, unreadMessagesCount: unreadCount };
-                    }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)),
+                    list: processedSubChats,
                     loading: false,
                     error: null,
                 },
             };
+        }
         case GET_MEDIATION_DETAILS_BY_ID_FAIL:
             return { ...state, loadingActiveMediationDetails: false, errorActiveMediationDetails: payload };
         case UPDATE_MEDIATION_DETAILS_FROM_SOCKET:
@@ -479,83 +492,87 @@ const mediationReducer = (state = initialState, action) => {
             }
             return state;
 
-        case NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET:
-            const { mediationRequestId: receivedMedId, subChatId: receivedSubChatId, message: newMessage } = payload;
-            const currentUserIdForReducer = state.userReducer?.user?._id; // افترض وجود userReducer في root state
+        case NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET: {
+            const { mediationRequestId, subChatId, message, currentUserId } = payload;
 
-            let updatedActiveSubChatMessages = state.activeSubChat.messages;
-            let updatedActiveSubChatDetails = state.activeSubChat.details;
+            const createSnippet = (msg) => {
+                if (!msg) return "No messages yet.";
+                if (msg.type === 'system') return "Chat started.";
+                if (msg.type === 'image') return "[Image]";
+                if (msg.message) return msg.message.substring(0, 25) + (msg.message.length > 25 ? "..." : "");
+                return "New message";
+            };
 
-            // 1. تحديث الشات النشط إذا كان هو المستهدف
-            if (state.activeSubChat.id === receivedSubChatId && state.activeMediationDetails?._id === receivedMedId) {
-                // تجنب إضافة الرسالة إذا كانت موجودة بالفعل (للأمان، نادرًا ما يحدث)
-                if (!state.activeSubChat.messages.some(m => m._id === newMessage._id)) {
-                    updatedActiveSubChatMessages = [...state.activeSubChat.messages, newMessage];
-                }
-                if (updatedActiveSubChatDetails) {
-                    updatedActiveSubChatDetails = {
-                        ...updatedActiveSubChatDetails,
-                        lastMessageAt: newMessage.timestamp,
-                        // إذا كنت تخزن الرسائل في details أيضًا، قم بتحديثها
-                        messages: updatedActiveSubChatDetails.messages ?
-                            (updatedActiveSubChatDetails.messages.some(m => m._id === newMessage._id) ?
-                                updatedActiveSubChatDetails.messages :
-                                [...updatedActiveSubChatDetails.messages, newMessage]
-                            ) : [newMessage]
-                    };
-                }
-            }
+            const getUpdatedSubChatList = (list = []) => {
+                const chatIndex = list.findIndex(sc => sc.subChatId === subChatId);
+                if (chatIndex === -1) return list;
 
-            const updateSubChatInList = (subChatList) => {
-                return subChatList.map(sc => {
-                    if (sc.subChatId === receivedSubChatId) {
-                        let unreadCount = sc.unreadMessagesCount || 0;
-                        if (newMessage.sender && newMessage.sender._id !== currentUserIdForReducer && state.activeSubChat.id !== receivedSubChatId) {
-                            unreadCount++;
+                const newList = [...list];
+                const originalChat = JSON.parse(JSON.stringify(newList[chatIndex]));
+
+                // --- START OF THE CRITICAL FIX ---
+                // 1. Add the new message to a temporary array to calculate the new unread count.
+                const newMessagesArray = [...originalChat.messages, message];
+
+                // 2. Recalculate the entire unread count from the new array of messages.
+                const newUnreadCount = newMessagesArray.filter(
+                    msg => {
+                        // A message is unread if:
+                        // 1. It has a sender.
+                        // 2. The sender is not the current user.
+                        // 3. The current user's ID is NOT in the readBy array.
+                        const senderId = msg.sender?._id || msg.sender;
+                        if (!senderId || senderId.toString() === currentUserId.toString()) {
+                            return false;
                         }
-                        const updatedMessagesArray = sc.messages ?
-                            (sc.messages.some(m => m._id === newMessage._id) ? sc.messages : [...sc.messages, newMessage])
-                            : [newMessage];
-
-                        return {
-                            ...sc,
-                            messages: updatedMessagesArray.slice(-30), // احتفظ بآخر 30 رسالة مثلاً
-                            lastMessageAt: newMessage.timestamp,
-                            unreadMessagesCount: unreadCount
-                        };
+                        const isReadByCurrentUser = msg.readBy?.some(
+                            reader => (reader.readerId?._id || reader.readerId)?.toString() === currentUserId.toString()
+                        );
+                        return !isReadByCurrentUser;
                     }
-                    return sc;
-                }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)); // إعادة الترتيب
+                ).length;
+                // --- END OF THE CRITICAL FIX ---
+
+                const updatedChat = {
+                    ...originalChat,
+                    messages: newMessagesArray, // Use the new messages array
+                    lastMessageAt: message.timestamp,
+                    lastMessageSnippet: createSnippet(message),
+                    unreadMessagesCount: newUnreadCount, // Use the newly calculated count
+                };
+
+                newList[chatIndex] = updatedChat;
+                return newList.sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
             };
 
-            // 2. تحديث قائمة الشاتات العامة (adminSubChats.list) إذا كان المستخدم أدمن
-            let finalAdminSubChatsList = state.adminSubChats.list;
-            if (state.userReducer?.user?.userRole === 'Admin') {
-                finalAdminSubChatsList = updateSubChatInList(state.adminSubChats.list);
+            let newState = { ...state };
+            if (state.activeSubChat.id === subChatId) {
+                newState = {
+                    ...newState,
+                    activeSubChat: {
+                        ...newState.activeSubChat,
+                        messages: [...newState.activeSubChat.messages, message],
+                    },
+                };
             }
-
-            // 3. تحديث الشاتات ضمن activeMediationDetails (لجميع المشاركين في النزاع النشط)
-            let finalActiveMediationSubChats = state.activeMediationDetails?.adminSubChats;
-            if (state.activeMediationDetails?._id === receivedMedId && state.activeMediationDetails?.adminSubChats) {
-                finalActiveMediationSubChats = updateSubChatInList(state.activeMediationDetails.adminSubChats);
-            }
-
-            return {
-                ...state,
-                activeSubChat: {
-                    ...state.activeSubChat,
-                    messages: updatedActiveSubChatMessages,
-                    details: updatedActiveSubChatDetails
-                },
+            newState = {
+                ...newState,
                 adminSubChats: {
-                    ...state.adminSubChats,
-                    list: finalAdminSubChatsList
+                    ...newState.adminSubChats,
+                    list: getUpdatedSubChatList(state.adminSubChats.list),
                 },
-                activeMediationDetails: state.activeMediationDetails ? {
-                    ...state.activeMediationDetails,
-                    adminSubChats: finalActiveMediationSubChats || state.activeMediationDetails.adminSubChats
-                } : null
             };
+            if (newState.activeMediationDetails?._id === mediationRequestId) {
+                newState = {
+                    ...newState,
+                    activeMediationDetails: {
+                        ...newState.activeMediationDetails,
+                        adminSubChats: getUpdatedSubChatList(newState.activeMediationDetails.adminSubChats),
+                    },
+                };
+            }
+            return newState;
+        }
 
         case ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET:
             if (state.activeMediationDetails?._id === payload.mediationRequestId && state.activeSubChat.id === payload.subChatId) {
@@ -613,6 +630,89 @@ const mediationReducer = (state = initialState, action) => {
                 },
                 // sellerRequests: { ... }
             };
+
+        // [!!! إضافة جديدة: case لإضافة شات فرعي جديد من Socket !!!]
+        case ADD_SUB_CHAT_TO_MEDIATION: {
+            if (!state.activeMediationDetails || state.activeMediationDetails._id !== payload.mediationRequestId) {
+                return state;
+            }
+            const existingSubChats = state.activeMediationDetails.adminSubChats || [];
+            if (existingSubChats.some(sc => sc.subChatId === payload.subChat.subChatId)) {
+                return state;
+            }
+            return {
+                ...state,
+                activeMediationDetails: {
+                    ...state.activeMediationDetails,
+                    adminSubChats: [...existingSubChats, payload.subChat]
+                }
+            };
+        }
+
+        case 'ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET': {
+            const { subChatId, readerInfo, messageIds } = payload;
+
+            // This function updates the readBy array for messages in a chat list
+            const updateReadStatusInList = (list) => {
+                const chatIndex = list.findIndex(sc => sc.subChatId === subChatId);
+                if (chatIndex === -1) return list;
+
+                const newList = [...list];
+                const chatToUpdate = JSON.parse(JSON.stringify(newList[chatIndex]));
+
+                chatToUpdate.messages.forEach(msg => {
+                    // If this message is one of the messages that were just read
+                    if (messageIds.includes(msg._id)) {
+                        // And if the reader is not already in the readBy array
+                        if (!msg.readBy.some(r => (r.readerId?._id || r.readerId)?.toString() === readerInfo.readerId.toString())) {
+                            msg.readBy.push(readerInfo);
+                        }
+                    }
+                });
+                newList[chatIndex] = chatToUpdate;
+                return newList;
+            };
+
+            return {
+                ...state,
+                adminSubChats: {
+                    ...state.adminSubChats,
+                    list: updateReadStatusInList(state.adminSubChats.list),
+                },
+                activeSubChat: {
+                    ...state.activeSubChat,
+                    // Also update the messages in the currently open chat window
+                    messages: state.activeSubChat.id === subChatId
+                        ? updateReadStatusInList([{ messages: state.activeSubChat.messages }])[0].messages
+                        : state.activeSubChat.messages,
+                }
+            };
+        }
+
+        case 'MARK_SUBCHAT_AS_READ_IN_LIST': {
+            const { subChatId } = payload;
+            const updateList = (list) => {
+                if (!list) return []; // Safety check
+                return list.map(sc =>
+                    sc.subChatId === subChatId ? { ...sc, unreadMessagesCount: 0 } : sc
+                );
+            };
+
+            return {
+                ...state,
+                adminSubChats: {
+                    ...state.adminSubChats,
+                    list: updateList(state.adminSubChats.list),
+                },
+                // Also update the list within activeMediationDetails to keep them in sync
+                activeMediationDetails: state.activeMediationDetails
+                    ? {
+                        ...state.activeMediationDetails,
+                        adminSubChats: updateList(state.activeMediationDetails.adminSubChats),
+                    }
+                    : null,
+            };
+        }
 
         default:
             return state;

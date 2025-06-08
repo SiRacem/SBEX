@@ -2769,67 +2769,81 @@ exports.adminCreateSubChatController = async (req, res) => {
 // (Admin) جلب جميع الشاتات الفرعية لنزاع معين
 exports.adminGetAllSubChatsForDisputeController = async (req, res) => {
     const { mediationRequestId } = req.params;
-    const adminUserId = req.user._id; // للتأكد أن الأدمن هو من يطلب
+    const adminUserId = req.user._id;
 
     console.log(`[Ctrl-GetAllSubChats] Admin ${adminUserId} fetching all sub-chats for Mediation ${mediationRequestId}`);
 
     try {
+        // --- FIX STARTS HERE ---
+        // We will fetch the document first and then populate it manually.
+        // This gives more control over populating nested arrays.
         const mediationRequest = await MediationRequest.findById(mediationRequestId)
-            .select('adminSubChats status product buyer seller mediator') // اختر الحقول المطلوبة
-            .populate('adminSubChats.createdBy', 'fullName avatarUrl')
-            .populate('adminSubChats.participants.userId', 'fullName avatarUrl')
-            .populate('adminSubChats.messages.sender', 'fullName avatarUrl') // Populate sender of last message if needed
-            .populate('product', 'title')
-            .populate('buyer', 'fullName')
-            .populate('seller', 'fullName')
-            .populate('mediator', 'fullName')
-            .lean(); // .lean() للأداء
+            .select('adminSubChats status product buyer seller mediator')
+            .lean();
 
         if (!mediationRequest) {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
-        // يمكن إضافة تحقق إضافي إذا كان الأدمن الحالي هو مشرف على النزاع أو ما شابه
 
-        // ترتيب الشاتات الفرعية حسب آخر رسالة (الأحدث أولاً)
-        const sortedSubChats = mediationRequest.adminSubChats.sort((a, b) => {
+        // Now, populate the necessary fields on the retrieved document
+        await User.populate(mediationRequest, [
+            { path: 'product', select: 'title' },
+            { path: 'seller', select: 'fullName' },
+            { path: 'buyer', select: 'fullName' },
+            { path: 'mediator', select: 'fullName' },
+        ]);
+
+        if (mediationRequest.adminSubChats && mediationRequest.adminSubChats.length > 0) {
+            await User.populate(mediationRequest.adminSubChats, [
+                { path: 'createdBy', select: 'fullName avatarUrl' },
+                { path: 'participants.userId', select: 'fullName avatarUrl' },
+                { path: 'messages.sender', select: 'fullName avatarUrl' },
+                // This is the most important part that often fails with direct population
+                { path: 'messages.readBy.readerId', select: 'fullName avatarUrl' }
+            ]);
+        }
+        // --- FIX ENDS HERE ---
+
+        const sortedSubChats = (mediationRequest.adminSubChats || []).sort((a, b) => {
             return new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt);
         });
 
-        // إضافة معلومات عن الطرف الآخر في كل شات فرعي
         const subChatsWithOtherPartyInfo = sortedSubChats.map(sc => {
-            const otherParticipants = sc.participants.filter(p => !p.userId._id.equals(adminUserId));
-            let otherPartyNames = "Participants";
-            if (otherParticipants.length > 0) {
-                otherPartyNames = otherParticipants.map(p => p.userId.fullName || "Unknown User").join(', ');
-            }
-
             const lastMessage = sc.messages && sc.messages.length > 0 ? sc.messages[sc.messages.length - 1] : null;
             let unreadCount = 0;
-            if (lastMessage) {
+
+            // Recalculate unread count here with fully populated data
+            if (sc.messages && sc.messages.length > 0) {
                 sc.messages.forEach(msg => {
-                    if (msg.sender && !msg.sender._id.equals(adminUserId) &&
-                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && rb.readerId.equals(adminUserId)))
-                    ) {
+                    // Check if message is from another user and not read by the current admin
+                    if (msg.sender && msg.sender._id.toString() !== adminUserId.toString() &&
+                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && 
+                            rb.readerId._id.toString() === adminUserId.toString()))) {
                         unreadCount++;
                     }
                 });
             }
 
+            const createSnippet = (msg) => {
+                if (!msg) return "No messages yet.";
+                if (msg.type === 'system') return "Chat started.";
+                if (msg.type === 'image') return "[Image]";
+                if (msg.message) return msg.message.substring(0, 25) + (msg.message.length > 25 ? "..." : "");
+                return "New message";
+            };
 
             return {
                 ...sc,
-                otherPartyDisplay: otherPartyNames, // اسم الطرف/الأطراف الأخرى
-                lastMessageSnippet: lastMessage ? (lastMessage.type === 'text' ? lastMessage.message.substring(0, 50) + "..." : `[${lastMessage.type}]`) : "No messages yet.",
-                unreadMessagesCount: unreadCount // للأدمن الحالي
+                lastMessageSnippet: createSnippet(lastMessage),
+                unreadMessagesCount: unreadCount
             };
         });
 
-
         res.status(200).json({
             subChats: subChatsWithOtherPartyInfo,
-            mediationStatus: mediationRequest.status, // لإعطاء سياق للحالة
+            mediationStatus: mediationRequest.status,
             productTitle: mediationRequest.product?.title,
-            parties: { // معلومات الأطراف الرئيسية للنزاع
+            parties: {
                 seller: mediationRequest.seller,
                 buyer: mediationRequest.buyer,
                 mediator: mediationRequest.mediator

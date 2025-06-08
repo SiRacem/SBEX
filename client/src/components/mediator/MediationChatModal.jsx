@@ -135,7 +135,7 @@ const MediationChatModal = ({
       const config = { headers: { Authorization: `Bearer ${token}` } };
       // تأكد أن مسار API صحيح
       const { data } = await axios.get(
-        `/api/mediation/chat/${mediationRequest._id}/history`,
+        `/mediation/chat/${mediationRequest._id}/history`,
         config
       );
       setMessages(Array.isArray(data) ? data : []);
