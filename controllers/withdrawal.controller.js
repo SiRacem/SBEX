@@ -440,8 +440,18 @@ exports.adminGetRequests = async (req, res) => {
     console.log(`[WithdrawCtrl - adminGetRequests] Admin fetching requests. Status: ${status || 'All'}, Page: ${page}, Limit: ${limit}`);
 
     const filter = {};
-    if (status && ['Pending', 'Processing', 'Completed', 'Rejected', 'Failed'].includes(status)) {
-        filter.status = status;
+    if (status) {
+        const lowerStatus = status.toLowerCase();
+        const validStatuses = {
+            pending: 'Pending',
+            processing: 'Processing',
+            completed: 'Completed',
+            rejected: 'Rejected',
+            failed: 'Failed'
+        };
+        if (validStatuses[lowerStatus]) {
+            filter.status = validStatuses[lowerStatus];
+        }
     }
 
     try {
