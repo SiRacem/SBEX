@@ -103,24 +103,22 @@ const withdrawalRequestReducer = (state = initialState, action) => {
 
         case ADMIN_COMPLETE_WITHDRAWAL_SUCCESS:
         case ADMIN_REJECT_WITHDRAWAL_SUCCESS:
-            const updatedRequest = payload; // payload هو الطلب المحدث
+            const { requestId } = payload; // We only need the ID here
             return {
                 ...state,
                 loadingAdminAction: false,
-                // تحديث الطلب في قائمة الأدمن
+                // --- [!!!] START: MODIFICATION [!!!] ---
+                // Remove the processed request from the list of pending requests
                 adminRequestsData: {
                     ...state.adminRequestsData,
-                    requests: state.adminRequestsData.requests.map(req =>
-                        req._id === updatedRequest._id ? updatedRequest : req
+                    requests: state.adminRequestsData.requests.filter(req =>
+                        req._id !== requestId
                     ),
+                    totalRequests: Math.max(0, state.adminRequestsData.totalRequests - 1),
                 },
-                // تحديث الطلب في قائمة المستخدم (إذا كان مفتوحًا)
-                userRequests: state.userRequests.map(req =>
-                    req._id === updatedRequest._id ? { ...req, status: updatedRequest.status, rejectionReason: updatedRequest.rejectionReason } : req // تحديث الحقول الرئيسية فقط
-                ),
-                // تحديث التفاصيل إذا كانت مفتوحة
-                adminRequestDetails: state.adminRequestDetails?._id === updatedRequest._id ? updatedRequest : state.adminRequestDetails,
-            };
+        // --- [!!!] END: MODIFICATION [!!!] ---
+        // You can still update userRequests and adminRequestDetails if needed
+                    };
 
         case ADMIN_COMPLETE_WITHDRAWAL_FAIL:
         case ADMIN_REJECT_WITHDRAWAL_FAIL:
@@ -129,6 +127,16 @@ const withdrawalRequestReducer = (state = initialState, action) => {
 
         case ADMIN_CLEAR_WITHDRAWAL_ERROR:
             return { ...state, errorAdminAction: null, errorCreate: null /* يمكنك مسح أخطاء أخرى إذا أردت */ };
+
+        case 'ADMIN_ADD_WITHDRAWAL_REQUEST_SOCKET':
+            return {
+                ...state,
+                adminRequestsData: {
+                    ...state.adminRequestsData,
+                    requests: [payload, ...state.adminRequestsData.requests],
+                    totalRequests: state.adminRequestsData.totalRequests + 1,
+                },
+                };
 
         default:
             return state;

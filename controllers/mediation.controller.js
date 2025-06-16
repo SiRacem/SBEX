@@ -103,13 +103,14 @@ exports.getMediationRequestDetailsController = async (req, res) => {
     console.log("--- Controller: getMediationRequestDetailsController ---");
     try {
         const { mediationRequestId } = req.params;
-        const userId = req.user._id; // ID المستخدم الحالي (الأدمن في هذه الحالة)
+        const userId = req.user._id; // ID المستخدم الحالي
         const userRole = req.user.userRole; // دور المستخدم الحالي
 
         if (!mongoose.Types.ObjectId.isValid(mediationRequestId)) {
             return res.status(400).json({ msg: "Invalid Mediation Request ID." });
         }
 
+        // جلب الطلب مع كل البيانات اللازمة
         const request = await MediationRequest.findById(mediationRequestId)
             .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency')
             .populate('seller', '_id fullName avatarUrl userRole')
@@ -117,42 +118,69 @@ exports.getMediationRequestDetailsController = async (req, res) => {
             .populate('mediator', '_id fullName avatarUrl userRole isMediatorQualified')
             .populate('disputeOverseers', '_id fullName avatarUrl userRole')
             .populate({ path: 'chatMessages.readBy.readerId', select: 'fullName avatarUrl _id' })
-            .populate('chatMessages.sender', 'fullName avatarUrl _id');
+            .populate('chatMessages.sender', 'fullName avatarUrl _id')
+            // <<< الأهم: قم بجلب الشاتات الفرعية والمشاركين فيها لمعالجتها
+            .populate({
+                path: 'adminSubChats',
+                populate: [
+                    { path: 'participants.userId', select: '_id fullName avatarUrl' },
+                    { path: 'createdBy', select: '_id fullName avatarUrl' },
+                    { path: 'messages.sender', select: '_id fullName avatarUrl' },
+                ]
+            });
+
 
         if (!request) {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
 
+        // التحقق من صلاحية الوصول للنزاع الرئيسي (هذا الجزء صحيح وموجود لديك)
         const isSeller = request.seller && request.seller._id.equals(userId);
         const isBuyer = request.buyer && request.buyer._id.equals(userId);
         const isMediator = request.mediator && request.mediator._id.equals(userId);
-        const isAdmin = userRole === 'Admin'; // استخدم userRole من req.user
-
-        // التحقق إذا كان المستخدم الحالي مشرفًا محددًا على هذا النزاع
+        const isAdmin = userRole === 'Admin';
         const isDesignatedOverseer = request.disputeOverseers &&
             request.disputeOverseers.some(overseer => overseer._id.equals(userId));
 
         let canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer;
-
-        // إذا كان المستخدم أدمن والحالة نزاع، اسمح له بالوصول حتى لو لم يكن مشرفًا معينًا
-        // هذا يعتمد على سياستك: هل كل الأدمنز يمكنهم رؤية كل النزاعات، أم فقط المشرفون المعينون؟
-        // إذا كان كل الأدمنز، فاستخدم:
         if (isAdmin && request.status === 'Disputed') {
             canAccess = true;
         }
-        // إذا كان فقط المشرفون المعينون (بالإضافة للأطراف الأخرى):
-        // canAccess = isSeller || isBuyer || isMediator || (isDesignatedOverseer && request.status === 'Disputed');
-        // أو إذا كنت تريد أن يتمكن أي أدمن من الوصول إذا كانت الحالة نزاع، بالإضافة إلى المشرفين المعينين:
-        // canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer || (isAdmin && request.status === 'Disputed');
-
 
         if (!canAccess) {
-            console.warn(`[getMediationDetails] User ${userId} (Role: ${userRole}) is FORBIDDEN from accessing details for ${mediationRequestId}. Status: ${request.status}. Parties: S-${request.seller?._id}, B-${request.buyer?._id}, M-${request.mediator?._id}`);
+            console.warn(`[getMediationDetails] User ${userId} (Role: ${userRole}) is FORBIDDEN from accessing details for ${mediationRequestId}.`);
             return res.status(403).json({ msg: "Forbidden: You are not authorized to view these mediation details." });
         }
 
+        // --- [!!!] بداية الحل: فلترة الشاتات الفرعية [!!!] ---
+
+        // 1. حول نتيجة Mongoose إلى كائن JavaScript عادي لكي نتمكن من تعديله.
+        const responseRequest = request.toObject();
+
+        // 2. إذا لم يكن المستخدم "Admin"، قم بفلترة الشاتات الفرعية.
+        //    الأدمن يمكنه رؤية جميع الشاتات الفرعية للإشراف.
+        if (userRole !== 'Admin') {
+            if (responseRequest.adminSubChats && Array.isArray(responseRequest.adminSubChats)) {
+
+                // احتفظ فقط بالشاتات التي يكون فيها ID المستخدم الحالي موجودًا في قائمة المشاركين.
+                responseRequest.adminSubChats = responseRequest.adminSubChats.filter(subChat =>
+                    subChat.participants.some(participant =>
+                        participant.userId && participant.userId._id.equals(userId)
+                    )
+                );
+            }
+        }
+
+        // الآن، `responseRequest.adminSubChats` يحتوي فقط على الشاتات المسموح بها للمستخدم الحالي.
+        // إذا كان المستخدم أدمن، فستبقى القائمة كما هي (كل الشاتات).
+
+        // --- [!!!] نهاية الحل [!!!] ---
+
+
         console.log(`[getMediationDetails] User ${userId} (Role: ${userRole}) GRANTED access to details for ${mediationRequestId}.`);
-        res.status(200).json({ mediationRequest: request });
+
+        // 3. أرسل الكائن المعدل بدلاً من الأصلي.
+        res.status(200).json({ mediationRequest: responseRequest });
 
     } catch (error) {
         console.error("[getMediationDetails] Error fetching mediation request details:", error.message, error.stack);
@@ -2092,6 +2120,17 @@ exports.openDisputeController = async (req, res) => {
             }
         }
 
+        if (req.io && admins.length > 0) {
+            admins.forEach(admin => {
+                const adminSocketId = req.onlineUsers[admin._id.toString()];
+                if (adminSocketId) {
+                    // Send a specific event to admins to refresh their dispute list/count
+                    req.io.to(adminSocketId).emit('dispute_opened_for_admin');
+                    console.log(`   Socket event 'dispute_opened_for_admin' emitted to admin ${admin._id}`);
+                }
+            });
+        }
+
         res.status(200).json({
             msg: "Dispute opened successfully. A mediator/admin will review.",
             mediationRequest: updatedMediationRequestGlobal.toObject() // استخدم المستند المحدث
@@ -2485,15 +2524,45 @@ exports.adminResolveDisputeController = async (req, res) => {
         if (notificationsToSend.length > 0) { try { await Notification.insertMany(notificationsToSend); } catch (e) { console.error("Notif error:", e) } }
 
         if (req.io) {
-            const finalPopulatedMediationRequest = await MediationRequest.findById(mediationRequestId).populate('product seller buyer mediator disputeOverseers chatMessages.sender chatMessages.readBy.readerId').lean();
-            if (finalPopulatedMediationRequest) req.io.to(mediationRequestId.toString()).emit('mediation_details_updated', { mediationRequestId: mediationRequestId.toString(), updatedMediationDetails: finalPopulatedMediationRequest });
+            // 1. Get the final, fully populated mediation request data to send
+            const finalPopulatedMediationRequest = await MediationRequest.findById(mediationRequestId)
+                .populate('product', 'title imageUrls currency agreedPrice status')
+                .populate('seller', '_id fullName avatarUrl userRole')
+                .populate('buyer', '_id fullName avatarUrl userRole')
+                .populate('mediator', '_id fullName avatarUrl userRole')
+                .populate('disputeOverseers', '_id fullName avatarUrl userRole')
+                .lean();
+
+            // 2. Identify all users involved in this mediation
+            const involvedUserIds = [
+                seller?._id?.toString(),
+                buyer?._id?.toString(),
+                mediator?._id?.toString()
+            ].filter(id => id); // Filter out any null/undefined IDs
+
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
+
+            // 3. Emit 'mediation_request_updated' directly to each online participant
+            if (finalPopulatedMediationRequest) {
+                uniqueInvolvedUserIds.forEach(userIdString => {
+                    const userSocketId = req.onlineUsers[userIdString];
+                    if (userSocketId) {
+                        req.io.to(userSocketId).emit('mediation_request_updated', {
+                            mediationRequestId: mediationRequestId.toString(),
+                            updatedMediationRequestData: finalPopulatedMediationRequest
+                        });
+                        console.log(`   [Socket-AdminResolve] Emitted 'mediation_request_updated' directly to user ${userIdString} (Socket: ${userSocketId})`);
+                    }
+                });
+            }
 
             for (const userDoc of usersToUpdateAndSave.values()) {
                 if (userDoc && req.onlineUsers && req.onlineUsers[userDoc._id.toString()]) {
                     const freshUserForSocket = await User.findById(userDoc._id).select('-password').lean();
                     if (freshUserForSocket) {
                         const profileSummary = { _id: freshUserForSocket._id.toString(), balance: freshUserForSocket.balance, sellerAvailableBalance: freshUserForSocket.sellerAvailableBalance, sellerPendingBalance: freshUserForSocket.sellerPendingBalance, productsSoldCount: freshUserForSocket.productsSoldCount, reputationPoints: freshUserForSocket.reputationPoints, level: freshUserForSocket.level, reputationLevel: freshUserForSocket.reputationLevel, mediatorStatus: freshUserForSocket.mediatorStatus, mediatorEscrowGuarantee: freshUserForSocket.mediatorEscrowGuarantee, successfulMediationsCount: freshUserForSocket.successfulMediationsCount, claimedLevelRewards: freshUserForSocket.claimedLevelRewards, positiveRatings: freshUserForSocket.positiveRatings, negativeRatings: freshUserForSocket.negativeRatings, isMediatorQualified: freshUserForSocket.isMediatorQualified };
-                        req.io.to(req.onlineUsers[userDoc._id.toString()]).emit('user_profile_updated', profileSummary);
+                        req.io.to(req.onlineUsers[userDoc._id.toString()]).emit('user_profile_updated', freshUserForSocket);
+                        console.log(`   [Socket-AdminResolve] Emitted 'user_profile_updated' to user ${userDoc._id.toString()}`);
                     }
                 }
             }
@@ -3042,20 +3111,36 @@ exports.adminGetSubChatMessagesController = async (req, res) => {
                 }
             );
             if (updateReadResult.modifiedCount > 0) {
-                messagesMarkedAsRead = messageIdsToUpdateReadStatus.length; // تقديري، العدد الفعلي قد يختلف
+                messagesMarkedAsRead = messageIdsToUpdateReadStatus.length;
                 console.log(`[Ctrl-GetSubChatMessages] Marked ${updateReadResult.modifiedCount} messages as read by ${currentUserId} in SubChat ${subChatId}`);
-                // إرسال تحديث عبر Socket.IO بأن الرسائل قُرئت
+
                 if (req.io) {
                     const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
-                    const updatedMessageInfos = messageIdsToUpdateReadStatus.map(msgId => ({
-                        _id: msgId,
-                        readBy: [{ readerId: currentUserId, readAt: now, fullName: req.user.fullName, avatarUrl: req.user.avatarUrl }]
-                    }));
-                    req.io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', {
+
+                    // --- [!!!] بداية الحل [!!!] ---
+
+                    // 1. قم بإنشاء كائن readerInfo الكامل الذي يتوقعه الـ Reducer
+                    const readerInfoPayload = {
+                        readerId: currentUserId,
+                        readAt: now,
+                        fullName: req.user.fullName,
+                        avatarUrl: req.user.avatarUrl
+                    };
+
+                    // 2. قم بإنشاء الـ payload النهائي الذي يتطابق مع ما يتوقعه الـ Reducer
+                    const finalPayloadForSocket = {
                         mediationRequestId: mediationRequestId.toString(),
                         subChatId: subChatId.toString(),
-                        updatedMessages: updatedMessageInfos
-                    });
+                        readerInfo: readerInfoPayload, // <--- أرسل كائن readerInfo
+                        messageIds: messageIdsToUpdateReadStatus, // <--- أرسل مصفوفة الـ IDs
+                    };
+
+                    // 3. أرسل الـ payload النهائي والصحيح
+                    req.io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', finalPayloadForSocket);
+
+                    console.log(`[Ctrl-GetSubChatMessages] Emitted 'status_updated' with correct payload to room ${subChatRoomName}`);
+
+                    // --- [!!!] نهاية الحل [!!!] ---
                 }
             }
         }

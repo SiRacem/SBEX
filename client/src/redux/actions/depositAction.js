@@ -51,7 +51,7 @@ export const createDepositRequest = (depositData) => async (dispatch) => {
 
         console.log("Action: Deposit request success:", data);
         dispatch({ type: CREATE_DEPOSIT_SUCCESS, payload: data.request }); // إرسال الطلب المُنشأ كـ payload
-        toast.success(data.msg || "Deposit request submitted successfully!");
+        toast.success("Your deposit request has been submitted for review.");
         // --- [!] إضافة هذا السطر ---
         dispatch(getUserDepositRequests());
         dispatch(getTransactions()); // <-- تحديث قائمة المعاملات
@@ -61,6 +61,7 @@ export const createDepositRequest = (depositData) => async (dispatch) => {
         console.error("Action: Deposit submission error:", error.response || error);
         dispatch({ type: CREATE_DEPOSIT_FAIL, payload: message });
         toast.error(`Error: ${message}`);
+        throw new Error(message);
     }
 };
 

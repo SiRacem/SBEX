@@ -1,5 +1,4 @@
 // src/redux/actions/withdrawalRequestAction.js
-// *** نسخة كاملة نهائية مع إعادة جلب الطلبات ***
 
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -144,11 +143,17 @@ export const adminCompleteWithdrawal = (requestId, details = {}) => async (dispa
     const config = getTokenConfig();
     if (!config) return dispatch({ type: ADMIN_COMPLETE_WITHDRAWAL_FAIL, payload: { requestId, error: 'Auth Error' } });
     try {
-        console.log("Action: Admin completing withdrawal request ID:", requestId, "with details:", details);
         const { data } = await axios.put(`/withdrawals/admin/${requestId}/complete`, details, config);
-        console.log("Action: Admin withdrawal completion response:", data);
-        dispatch({ type: ADMIN_COMPLETE_WITHDRAWAL_SUCCESS, payload: data.updatedRequest });
+
+        // --- [!!!] START: MODIFICATION [!!!] ---
+        // First, dispatch success to stop the spinner for the specific item
+        dispatch({ type: ADMIN_COMPLETE_WITHDRAWAL_SUCCESS, payload: { requestId, updatedRequest: data.updatedRequest } });
         toast.success(data.msg || "Withdrawal completed successfully!");
+
+        // Then, re-fetch the list of PENDING withdrawals
+        dispatch(adminGetWithdrawalRequests({ status: 'pending' }));
+        // --- [!!!] END: MODIFICATION [!!!] ---
+
         return true;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to complete withdrawal.';
@@ -165,12 +170,18 @@ export const adminRejectWithdrawal = (requestId, rejectionReason) => async (disp
     const config = getTokenConfig();
     if (!config) return dispatch({ type: ADMIN_REJECT_WITHDRAWAL_FAIL, payload: { requestId, error: 'Auth Error' } });
     try {
-        console.log("Action: Admin rejecting withdrawal request ID:", requestId, "Reason:", rejectionReason);
+        // The body should be { rejectionReason }
         const { data } = await axios.put(`/withdrawals/admin/${requestId}/reject`, { rejectionReason }, config);
-        console.log("Action: Admin withdrawal rejection response:", data);
-        dispatch({ type: ADMIN_REJECT_WITHDRAWAL_SUCCESS, payload: data.updatedRequest });
+
+        // --- [!!!] START: MODIFICATION [!!!] ---
+        dispatch({ type: ADMIN_REJECT_WITHDRAWAL_SUCCESS, payload: { requestId, updatedRequest: data.updatedRequest } });
         toast.success(data.msg || "Withdrawal rejected successfully!");
-        dispatch(getProfile()); // تحديث البروفايل لإظهار الرصيد المرتجع
+        dispatch(getProfile()); // This is fine for user's balance
+
+        // Then, re-fetch the list of PENDING withdrawals
+        dispatch(adminGetWithdrawalRequests({ status: 'pending' }));
+        // --- [!!!] END: MODIFICATION [!!!] ---
+
         return true;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to reject withdrawal.';

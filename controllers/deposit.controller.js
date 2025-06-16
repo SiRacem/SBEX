@@ -51,7 +51,7 @@ const calculateCommissionServer = (method, amount, currency) => {
     console.log(`[CalcComm] Result - Fee: ${fee.toFixed(2)}, Net: ${netAmount.toFixed(2)}`);
     return { fee: Number(fee.toFixed(2)), netAmount: Number(netAmount.toFixed(2)) };
 };
-// ------------------------------------------
+
 
 // --- إنشاء طلب إيداع جديد ---
 exports.createDepositRequest = async (req, res) => {
@@ -119,10 +119,36 @@ exports.createDepositRequest = async (req, res) => {
         console.log(`   ${createdNotifications.length} notifications saved.`);
         await session.commitTransaction();
         console.log("   Transaction committed.");
-        createdNotifications.forEach(notif => {
-            const targetSocketId = req.onlineUsers ? req.onlineUsers[notif.user.toString()] : null;
-            if (targetSocketId) req.io.to(targetSocketId).emit('new_notification', notif.toObject());
+
+        // --- START: MODIFICATION FOR ADMIN UI ---
+        const populatedRequestForSocket = await DepositRequest.findById(newDepositRequest._id)
+            .populate('user', 'fullName email avatarUrl')
+            .lean();
+
+        admins.forEach(admin => {
+            const adminSocketId = req.onlineUsers ? req.onlineUsers[admin._id.toString()] : null;
+            if (adminSocketId) {
+                // Event for the pending list
+                req.io.to(adminSocketId).emit('new_admin_transaction_request', { type: 'deposit', request: populatedRequestForSocket });
+                // General notification
+                const adminNotifMsg = `User ${userFullName} requested ${formatCurrency(numericAmount, currency)}.`;
+                req.io.to(adminSocketId).emit('new_notification', {
+                    user: admin._id,
+                    type: 'NEW_DEPOSIT_REQUEST',
+                    title: 'New Deposit',
+                    message: adminNotifMsg,
+                    relatedEntity: { id: newDepositRequest._id, modelName: 'DepositRequest' }
+                });
+            }
         });
+        // --- END: MODIFICATION FOR ADMIN UI ---
+
+        // Notify the user who made the request
+        const userSocketId = req.onlineUsers ? req.onlineUsers[userId.toString()] : null;
+        if (userSocketId) {
+            req.io.to(userSocketId).emit('new_notification', createdNotifications.find(n => n.user.equals(userId)).toObject());
+        }
+
         res.status(201).json({ msg: "Deposit request submitted.", request: newDepositRequest.toObject() });
     } catch (error) {
         await session.abortTransaction();
@@ -133,7 +159,7 @@ exports.createDepositRequest = async (req, res) => {
         console.log("   CreateDepositRequest Session Ended.");
     }
 };
-// -------------------------------------------------------------
+
 
 // --- [جديد] جلب طلبات الإيداع الخاصة بالمستخدم المسجل ---
 exports.getUserDepositRequests = async (req, res) => {
@@ -258,10 +284,15 @@ exports.adminApproveDeposit = async (req, res) => {
         // --- [!] تحديث رصيد المستخدم في قاعدة البيانات ---
         const updatedUserAfterDeposit = await User.findByIdAndUpdate(
             userToUpdate._id,
-            { $inc: { balance: amountToAdd, depositBalance: amountToAdd } },
-            { session, new: true, runValidators: true } // new: true لإرجاع المستند المحدث
-        ).select('balance sellerAvailableBalance sellerPendingBalance'); // جلب الأرصدة المحدثة فقط
-
+            {
+                $inc: {
+                    balance: amountToAdd,
+                    depositBalance: amountToAdd // <-- Add this line
+                }
+            },
+            { session, new: true, runValidators: true }
+        ).select('balance depositBalance withdrawalBalance sellerAvailableBalance sellerPendingBalance'); // <-- Add depositBalance here
+        
         if (!updatedUserAfterDeposit) throw new Error("User not found or failed to update balance.");
         console.log(`   User balance updated. New main balance: ${updatedUserAfterDeposit.balance}`);
 
@@ -314,11 +345,13 @@ exports.adminApproveDeposit = async (req, res) => {
 
             // 2. إرسال حدث تحديث الأرصدة
             req.io.to(userSocketId).emit('user_balances_updated', {
-                _id: userToUpdate._id.toString(), // ليتأكد العميل أنه هو المقصود
+                _id: userToUpdate._id.toString(),
                 balance: updatedUserAfterDeposit.balance,
-                sellerAvailableBalance: updatedUserAfterDeposit.sellerAvailableBalance, // إذا كانت موجودة
-                sellerPendingBalance: updatedUserAfterDeposit.sellerPendingBalance   // إذا كانت موجودة
-                // أرسل أي أرصدة أخرى قمت بتحديثها أو ذات صلة
+                depositBalance: updatedUserAfterDeposit.depositBalance, // <-- ADD THIS
+                // Also send other balances to keep them in sync
+                withdrawalBalance: updatedUserAfterDeposit.withdrawalBalance,
+                sellerAvailableBalance: updatedUserAfterDeposit.sellerAvailableBalance,
+                sellerPendingBalance: updatedUserAfterDeposit.sellerPendingBalance
             });
             console.log(`   [Socket] Sent 'user_balances_updated' to user ${userToUpdate._id}`);
 
@@ -401,4 +434,3 @@ exports.adminRejectDeposit = async (req, res) => {
         console.log("   RejectDeposit Session Ended.");
     }
 };
-// -------------------------------------------------------------

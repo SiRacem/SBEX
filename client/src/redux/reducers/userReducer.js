@@ -19,6 +19,7 @@ import {
   SET_ONLINE_USERS,
   UPDATE_USER_BALANCES_SOCKET,
   ADMIN_ADD_PENDING_MEDIATOR_APPLICATION,
+  UPDATE_USER_PROFILE_SOCKET,
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -255,22 +256,23 @@ const userReducer = (state = initialState, { type, payload }) => {
       };
 
     case UPDATE_USER_BALANCES_SOCKET:
-      if (state.user && payload) { // تأكد أن المستخدم موجود وأن هناك payload
+      if (state.user && payload && state.user._id === payload._id) {
+        console.log("[Reducer] Updating user balances via socket. Payload:", payload);
+        // This ensures all balance fields from the payload are updated,
+        // while keeping other user data intact.
         return {
           ...state,
           user: {
-            ...state.user,
+            ...state.user, // Keep existing user data
             balance: payload.balance !== undefined ? payload.balance : state.user.balance,
+            depositBalance: payload.depositBalance !== undefined ? payload.depositBalance : state.user.depositBalance,
+            withdrawalBalance: payload.withdrawalBalance !== undefined ? payload.withdrawalBalance : state.user.withdrawalBalance,
             sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
             sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
-            // قم بتحديث أي حقول رصيد أخرى بنفس الطريقة
           },
-          // قد ترغب في إعادة تعيين loading أو error إذا كان هذا التحديث يأتي بشكل مستقل
-          // loading: false,
-          // error: null
         };
       }
-      return state; // إذا لم يكن هناك مستخدم أو payload، أرجع الحالة كما هي
+      return state;
 
     // --- [!!! الحالة الجديدة هنا !!!] ---
     case ADMIN_ADD_PENDING_MEDIATOR_APPLICATION:
@@ -321,6 +323,17 @@ const userReducer = (state = initialState, { type, payload }) => {
       };
     // --- نهاية الحالة الجديدة ---
 
+    case UPDATE_USER_PROFILE_SOCKET:
+      if (state.user && state.user._id === payload._id) {
+        // Merge the new data with the existing user data
+        // This preserves fields that might not be in the payload
+        return {
+          ...state,
+          user: { ...state.user, ...payload },
+        };
+      }
+      return state;
+      
     default:
       return state;
   }

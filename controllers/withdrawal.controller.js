@@ -320,6 +320,20 @@ exports.createWithdrawalRequest = async (req, res) => {
             await notifyUserWithdrawalStatus(req, userId, 'NEW_WITHDRAWAL_REQUEST', 'Withdrawal Request Submitted', userMessage, newWithdrawalRequest._id);
 
             console.log("[WithdrawCtrl - create] Finished attempting notifications in original currency.");
+
+            // --- START: MODIFICATION FOR ADMIN UI ---
+            const populatedRequestForSocket = await WithdrawalRequest.findById(newWithdrawalRequest._id)
+                .populate('user', 'fullName email avatarUrl')
+                .lean();
+
+            const admins = await User.find({ userRole: 'Admin' }).select('_id');
+            admins.forEach(admin => {
+                const adminSocketId = req.onlineUsers ? req.onlineUsers[admin._id.toString()] : null;
+                if (adminSocketId) {
+                    req.io.to(adminSocketId).emit('new_admin_transaction_request', { type: 'withdrawal', request: populatedRequestForSocket });
+                }
+            });
+            // --- END: MODIFICATION FOR ADMIN UI ---
         } catch (notificationError) {
             // سجل الخطأ فقط، لا توقف العملية لأن الطلب تم حفظه
             console.error("[WithdrawCtrl - create] Error occurred during notification calls (after commit):", notificationError);
@@ -544,64 +558,59 @@ exports.adminCompleteWithdrawal = async (req, res) => {
 
         console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Withdrawal request ${requestId} marked as completed.`);
 
-        // تحديث رصيد السحب التراكمي للمستخدم (اختياري)
+        // --- START: Update user's cumulative withdrawal balance ---
         try {
-            const user = await User.findById(updatedRequest.user._id);
-            if (user) {
-                user.withdrawalBalance = (user.withdrawalBalance || 0) + updatedRequest.amount;
-                await user.save(); // لا تحتاج لجلسة هنا إذا كانت هذه العملية منفصلة
-                console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Updated user withdrawal balance for user ${user._id}.`);
-            } else {
-                console.warn(`[WithdrawCtrl - adminCompleteWithdrawal] User ${updatedRequest.user._id} not found for updating withdrawal balance.`);
-            }
+            // We use $inc to increment the withdrawalBalance. updatedRequest.amount is in TND.
+            await User.updateOne(
+                { _id: updatedRequest.user._id },
+                { $inc: { withdrawalBalance: updatedRequest.amount } }
+            );
+            console.log(`[WithdrawCtrl - adminCompleteWithdrawal] Updated user withdrawalBalance for user ${updatedRequest.user._id}.`);
         } catch (userUpdateError) {
-            console.error("[WithdrawCtrl - adminCompleteWithdrawal] Error updating user withdrawal balance:", userUpdateError);
+            console.error("[WithdrawCtrl - adminCompleteWithdrawal] Error updating user withdrawalBalance:", userUpdateError);
         }
+        // --- END: Update user's cumulative withdrawal balance ---
 
-        // إرسال إشعار للمستخدم بالإكمال
+        // --- START: Notify user of completion ---
         console.log("[WithdrawCtrl - adminCompleteWithdrawal] Attempting to notify user...");
         try {
             const userMessage = `Your withdrawal request via ${updatedRequest.paymentMethod?.displayName || 'N/A'} has been processed and completed. You should receive approx. ${formatCurrency(updatedRequest.netAmountToReceive, 'TND')} shortly.`;
+            // This function handles both DB save and socket emit for the notification itself
             await notifyUserWithdrawalStatus(req, updatedRequest.user._id, 'WITHDRAWAL_COMPLETED', 'Withdrawal Completed', userMessage, updatedRequest._id);
             console.log("[WithdrawCtrl - adminCompleteWithdrawal] Finished attempting completion notification.");
         } catch (notificationError) {
             console.error("[WithdrawCtrl - adminCompleteWithdrawal] >>> ERROR occurred during notification function call:", notificationError);
         }
+        // --- END: Notify user of completion ---
 
-        // --- [!!! التعديل هنا: إرسال تحديثات Socket.IO للمستخدم المعني !!!] ---
-        const userToNotify = updatedRequest.user; // userToNotify هو كائن المستخدم المأخوذ من updatedRequest.user
+        // --- [!!!] START: REAL-TIME UPDATES VIA SOCKET.IO [!!!] ---
+        const userToNotify = updatedRequest.user;
         const userSocketId = req.onlineUsers ? req.onlineUsers[userToNotify._id.toString()] : null;
 
         if (userSocketId && req.io) {
-            // 1. إرسال حدث لتحديث قائمة الأنشطة/الطلبات في المحفظة
+            // 1. Fetch the absolute latest user profile to send all balances
+            const latestUserProfile = await User.findById(userToNotify._id).select('-password').lean();
+
+            if (latestUserProfile) {
+                // Emit the full, updated balance profile to the user
+                req.io.to(userSocketId).emit('user_balances_updated', latestUserProfile);
+                console.log(`   [Socket] Sent 'user_balances_updated' (for completion) to user ${userToNotify._id}`);
+            }
+
+            // 2. Also send the general transaction update signal to refresh lists
             req.io.to(userSocketId).emit('dashboard_transactions_updated', {
                 message: 'Your withdrawal request has been completed.',
-                transactionType: 'WITHDRAWAL_REQUEST_COMPLETED', // نوع مميز
                 requestId: updatedRequest._id.toString(),
-                status: 'Completed' // يمكن إضافة الحالة الجديدة هنا
             });
             console.log(`   [Socket] Sent 'dashboard_transactions_updated' (for completion) to user ${userToNotify._id}`);
-
-            // 2. إرسال تحديث الأرصدة (الرصيد الرئيسي للمستخدم لا يتغير عند الإكمال، بل عند الطلب)
-            // لكن إذا كنت تريد إرسال معلومات محدثة عن المستخدم بشكل عام، يمكنك فعل ذلك.
-            // حاليًا، `user_balances_updated` في `adminRejectWithdrawal` يرسل الرصيد المحدث بعد الإعادة.
-            // هنا، الرصيد الرئيسي لم يتغير.
-            /*
-            req.io.to(userSocketId).emit('user_balances_updated', {
-                _id: userToNotify._id.toString(),
-                balance: userToNotify.balance, // الرصيد الرئيسي (يفترض أنه لم يتغير هنا)
-                // أي أرصدة أخرى ذات صلة إذا أردت
-            });
-            console.log(`   [Socket] Sent 'user_balances_updated' (for completion info) to user ${userToNotify._id}`);
-            */
         } else {
             console.log(`   User ${userToNotify._id} is not online for real-time updates for withdrawal completion.`);
         }
-        // --- نهاية إرسال تحديثات Socket.IO ---
+        // --- [!!!] END: REAL-TIME UPDATES VIA SOCKET.IO [!!!] ---
 
-        // إرجاع الطلب المحدث (بعد populate) للـ frontend
+        // Populate the final response for the frontend
         const finalCompletedRequest = await WithdrawalRequest.findById(updatedRequest._id)
-            .populate('user', 'fullName email balance sellerAvailableBalance sellerPendingBalance') // أضف الحقول التي تحتاجها
+            .populate('user', 'fullName email balance sellerAvailableBalance sellerPendingBalance withdrawalBalance') // Include all relevant balances
             .populate('paymentMethod')
             .populate('processedBy', 'fullName email')
             .lean();
@@ -672,7 +681,9 @@ exports.adminRejectWithdrawal = async (req, res) => {
         if (userSocketId && req.io) {
             req.io.to(userSocketId).emit('user_balances_updated', {
                 _id: userToRefund._id.toString(),
-                balance: userToRefund.balance,
+                balance: userToRefund.balance, // This is the updated balance
+                depositBalance: userToRefund.depositBalance,
+                withdrawalBalance: userToRefund.withdrawalBalance, // This should also be updated if you track it
                 sellerAvailableBalance: userToRefund.sellerAvailableBalance,
                 sellerPendingBalance: userToRefund.sellerPendingBalance
             });

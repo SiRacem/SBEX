@@ -103,6 +103,18 @@ exports.addProduct = async (req, res) => {
                     const createdNotifications = await Notification.insertMany(notificationDocs);
                     console.log(`[addProduct] Created ${createdNotifications.length} pending product notifications in DB.`);
 
+                    if (req.io && req.onlineUsers) {
+                        const productForSocket = populatedProduct || savedProduct.toObject();
+                        admins.forEach(admin => {
+                            const adminSocketId = req.onlineUsers[admin._id.toString()];
+                            if (adminSocketId) {
+                                // Send the new product data directly to the admin's UI
+                                req.io.to(adminSocketId).emit('new_product_for_approval', productForSocket);
+                                console.log(`[addProduct] Emitted 'new_product_for_approval' to admin ${admin._id}`);
+                            }
+                        });
+                    }
+                    
                     // --- [!] إرسال لحظي للأدمن ---
                     createdNotifications.forEach(notificationFromDB => {
                         // ابحث عن socketId الخاص بالأدمن
@@ -520,104 +532,106 @@ exports.approveProduct = async (req, res) => {
         return res.status(400).json({ msg: "Invalid Product ID." });
     }
     if (!adminUserId || !adminFullName) {
-        console.error("[approveProduct] Admin user data missing in request after authentication.");
         return res.status(401).json({ msg: "Unauthorized or missing admin details." });
     }
 
+    // --- [!!!] START: TRANSACTION LOGIC [!!!] ---
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
-        const product = await Product.findById(productId);
+        // الخطوة 1: البحث عن المنتج وتحديث حالته داخل المعاملة
+        const product = await Product.findOneAndUpdate(
+            { _id: productId, status: 'pending' },
+            { $set: { status: 'approved', approvedBy: adminUserId, approvedAt: Date.now() } },
+            { new: true, session: session }
+        ).populate('user', '_id fullName'); // نحتاج ID واسم البائع
 
         if (!product) {
-            console.log(`[approveProduct] Product ${productId} not found.`);
+            // تحقق مما إذا كان المنتج موجودًا ولكن ليس في حالة "pending"
+            const existingProduct = await Product.findById(productId).session(session);
+            if (existingProduct) {
+                await session.abortTransaction();
+                return res.status(400).json({ msg: `Product already processed. Current status: ${existingProduct.status}` });
+            }
+            await session.abortTransaction();
             return res.status(404).json({ msg: `Product with ID ${productId} not found.` });
         }
 
-        console.log(`[approveProduct] Found product. Current status: ${product.status}`);
+        console.log(`[approveProduct] Product ${productId} status updated to 'approved' in DB.`);
+        const seller = product.user;
 
-        if (product.status !== 'pending') {
-            console.log(`[approveProduct] Product status is not 'pending'. Aborting approval.`);
-            // إذا كان المنتج معتمدًا بالفعل، يمكنك إرجاع المنتج كما هو أو رسالة تفيد بذلك
-            if (product.status === 'approved') {
-                const alreadyApprovedProduct = await Product.findById(product._id)
-                    .populate('user', 'fullName email avatarUrl')
-                    .populate('buyer', 'fullName email avatarUrl')
-                    .populate({
-                        path: 'currentMediationRequest',
-                        select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
-                        populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
-                    })
-                    .lean();
-                return res.status(200).json(alreadyApprovedProduct);
-            }
-            return res.status(400).json({ msg: `Product is already processed (Current status: ${product.status}).` });
-        }
+        // الخطوة 2: تحديث إحصائيات البائع داخل نفس المعاملة
+        const userUpdateResult = await User.updateOne(
+            { _id: seller._id },
+            { $inc: { activeListingsCount: 1 } },
+            { session: session }
+        );
 
-        product.status = 'approved';
-        product.approvedBy = adminUserId;
-        product.approvedAt = Date.now();
-
-        const updatedProduct = await product.save();
-        console.log(`[approveProduct] Product saved. New status: ${updatedProduct.status}`);
-
-        // جلب المنتج المحدث مع كل البيانات اللازمة (populate)
-        const populatedAndApprovedProduct = await Product.findById(updatedProduct._id)
-            .populate('user', 'fullName email avatarUrl')
-            .populate('buyer', 'fullName email avatarUrl') // قد لا يكون هناك مشتري في هذه المرحلة
-            .populate({
-                path: 'currentMediationRequest',
-                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency',
-                populate: { path: 'mediator', select: 'fullName avatarUrl _id' }
-            })
-            .populate('bids.user', 'fullName email avatarUrl') // مهم إذا كنت تريد عرض المزايدات فورًا
-            .lean();
-
-
-        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO !!!] ---
-        if (req.io && populatedAndApprovedProduct) {
-            req.io.emit('product_updated', populatedAndApprovedProduct); // أرسل المنتج المعتمد بالكامل
-            console.log(`[ProductCtrl Approve] Emitted 'product_updated' for approved product ID: ${populatedAndApprovedProduct._id} to all clients.`);
+        if (userUpdateResult.modifiedCount === 0) {
+            console.warn(`[approveProduct] User ${seller._id} activeListingsCount was not incremented. Maybe user not found?`);
         } else {
-            console.warn("[ProductCtrl Approve] Socket.IO (req.io) not available or populatedAndApprovedProduct is null. Skipping socket emission.");
+            console.log(`[approveProduct] Seller ${seller._id} activeListingsCount incremented.`);
         }
-        // --- نهاية التعديل ---
 
+        // الخطوة 3: إنشاء إشعار للبائع داخل المعاملة
+        const approvalNotification = new Notification({
+            user: seller._id,
+            type: 'PRODUCT_APPROVED',
+            title: `Product Approved: ${product.title}`,
+            message: `Congratulations! Your product "${product.title}" has been approved by administrator "${adminFullName}".`,
+            relatedEntity: { id: product._id, modelName: 'Product' }
+        });
+        await approvalNotification.save({ session: session });
+        console.log(`[approveProduct] Approval notification saved to DB for user ${seller._id}.`);
 
-        // --- إنشاء وإرسال إشعار للبائع ---
-        const sellerId = populatedAndApprovedProduct.user?._id; // استخدم المنتج المأهول بالبيانات
+        // الخطوة 4: إتمام المعاملة قبل إرسال الأحداث
+        await session.commitTransaction();
+        console.log("[approveProduct] Transaction committed successfully.");
 
-        if (sellerId && sellerId.toString() !== adminUserId.toString()) {
-            console.log(`[approveProduct] Creating approval notification for seller: ${sellerId}`);
-            try {
-                const approvalNotification = new Notification({
-                    user: sellerId,
-                    type: 'PRODUCT_APPROVED',
-                    title: `Product Approved: ${populatedAndApprovedProduct.title}`,
-                    message: `Congratulations! Your product "${populatedAndApprovedProduct.title || 'Untitled'}" has been approved by administrator "${adminFullName}".`,
-                    relatedEntity: { id: populatedAndApprovedProduct._id, modelName: 'Product' }
-                });
-                await approvalNotification.save();
-                console.log(`[approveProduct] Approval notification saved to DB for user ${sellerId}.`);
+        // --- [!!!] START: SOCKET.IO EMISSIONS (AFTER SUCCESSFUL COMMIT) [!!!] ---
+        if (req.io) {
+            // 4.1: إرسال تحديث المنتج الكامل للجميع
+            const populatedProduct = await Product.findById(product._id)
+                .populate('user', 'fullName email avatarUrl')
+                .populate('bids.user', 'fullName email avatarUrl')
+                .lean(); // استخدم .lean() للأداء
 
-                if (req.io && req.onlineUsers) {
-                    const sellerSocketId = req.onlineUsers[sellerId.toString()];
-                    if (sellerSocketId) {
-                        req.io.to(sellerSocketId).emit('new_notification', approvalNotification.toObject());
-                        console.log(`[approveProduct] Socket approval notification sent to user ${sellerId}`);
-                    }
+            if (populatedProduct) {
+                req.io.emit('product_updated', populatedProduct);
+                console.log(`[Socket] Emitted 'product_updated' for approved product ID: ${product._id}`);
+            }
+
+            // 4.2: إرسال تحديث إشعار للبائع
+            const sellerSocketId = req.onlineUsers[seller._id.toString()];
+            if (sellerSocketId) {
+                req.io.to(sellerSocketId).emit('new_notification', approvalNotification.toObject());
+                console.log(`[Socket] Emitted 'new_notification' to seller ${seller._id}`);
+
+                // 4.3: [الحل المباشر لمشكلتك] إرسال تحديث لملف البائع الشخصي
+                const updatedSellerProfile = await User.findById(seller._id).select('-password').lean();
+                if (updatedSellerProfile) {
+                    req.io.to(sellerSocketId).emit('user_profile_updated', updatedSellerProfile);
+                    console.log(`[Socket] Emitted 'user_profile_updated' to seller ${seller._id} to refresh stats.`);
                 }
-            } catch (notifyError) {
-                console.error(`[approveProduct] Error creating/sending approval notification for user ${sellerId}:`, notifyError);
             }
         }
-        // --- نهاية إنشاء الإشعار ---
+        // --- [!!!] END: SOCKET.IO EMISSIONS [!!!] ---
 
-        res.status(200).json(populatedAndApprovedProduct);
+        res.status(200).json(product); // أرجع المنتج المحدث (بدون populate كامل، لأن الواجهة ستتحدث عبر السوكيت)
 
     } catch (error) {
+        // إذا حدث خطأ في أي خطوة، قم بإلغاء المعاملة
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         console.error("Error approving product:", error);
         if (!res.headersSent) {
             res.status(500).json({ errors: "Failed to approve product due to a server error." });
         }
+    } finally {
+        // إنهاء الجلسة دائمًا
+        session.endSession();
     }
 };
 

@@ -207,30 +207,30 @@ const Profile = ({ profileForOtherUser = null }) => {
     routeUsername,
   ]);
 
-  useEffect(() => {
-    if (socket && targetUserId) {
-      const handleProfileUpdate = (updatedUserData) => {
-        if (updatedUserData && updatedUserData._id === targetUserId) {
-          toast.info(
-            `${
-              isViewingOwnProfile
-                ? "Your"
-                : (updatedUserData.fullName || "User") + "'s"
-            } profile has been updated.`,
-            { autoClose: 2000 }
-          );
-          if (isViewingOwnProfile) dispatch(getProfile());
-          else
-            setProfileData((prevData) => ({
-              ...(prevData || {}),
-              ...updatedUserData,
-            }));
-        }
-      };
-      socket.on("user_profile_updated", handleProfileUpdate);
-      return () => socket.off("user_profile_updated", handleProfileUpdate);
-    }
-  }, [socket, targetUserId, dispatch, isViewingOwnProfile]);
+  // useEffect(() => {
+  //   if (socket && targetUserId) {
+  //     const handleProfileUpdate = (updatedUserData) => {
+  //       if (updatedUserData && updatedUserData._id === targetUserId) {
+  //         toast.info(
+  //           `${
+  //             isViewingOwnProfile
+  //               ? "Your"
+  //               : (updatedUserData.fullName || "User") + "'s"
+  //           } profile has been updated.`,
+  //           { autoClose: 2000 }
+  //         );
+  //         if (isViewingOwnProfile) dispatch(getProfile());
+  //         else
+  //           setProfileData((prevData) => ({
+  //             ...(prevData || {}),
+  //             ...updatedUserData,
+  //           }));
+  //       }
+  //     };
+  //     socket.on("user_profile_updated", handleProfileUpdate);
+  //     return () => socket.off("user_profile_updated", handleProfileUpdate);
+  //   }
+  // }, [socket, targetUserId, dispatch, isViewingOwnProfile]);
 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);

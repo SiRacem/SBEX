@@ -92,6 +92,8 @@ io.on('connection', (socket) => {
     socket.on('joinMediationChat', async ({ mediationRequestId, userId, userRole }) => {
         const userIdToJoin = socket.userIdForChat || userId;
         console.log(`[Socket Event - joinMediationChat] Attempting join. SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}, UserRole: ${userRole}`);
+
+        // --- Initial validation (no change here) ---
         if (!userIdToJoin || !mediationRequestId || !mongoose.Types.ObjectId.isValid(userIdToJoin) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
             console.warn(`[joinMediationChat] Invalid IDs. UserID: ${userIdToJoin}, MediationID: ${mediationRequestId}`);
             return socket.emit('mediationChatError', { message: "Missing or invalid user/mediation ID for chat join." });
@@ -119,10 +121,13 @@ io.on('connection', (socket) => {
             const request = await MediationRequest.findById(mediationRequestId)
                 .select('seller buyer mediator status disputeOverseers adminJoinMessageSent product')
                 .populate('product', 'title').lean();
+
             if (!request) {
                 console.warn(`[joinMediationChat] Mediation request ${mediationRequestId} not found.`);
                 return socket.emit('mediationChatError', { message: "Mediation request not found." });
             }
+
+            // --- Permission checks (no change here) ---
             const isSeller = request.seller?.toString() === userIdToJoin;
             const isBuyer = request.buyer?.toString() === userIdToJoin;
             const isMediator = request.mediator?.toString() === userIdToJoin;
@@ -130,54 +135,158 @@ io.on('connection', (socket) => {
             const isDesignatedOverseer = Array.isArray(request.disputeOverseers) && request.disputeOverseers.some(id => id.toString() === userIdToJoin);
             let canAccess = isSeller || isBuyer || isMediator || isDesignatedOverseer;
             if (isAdmin && request.status === 'Disputed') canAccess = true;
+
             if (!canAccess) {
                 console.warn(`[joinMediationChat] User ${userIdToJoin} (Role: ${userRole}) is UNAUTHORIZED for mediation ${mediationRequestId}. Status: ${request.status}`);
                 return socket.emit('mediationChatError', { message: "Unauthorized to join this mediation chat." });
             }
-            if (isAdmin && request.status === 'Disputed' && !isDesignatedOverseer) {
-                MediationRequest.updateOne({ _id: mediationRequestId }, { $addToSet: { disputeOverseers: userIdToJoin } })
-                    .exec().then(() => console.log(`[joinMediationChat] Admin ${userIdToJoin} added to disputeOverseers for ${mediationRequestId} (async).`))
-                    .catch(updateError => console.warn(`[joinMediationChat] Non-critical error adding admin to overseers: ${updateError.message}`));
-            }
-            const allowedStatusesToJoin = ['InProgress', 'PartiesConfirmed', 'MediationOfferAccepted', 'EscrowFunded', 'Disputed'];
-            if (!allowedStatusesToJoin.includes(request.status)) {
-                console.warn(`[joinMediationChat] Chat unavailable for mediation ${mediationRequestId} due to status: ${request.status}`);
-                return socket.emit('mediationChatError', { message: `Chat unavailable for this mediation status (${request.status}).` });
-            }
+
+            // --- Joining the socket room (no change here) ---
             socket.join(mediationRequestId.toString());
-            const roomSocketsCount = io.sockets.adapter.rooms.get(mediationRequestId.toString())?.size || 0;
-            console.log(`[joinMediationChat] Socket ${socket.id} (User: ${userIdToJoin}, Role: ${userRole}) successfully joined room ${mediationRequestId}. Sockets in room now: ${roomSocketsCount}`);
-            socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined mediation chat for: ${request.product?.title || mediationRequestId}.` });
-            if (isAdmin && request.status === 'Disputed' && !request.adminJoinMessageSent) {
-                const adminName = socket.userFullNameForChat || 'Admin';
-                const productTitle = request.product?.title || 'this dispute';
-                const systemMessageContent = `🛡️ **${adminName} has joined the chat to review ${productTitle}.** Please provide all necessary information.`;
-                const systemMessageForBroadcast = { _id: new mongoose.Types.ObjectId(), sender: null, message: systemMessageContent, type: 'system', timestamp: new Date(), readBy: [] };
-                io.to(mediationRequestId.toString()).emit('newMediationMessage', systemMessageForBroadcast);
-                console.log(`[joinMediationChat] Admin join system message emitted to room ${mediationRequestId}.`);
-                try {
-                    await MediationRequest.findByIdAndUpdate(mediationRequestId, { $set: { adminJoinMessageSent: true }, $push: { chatMessages: systemMessageForBroadcast } });
-                    console.log(`[joinMediationChat] Admin join system message saved and flag 'adminJoinMessageSent' set for ${mediationRequestId}.`);
-                } catch (dbError) {
-                    console.error(`[joinMediationChat] CRITICAL: Error setting adminJoinMessageSent flag or saving system message for ${mediationRequestId}:`, dbError);
+            console.log(`[joinMediationChat] Socket ${socket.id} (User: ${userIdToJoin}) successfully joined room ${mediationRequestId}.`);
+            socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined chat for: ${request.product?.title || mediationRequestId}.` });
+
+            // --- [!!!] START: REFACTORED LOGIC FOR ADMIN JOINING ---
+
+            if (isAdmin && request.status === 'Disputed') {
+                // --- Part 1: Handle adding admin to overseers and notify everyone ---
+                if (!isDesignatedOverseer) {
+                    await MediationRequest.updateOne(
+                        { _id: mediationRequestId },
+                        { $addToSet: { disputeOverseers: userIdToJoin } }
+                    );
+                    console.log(`[joinMediationChat] Admin ${userIdToJoin} added to disputeOverseers.`);
+
+                    // Fetch the fully updated request to broadcast
+                    const finalUpdatedRequest = await MediationRequest.findById(mediationRequestId)
+                        .populate('product', 'title status')
+                        .populate('seller', '_id fullName avatarUrl userRole')
+                        .populate('buyer', '_id fullName avatarUrl userRole')
+                        .populate('mediator', '_id fullName avatarUrl userRole')
+                        .populate('disputeOverseers', '_id fullName avatarUrl userRole') // This is critical
+                        .lean();
+
+                    if (finalUpdatedRequest) {
+                        io.to(mediationRequestId.toString()).emit('mediation_request_updated', {
+                            mediationRequestId: mediationRequestId.toString(),
+                            updatedMediationRequestData: finalUpdatedRequest
+                        });
+                        console.log(`[joinMediationChat] Emitted 'mediation_request_updated' to all parties after admin joined.`);
+                    }
                 }
-            } else if (isAdmin && request.status === 'Disputed' && request.adminJoinMessageSent) {
-                console.log(`[joinMediationChat] Admin join system message was already sent for ${mediationRequestId}. Skipping.`);
+
+                // --- Part 2: Handle the system message atomically to prevent duplicates ---
+                // This operation finds a document where the flag is false and sets it to true atomically.
+                // It will only succeed once.
+                const updatedRequestWithMessageFlag = await MediationRequest.findOneAndUpdate(
+                    { _id: mediationRequestId, adminJoinMessageSent: false },
+                    { $set: { adminJoinMessageSent: true } }
+                );
+
+                // If the above operation found and updated a document, it means this is the first time.
+                if (updatedRequestWithMessageFlag) {
+                    const adminName = socket.userFullNameForChat || 'Admin';
+                    const productTitle = request.product?.title || 'this dispute';
+                    const systemMessageContent = `🛡️ **${adminName} has joined the chat to review test one.** Please provide all necessary information.`;
+                    const systemMessage = {
+                        _id: new mongoose.Types.ObjectId(),
+                        message: systemMessageContent,
+                        type: 'system',
+                        timestamp: new Date()
+                    };
+
+                    // Push the message to the DB and broadcast it
+                    await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: systemMessage } });
+                    io.to(mediationRequestId.toString()).emit('newMediationMessage', systemMessage);
+                    console.log(`[joinMediationChat] Admin join system message sent and saved successfully.`);
+                } else {
+                    console.log(`[joinMediationChat] Admin join message was already sent. Skipping.`);
+                }
             }
+            // --- [!!!] END: REFACTORED LOGIC FOR ADMIN JOINING ---
+
         } catch (error) {
             console.error(`[joinMediationChat] General error for mediation ${mediationRequestId}:`, error.message, error.stack);
-            socket.emit('mediationChatError', { message: "An unexpected error occurred while trying to join the chat." });
+            socket.emit('mediationChatError', { message: "An unexpected error occurred while joining the chat." });
         }
     });
 
     socket.on('sendMediationMessage', async ({ mediationRequestId, messageText, imageUrl }) => {
         const senderId = socket.userIdForChat;
         if (!senderId || !mediationRequestId) return;
+
         try {
-            const newMessageData = { _id: new mongoose.Types.ObjectId(), sender: new mongoose.Types.ObjectId(senderId), message: messageText, imageUrl, type: imageUrl ? 'image' : 'text', timestamp: new Date(), readBy: [] };
+            const newMessageData = {
+                _id: new mongoose.Types.ObjectId(),
+                sender: new mongoose.Types.ObjectId(senderId),
+                message: messageText,
+                imageUrl,
+                type: imageUrl ? 'image' : 'text',
+                timestamp: new Date(),
+                // المرسل يقرأ رسالته تلقائيا
+                readBy: [{ readerId: new mongoose.Types.ObjectId(senderId), readAt: new Date() }]
+            };
+
+            // 1. حفظ الرسالة
             await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: newMessageData } });
-            const populatedMessageForEmit = { ...newMessageData, sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat } };
+
+            // 2. بث الرسالة لجميع المشاركين في الشات
+            const populatedMessageForEmit = {
+                ...newMessageData,
+                sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat }
+            };
             io.to(mediationRequestId.toString()).emit('newMediationMessage', populatedMessageForEmit);
+
+            // ------------------ [!!!] بداية الحل للشات الرئيسي [!!!] ------------------
+
+            // 3. جلب بيانات الوساطة لتحديد المشاركين وإرسال الإشعارات
+            const request = await MediationRequest.findById(mediationRequestId)
+                .select('seller buyer mediator disputeOverseers product')
+                .populate('product', 'title')
+                .lean();
+
+            if (!request) return;
+
+            // 4. تحديد قائمة مستلمي الإشعار (جميع المشاركين ما عدا المرسل)
+            const recipientIds = [
+                request.seller,
+                request.buyer,
+                request.mediator,
+                ...(request.disputeOverseers || [])
+            ]
+                .map(id => id?.toString()) // تحويل ID إلى نص
+                .filter(id => id && id !== senderId); // استبعاد القيم الفارغة والمرسل نفسه
+
+            const uniqueRecipientIds = [...new Set(recipientIds)];
+
+            // 5. إنشاء الإشعارات في قاعدة البيانات
+            const productTitle = request.product?.title || 'the mediation';
+            const senderName = socket.userFullNameForChat || 'A user';
+            const notificationTitle = `New Message: ${productTitle}`;
+            const notificationMessage = `You have a new message from ${senderName}.`;
+
+            const notificationsToCreate = uniqueRecipientIds.map(userId => ({
+                user: userId,
+                type: 'NEW_CHAT_MESSAGE', // تأكد من أن هذا النوع موجود في موديل الإشعارات
+                title: notificationTitle,
+                message: notificationMessage,
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            }));
+
+            // 6. حفظ الإشعارات وإرسالها للمستخدمين المتصلين
+            if (notificationsToCreate.length > 0) {
+                const createdNotifications = await Notification.insertMany(notificationsToCreate);
+
+                createdNotifications.forEach(notif => {
+                    const recipientSocketId = onlineUsers[notif.user.toString()];
+                    if (recipientSocketId) {
+                        io.to(recipientSocketId).emit('new_notification', notif);
+                        console.log(`[Notification] Sent 'new_notification' for main chat to user ${notif.user.toString()}`);
+                    }
+                });
+            }
+            // ------------------- [!!!] نهاية الحل للشات الرئيسي [!!!] -------------------
+
         } catch (error) {
             console.error(`[sendMediationMessage] Error:`, error);
         }
@@ -204,7 +313,6 @@ io.on('connection', (socket) => {
             const updateResult = await MediationRequest.updateOne(
                 { _id: new mongoose.Types.ObjectId(mediationRequestId) },
                 {
-                    // Use $push because the arrayFilter now guarantees the user hasn't read it yet.
                     $push: {
                         'chatMessages.$[elem].readBy': {
                             readerId: readerObjectId,
@@ -218,7 +326,6 @@ io.on('connection', (socket) => {
                     arrayFilters: [
                         {
                             'elem._id': { $in: messageIds.map(id => new mongoose.Types.ObjectId(id)) },
-                            // This condition prevents adding a duplicate reader.
                             'elem.readBy.readerId': { $ne: readerObjectId }
                         }
                     ]
@@ -236,13 +343,16 @@ io.on('connection', (socket) => {
 
     socket.on('joinAdminSubChat', async ({ mediationRequestId, subChatId, userId, userRole }) => {
         if (!userId || !mediationRequestId || !subChatId) return;
+
         const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+
         try {
-            // Your authorization logic here...
             socket.join(subChatRoomName);
+            console.log(`[Socket] User ${userId} joined room: ${subChatRoomName}`);
             socket.emit('joinedAdminSubChatSuccess', { subChatId, roomName: subChatRoomName });
         } catch (error) {
             console.error(`[joinAdminSubChat] Error:`, error);
+            socket.emit('adminSubChatError', { subChatId, message: 'Failed to join sub-chat room.' });
         }
     });
 
@@ -258,22 +368,13 @@ io.on('connection', (socket) => {
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 timestamp: new Date(),
-                readBy: [{ readerId: senderId, readAt: new Date() }]
+                readBy: [{
+                    readerId: new mongoose.Types.ObjectId(senderId),
+                    readAt: new Date(),
+                }]
             };
 
-            // --- START OF THE FIX ---
-            // 1. Find the mediation request and the specific sub-chat to get participants
-            const mediationRequest = await MediationRequest.findOne(
-                { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
-                { 'adminSubChats.$': 1 } // Project only the matching sub-chat
-            ).lean();
-
-            if (!mediationRequest || !mediationRequest.adminSubChats || mediationRequest.adminSubChats.length === 0) {
-                console.error(`[sendAdminSubChatMessage] Could not find sub-chat ${subChatId} to send message.`);
-                return;
-            }
-
-            // 2. Save the message to the database
+            // 1. حفظ الرسالة
             await MediationRequest.updateOne(
                 { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
                 {
@@ -282,33 +383,74 @@ io.on('connection', (socket) => {
                 }
             );
 
+            // 2. بث الرسالة لمشتركي الشات الفرعي
             const populatedMessageForEmit = {
                 ...newMessageData,
-                sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat }
+                sender: {
+                    _id: senderId,
+                    fullName: socket.userFullNameForChat,
+                    avatarUrl: socket.userAvatarUrlForChat
+                }
             };
 
-            // 3. Get all participant IDs from the sub-chat
-            const participantIds = mediationRequest.adminSubChats[0].participants.map(p => p.userId.toString());
-
-            // 4. Emit the message directly to each participant's socket ID
-            console.log(`\n--- [DIRECT SOCKET EMIT] ---`);
-            console.log(`Event: 'new_admin_sub_chat_message' for subChatId: ${subChatId}`);
-
-            participantIds.forEach(participantId => {
-                const targetSocketId = onlineUsers[participantId]; // Get socket ID from our onlineUsers map
-                if (targetSocketId) {
-                    console.log(` -> Emitting to UserID: ${participantId} on SocketID: ${targetSocketId}`);
-                    io.to(targetSocketId).emit('new_admin_sub_chat_message', {
-                        mediationRequestId,
-                        subChatId,
-                        message: populatedMessageForEmit
-                    });
-                } else {
-                    console.log(` -> UserID: ${participantId} is offline. No emit.`);
-                }
+            const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
+            io.to(subChatRoomName).emit('new_admin_sub_chat_message', {
+                mediationRequestId,
+                subChatId,
+                message: populatedMessageForEmit
             });
-            console.log(`--- [END OF EMIT] ---\n`);
-            // --- END OF THE FIX ---
+            console.log(`[Socket] Emitted 'new_admin_sub_chat_message' to room: ${subChatRoomName}`);
+
+            // ------------------ [!!!] بداية الحل للشات الفرعي [!!!] ------------------
+
+            // 3. جلب بيانات الشات الفرعي لتحديد المشاركين
+            const requestWithSubChat = await MediationRequest.findOne(
+                { _id: mediationRequestId, 'adminSubChats.subChatId': subChatId },
+                { 'adminSubChats.$': 1, product: 1 }
+            ).populate('product', 'title').lean();
+
+            if (!requestWithSubChat || !requestWithSubChat.adminSubChats || requestWithSubChat.adminSubChats.length === 0) {
+                return;
+            }
+
+            const subChat = requestWithSubChat.adminSubChats[0];
+
+            // 4. تحديد قائمة مستلمي الإشعار
+            const recipientIds = subChat.participants
+                .map(p => p.userId?.toString())
+                .filter(id => id && id !== senderId);
+
+            const uniqueRecipientIds = [...new Set(recipientIds)];
+
+            // 5. إنشاء الإشعارات في قاعدة البيانات
+            const productTitle = requestWithSubChat.product?.title || 'the dispute';
+            const subChatTitleForNotif = subChat.title || 'Private Chat';
+            const senderName = socket.userFullNameForChat || 'A user';
+            const notificationTitle = `New Message in: ${subChatTitleForNotif}`;
+            const notificationMessage = `From ${senderName} regarding the dispute for "${productTitle}".`;
+
+            const notificationsToCreate = uniqueRecipientIds.map(userId => ({
+                user: userId,
+                type: 'NEW_ADMIN_SUBCHAT_MESSAGE',
+                title: notificationTitle,
+                message: notificationMessage,
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
+                metadata: { subChatId: subChatId.toString() } // مفيد للتوجيه في الواجهة
+            }));
+
+            // 6. حفظ وإرسال الإشعارات
+            if (notificationsToCreate.length > 0) {
+                const createdNotifications = await Notification.insertMany(notificationsToCreate);
+
+                createdNotifications.forEach(notif => {
+                    const recipientSocketId = onlineUsers[notif.user.toString()];
+                    if (recipientSocketId) {
+                        io.to(recipientSocketId).emit('new_notification', notif);
+                        console.log(`[Notification] Sent 'new_notification' for sub-chat to user ${notif.user.toString()}`);
+                    }
+                });
+            }
+            // ------------------- [!!!] نهاية الحل للشات الفرعي [!!!] -------------------
 
         } catch (error) {
             console.error(`[sendAdminSubChatMessage] Error:`, error);
@@ -330,32 +472,32 @@ io.on('connection', (socket) => {
     });
 
     socket.on('markAdminSubChatMessagesRead', async ({ mediationRequestId, subChatId, messageIds, readerUserId }) => {
-        if (!readerUserId || !Array.isArray(messageIds) || messageIds.length === 0) {
-            return console.warn(`[markAdminRead] Invalid parameters received.`);
+        if (!readerUserId || !Array.isArray(messageIds) || messageIds.length === 0 || !subChatId || !mediationRequestId) {
+            return console.warn(`[markAdminRead] Invalid parameters received from client.`, { mediationRequestId, subChatId, messageIds, readerUserId });
         }
+
         try {
             const readerObjectId = new mongoose.Types.ObjectId(readerUserId);
             const readerDetails = await User.findById(readerObjectId).select('fullName avatarUrl').lean();
             if (!readerDetails) return;
 
-            // --- START OF THE FIX ---
             const readReceipt = {
                 readerId: readerObjectId,
-                fullName: readerDetails.fullName,
-                avatarUrl: readerDetails.avatarUrl,
                 readAt: new Date()
             };
 
+            const objectMessageIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
+
             const updateResult = await MediationRequest.updateOne(
-                { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
+                { _id: new mongoose.Types.ObjectId(mediationRequestId), "adminSubChats.subChatId": new mongoose.Types.ObjectId(subChatId) },
                 {
-                    $push: { "adminSubChats.$[outer].messages.$[inner].readBy": readReceipt }
+                    $addToSet: { "adminSubChats.$[outer].messages.$[inner].readBy": readReceipt }
                 },
                 {
                     arrayFilters: [
                         { "outer.subChatId": new mongoose.Types.ObjectId(subChatId) },
                         {
-                            "inner._id": { $in: messageIds.map(id => new mongoose.Types.ObjectId(id)) },
+                            "inner._id": { $in: objectMessageIds },
                             "inner.readBy.readerId": { $ne: readerObjectId }
                         }
                     ]
@@ -365,15 +507,19 @@ io.on('connection', (socket) => {
             if (updateResult.modifiedCount > 0) {
                 const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
                 const updatePayload = {
+                    mediationRequestId,
                     subChatId,
-                    readerInfo: readReceipt, // Send the reader's info
-                    messageIds: messageIds,   // Send the IDs of the messages that were read
+                    readerInfo: {
+                        readerId: readerObjectId,
+                        fullName: readerDetails.fullName,
+                        avatarUrl: readerDetails.avatarUrl,
+                        readAt: readReceipt.readAt
+                    },
+                    messageIds: messageIds,
                 };
-                // Emit to the room so everyone gets the update
                 io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', updatePayload);
-                console.log(`[markAdminRead] Emitted 'status_updated' to room ${subChatRoomName}`);
+                console.log(`[Socket] Emitted 'admin_sub_chat_messages_status_updated' to room: ${subChatRoomName}`);
             }
-            // --- END OF THE FIX ---
 
         } catch (error) { console.error(`[markAdminRead] Error for sub-chat:`, error); }
     });

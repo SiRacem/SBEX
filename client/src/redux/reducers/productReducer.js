@@ -1,5 +1,4 @@
 // src/redux/reducers/productReducer.js
-// *** نسخة كاملة ومصححة لتحديث الإعجابات بشكل موثوق - بدون اختصارات ***
 
 import {
     GET_PRODUCTS_REQUEST, GET_PRODUCTS_SUCCESS, GET_PRODUCTS_FAIL,
@@ -13,7 +12,7 @@ import {
     PLACE_BID_REQUEST, PLACE_BID_SUCCESS, PLACE_BID_FAIL,
     CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
     REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL, UPDATE_SINGLE_PRODUCT_LOCALLY,
-    UPDATE_SINGLE_PRODUCT_IN_STORE
+    UPDATE_SINGLE_PRODUCT_IN_STORE, ADD_PENDING_PRODUCT_SOCKET, REMOVE_PENDING_PRODUCT_SOCKET
 } from '../actionTypes/productActionType'; // تأكد من المسار الصحيح
 
 const initialState = {
@@ -391,6 +390,23 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
         // --- نهاية تحديث المنتج محليًا ---
         
+        case ADD_PENDING_PRODUCT_SOCKET:
+            // Ensure we don't add a duplicate if it's already there
+            const isAlreadyPending = state.pendingProducts.some(p => p._id === payload._id);
+            if (isAlreadyPending) {
+                return state;
+            }
+            return {
+                ...state,
+                pendingProducts: [payload, ...state.pendingProducts],
+            };
+
+        case REMOVE_PENDING_PRODUCT_SOCKET:
+            return {
+                ...state,
+                pendingProducts: state.pendingProducts.filter(p => p._id !== payload.productId),
+            };
+
         default:
             return state;
     }

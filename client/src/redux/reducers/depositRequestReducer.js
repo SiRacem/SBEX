@@ -113,6 +113,16 @@ const depositRequestReducer = (state = initialState, { type, payload }) => {
         case CLEAR_DEPOSIT_ERRORS:
             return { ...state, errorCreate: null, errorUserRequests: null, errorAdminList: null, errorAdminAction: null, }; // <-- تحديث ليشمل خطأ المستخدم
 
+        case 'ADMIN_ADD_DEPOSIT_REQUEST_SOCKET':
+            return {
+                ...state,
+                adminRequestsData: {
+                    ...state.adminRequestsData,
+                    requests: [payload, ...state.adminRequestsData.requests],
+                    totalRequests: state.adminRequestsData.totalRequests + 1,
+                },
+                };
+
         default:
             return state;
     }

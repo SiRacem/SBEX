@@ -429,6 +429,7 @@ export const clearActiveSubChatMessages = () => ({ type: CLEAR_ACTIVE_SUBCHAT_ME
 export const handleAdminSubChatCreatedSocket = (data) => ({ type: ADMIN_SUBCHAT_CREATED_SOCKET, payload: data });
 
 export const handleNewAdminSubChatMessageSocket = (data) => (dispatch, getState) => {
+    // احصل على ID المستخدم الحالي من حالة Redux
     const currentUserId = getState().userReducer.user?._id;
 
     if (!currentUserId) {
@@ -436,9 +437,10 @@ export const handleNewAdminSubChatMessageSocket = (data) => (dispatch, getState)
         return;
     }
 
+    // أرسل كل شيء إلى الـ reducer
     dispatch({
         type: NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET,
-        payload: { ...data, currentUserId },
+        payload: { ...data, currentUserId }, // ==> هذا يمرر ID المستخدم الحالي
     });
 };
 

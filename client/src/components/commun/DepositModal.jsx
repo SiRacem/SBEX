@@ -1,5 +1,4 @@
 // src/components/commun/DepositModal.jsx
-// *** النسخة النهائية الكاملة والمفصلة بدون أي اختصارات ***
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -257,23 +256,23 @@ const DepositModal = ({ show, onHide }) => {
   }, [depositAmount, selectedMethod, inputCurrency]);
 
   // --- useEffect: التعامل مع الإغلاق بعد نجاح الإنشاء ---
-  useEffect(() => {
-    let timer;
-    if (successCreate) {
-      toast.success("Deposit request submitted successfully!");
-      timer = setTimeout(() => {
-        onHide(); // أغلق المودال بعد فترة
-        // --- [!] أعد تعيين الحالة بعد الإغلاق (أو قبله بقليل) ---
-        // ننتظر قليلاً بعد الإغلاق لضمان عدم حدوث إعادة عرض غير متوقعة
-        setTimeout(() => {
-          dispatch(resetCreateDeposit());
-        }, 100); // تأخير بسيط جداً
-        // ----------------------------------------------------
-      }, 1500); // مدة عرض رسالة النجاح قبل الإغلاق
-    }
-    // تنظيف المؤقت إذا تم إلغاء المكون أو تغيرت successCreate قبل انتهاء المؤقت
-    return () => clearTimeout(timer);
-  }, [successCreate, onHide, dispatch]);
+  // useEffect(() => {
+  //   let timer;
+  //   if (successCreate) {
+  //     toast.success("Deposit request submitted successfully!");
+  //     timer = setTimeout(() => {
+  //       onHide(); // أغلق المودال بعد فترة
+  //       // --- [!] أعد تعيين الحالة بعد الإغلاق (أو قبله بقليل) ---
+  //       // ننتظر قليلاً بعد الإغلاق لضمان عدم حدوث إعادة عرض غير متوقعة
+  //       setTimeout(() => {
+  //         dispatch(resetCreateDeposit());
+  //       }, 100); // تأخير بسيط جداً
+  //       // ----------------------------------------------------
+  //     }, 1500); // مدة عرض رسالة النجاح قبل الإغلاق
+  //   }
+  //   // تنظيف المؤقت إذا تم إلغاء المكون أو تغيرت successCreate قبل انتهاء المؤقت
+  //   return () => clearTimeout(timer);
+  // }, [successCreate, onHide, dispatch]);
 
   // --- Handlers ---
   const handleSelectMethod = (method) => {
@@ -412,14 +411,14 @@ const DepositModal = ({ show, onHide }) => {
         return;
       }
       try {
-        toast.info("Uploading screenshot...");
+        // toast.info("Uploading screenshot...");
         const uploadRes = await axios.post(
           "/uploads/proof",
           formData,
           uploadConfig
         );
         uploadedScreenshotUrl = uploadRes.data.filePath; // <-- الآن المتغير معرف ويمكن تعيين قيمة له
-        toast.success("Screenshot uploaded.");
+        // toast.success("Screenshot uploaded.");
         console.log("Uploaded screenshot path:", uploadedScreenshotUrl);
       } catch (uploadError) {
         const errorMsg =
@@ -454,9 +453,18 @@ const DepositModal = ({ show, onHide }) => {
 
     console.log("Dispatching createDepositRequest:", depositData);
     setSubmitError(null);
-    // --- إرسال للـ Action ---
-    dispatch(createDepositRequest(depositData));
-    // ----------------------
+    
+    // --- [!!!] START: MODIFICATION [!!!] ---
+    try {
+      await dispatch(createDepositRequest(depositData));
+      // If the dispatch does not throw an error, close the modal.
+      // The success toast is already handled in the action.
+      onHide(); 
+  } catch (error) {
+      // The action already shows a toast on failure, so we just log it here.
+      console.error("Error during deposit request dispatch:", error);
+  }
+  // --- [!!!] END: MODIFICATION [!!!] ---
   };
   // -------------------------------------------------------
 

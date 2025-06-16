@@ -1,6 +1,12 @@
 // src/components/admin/ProductListAdmin.jsx
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Table,
@@ -29,6 +35,7 @@ import {
 import { toast } from "react-toastify";
 import ImageGalleryModal from "./ImageGalleryModal"; // <--- استيراد المودال الجديد
 import "./ProductListAdmin.css";
+import { SocketContext } from "../../App";
 
 const fallbackImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>';
@@ -154,6 +161,7 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
 
 const ProductListAdmin = ({ search }) => {
   const dispatch = useDispatch();
+  const socket = useContext(SocketContext);
 
   const pendingProducts = useSelector(
     (state) => state.productReducer?.pendingProducts ?? []
@@ -180,6 +188,41 @@ const ProductListAdmin = ({ search }) => {
   useEffect(() => {
     dispatch(getPendingProducts());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewProduct = (newProductData) => {
+      console.log(
+        "[Socket] Received 'new_product_for_approval':",
+        newProductData
+      );
+      // Add the new product to the Redux store
+      dispatch({ type: "ADD_PENDING_PRODUCT_SOCKET", payload: newProductData });
+      toast.info(
+        `🔔 New product "${newProductData.title}" is awaiting approval.`
+      );
+    };
+
+    const handleProductUpdated = (updatedProductData) => {
+      // This listener handles when a product is approved/rejected elsewhere,
+      // removing it from this component's list.
+      if (updatedProductData.status !== "pending") {
+        dispatch({
+          type: "REMOVE_PENDING_PRODUCT_SOCKET",
+          payload: { productId: updatedProductData._id },
+        });
+      }
+    };
+
+    socket.on("new_product_for_approval", handleNewProduct);
+    socket.on("product_updated", handleProductUpdated); // To remove when action taken by another admin
+
+    return () => {
+      socket.off("new_product_for_approval", handleNewProduct);
+      socket.off("product_updated", handleProductUpdated);
+    };
+  }, [socket, dispatch]);
 
   const handleApprove = useCallback(
     (productId) => {

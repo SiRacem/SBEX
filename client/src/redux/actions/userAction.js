@@ -20,7 +20,7 @@ import {
 import { toast } from 'react-toastify';
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
-// import { clearMediationData } from './mediationAction'; 
+// import { clearMediationData } from './mediationAction';
 
 const getTokenConfig = (isFormData = false) => {
     const token = localStorage.getItem("token");

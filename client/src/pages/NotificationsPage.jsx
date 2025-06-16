@@ -12,16 +12,13 @@ import {
   FaHourglassHalf,
   FaHandshake,
   FaBullhorn,
-  FaExchangeAlt,
   FaUserShield,
-  FaBoxOpen,
   FaDollarSign,
   FaMoneyBillWave,
   FaUsersCog,
-  FaUserCheck,
-  FaUserTimes,
   FaMedal,
   FaGavel, // أيقونة للوساطة
+  FaCommentDots, // أيقونة لرسائل الشات
 } from "react-icons/fa";
 import {
   // أيقونات إضافية قد تكون مفيدة
@@ -33,13 +30,13 @@ import {
 import {
   getNotifications,
   markNotificationsRead,
-} from "../redux/actions/notificationAction"; // تأكد من المسار الصحيح
-import { useNavigate } from "react-router-dom"; // استيراد useNavigate
-import "./NotificationsPage.css"; // أنشئ هذا الملف أو أضف الأنماط لـ App.css
+} from "../redux/actions/notificationAction";
+import { useNavigate } from "react-router-dom";
+import "./NotificationsPage.css";
 
 const NotificationsPage = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate(); // للانتقال عند النقر
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.userReducer);
 
   const { notifications, unreadCount, loading, error, loadingMarkRead } =
@@ -77,7 +74,7 @@ const NotificationsPage = () => {
       const modelName = notification.relatedEntity?.modelName;
       const notificationType = notification.type;
       const currentUserRole = user?.userRole;
-      const currentUserId = user?._id; // قد نحتاجه لتحديد ما إذا كان المستخدم هو البائع/المشتري
+      const currentUserId = user?._id;
       const isMediatorQualified = user?.isMediatorQualified;
 
       console.log("Notification Clicked:", {
@@ -102,7 +99,7 @@ const NotificationsPage = () => {
             break;
           case "BID_ACCEPTED_BUYER":
           case "BID_REJECTED":
-            path = "/dashboard/my-orders"; // أو `/product/${entityId}`
+            path = "/dashboard/my-orders";
             break;
           case "PRODUCT_APPROVED":
           case "PRODUCT_REJECTED":
@@ -127,85 +124,61 @@ const NotificationsPage = () => {
       }
       // --- MediationRequest Related Notifications ---
       else if (modelName === "MediationRequest" && entityId) {
-        // المسار الافتراضي لصفحة تفاصيل الوساطة (إذا كانت موجودة)
-        // إذا لم تكن موجودة، سنوجه المستخدم لصفحته العامة للوساطات
-        // const mediationDetailPath = `/dashboard/mediation-details/${entityId}`; // مثال لصفحة تفاصيل
+        // --- [!!!] بداية التعديل: التعامل مع إشعارات رسائل الشات [!!!] ---
+        // توجيه مباشر إلى صفحة الشات عند وجود رسالة جديدة
+        if (
+          notificationType === "NEW_CHAT_MESSAGE" ||
+          notificationType === "NEW_ADMIN_SUBCHAT_MESSAGE"
+        ) {
+          path = `/dashboard/mediation-chat/${entityId}`;
+        }
+        // --- [!!!] نهاية التعديل ---
+        else {
+          // التعامل مع بقية إشعارات الوساطة كما كان
+          switch (notificationType) {
+            case "MEDIATOR_SELECTED_BY_SELLER":
+            case "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW":
+            case "BUYER_CONFIRMED_AWAITING_YOUR_ACTION":
+              if (currentUserRole === "Vendor") {
+                path = "/dashboard/mediations";
+              } else {
+                path = `/dashboard/mediation-chat/${entityId}`;
+              }
+              break;
 
-        // أنواع الإشعارات المتعلقة بالوساطة
-        switch (notificationType) {
-          // إشعارات قد تهم البائع
-          case "MEDIATOR_SELECTED_BY_SELLER":
-          case "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW":
-          case "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": // المشتري أكد، الآن دور البائع
-            if (currentUserRole === "Vendor") {
-              path = "/dashboard/comptes_bids";
-            }
-            break;
-
-          // إشعارات قد تهم المشتري
-          case "BID_ACCEPTED_PENDING_MEDIATOR":
-          case "MEDIATOR_SELECTED_BY_SELLER_FOR_BUYER":
-          case "MEDIATION_REJECTED_BY_MEDIATOR_FOR_BUYER":
-          case "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": // البائع أكد، الآن دور المشتري (تأكد من اسم النوع هذا)
-            // أو "SELLER_CONFIRMED_AWAITING_YOUR_ACTION_BUYER"
-            if (currentUserRole === "User") {
-              // افترض أن المشتري هو "User"
+            case "BID_ACCEPTED_PENDING_MEDIATOR":
+            case "SELLER_CONFIRMED_AWAITING_YOUR_ACTION":
               path = "/my-mediation-requests";
-            }
-            break;
+              break;
 
-          // إشعارات قد تهم الوسيط
-          case "MEDIATION_ASSIGNED":
-          case "MEDIATION_TASK_ACCEPTED_SELF":
-          case "MEDIATION_TASK_REJECTED_SELF":
-            if (isMediatorQualified) {
-              path = "/dashboard/mediator/assignments";
-            }
-            break;
+            case "MEDIATION_ASSIGNED":
+            case "MEDIATION_TASK_ACCEPTED_SELF":
+            case "MEDIATION_TASK_REJECTED_SELF":
+              if (isMediatorQualified) {
+                path = "/dashboard/mediator/assignments";
+              }
+              break;
 
-          // إشعارات تهم أطراف متعددة (البائع، المشتري، الوسيط)
-          // يجب توجيه كل دور إلى صفحته المناسبة أو صفحة تفاصيل مشتركة
-          case "MEDIATION_ACCEPTED_BY_MEDIATOR": // وسيط قبل (للبائع والمشتري)
-          case "PARTY_CONFIRMED_READINESS": // طرف أكد (للطرف الآخر والوسيط)
-          case "BOTH_PARTIES_CONFIRMED_PENDING_START": // الطرفان أكدا (لجميع الأطراف)
-          case "MEDIATION_STARTED":
-          case "MEDIATION_COMPLETED":
-          case "MEDIATION_CANCELLED": // (قد تحتاج لتحديد الطرف الذي ألغى لتوجيه الآخرين)
-          case "MEDIATION_DISPUTED":
-          case "MEDIATION_CANCELLATION_CONFIRMED":
-          case "MEDIATION_REJECTED_BY_BUYER": // المشتري ألغى (للبائع والوسيط)
-            // هنا المنطق المعقد:
-            // 1. هل المستخدم الحالي هو البائع في هذه الوساطة؟
-            // 2. هل المستخدم الحالي هو المشتري في هذه الوساطة؟
-            // 3. هل المستخدم الحالي هو الوسيط في هذه الوساطة؟
-            // للقيام بذلك بشكل صحيح، يجب أن يحتوي الإشعار على sellerId و buyerId و mediatorId
-            // أو يجب جلب MediationRequest من الـ backend لتحديد دور المستخدم.
-            // كحل أبسط حالياً، سنوجه بناءً على الدور العام:
-            if (currentUserRole === "Vendor") {
-              path = "/dashboard/mediations";
-            } else if (currentUserRole === "User") {
-              // Assuming buyer is 'User'
-              path = "/my-mediation-requests";
-            } else if (isMediatorQualified) {
-              path = "/dashboard/mediator/assignments";
-            } else if (currentUserRole === "Admin") {
-              // path = `/dashboard/admin/mediation-details/${entityId}`; // مثال
-              path = "/dashboard"; // أو صفحة عامة للأدمن
-            }
-            break;
+            case "MEDIATION_ACCEPTED_BY_MEDIATOR":
+            case "PARTY_CONFIRMED_READINESS":
+            case "MEDIATION_STARTED":
+            case "MEDIATION_COMPLETED":
+            case "MEDIATION_CANCELLED":
+            case "MEDIATION_DISPUTED":
+            case "MEDIATION_CANCELLATION_CONFIRMED":
+            case "MEDIATION_REJECTED_BY_BUYER":
+              // For these general types, a direct link to the chat page is usually best for all parties.
+              path = `/dashboard/mediation-chat/${entityId}`;
+              break;
 
-          default:
-            console.warn(
-              `Unhandled MediationRequest type: ${notificationType} for role ${currentUserRole}`
-            );
-            // توجيه افتراضي إذا لم يتم تحديد مسار خاص
-            if (currentUserRole === "Vendor") path = "/dashboard/comptes_bids";
-            else if (currentUserRole === "User")
-              path = "/my-mediation-requests";
-            else if (isMediatorQualified)
-              path = "/dashboard/mediator/assignments";
-            else path = "/dashboard";
-            break;
+            default:
+              console.warn(
+                `Unhandled MediationRequest type: ${notificationType} for role ${currentUserRole}`
+              );
+              // توجيه افتراضي إلى صفحة الشات كحل آمن
+              path = `/dashboard/mediation-chat/${entityId}`;
+              break;
+          }
         }
       }
       // --- User Related Notifications (Applications, Admin Actions) ---
@@ -226,14 +199,14 @@ const NotificationsPage = () => {
             break;
           case "USER_BALANCE_ADJUSTED":
             if (currentUserRole === "Admin") {
-              path = `/dashboard/admin/users`; // أو صفحة تفاصيل المستخدم /admin/user/${entityId}
+              path = `/dashboard/admin/users`;
             }
             break;
           default:
             path =
               entityId === currentUserId
                 ? "/dashboard/profile"
-                : `/user-profile/${entityId}`;
+                : `/profile/${entityId}`;
             break;
         }
       }
@@ -256,7 +229,7 @@ const NotificationsPage = () => {
         switch (notificationType) {
           case "NEW_WITHDRAWAL_REQUEST":
             if (currentUserRole === "Admin")
-              path = "/dashboard/admin/deposits";
+              path = "/dashboard/admin/withdrawals"; // Corrected path
             break;
           case "WITHDRAWAL_APPROVED":
           case "WITHDRAWAL_PROCESSING":
@@ -313,6 +286,10 @@ const NotificationsPage = () => {
 
   const getNotificationIcon = (type, isRead) => {
     const iconColor = !isRead ? "primary" : "secondary";
+    // Chat Messages
+    if (type === "NEW_CHAT_MESSAGE" || type === "NEW_ADMIN_SUBCHAT_MESSAGE") {
+      return <FaCommentDots size={20} className={`text-${iconColor}`} />;
+    }
     // Product & Bidding
     if (
       type.startsWith("PRODUCT_") ||
@@ -364,7 +341,7 @@ const NotificationsPage = () => {
         type === "MEDIATOR_APP_PENDING"
       )
         return <FaUsersCog size={20} className={`text-${iconColor}`} />;
-      if (type === "BOTH_PARTIES_CONFIRMED_PENDING_START")
+      if (type === "PARTIES_CONFIRMED_AWAITING_CHAT")
         return <FaHandshake size={20} className={`text-${iconColor}`} />;
     }
     // Financial
