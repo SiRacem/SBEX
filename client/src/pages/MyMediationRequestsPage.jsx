@@ -218,51 +218,38 @@ const MyMediationRequestsPage = () => {
 
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerRejectMediationAction(mediationRequestId, reason))
-        .then((actionDispatched) => {
-          // actionDispatched هو الأكشن الذي تم إرساله (SUCCESS أو FAIL)
-          // تحقق مما إذا كان الأكشن قد نجح بالفعل
-          // (نفترض أن الأكشن الناجح يحتوي على 'SUCCESS' في نوعه)
-          if (
-            actionDispatched &&
-            actionDispatched.type &&
-            actionDispatched.type.includes("SUCCESS")
-          ) {
-            toast.success(
-              actionDispatched.payload?.msg ||
-                "Mediation cancelled successfully!"
-            );
-            setShowBuyerRejectModal(false);
-            setSelectedRequestToRejectByBuyer(null);
-            // لا حاجة لإعادة جلب القائمة هنا إذا كان السوكيت يقوم بتحديثها
-            // dispatch(getBuyerMediationRequestsAction(currentPageLocal));
-            console.log(
-              "MyMediationRequestsPage: Mediation cancelled successfully, modal closed."
-            );
-          } else {
-            // إذا فشل الأكشن، الـ toast.error يجب أن يكون قد ظهر من الأكشن نفسه
-            console.warn(
-              "MyMediationRequestsPage: Mediation cancellation action did not succeed or returned unexpected result.",
-              actionDispatched
-            );
-          }
-        })
-        .catch((errorAction) => {
-          // يلتقط الـ Promise.reject من الأكشن
-          console.error(
-            "MyMediationRequestsPage: Error during buyerRejectMediationAction dispatch or promise rejection:",
-            errorAction
+        .then((responseData) => {
+          // Renamed to responseData for clarity
+          // If .then() is reached, the action is considered successful
+          // responseData is the data returned by buyerRejectMediationAction, typically from the API
+          toast.success(
+            responseData?.msg || // Use the message from backend if available
+              "Mediation cancelled successfully!"
           );
-          // الـ toast.error يجب أن يكون قد ظهر من الأكشن
-          // إذا كان errorAction هو كائن الأكشن الفاشل، يمكنك الوصول إلى payload.error
-          // if (errorAction && errorAction.payload && errorAction.payload.error) {
-          //   toast.error(errorAction.payload.error);
-          // }
+          setShowBuyerRejectModal(false);
+          setSelectedRequestToRejectByBuyer(null);
+          console.log(
+            "MyMediationRequestsPage: Mediation cancellation successful, modal closed."
+          );
+          // No need to re-fetch list here if socket event `mediation_request_updated` is handled by the reducer
+          // to remove/update the item from state.buyerRequests.list
+        })
+        .catch((error) => {
+          // Catches errors thrown by buyerRejectMediationAction
+          console.error(
+            "MyMediationRequestsPage: Failed to cancel mediation.",
+            error // The error here is whatever was thrown by the action
+          );
+          // Toast for error is typically handled within the action itself,
+          // but you could add a generic one here if needed, though it might be redundant.
+          // setShowBuyerRejectModal(false); // Optionally close modal on error too, or leave it open for user to retry/see error context.
+          // For now, let's leave it open on error so the user isn't confused.
         })
         .finally(() => {
-          setSelectedRequestIdForAction(null); // أعد تعيين هذا دائمًا
+          setSelectedRequestIdForAction(null);
         });
     },
-    [dispatch, actionLoading, selectedRequestIdForAction] // currentPageLocal أزيلت إذا لم تعد تستدعي getBuyerMediationRequestsAction هنا
+    [dispatch, actionLoading, selectedRequestIdForAction]
   );
   // --- نهاية التعديل ---
 
@@ -366,8 +353,36 @@ const MyMediationRequestsPage = () => {
           return null;
         }
 
+        // Enhanced Logging
         console.log(
-          `MyMediationRequestsPage: Rendering request ID: ${request._id}, Status: ${request.status}, Bid Amount: ${request.bidAmount}, Bid Currency: ${request.bidCurrency}`
+          `MyMediationRequestsPage: ----- Rendering Request ID: ${request._id} -----`
+        );
+        console.log(
+          `  Status: '${request.status}' (Type: ${typeof request.status})`
+        );
+        console.log(
+          `  Bid Amount: ${
+            request.bidAmount
+          } (Type: ${typeof request.bidAmount})`
+        );
+        console.log(
+          `  Bid Currency: '${
+            request.bidCurrency
+          }' (Type: ${typeof request.bidCurrency})`
+        );
+        console.log(
+          `  Buyer Confirmed Start: ${
+            request.buyerConfirmedStart
+          } (Type: ${typeof request.buyerConfirmedStart})`
+        );
+        console.log(
+          `  Buyer ID in request: ${request.buyer?._id} (Type: ${typeof request
+            .buyer?._id})`
+        );
+        console.log(
+          `  Current User ID: ${
+            currentUser?._id
+          } (Type: ${typeof currentUser?._id})`
         );
 
         const product = request.product;
@@ -378,7 +393,8 @@ const MyMediationRequestsPage = () => {
           selectedRequestIdForAction === request._id;
 
         // --- [!!! التعديل هنا: استدعاء الدالة مباشرة بدون useMemo !!!] ---
-        let feeDisplayDetails; // عرف المتغير
+        let feeDisplayDetails;
+        // ... (rest of the feeDisplayDetails calculation remains the same) ...
         if (
           request.bidAmount == null ||
           isNaN(Number(request.bidAmount)) ||
@@ -389,6 +405,8 @@ const MyMediationRequestsPage = () => {
           );
           feeDisplayDetails = {
             error: "Missing bid amount or currency for fee calculation.",
+            priceOriginal: Number(request.bidAmount) || 0, // Add for logging
+            currencyUsed: request.bidCurrency || "N/A", // Add for logging
           };
         } else {
           feeDisplayDetails = calculateMediatorFeeDetails(
@@ -396,11 +414,39 @@ const MyMediationRequestsPage = () => {
             request.bidCurrency
           );
         }
-        // --- نهاية التعديل ---
 
         console.log(
-          `MyMediationRequestsPage: For request ID ${request._id} - Calculated feeDisplayDetails:`,
+          `  Fee Display Details (Calculated): `,
           JSON.stringify(feeDisplayDetails, null, 2)
+        );
+
+        // Log the evaluation of the conditions for fee display
+        const isCurrentUserBuyer =
+          currentUser?._id === request.buyer?._id?.toString();
+        const isStatusMediationOfferAccepted =
+          request.status === "MediationOfferAccepted";
+        const isBuyerNotConfirmedStart = !request.buyerConfirmedStart;
+        const hasFeeDetails = feeDisplayDetails && !feeDisplayDetails.error;
+
+        console.log(`  CONDITIONS FOR FEE DISPLAY:`);
+        console.log(`    isCurrentUserBuyer: ${isCurrentUserBuyer}`);
+        console.log(
+          `    isStatusMediationOfferAccepted: ${isStatusMediationOfferAccepted}`
+        );
+        console.log(
+          `    isBuyerNotConfirmedStart: ${isBuyerNotConfirmedStart}`
+        );
+        console.log(`    hasFeeDetailsAndNoError: ${hasFeeDetails}`);
+        console.log(
+          `    OVERALL CONDITION MET: ${
+            isCurrentUserBuyer &&
+            isStatusMediationOfferAccepted &&
+            isBuyerNotConfirmedStart &&
+            hasFeeDetails
+          }`
+        );
+        console.log(
+          `MyMediationRequestsPage: ----- Finished Logging for Request ID: ${request._id} -----`
         );
         // --- نهاية حساب تفاصيل الرسوم ---
 
@@ -691,7 +737,18 @@ const MyMediationRequestsPage = () => {
                   )}
                   {request.status === "Cancelled" && (
                     <Alert variant="danger" className="small p-2 mt-3">
-                      Mediation cancelled.
+                      <div>
+                        <strong>Mediation Cancelled</strong>
+                      </div>
+                      {request.product?.title && (
+                        <div>Product: {request.product.title}</div>
+                      )}
+                      {request.cancellationDetails?.reason && (
+                        <div>Reason: {request.cancellationDetails.reason}</div>
+                      )}
+                      {!request.cancellationDetails?.reason && (
+                        <div>Reason: Not specified.</div>
+                      )}
                     </Alert>
                   )}
                 </Col>

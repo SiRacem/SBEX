@@ -104,7 +104,6 @@ const calculateWithdrawalFeeTND = (method, amountInTND) => {
     };
 };
 
-
 // --- دوال الإشعارات ---
 
 /**
@@ -203,7 +202,6 @@ const notifyUserWithdrawalStatus = async (req, userId, type, title, message, rel
     // إرجاع الإشعار الذي تم إنشاؤه (قد يكون null)
     return newNotification;
 };
-
 
 // --- دوال الـ Controller الرئيسية ---
 
@@ -366,7 +364,6 @@ exports.createWithdrawalRequest = async (req, res) => {
     }
 };
 
-
 /**
  * [User] جلب طلبات السحب الخاصة بالمستخدم الحالي.
  */
@@ -429,7 +426,6 @@ exports.getUserRequests = async (req, res) => {
     }
 };
 
-
 // --- دوال الأدمن ---
 
 /**
@@ -440,8 +436,18 @@ exports.adminGetRequests = async (req, res) => {
     console.log(`[WithdrawCtrl - adminGetRequests] Admin fetching requests. Status: ${status || 'All'}, Page: ${page}, Limit: ${limit}`);
 
     const filter = {};
-    if (status && ['Pending', 'Processing', 'Completed', 'Rejected', 'Failed'].includes(status)) {
-        filter.status = status;
+    if (status) {
+        const lowerStatus = status.toLowerCase();
+        const validStatuses = {
+            pending: 'Pending',
+            processing: 'Processing',
+            completed: 'Completed',
+            rejected: 'Rejected',
+            failed: 'Failed'
+        };
+        if (validStatuses[lowerStatus]) {
+            filter.status = validStatuses[lowerStatus];
+        }
     }
 
     try {
@@ -742,7 +748,7 @@ exports.adminRejectWithdrawal = async (req, res) => {
             await session.endSession();
             console.log("[WithdrawCtrl - adminRejectWithdrawal] Session ended.");
         } catch (sessionEndError) {
-             console.error("[WithdrawCtrl - adminRejectWithdrawal] Error ending session (might have already ended):", sessionEndError);
+            console.error("[WithdrawCtrl - adminRejectWithdrawal] Error ending session (might have already ended):", sessionEndError);
         }
     }
 };

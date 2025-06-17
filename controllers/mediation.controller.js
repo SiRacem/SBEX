@@ -909,6 +909,7 @@ exports.getBuyerMediationRequests = async (req, res) => {
             populate: [
                 { path: 'product', select: 'title imageUrls agreedPrice currency user' }, // user هنا هو بائع المنتج
                 { path: 'seller', select: '_id fullName avatarUrl' },
+                { path: 'buyer', select: '_id fullName avatarUrl' }, // Added this line
                 { path: 'mediator', select: '_id fullName avatarUrl' },
                 // يمكنك إضافة populate لسجل الأحداث إذا أردت عرضه في القائمة
                 // { path: 'history.userId', select: 'fullName' } 
@@ -2886,7 +2887,7 @@ exports.adminGetAllSubChatsForDisputeController = async (req, res) => {
                 sc.messages.forEach(msg => {
                     // Check if message is from another user and not read by the current admin
                     if (msg.sender && msg.sender._id.toString() !== adminUserId.toString() &&
-                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId && 
+                        (!msg.readBy || !msg.readBy.some(rb => rb.readerId &&
                             rb.readerId._id.toString() === adminUserId.toString()))) {
                         unreadCount++;
                     }

@@ -323,31 +323,123 @@ const mediationReducer = (state = initialState, action) => {
         }
         case GET_MEDIATION_DETAILS_BY_ID_FAIL:
             return { ...state, loadingActiveMediationDetails: false, errorActiveMediationDetails: payload };
-        case UPDATE_MEDIATION_DETAILS_FROM_SOCKET:
-            if (state.activeMediationDetails && state.activeMediationDetails._id === payload._id) {
-                const currentAdminForSocket = state.userReducer?.user;
-                const currentAdminIdForSocket = currentAdminForSocket?._id;
-                return {
-                    ...state,
-                    activeMediationDetails: payload,
-                    adminSubChats: {
-                        ...state.adminSubChats,
-                        list: (payload.adminSubChats || []).map(sc => {
-                            let unreadCount = 0;
-                            if (sc.messages && currentAdminIdForSocket) {
-                                sc.messages.forEach(msg => {
-                                    const senderId = msg.sender?._id || msg.sender;
-                                    if (senderId && senderId.toString() !== currentAdminIdForSocket && (!msg.readBy || !msg.readBy.some(r => r.readerId && (r.readerId._id || r.readerId).toString() === currentAdminIdForSocket))) {
-                                        unreadCount++;
-                                    }
-                                });
+        case UPDATE_MEDIATION_DETAILS_FROM_SOCKET: {
+            const updatedRequest = payload; // payload is the updatedMediationRequestData
+            let newState = { ...state };
+
+            // Update activeMediationDetails if it matches
+            if (newState.activeMediationDetails && newState.activeMediationDetails._id === updatedRequest._id) {
+                // Keep the existing logic for adminSubChats if activeMediationDetails is being updated,
+                // or simplify if this action is purely for list updates on dashboards.
+                // For now, let's assume the existing logic for activeMediationDetails is important for another view.
+                const currentUserIdForSubChats = state.userReducer?.user?._id; // Assuming userReducer is accessible
+                const processedSubChats = (updatedRequest.adminSubChats || []).map(sc => {
+                    let unreadCount = 0;
+                    if (sc.messages && currentUserIdForSubChats) {
+                        sc.messages.forEach(msg => {
+                            const senderId = msg.sender?._id || msg.sender;
+                            if (senderId && senderId.toString() !== currentUserIdForSubChats &&
+                                (!msg.readBy || !msg.readBy.some(r => r.readerId && (r.readerId._id || r.readerId).toString() === currentUserIdForSubChats))) {
+                                unreadCount++;
                             }
-                            return { ...sc, unreadMessagesCount: unreadCount };
-                        }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt)),
+                        });
                     }
-                };
+                    return { ...sc, unreadMessagesCount: unreadCount };
+                }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
+
+                newState.activeMediationDetails = { ...updatedRequest, adminSubChats: processedSubChats };
+                // Also update the adminSubChats list if it's part of the main state for an admin view
+                if (newState.adminSubChats) {
+                    newState.adminSubChats = {
+                        ...newState.adminSubChats,
+                        list: processedSubChats
+                    };
+                }
             }
-            return state;
+
+            // Update pendingDecisionAssignments list (for mediator dashboard)
+            if (newState.pendingDecisionAssignments && newState.pendingDecisionAssignments.list) {
+                if (updatedRequest.status === 'Cancelled') {
+                    newState.pendingDecisionAssignments = {
+                        ...newState.pendingDecisionAssignments,
+                        list: newState.pendingDecisionAssignments.list.filter(req => req._id !== updatedRequest._id),
+                        totalCount: Math.max(0, (newState.pendingDecisionAssignments.totalCount || 0) - 1)
+                    };
+                } else {
+                    // If not cancelled, but updated, map and update the item if it exists
+                    // This is important if other statuses change and it should remain in this list
+                    const existingPendingIndex = newState.pendingDecisionAssignments.list.findIndex(req => req._id === updatedRequest._id);
+                    if (existingPendingIndex > -1) {
+                        newState.pendingDecisionAssignments = {
+                            ...newState.pendingDecisionAssignments,
+                            list: newState.pendingDecisionAssignments.list.map(req =>
+                                req._id === updatedRequest._id ? updatedRequest : req
+                            )
+                        };
+                    }
+                }
+            }
+
+            // Update acceptedAwaitingPartiesAssignments list (for mediator dashboard)
+            if (newState.acceptedAwaitingPartiesAssignments && newState.acceptedAwaitingPartiesAssignments.list) {
+                if (updatedRequest.status === 'Cancelled') {
+                    newState.acceptedAwaitingPartiesAssignments = {
+                        ...newState.acceptedAwaitingPartiesAssignments,
+                        list: newState.acceptedAwaitingPartiesAssignments.list.filter(req => req._id !== updatedRequest._id),
+                        totalCount: Math.max(0, (newState.acceptedAwaitingPartiesAssignments.totalCount || 0) - 1)
+                    };
+                } else {
+                    const existingAcceptedIndex = newState.acceptedAwaitingPartiesAssignments.list.findIndex(req => req._id === updatedRequest._id);
+                    if (existingAcceptedIndex > -1) {
+                        newState.acceptedAwaitingPartiesAssignments = {
+                            ...newState.acceptedAwaitingPartiesAssignments,
+                            list: newState.acceptedAwaitingPartiesAssignments.list.map(req =>
+                                req._id === updatedRequest._id ? updatedRequest : req
+                            )
+                        };
+                    }
+                    // If the status changed such that it no longer belongs in "accepted/awaiting" (e.g., moved to InProgress, Disputed, Completed)
+                    // AND it wasn't just cancelled, it should also be removed from this specific list.
+                    // The current lists are for 'MediatorAssigned' (pendingDecision) and 'MediationOfferAccepted', 'EscrowFunded', etc. (acceptedAwaitingParties).
+                    // If status changes to 'InProgress', 'Disputed', 'Completed', it should be removed from these specific lists.
+                    const activeStatuses = ['MediationOfferAccepted', 'EscrowFunded', 'PartiesConfirmed', 'InProgress']; // InProgress is often a separate tab/view
+                    if (!activeStatuses.includes(updatedRequest.status) && updatedRequest.status !== 'Cancelled') {
+                        // Remove if status no longer fits this list's criteria
+                        const listWithoutIt = newState.acceptedAwaitingPartiesAssignments.list.filter(req => req._id !== updatedRequest._id);
+                        if (listWithoutIt.length !== newState.acceptedAwaitingPartiesAssignments.list.length) {
+                            newState.acceptedAwaitingPartiesAssignments = {
+                                ...newState.acceptedAwaitingPartiesAssignments,
+                                list: listWithoutIt,
+                                totalCount: Math.max(0, (newState.acceptedAwaitingPartiesAssignments.totalCount || 0) - 1)
+                            };
+                        }
+                    }
+                }
+            }
+
+            // Also update buyerRequests.list for consistency, as it might be displayed elsewhere
+            if (newState.buyerRequests && newState.buyerRequests.list) {
+                if (updatedRequest.status === 'Cancelled') {
+                    newState.buyerRequests = {
+                        ...newState.buyerRequests,
+                        list: newState.buyerRequests.list.filter(req => req._id !== updatedRequest._id),
+                        totalCount: Math.max(0, (newState.buyerRequests.totalCount || 0) - 1)
+                    };
+                } else {
+                    const existingBuyerIndex = newState.buyerRequests.list.findIndex(req => req._id === updatedRequest._id);
+                    if (existingBuyerIndex > -1) {
+                        newState.buyerRequests = {
+                            ...newState.buyerRequests,
+                            list: newState.buyerRequests.list.map(req =>
+                                req._id === updatedRequest._id ? updatedRequest : req
+                            )
+                        };
+                    }
+                }
+            }
+
+            return newState;
+        }
         case CLEAR_ACTIVE_MEDIATION_DETAILS:
             return { ...state, activeMediationDetails: null, loadingActiveMediationDetails: false, errorActiveMediationDetails: null, adminSubChats: { ...initialState.adminSubChats }, activeSubChat: { ...initialState.activeSubChat } };
 
@@ -560,7 +652,7 @@ const mediationReducer = (state = initialState, action) => {
                     adminSubChats: updateChatList(state.activeMediationDetails.adminSubChats || []),
                 } : null,
             };
-            }
+        }
 
         case ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET: {
             const { subChatId, readerInfo, messageIds } = payload;
