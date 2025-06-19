@@ -18,6 +18,7 @@ import {
   Image,
   Tabs,
   Tab,
+  Carousel,
 } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -46,10 +47,9 @@ import {
   assignSelectedMediator,
   sellerConfirmReadinessAction,
 } from "../../redux/actions/mediationAction";
-// import { getProfile } from "../../redux/actions/userAction"; // Assuming not directly used
 import SelectMediatorModal from "./SelectMediatorModal";
 import MediationDetailsModal from "./MediationDetailsModal";
-import { calculateMediatorFeeDetails } from "./feeCalculator"; // Assuming this path is correct
+import { calculateMediatorFeeDetails } from "./feeCalculator";
 import axios from "axios";
 
 const fallbackImageUrl =
@@ -101,7 +101,8 @@ const CommandsListVendor = () => {
   const [showRejectReasonModal, setShowRejectReasonModal] = useState(false);
   const [bidToReject, setBidToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [activeTab, setActiveTab] = useState("approved"); // Default tab
+  const [activeTab, setActiveTab] = useState("approved");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [showSelectMediatorModal, setShowSelectMediatorModal] = useState(false);
   const [showMediationDetailsModal, setShowMediationDetailsModal] =
@@ -112,16 +113,22 @@ const CommandsListVendor = () => {
   const [loadingMediators, setLoadingMediators] = useState(false);
   const [mediatorSuggestionsUsedOnce, setMediatorSuggestionsUsedOnce] =
     useState(false);
-  const [refreshCountRemaining, setRefreshCountRemaining] = useState(1); // Max 1 refresh for example
+  const [refreshCountRemaining, setRefreshCountRemaining] = useState(1);
   const [sellerConfirmLoading, setSellerConfirmLoading] = useState({});
+
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedProductImages, setSelectedProductImages] = useState([]);
 
   useEffect(() => {
     if (userId) {
-      dispatch(getProducts()); // Fetch all products initially or when userId changes
+      setIsRefreshing(true);
+      dispatch(getProducts()).finally(() => {
+        setIsRefreshing(false);
+      });
     }
-  }, [dispatch, userId]);
+  }, [dispatch, userId, activeTab]);
 
-  // Filter products based on current user and sort them
   const myProducts = useMemo(() => {
     if (!userId || !Array.isArray(allProducts)) return [];
     return allProducts
@@ -129,7 +136,6 @@ const CommandsListVendor = () => {
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }, [allProducts, userId]);
 
-  // Memoized lists for different tabs
   const approvedProducts = useMemo(
     () =>
       myProducts.filter(
@@ -143,24 +149,15 @@ const CommandsListVendor = () => {
   );
   const mediationProducts = useMemo(() => {
     return myProducts.filter((p) => {
-      
       if (!p) return false;
       const productStatus = String(p.status).trim();
-      const mediationRequestStatus = p.currentMediationRequest?.status;
       return (
         productStatus === "PendingMediatorSelection" ||
         productStatus === "MediatorAssigned" ||
-        // mediationRequestStatus === "MediationOfferAccepted" || // هذه الحالات تُغطى بـ productStatus
-        // mediationRequestStatus === "EscrowFunded" ||
-        // mediationRequestStatus === "PartiesConfirmed" ||
-        productStatus === "InProgress" || // <--- هذا مهم
-        // mediationRequestStatus === "InProgress" // productStatus يجب أن يكون هو المصدر الأساسي لحالة المنتج هنا
-
-        // --- [!!!] أضف هذه الحالات إذا كانت product.status هي التي تتغير لها [!!!] ---
+        productStatus === "InProgress" ||
         productStatus === "MediationOfferAccepted" ||
         productStatus === "EscrowFunded" ||
         productStatus === "PartiesConfirmed"
-        // --------------------------------------------------------------------
       );
     });
   }, [myProducts]);
@@ -171,16 +168,35 @@ const CommandsListVendor = () => {
   const completedProducts = useMemo(
     () => myProducts.filter((p) => p && p.status === "Completed"),
     [myProducts]
-  ); // Assuming 'Completed' is a final state post-mediation
+  );
   const rejectedProducts = useMemo(
     () => myProducts.filter((p) => p && p.status === "rejected"),
     [myProducts]
   );
-    // --- [!!!] useMemo جديد للمنتجات المتنازع عليها [!!!] ---
   const disputedProducts = useMemo(
-    () => myProducts.filter((p) => p && (p.status === "Disputed" || p.status === "UnderDispute")),
+    () =>
+      myProducts.filter(
+        (p) => p && (p.status === "Disputed" || p.status === "UnderDispute")
+      ),
     [myProducts]
   );
+
+  const handleShowImageModal = useCallback((images, index = 0) => {
+    setSelectedProductImages(
+      Array.isArray(images) && images.length > 0 ? images : [noImageUrl]
+    );
+    setCurrentImageIndex(index);
+    setShowImageModal(true);
+  }, []);
+
+  const handleCloseImageModal = useCallback(() => setShowImageModal(false), []);
+
+  const handleImageError = useCallback((e) => {
+    if (e.target.src !== fallbackImageUrl) {
+      e.target.onerror = null;
+      e.target.src = fallbackImageUrl;
+    }
+  }, []);
 
   const openRejectModal = useCallback((productId, bid) => {
     setBidToReject({ productId, bid });
@@ -233,15 +249,14 @@ const CommandsListVendor = () => {
       ) {
         dispatch(acceptBid(productId, bidderId, bidAmount))
           .then(() => {
-            setActiveTab("mediation"); // Switch to mediation tab
-            dispatch(getProducts()); // getProducts will be called by useEffect if needed, or by successful action reducing state
+            setActiveTab("mediation");
           })
           .catch((err) =>
             console.error("Accept bid failed in component:", err)
           );
       }
     },
-    [dispatch, setActiveTab]
+    [dispatch]
   );
 
   const handleOpenViewMediationDetails = useCallback((product) => {
@@ -310,7 +325,7 @@ const CommandsListVendor = () => {
       }
     },
     [availableMediators]
-  ); // Added availableMediators as dependency
+  );
 
   const handleOpenSelectMediatorModal = useCallback(
     (product) => {
@@ -328,7 +343,6 @@ const CommandsListVendor = () => {
   );
 
   const handleRequestReturnToSale = useCallback((product) => {
-    // const mediationRequestId = product.currentMediationRequest?._id || product._id; // Not used directly in toast
     if (
       window.confirm(
         "Request admin to return product to sale? (e.g., buyer unresponsive)"
@@ -367,21 +381,17 @@ const CommandsListVendor = () => {
       }
       const mediationRequestId =
         productForMediationAction.currentMediationRequest._id;
-      setLoadingMediators(true); // Consider a more specific loading state for this action
+      setLoadingMediators(true);
       dispatch(assignSelectedMediator(mediationRequestId, mediatorIdToAssign))
         .then(() => {
-          // Assuming assignSelectedMediator returns a promise
           setShowSelectMediatorModal(false);
           setAvailableMediators([]);
-          dispatch(getProducts()); // Data will be updated via Redux state changes from the action
           setActiveTab("mediation");
         })
-        .catch(() => {
-          /* Error is handled by toast in action */
-        })
+        .catch(() => {})
         .finally(() => setLoadingMediators(false));
     },
-    [dispatch, productForMediationAction, setActiveTab]
+    [dispatch, productForMediationAction]
   );
 
   const handleSellerConfirmReadiness = useCallback(
@@ -398,13 +408,9 @@ const CommandsListVendor = () => {
       }));
       dispatch(sellerConfirmReadinessAction(mediationRequestId))
         .then(() => {
-          // toast.success("Readiness confirmed successfully!"); // Toast from action is usually enough
-          dispatch(getProducts()); // Let Redux update handle the product list re-render
+          dispatch(getProducts());
         })
-        .catch((error) => {
-          // Toast is already handled in the action for failure
-          // console.error("Error confirming readiness in component:", error);
-        })
+        .catch((error) => {})
         .finally(() => {
           setSellerConfirmLoading((prev) => ({
             ...prev,
@@ -427,6 +433,7 @@ const CommandsListVendor = () => {
       const mediationRequestData = product.currentMediationRequest;
       const mediationRequestStatus = mediationRequestData?.status;
       const currentMediationRequestId = mediationRequestData?._id;
+      const productImages = product.imageUrls;
 
       const isPendingMediatorSelection =
         productStatus === "PendingMediatorSelection" &&
@@ -446,13 +453,14 @@ const CommandsListVendor = () => {
       const sellerHasConfirmed = mediationRequestData?.sellerConfirmedStart;
       const isApproved = productStatus === "approved";
       const canEditOrDelete =
-        isApproved && !mediationRequestData && product.bids?.length === 0; // Can only edit/delete if no bids and not in mediation
+        isApproved && !mediationRequestData && product.bids?.length === 0;
 
       const agreedPriceForDisplay = product.agreedPrice;
       const isLoadingThisSellerConfirmButton =
         sellerConfirmLoading[currentMediationRequestId] || false;
-      
-        const isDisputedProduct = productStatus === "Disputed" || productStatus === "UnderDispute";
+
+      const isDisputedProduct =
+        productStatus === "Disputed" || productStatus === "UnderDispute";
 
       let statusBadgeText = productStatus
         ? productStatus.charAt(0).toUpperCase() + productStatus.slice(1)
@@ -480,7 +488,10 @@ const CommandsListVendor = () => {
       } else if (isActualMediationInProgress) {
         statusBadgeText = "In Progress";
         statusBadgeBg = "success";
-      } else if (productStatus === "Disputed" || productStatus === "UnderDispute") {
+      } else if (
+        productStatus === "Disputed" ||
+        productStatus === "UnderDispute"
+      ) {
         statusBadgeText = "Dispute Opened";
         statusBadgeBg = "danger";
       } else if (product.status === "sold") {
@@ -512,18 +523,40 @@ const CommandsListVendor = () => {
             <Col
               md={3}
               lg={2}
-              className="text-center p-2 product-entry-img-col"
+              className="text-center p-2 product-entry-img-col position-relative"
             >
               <Image
-                src={product.imageUrls?.[0] || noImageUrl}
+                src={productImages?.[0] || noImageUrl}
                 fluid
                 rounded
-                style={{ maxHeight: "100px", objectFit: "contain" }}
-                alt={product.title || "Product Image"}
-                onError={(e) => {
-                  e.target.src = fallbackImageUrl;
+                style={{
+                  maxHeight: "100px",
+                  objectFit: "contain",
+                  cursor: productImages?.length > 0 ? "pointer" : "default",
                 }}
+                alt={product.title || "Product Image"}
+                onError={handleImageError}
+                onClick={() =>
+                  productImages?.length > 0 &&
+                  handleShowImageModal(productImages, 0)
+                }
               />
+              {productImages && productImages.length > 1 && (
+                <Button
+                  variant="dark"
+                  size="sm"
+                  onClick={() => handleShowImageModal(productImages, 0)}
+                  className="position-absolute bottom-0 start-50 translate-middle-x mb-2"
+                  style={{
+                    opacity: 0.8,
+                    fontSize: "0.75rem",
+                    padding: "0.1rem 0.4rem",
+                  }}
+                  title="View Gallery"
+                >
+                  <FaEye size={10} className="me-1" /> {productImages.length}
+                </Button>
+              )}
             </Col>
             <Col md={9} lg={10}>
               <Card.Body className="p-3 position-relative">
@@ -607,15 +640,15 @@ const CommandsListVendor = () => {
                       )}
 
                     {sellerHasConfirmed &&
-                      productStatus !== "sold" && // <--- إضافة هذا الشرط
-                      productStatus !== "Completed" && // <--- إضافة هذا الشرط
-                      productStatus !== 'Disputed' && // <--- [!!!] إضافة هذا الشرط [!!!]
-                      productStatus !== 'UnderDispute' && // <--- (إذا كنت تستخدم هذه الحالة أيضًا)
-                      !isActualMediationInProgress && // لم تعد "InProgress"
-                      !isPartiesConfirmed && // لم تعد "PartiesConfirmed"
-                      mediationRequestStatus !== "Completed" && // حالة الوساطة نفسها ليست مكتملة
-                      mediationRequestStatus !== "Cancelled" && ( // وليست ملغاة
-                      mediationRequestStatus !== 'Disputed' &&
+                      productStatus !== "sold" &&
+                      productStatus !== "Completed" &&
+                      productStatus !== "Disputed" &&
+                      productStatus !== "UnderDispute" &&
+                      !isActualMediationInProgress &&
+                      !isPartiesConfirmed &&
+                      mediationRequestStatus !== "Completed" &&
+                      mediationRequestStatus !== "Cancelled" &&
+                      mediationRequestStatus !== "Disputed" && (
                         <Alert variant="success" className="p-2 small mt-2">
                           <FaCheck className="me-1" /> You confirmed.
                           <small className="text-muted">
@@ -624,39 +657,55 @@ const CommandsListVendor = () => {
                         </Alert>
                       )}
 
-                    {(isPartiesConfirmed || isActualMediationInProgress || isDisputedProduct) &&
+                    {(isPartiesConfirmed ||
+                      isActualMediationInProgress ||
+                      isDisputedProduct) &&
                       currentMediationRequestId &&
-                      productStatus !== "sold" && // لا تعرض زر "Open Chat" إذا بيع
+                      productStatus !== "sold" &&
                       productStatus !== "Completed" && (
                         <div className="mt-2">
-      <Alert
-        variant={
-          isActualMediationInProgress ? "success" : (isDisputedProduct ? "danger" : "info")
-        }
-        className="p-2 small d-flex justify-content-between align-items-center"
-      >
-        <span>
-          {isDisputedProduct ? <FaExclamationTriangle className="me-1" /> : <FaHandshake className="me-1" />}
-          {isActualMediationInProgress
-            ? "Mediation is in progress."
-            : isDisputedProduct
-            ? "Dispute is active."
-            : "Parties confirmed. Chat starting."}
+                          <Alert
+                            variant={
+                              isActualMediationInProgress
+                                ? "success"
+                                : isDisputedProduct
+                                ? "danger"
+                                : "info"
+                            }
+                            className="p-2 small d-flex justify-content-between align-items-center"
+                          >
+                            <span>
+                              {isDisputedProduct ? (
+                                <FaExclamationTriangle className="me-1" />
+                              ) : (
+                                <FaHandshake className="me-1" />
+                              )}
+                              {isActualMediationInProgress
+                                ? "Mediation is in progress."
+                                : isDisputedProduct
+                                ? "Dispute is active."
+                                : "Parties confirmed. Chat starting."}
                               <br />
                               <small className="text-muted">
                                 Communicate with buyer and mediator.
                               </small>
                             </span>
                             <Button
-          variant={isDisputedProduct ? "warning" : "primary"} // تغيير لون الزر إذا كان في نزاع
-          size="sm"
-          as={Link}
-          to={`/dashboard/mediation-chat/${currentMediationRequestId}`}
-          title={isDisputedProduct ? "Open Dispute Chat" : "Open Mediation Chat"}
-        >
-          <FaCommentDots className="me-1 d-none d-sm-inline" />
-          Open Chat
-        </Button>
+                              variant={
+                                isDisputedProduct ? "warning" : "primary"
+                              }
+                              size="sm"
+                              as={Link}
+                              to={`/dashboard/mediation-chat/${currentMediationRequestId}`}
+                              title={
+                                isDisputedProduct
+                                  ? "Open Dispute Chat"
+                                  : "Open Mediation Chat"
+                              }
+                            >
+                              <FaCommentDots className="me-1 d-none d-sm-inline" />
+                              Open Chat
+                            </Button>
                           </Alert>
                         </div>
                       )}
@@ -734,9 +783,7 @@ const CommandsListVendor = () => {
                             variant="link"
                             size="sm"
                             className="p-1 text-secondary"
-                            onClick={() =>
-                              navigate("/dashboard/comptes")
-                            }
+                            onClick={() => navigate("/dashboard/comptes")}
                           >
                             <FaEdit />
                           </Button>
@@ -896,16 +943,19 @@ const CommandsListVendor = () => {
       handleDeleteProduct,
       sellerConfirmLoading,
       handleSellerConfirmReadiness,
+      handleShowImageModal,
+      handleImageError,
     ]
   );
 
-  if (loadingProducts && myProducts.length === 0 && !userId)
+  if (loadingProducts && myProducts.length === 0)
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p>Loading...</p>
+        <p>Loading your products...</p>
       </Container>
     );
+
   if (errors)
     return (
       <Container className="py-5">
@@ -951,9 +1001,10 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts && !approvedProducts.length ? (
+          {isRefreshing ? (
             <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
             </div>
           ) : approvedProducts.length > 0 ? (
             approvedProducts.map(renderProductEntry)
@@ -974,9 +1025,10 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts && !pendingProducts.length ? (
+          {isRefreshing ? (
             <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
             </div>
           ) : pendingProducts.length > 0 ? (
             pendingProducts.map(renderProductEntry)
@@ -997,9 +1049,10 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts && !mediationProducts.length ? (
+          {isRefreshing ? (
             <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
             </div>
           ) : mediationProducts.length > 0 ? (
             mediationProducts.map(renderProductEntry)
@@ -1020,8 +1073,11 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts && !disputedProducts.length ? (
-            <div className="text-center py-4"><Spinner size="sm" /> Loading...</div>
+          {isRefreshing ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
+            </div>
           ) : disputedProducts.length > 0 ? (
             disputedProducts.map(renderProductEntry)
           ) : (
@@ -1041,10 +1097,10 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts &&
-          !(soldProducts.length + completedProducts.length) ? (
+          {isRefreshing ? (
             <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
             </div>
           ) : soldProducts.length + completedProducts.length > 0 ? (
             [...soldProducts, ...completedProducts]
@@ -1071,9 +1127,10 @@ const CommandsListVendor = () => {
             </>
           }
         >
-          {loadingProducts && !rejectedProducts.length ? (
+          {isRefreshing ? (
             <div className="text-center py-4">
-              <Spinner size="sm" /> Loading...
+              <Spinner animation="border" size="sm" />
+              <p className="mt-2 mb-0">Refreshing...</p>
             </div>
           ) : rejectedProducts.length > 0 ? (
             rejectedProducts.map(renderProductEntry)
@@ -1084,6 +1141,53 @@ const CommandsListVendor = () => {
           )}
         </Tab>
       </Tabs>
+
+      <Modal
+        show={showImageModal}
+        onHide={handleCloseImageModal}
+        centered
+        size="lg"
+        dialogClassName="lightbox-modal"
+      >
+        <Modal.Body className="p-0 text-center bg-dark position-relative">
+          {selectedProductImages.length > 0 ? (
+            <Carousel
+              activeIndex={currentImageIndex}
+              onSelect={(idx) => setCurrentImageIndex(idx)}
+              interval={null}
+              indicators={selectedProductImages.length > 1}
+              controls={selectedProductImages.length > 1}
+            >
+              {selectedProductImages.map((imgUrl, index) => (
+                <Carousel.Item key={index}>
+                  <Image
+                    src={imgUrl || fallbackImageUrl}
+                    fluid
+                    className="lightbox-image"
+                    onError={handleImageError}
+                    alt={`Product Image ${index + 1}`}
+                    style={{ maxHeight: "80vh", objectFit: "contain" }}
+                  />
+                </Carousel.Item>
+              ))}
+            </Carousel>
+          ) : (
+            <Alert variant="dark" className="m-5">
+              Image not available.
+            </Alert>
+          )}
+          <Button
+            variant="light"
+            onClick={handleCloseImageModal}
+            className="position-absolute top-0 end-0 m-2"
+            aria-label="Close"
+            style={{ zIndex: 1056 }}
+          >
+            ×
+          </Button>
+        </Modal.Body>
+      </Modal>
+
       {productForMediationAction && (
         <>
           <SelectMediatorModal

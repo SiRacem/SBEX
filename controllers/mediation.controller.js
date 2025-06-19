@@ -8,6 +8,7 @@ const PendingFund = require('../models/PendingFund'); // <<< تأكد من اس�
 const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs'); // <<<<========= ADD THIS LINE
+const { sendUserStatsUpdate } = require('./user.controller'); // [!!!] استيراد الدالة الجديدة
 
 // --- [!!!] استيراد الدوال المساعدة من rating.controller.js [!!!] ---
 const { updateUserLevelAndBadge, processLevelUpRewards } = require('./rating.controller');
@@ -337,9 +338,10 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     console.log(`--- Controller: sellerAssignSelectedMediator for Request: ${mediationRequestId} ---`);
+
     try {
         const mediationRequest = await MediationRequest.findById(mediationRequestId)
-            .populate('product', 'title _id') // جلب _id للمنتج
+            .populate('product', 'title _id')
             .populate('buyer', 'fullName _id')
             .session(session);
 
@@ -377,10 +379,10 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
         });
         const updatedMediationRequestDoc = await mediationRequest.save({ session });
 
-        if (mediationRequest.product && mediationRequest.product._id) { // التأكد من وجود _id
+        if (mediationRequest.product?._id) {
             await Product.findByIdAndUpdate(mediationRequest.product._id,
                 { $set: { status: 'MediatorAssigned' } },
-                { session: session } // لا نحتاج new: true هنا بالضرورة
+                { session: session }
             );
             console.log(`   Product ${mediationRequest.product._id} status updated to 'MediatorAssigned' in DB.`);
         }
@@ -393,74 +395,66 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
         const mediatorNotificationMsg = `You have been selected as a mediator by ${sellerFullNameForNotification} for a transaction regarding "${productTitleForNotification}" with ${buyerFullNameForNotification}. Please review and accept or reject this assignment.`;
         const buyerNotificationMsg = `${sellerFullNameForNotification} has selected ${mediatorUser.fullName} as the mediator for your transaction regarding "${productTitleForNotification}". Please wait for the mediator to accept the assignment.`;
 
-        // --- التعديل هنا ---
         await Notification.create([
             { user: sellerId, type: 'MEDIATOR_SELECTION_CONFIRMED', title: 'Mediator Selection Confirmed', message: sellerConfirmationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
             { user: selectedMediatorId, type: 'MEDIATION_ASSIGNED', title: 'New Mediation Assignment', message: mediatorNotificationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
             { user: mediationRequest.buyer._id, type: 'MEDIATOR_SELECTED_BY_SELLER', title: 'Mediator Selected for Your Transaction', message: buyerNotificationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } }
-        ], { session, ordered: true }); // <--- أضف ordered: true
-        // --- نهاية التعديل ---
+        ], { session: session, ordered: true });
         console.log(`   Notifications sent for mediator assignment on request ${updatedMediationRequestDoc._id}.`);
 
         await session.commitTransaction();
         console.log("   sellerAssignSelectedMediator transaction committed successfully.");
 
-        // --- [!!! التعديل المهم هنا: إرسال حدث Socket.IO لتحديث تفاصيل الوساطة والمنتج !!!] ---
-        // جلب النسخة النهائية المحدثة من طلب الوساطة والمنتج المرتبط به
+        // --- [!!!] الحل: إعادة جلب شاملة قبل إرسال السوكيت [!!!] ---
         const finalPopulatedMediationRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
-            .populate('product', 'title status currentMediationRequest agreedPrice imageUrls currency user buyer bids.user') // Populate Product بشكل كامل
+            .populate('product') // المنتج بالكامل
             .populate('seller', 'fullName avatarUrl _id')
             .populate('buyer', 'fullName avatarUrl _id')
-            .populate('mediator', 'fullName avatarUrl _id') // الوسيط المختار
+            .populate('mediator', 'fullName avatarUrl _id')
             .lean();
 
         if (req.io && finalPopulatedMediationRequest) {
-            // 1. إرسال تحديث لطلب الوساطة لجميع الأطراف المعنية به
-            const involvedUserIds = [
-                finalPopulatedMediationRequest.seller?._id?.toString(),
-                finalPopulatedMediationRequest.buyer?._id?.toString(),
-                finalPopulatedMediationRequest.mediator?._id?.toString() // الوسيط الآن جزء من الأطراف المعنية
-            ].filter(id => id); // إزالة القيم الفارغة
-
+            // إرسال تحديث عام
+            const involvedUserIds = [finalPopulatedMediationRequest.seller?._id, finalPopulatedMediationRequest.buyer?._id, finalPopulatedMediationRequest.mediator?._id].filter(id => id).map(id => id.toString());
             const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
-
             uniqueInvolvedUserIds.forEach(involvedUserIdString => {
                 if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
                     req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
-                        mediationRequestId: finalPopulatedMediationRequest._id.toString(),
-                        updatedMediationRequestData: finalPopulatedMediationRequest // أرسل طلب الوساطة المحدث بالكامل
+                        updatedMediationRequestData: finalPopulatedMediationRequest
                     });
-                    console.log(`   [Socket] Emitted 'mediation_request_updated' to user ${involvedUserIdString} for request ${finalPopulatedMediationRequest._id}`);
                 }
             });
 
-            // 2. إرسال تحديث للمنتج (لأن حالته و currentMediationRequest تغيرتا)
+            // إرسال تحديث للمنتج منفصل
             if (finalPopulatedMediationRequest.product) {
                 req.io.emit('product_updated', finalPopulatedMediationRequest.product);
-                console.log(`   [Socket] Emitted 'product_updated' for product ${finalPopulatedMediationRequest.product._id} after mediator assignment.`);
+            }
+
+            // --- [!!!] الحل: إرسال حدث مخصص للوسيط لتحديث قائمته [!!!] ---
+            const mediatorSocketId = req.onlineUsers?.[selectedMediatorId.toString()];
+            if (mediatorSocketId) {
+                req.io.to(mediatorSocketId).emit('new_assignment_for_mediator', {
+                    newAssignmentData: finalPopulatedMediationRequest
+                });
+                console.log(`   [Socket] Emitted 'new_assignment_for_mediator' to mediator ${selectedMediatorId}`);
             }
         }
-        // --- نهاية التعديل ---
-
 
         res.status(200).json({
             msg: `Mediator ${mediatorUser.fullName} has been assigned. They will be notified.`,
-            mediationRequest: finalPopulatedMediationRequest // أرجع طلب الوساطة المحدث بالكامل
+            mediationRequest: finalPopulatedMediationRequest
         });
 
     } catch (error) {
         if (session.inTransaction()) {
             await session.abortTransaction();
-            console.log("[MediationCtrl sellerAssignSelectedMediator] Transaction aborted due to error:", error.message);
         }
         console.error("--- Controller: sellerAssignSelectedMediator ERROR ---", error);
-        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Cannot assign mediator") || error.message.includes("not valid") ? 400 : 500;
-        res.status(statusCode).json({ msg: error.message || 'Failed to assign mediator.' });
+        res.status(error.status || 500).json({ msg: error.message || 'Failed to assign mediator.' });
     } finally {
-        if (session && session.endSession) { // تأكد من أن session موجود قبل استدعاء endSession
+        if (session) {
             await session.endSession();
         }
-        console.log("--- Controller: sellerAssignSelectedMediator END --- Session ended.");
     }
 };
 
@@ -483,39 +477,40 @@ exports.getMediatorPendingAssignments = async (req, res) => {
 
 // --- Mediator: Accept Assignment ---
 exports.mediatorAcceptAssignment = async (req, res) => {
-    // req.mediationRequest يفترض أنه يتم توفيره بواسطة middleware مثل isAssignedMediator
-    // إذا لم يكن كذلك، ستحتاج لجلب mediationRequestId من req.params
+    // 1. استخراج معرفات الطلب والوسيط
+    // req.mediationRequest يتم توفيره بواسطة middleware مثل isAssignedMediator
     const mediationRequestIdToAccept = req.mediationRequest?._id || req.params.mediationRequestId;
     const mediatorId = req.user._id; // الوسيط الذي يقوم بالقبول
 
-    console.log(`--- Controller: mediatorAcceptAssignment ---`);
-    console.log(`   MediationRequestID: ${mediationRequestIdToAccept}, Accepting MediatorID: ${mediatorId}`);
-
-    if (!mongoose.Types.ObjectId.isValid(mediationRequestIdToAccept)) {
-        return res.status(400).json({ msg: "Invalid Mediation Request ID provided." });
-    }
-
+    // بدء جلسة transaction لضمان سلامة البيانات
     const session = await mongoose.startSession();
     session.startTransaction();
-    console.log("   MongoDB session started for mediatorAcceptAssignment.");
+    console.log(`--- Controller: mediatorAcceptAssignment for Request: ${mediationRequestIdToAccept} ---`);
 
     try {
-        const mediationRequest = await MediationRequest.findById(mediationRequestIdToAccept).session(session);
-        if (!mediationRequest) {
-            throw new Error("Mediation request not found or disappeared during transaction.");
-        }
+        // متغير لتخزين المستند المحدث لاستخدامه بعد إتمام المعاملة
+        let updatedDoc;
 
-        // التحقق من أن المستخدم الحالي هو الوسيط المعين لهذا الطلب
+        // ========================================================================
+        // 2. الجزء الخاص بقاعدة البيانات (يتم داخل المعاملة)
+        // ========================================================================
+
+        // جلب طلب الوساطة من قاعدة البيانات باستخدام الجلسة الحالية
+        const mediationRequest = await MediationRequest.findById(mediationRequestIdToAccept).session(session);
+
+        // التحقق من صحة الطلب وصلاحيات الوسيط
+        if (!mediationRequest) {
+            throw new Error("Mediation request not found or has been removed.");
+        }
         if (!mediationRequest.mediator || !mediationRequest.mediator.equals(mediatorId)) {
             throw new Error("Forbidden: You are not the assigned mediator for this request.");
         }
-        // التحقق من أن حالة الطلب تسمح بالقبول
         if (mediationRequest.status !== 'MediatorAssigned') {
-            throw new Error(`Cannot accept assignment. Request status is '${mediationRequest.status}', expected 'MediatorAssigned'.`);
+            throw new Error(`Cannot accept assignment. Request status is '${mediationRequest.status}', but expected 'MediatorAssigned'.`);
         }
 
-        // تحديث حالة طلب الوساطة
-        mediationRequest.status = 'MediationOfferAccepted'; // الوسيط قبل، ننتظر تأكيد الأطراف
+        // تحديث حالة طلب الوساطة وإضافة سجل في التاريخ
+        mediationRequest.status = 'MediationOfferAccepted';
         if (!Array.isArray(mediationRequest.history)) {
             mediationRequest.history = [];
         }
@@ -524,112 +519,104 @@ exports.mediatorAcceptAssignment = async (req, res) => {
             userId: mediatorId,
             timestamp: new Date()
         });
-        await mediationRequest.save({ session });
-        console.log(`   MediationRequest ${mediationRequest._id} status updated to '${mediationRequest.status}'.`);
 
-        // جلب البيانات المعبأة للإشعارات
-        const populatedRequest = await MediationRequest.findById(mediationRequest._id)
-            .populate('product', 'title _id status agreedPrice imageUrls currency')
-            .populate('seller', '_id fullName avatarUrl') // تأكد من وجود _id
-            .populate('buyer', '_id fullName avatarUrl')   // <--- تأكد من وجود _id هنا
-            .populate('mediator', '_id fullName avatarUrl')
-            .lean()
-            .session(session); // إذا كان لا يزال ضمن session
+        // حفظ التغييرات في طلب الوساطة والحصول على المستند المحدث
+        updatedDoc = await mediationRequest.save({ session });
 
-        if (!populatedRequest) {
-            // هذا لا يجب أن يحدث
-            throw new Error("Failed to repopulate mediation request for notifications after update.");
-        }
+        // جلب البيانات المعبأة (populated) اللازمة لإنشاء الإشعارات
+        const populatedRequestForNotif = await MediationRequest.findById(updatedDoc._id)
+            .populate('product', 'title _id')
+            .populate('seller', '_id fullName')
+            .populate('buyer', '_id fullName')
+            .populate('mediator', '_id fullName')
+            .lean() // .lean() للأداء الأفضل عند القراءة فقط
+            .session(session);
 
-        const productTitle = populatedRequest.product?.title || 'the product';
-        const mediatorFullName = populatedRequest.mediator?.fullName || 'The Mediator';
-        const sellerFullName = populatedRequest.seller?.fullName || 'The Seller'; // اسم البائع للإشعار
-        const buyerFullName = populatedRequest.buyer?.fullName || 'The Buyer';   // اسم المشتري للإشعار
+        // إعداد رسائل الإشعارات
+        const productTitle = populatedRequestForNotif.product?.title || 'the specified product';
+        const mediatorFullName = populatedRequestForNotif.mediator?.fullName || 'The Assigned Mediator';
+        const sellerFullName = populatedRequestForNotif.seller?.fullName || 'The Seller';
+        const buyerFullName = populatedRequestForNotif.buyer?.fullName || 'The Buyer';
 
-
-        // إنشاء وإرسال الإشعارات
-        console.log("   Preparing notifications for mediator acceptance...");
         const mediatorConfirmationMsg = `You have successfully accepted the mediation assignment for "${productTitle}". You will be notified when both parties are ready.`;
         const sellerMessage = `${mediatorFullName} has accepted the assignment to mediate your transaction for "${productTitle}" (with buyer: ${buyerFullName}). Please proceed to confirm your readiness for mediation.`;
         const buyerMessage = `${mediatorFullName} has accepted the assignment to mediate your transaction for "${productTitle}" (with seller: ${sellerFullName}). Please proceed to confirm your readiness for mediation.`;
 
-        // --- التعديل هنا ---
+        // إنشاء جميع الإشعارات دفعة واحدة داخل المعاملة
         await Notification.create([
-            { // إشعار للوسيط (تأكيد)
-                user: mediatorId,
-                type: 'MEDIATION_TASK_ACCEPTED_SELF',
-                title: 'Assignment Accepted',
-                message: mediatorConfirmationMsg,
-                relatedEntity: { id: populatedRequest._id, modelName: 'MediationRequest' }
-            },
-            { // إشعار للبائع
-                user: populatedRequest.seller._id,
-                type: 'MEDIATION_ACCEPTED_BY_MEDIATOR',
-                title: 'Mediator Accepted - Confirm Readiness',
-                message: sellerMessage,
-                relatedEntity: { id: populatedRequest._id, modelName: 'MediationRequest' }
-            },
-            { // إشعار للمشتري
-                user: populatedRequest.buyer._id,
-                type: 'MEDIATION_ACCEPTED_BY_MEDIATOR',
-                title: 'Mediator Accepted - Confirm Readiness',
-                message: buyerMessage,
-                relatedEntity: { id: populatedRequest._id, modelName: 'MediationRequest' }
-            }
-        ], { session, ordered: true }); // <--- أضف ordered: true
-        // --- نهاية التعديل ---
-        console.log(`   Notifications sent for mediator acceptance on request ${populatedRequest._id}.`);
+            { user: mediatorId, type: 'MEDIATION_TASK_ACCEPTED_SELF', title: 'Assignment Accepted', message: mediatorConfirmationMsg, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } },
+            { user: populatedRequestForNotif.seller._id, type: 'MEDIATION_ACCEPTED_BY_MEDIATOR', title: 'Mediator Accepted - Confirm Readiness', message: sellerMessage, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } },
+            { user: populatedRequestForNotif.buyer._id, type: 'MEDIATION_ACCEPTED_BY_MEDIATOR', title: 'Mediator Accepted - Confirm Readiness', message: buyerMessage, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } }
+        ], { session, ordered: true }); // الخيار { ordered: true } ضروري عند الإنشاء المتعدد داخل transaction
 
+        // إتمام المعاملة وحفظ جميع التغييرات في قاعدة البيانات
         await session.commitTransaction();
-        console.log("   mediatorAcceptAssignment transaction committed.");
+        console.log("   mediatorAcceptAssignment transaction committed successfully.");
 
-        // --- [!!! استخدام 'populatedRequest' هنا بدلاً من الاسم الخاطئ !!!] ---
-        if (req.io && populatedRequest) { // تحقق من populatedRequest
-            const involvedUserIds = [
-                populatedRequest.seller?._id?.toString(),
-                populatedRequest.buyer?._id?.toString(),
-                populatedRequest.mediator?._id?.toString()
-            ].filter(id => id);
+        // ========================================================================
+        // 3. الجزء الخاص بإرسال البيانات (يتم خارج المعاملة بعد نجاحها)
+        // ========================================================================
 
+        // الحل الحاسم: أعد جلب طلب الوساطة بالكامل وبشكل شامل من قاعدة البيانات
+        // هذا يضمن أنك تحصل على أحدث نسخة 100% لإرسالها عبر السوكيت.
+        const finalRequestForSocket = await MediationRequest.findById(updatedDoc._id)
+            .populate({
+                path: 'product', // جلب المنتج
+                populate: { path: 'user' } // وجلب المستخدم (البائع) المرتبط بالمنتج
+            })
+            .populate('seller', 'fullName avatarUrl _id')
+            .populate('buyer', 'fullName avatarUrl _id')
+            .populate('mediator', 'fullName avatarUrl _id')
+            .lean();
+
+        // التحقق من أنك حصلت على البيانات قبل إرسالها
+        if (req.io && finalRequestForSocket) {
+
+            // (اختياري للتصحيح) اطبع البيانات التي سترسلها للتأكد من أنها كاملة
+            console.log("--- DEBUG: Data being sent via socket AFTER mediator acceptance ---");
+            console.log(JSON.stringify(finalRequestForSocket, null, 2));
+            console.log("------------------------------------------------------------------");
+
+            // تحديد جميع الأطراف المعنية لاستلام التحديث
+            const involvedUserIds = [finalRequestForSocket.seller?._id, finalRequestForSocket.buyer?._id, finalRequestForSocket.mediator?._id].filter(id => id).map(id => id.toString());
             const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
 
             uniqueInvolvedUserIds.forEach(involvedUserIdString => {
                 if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
+                    // أرسل البيانات الكاملة في حدث واحد
                     req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
-                        mediationRequestId: populatedRequest._id.toString(),
-                        updatedMediationRequestData: populatedRequest // أرسل populatedRequest
+                        updatedMediationRequestData: finalRequestForSocket
                     });
-                    console.log(`   [Socket] Emitted 'mediation_request_updated' to user ${involvedUserIdString} for request ${populatedRequest._id} after mediator accepted.`);
                 }
             });
 
-            // (اختياري) إرسال تحديث للمنتج
-            if (populatedRequest.product) {
-                req.io.emit('product_updated', populatedRequest.product);
-                console.log(`   [Socket] Emitted 'product_updated' for product ${populatedRequest.product._id} after mediator accepted (if status changed).`);
+            // أرسل تحديث المنتج بشكل منفصل أيضًا لضمان التوافق مع productReducer
+            if (finalRequestForSocket.product) {
+                req.io.emit('product_updated', finalRequestForSocket.product);
             }
+            console.log(`   [Socket] Emitted 'mediation_request_updated' and 'product_updated' with fully populated data.`);
         }
-        // --- نهاية التعديل ---
 
+        // 4. إرسال استجابة HTTP النهائية للعميل الذي قام بالطلب
         res.status(200).json({
             msg: "Mediation assignment accepted successfully. Parties will be notified to confirm readiness.",
-            mediationRequest: populatedRequest // إرجاع الطلب المحدث مع البيانات المعبأة
+            mediationRequest: finalRequestForSocket // أرجع البيانات الكاملة أيضًا في الاستجابة
         });
 
     } catch (error) {
+        // في حالة حدوث أي خطأ، قم بإلغاء المعاملة
         if (session.inTransaction()) {
             await session.abortTransaction();
-            console.log("[MediationCtrl mediatorAcceptAssignment] Transaction aborted due to error:", error.message);
         }
         console.error("--- Controller: mediatorAcceptAssignment ERROR ---", error);
-        // تحديد رمز الحالة المناسب
-        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Cannot accept assignment") ? 400 : 500;
+        // تحديد رمز الحالة المناسب للخطأ وإرساله
+        const statusCode = error.message.includes("Forbidden") || error.message.includes("not found") || error.message.includes("Cannot accept") ? 400 : 500;
         res.status(statusCode).json({ msg: error.message || "Failed to accept mediation assignment." });
     } finally {
-        if (session && typeof session.endSession === 'function') {
+        // تأكد دائمًا من إنهاء الجلسة لتحرير الموارد
+        if (session) {
             await session.endSession();
         }
-        console.log("--- Controller: mediatorAcceptAssignment END ---");
     }
 };
 
@@ -905,16 +892,15 @@ exports.getBuyerMediationRequests = async (req, res) => {
         const options = {
             page: page,
             limit: limit,
-            sort: { updatedAt: -1 }, // ترتيب حسب آخر تحديث (الأحدث أولاً)
+            sort: { updatedAt: -1 },
+            select: 'product seller buyer mediator status bidAmount bidCurrency createdAt updatedAt cancellationDetails buyerConfirmedStart sellerConfirmedStart', // Added select
             populate: [
                 { path: 'product', select: 'title imageUrls agreedPrice currency user' }, // user هنا هو بائع المنتج
                 { path: 'seller', select: '_id fullName avatarUrl' },
-                { path: 'buyer', select: '_id fullName avatarUrl' }, // Added this line
-                { path: 'mediator', select: '_id fullName avatarUrl' },
-                // يمكنك إضافة populate لسجل الأحداث إذا أردت عرضه في القائمة
-                // { path: 'history.userId', select: 'fullName' } 
+                { path: 'buyer', select: '_id fullName avatarUrl' },
+                { path: 'mediator', select: '_id fullName avatarUrl' }
             ],
-            lean: true // للأداء الأفضل عند القراءة فقط
+            lean: true
         };
 
         console.log(`   [Controller getBuyerMediationRequests] Executing MediationRequest.paginate with query:`, JSON.stringify(query), `and options:`, options);
@@ -1292,6 +1278,7 @@ exports.buyerRejectMediation = async (req, res) => {
     console.log("   MongoDB session started for buyerRejectMediation.");
 
     let productIdThatWasUpdated = null; // متغير لتخزين ID المنتج إذا تم تحديث حالته
+    let sellerIdThatWasUpdated = null; // <--- قم بتعريف المتغير هنا
 
     try {
         // 3. جلب طلب الوساطة مع populate للمنتج، البائع، والوسيط
@@ -1323,12 +1310,16 @@ exports.buyerRejectMediation = async (req, res) => {
         // 6. تحديث حالة طلب الوساطة إلى 'Cancelled'
         const originalStatus = mediationRequest.status;
         mediationRequest.status = 'Cancelled';
-        mediationRequest.cancellationDetails = { // إضافة تفاصيل الإلغاء
+
+        // --- [!!!] الحل: أضف هذا السطر هنا [!!!] ---
+        mediationRequest.cancellationDetails = {
             cancelledBy: buyerId,
             cancelledByType: 'Buyer',
-            reason: reason.trim(), // سبب الإلغاء
+            reason: reason.trim(), // استخدم السبب الذي تم إرساله من الواجهة
             cancelledAt: new Date()
         };
+        // --- نهاية الإضافة ---
+
         if (!Array.isArray(mediationRequest.history)) {
             mediationRequest.history = [];
         }
@@ -1355,6 +1346,7 @@ exports.buyerRejectMediation = async (req, res) => {
                 productDoc.agreedPrice = null; // إزالة السعر المتفق عليه
                 await productDoc.save({ session });
                 productIdThatWasUpdated = productDoc._id; // احفظ ID المنتج الذي تم تحديثه
+                sellerIdThatWasUpdated = productDoc.user; // [!!!] قم بإعطاء قيمة للمتغير هنا
                 console.log(`   Product ${productDoc._id} status reset to 'approved', mediation link and buyer info removed.`);
             } else if (productDoc) {
                 console.log(`   Product ${productDoc._id} not reset. Current status: ${productDoc.status}. Linked mediation: ${productDoc.currentMediationRequest}`);
@@ -1431,6 +1423,12 @@ exports.buyerRejectMediation = async (req, res) => {
             .populate('mediator', 'fullName avatarUrl _id') // سيكون null إذا لم يتم تعيينه أو أُزيل
             .lean();
 
+        // [!!!] الحل: ضع الـ console.log هنا [!!!]
+        console.log("--- DEBUG: Data being sent via socket for rejection ---");
+        console.log(JSON.stringify(finalPopulatedMediationRequest, null, 2));
+        console.log("---------------------------------------------------------");
+        // [!!!] نهاية الجزء الذي تضيفه [!!!]
+
         if (req.io && finalPopulatedMediationRequest) {
             const involvedUserIds = [
                 finalPopulatedMediationRequest.seller?._id?.toString(),
@@ -1461,12 +1459,58 @@ exports.buyerRejectMediation = async (req, res) => {
                 .lean();
 
             if (productToSendViaSocket) {
-                console.log(`   [Socket buyerRejectMediation] Emitting 'product_updated' with product data:`, JSON.stringify(productToSendViaSocket, null, 2));
-                req.io.emit('product_updated', productToSendViaSocket); // أرسل المنتج المحدث بالكامل
-            } else {
-                console.warn(`   [Socket buyerRejectMediation] Product ${productIdThatWasUpdated} (after status reset) not found for socket emit.`);
+                req.io.emit('product_updated', productToSendViaSocket);
+
+                // --- [!!!] هذا هو الجزء الحاسم والمحسّن [!!!] ---
+                const sellerId = sellerIdThatWasUpdated.toString();
+                const sellerSocketId = req.onlineUsers[sellerId];
+
+                if (sellerSocketId) {
+                    // قم بإعادة حساب عدد المنتجات النشطة للبائع وأرسله
+                    const newActiveListingsCount = await Product.countDocuments({
+                        user: sellerId,
+                        status: 'approved'
+                    });
+
+                    const profileUpdatePayload = {
+                        _id: sellerId,
+                        activeListingsCount: newActiveListingsCount
+                    };
+
+                    req.io.to(sellerSocketId).emit('user_profile_updated', profileUpdatePayload);
+                    console.log(`   [Socket buyerRejectMediation] Emitted 'user_profile_updated' to seller ${sellerId} with new count: ${newActiveListingsCount}`);
+                }
+                // --- نهاية الجزء الحاسم ---
             }
         }
+
+        // [!!!] هذا الجزء سيعمل الآن بدون خطأ [!!!]
+        // إرسال تحديث لإحصائيات البائع
+        if (req.io && sellerIdThatWasUpdated) { // <--- تحقق من وجود المتغير
+            const sellerId = sellerIdThatWasUpdated.toString();
+            const sellerSocketId = req.onlineUsers[sellerId];
+
+            if (sellerSocketId) {
+                const newActiveListingsCount = await Product.countDocuments({
+                    user: sellerId,
+                    status: 'approved'
+                });
+
+                const profileUpdatePayload = {
+                    _id: sellerId,
+                    activeListingsCount: newActiveListingsCount
+                };
+
+                req.io.to(sellerSocketId).emit('user_profile_updated', profileUpdatePayload);
+                console.log(`   [Socket buyerRejectMediation] Emitted 'user_profile_updated' to seller ${sellerId} with new count: ${newActiveListingsCount}`);
+            }
+        }
+
+        // [!!!] استخدم الدالة المساعدة هنا [!!!]
+        if (sellerIdThatWasUpdated) {
+            await sendUserStatsUpdate(req, sellerIdThatWasUpdated);
+        }
+
         // --- نهاية إرسال أحداث Socket.IO ---
 
         // 11. إرسال استجابة ناجحة للعميل

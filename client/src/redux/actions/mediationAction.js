@@ -229,7 +229,13 @@ export const buyerRejectMediationAction = (mediationRequestId, reason) => async 
     }
     try {
         const { data } = await axios.put(`${BACKEND_URL}/mediation/buyer/reject-mediation/${mediationRequestId}`, { reason }, config);
-        dispatch({ type: BUYER_REJECT_MEDIATION_SUCCESS, payload: { mediationRequestId, responseData: data } });
+        dispatch({
+            type: BUYER_REJECT_MEDIATION_SUCCESS,
+            payload: {
+                mediationRequestId,
+                responseData: data
+            }
+        });
         toast.info(data.msg || "Mediation cancelled.");
         return data;
     } catch (error) {

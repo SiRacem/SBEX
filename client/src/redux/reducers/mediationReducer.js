@@ -4,7 +4,7 @@ import {
     ADMIN_ASSIGN_MEDIATOR_RESET, ADMIN_CLEAR_MEDIATION_ERRORS, ASSIGN_MEDIATOR_REQUEST,
     ASSIGN_MEDIATOR_SUCCESS, ASSIGN_MEDIATOR_FAIL, GET_MEDIATOR_ASSIGNMENTS_REQUEST, GET_MEDIATOR_ASSIGNMENTS_SUCCESS,
     GET_MEDIATOR_ASSIGNMENTS_FAIL, MEDIATOR_ACCEPT_ASSIGNMENT_REQUEST, MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS,
-    MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, MEDIATOR_REJECT_ASSIGNMENT_REQUEST, MEDIATOR_REJECT_ASSIGNMENT_SUCCESS,
+    MEDIATOR_ACCEPT_ASSIGNMENT_FAIL, MEDIATOR_REJECT_ASSIGNMENT_REQUEST,
     MEDIATOR_REJECT_ASSIGNMENT_FAIL, GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_REQUEST,
     GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_SUCCESS, GET_MEDIATOR_ACCEPTED_AWAITING_PARTIES_FAIL,
     SELLER_CONFIRM_READINESS_REQUEST, SELLER_CONFIRM_READINESS_SUCCESS, SELLER_CONFIRM_READINESS_FAIL,
@@ -26,6 +26,7 @@ import {
     ADMIN_SUBCHAT_CREATED_SOCKET, NEW_ADMIN_SUBCHAT_MESSAGE_SOCKET, ADMIN_SUBCHAT_MESSAGES_STATUS_UPDATED_SOCKET,
     SET_ACTIVE_SUBCHAT_ID,
     ADD_SUB_CHAT_TO_MEDIATION,
+    ADD_PENDING_ASSIGNMENT_FROM_SOCKET,
     UPDATE_SUBCHAT_MESSAGES_READ_STATUS
 } from '../actionTypes/mediationActionTypes';
 
@@ -139,15 +140,66 @@ const mediationReducer = (state = initialState, action) => {
 
         case MEDIATOR_REJECT_ASSIGNMENT_REQUEST:
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
-        case MEDIATOR_REJECT_ASSIGNMENT_SUCCESS:
+        case MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS: {
+            const acceptedRequest = payload.responseData?.mediationRequest || payload.responseData; // Get the updated request object
+            if (!acceptedRequest || !acceptedRequest._id) {
+                // If for some reason the accepted request data isn't there, just remove from pending
+                return {
+                    ...state, actionLoading: false, actionSuccess: true,
+                    pendingDecisionAssignments: {
+                        ...state.pendingDecisionAssignments,
+                        list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
+                        totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
+                    },
+                };
+            }
+
+            // Remove from pendingDecisionAssignments
+            const updatedPendingList = state.pendingDecisionAssignments.list.filter(
+                assignment => assignment._id !== payload.mediationRequestId
+            );
+            const newPendingTotal = Math.max(0, state.pendingDecisionAssignments.totalCount - 1);
+
+            // Add to acceptedAwaitingPartiesAssignments (or update if somehow already there)
+            // Ensure it's not a duplicate if list already contains it (shouldn't happen for a new acceptance)
+            const existingAcceptedList = state.acceptedAwaitingPartiesAssignments.list || [];
+            let updatedAcceptedList;
+            const existingAcceptedIndex = existingAcceptedList.findIndex(req => req._id === acceptedRequest._id);
+
+            if (existingAcceptedIndex > -1) { // Should ideally not happen for a fresh acceptance
+                updatedAcceptedList = existingAcceptedList.map(req =>
+                    req._id === acceptedRequest._id ? acceptedRequest : req
+                );
+            } else {
+                updatedAcceptedList = [acceptedRequest, ...existingAcceptedList];
+            }
+
+            // Sort the updatedAcceptedList, e.g., by updatedAt or createdAt descending
+            updatedAcceptedList.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+
+            const newAcceptedTotal = state.acceptedAwaitingPartiesAssignments.totalCount ?
+                (existingAcceptedIndex > -1 ? state.acceptedAwaitingPartiesAssignments.totalCount : state.acceptedAwaitingPartiesAssignments.totalCount + 1)
+                : 1;
+
+
             return {
-                ...state, actionLoading: false, actionSuccess: true,
+                ...state,
+                actionLoading: false,
+                actionSuccess: true,
                 pendingDecisionAssignments: {
                     ...state.pendingDecisionAssignments,
-                    list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
-                    totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
+                    list: updatedPendingList,
+                    totalCount: newPendingTotal,
+                },
+                acceptedAwaitingPartiesAssignments: {
+                    ...state.acceptedAwaitingPartiesAssignments,
+                    list: updatedAcceptedList,
+                    totalCount: newAcceptedTotal,
+                    // currentPage will be reset by subsequent fetch in component, or handle pagination more carefully if needed
                 },
             };
+        }
         case MEDIATOR_REJECT_ASSIGNMENT_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 
@@ -188,16 +240,33 @@ const mediationReducer = (state = initialState, action) => {
 
         case BUYER_REJECT_MEDIATION_REQUEST:
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
-        case BUYER_REJECT_MEDIATION_SUCCESS:
+        case BUYER_REJECT_MEDIATION_SUCCESS: {
+            const updatedRequestFromApi = payload.responseData?.mediationRequest;
+
+            // إذا لم تصل البيانات المحدثة من الـ API، لا تفعل شيئًا وانتظر تحديث السوكيت
+            // هذا أفضل من حذف العنصر
+            if (!updatedRequestFromApi) {
+                console.warn("BUYER_REJECT_MEDIATION_SUCCESS did not receive updated request data. Waiting for socket update.");
+                return { ...state, actionLoading: false, actionSuccess: true };
+            }
+
+            // إذا وصلت البيانات المحدثة، قم بتحديث العنصر في القائمة فورًا
+            console.log("[Reducer] Updating buyer request list immediately after API success.", updatedRequestFromApi);
             return {
-                ...state, actionLoading: false, actionSuccess: true,
+                ...state,
+                actionLoading: false,
+                actionSuccess: true,
                 buyerRequests: {
                     ...state.buyerRequests,
-                    list: state.buyerRequests.list.filter(req => req._id !== payload.mediationRequestId),
-                    totalCount: Math.max(0, state.buyerRequests.totalCount - 1),
+                    list: state.buyerRequests.list.map(req =>
+                        req._id === updatedRequestFromApi._id ? updatedRequestFromApi : req
+                    ),
                 },
-                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId ? payload.responseData.mediationRequest : state.activeMediationDetails,
+                activeMediationDetails: state.activeMediationDetails?._id === updatedRequestFromApi._id
+                    ? updatedRequestFromApi
+                    : state.activeMediationDetails,
             };
+            }
         case BUYER_REJECT_MEDIATION_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 
@@ -324,122 +393,104 @@ const mediationReducer = (state = initialState, action) => {
         case GET_MEDIATION_DETAILS_BY_ID_FAIL:
             return { ...state, loadingActiveMediationDetails: false, errorActiveMediationDetails: payload };
         case UPDATE_MEDIATION_DETAILS_FROM_SOCKET: {
-            const updatedRequest = payload; // payload is the updatedMediationRequestData
-            let newState = { ...state };
+            const updatedRequest = payload;
 
-            // Update activeMediationDetails if it matches
-            if (newState.activeMediationDetails && newState.activeMediationDetails._id === updatedRequest._id) {
-                // Keep the existing logic for adminSubChats if activeMediationDetails is being updated,
-                // or simplify if this action is purely for list updates on dashboards.
-                // For now, let's assume the existing logic for activeMediationDetails is important for another view.
-                const currentUserIdForSubChats = state.userReducer?.user?._id; // Assuming userReducer is accessible
-                const processedSubChats = (updatedRequest.adminSubChats || []).map(sc => {
-                    let unreadCount = 0;
-                    if (sc.messages && currentUserIdForSubChats) {
-                        sc.messages.forEach(msg => {
-                            const senderId = msg.sender?._id || msg.sender;
-                            if (senderId && senderId.toString() !== currentUserIdForSubChats &&
-                                (!msg.readBy || !msg.readBy.some(r => r.readerId && (r.readerId._id || r.readerId).toString() === currentUserIdForSubChats))) {
-                                unreadCount++;
-                            }
-                        });
-                    }
-                    return { ...sc, unreadMessagesCount: unreadCount };
-                }).sort((a, b) => new Date(b.lastMessageAt || b.createdAt) - new Date(a.lastMessageAt || a.createdAt));
-
-                newState.activeMediationDetails = { ...updatedRequest, adminSubChats: processedSubChats };
-                // Also update the adminSubChats list if it's part of the main state for an admin view
-                if (newState.adminSubChats) {
-                    newState.adminSubChats = {
-                        ...newState.adminSubChats,
-                        list: processedSubChats
-                    };
-                }
+            if (!updatedRequest || !updatedRequest._id) {
+                console.warn("[Reducer] UPDATE_MEDIATION_DETAILS_FROM_SOCKET received with invalid payload. Aborting update.");
+                return state;
             }
 
-            // Update pendingDecisionAssignments list (for mediator dashboard)
-            if (newState.pendingDecisionAssignments && newState.pendingDecisionAssignments.list) {
-                if (updatedRequest.status === 'Cancelled') {
-                    newState.pendingDecisionAssignments = {
-                        ...newState.pendingDecisionAssignments,
-                        list: newState.pendingDecisionAssignments.list.filter(req => req._id !== updatedRequest._id),
-                        totalCount: Math.max(0, (newState.pendingDecisionAssignments.totalCount || 0) - 1)
-                    };
-                } else {
-                    // If not cancelled, but updated, map and update the item if it exists
-                    // This is important if other statuses change and it should remain in this list
-                    const existingPendingIndex = newState.pendingDecisionAssignments.list.findIndex(req => req._id === updatedRequest._id);
-                    if (existingPendingIndex > -1) {
-                        newState.pendingDecisionAssignments = {
-                            ...newState.pendingDecisionAssignments,
-                            list: newState.pendingDecisionAssignments.list.map(req =>
-                                req._id === updatedRequest._id ? updatedRequest : req
-                            )
-                        };
-                    }
-                }
+            console.log(`[Reducer] Handling UPDATE_MEDIATION_DETAILS_FROM_SOCKET for request: ${updatedRequest._id}, New Status: ${updatedRequest.status}`);
+
+            if (updatedRequest.status === 'Cancelled') {
+                console.log("%c[mediationReducer] Received CANCELLED request from socket. Data:", "color: red; font-weight: bold;", updatedRequest);
             }
 
-            // Update acceptedAwaitingPartiesAssignments list (for mediator dashboard)
-            if (newState.acceptedAwaitingPartiesAssignments && newState.acceptedAwaitingPartiesAssignments.list) {
-                if (updatedRequest.status === 'Cancelled') {
-                    newState.acceptedAwaitingPartiesAssignments = {
-                        ...newState.acceptedAwaitingPartiesAssignments,
-                        list: newState.acceptedAwaitingPartiesAssignments.list.filter(req => req._id !== updatedRequest._id),
-                        totalCount: Math.max(0, (newState.acceptedAwaitingPartiesAssignments.totalCount || 0) - 1)
+            // ========================================================================
+            // دالة مساعدة عامة لتحديث قوائم مهام الوسيط
+            // ========================================================================
+            const updateMediatorTaskList = (originalListObject) => {
+                const currentList = originalListObject.list || [];
+                const currentTotal = originalListObject.totalCount || 0;
+                const itemIndex = currentList.findIndex(req => req._id === updatedRequest._id);
+
+                if (itemIndex > -1) {
+                    const newList = [...currentList];
+                    newList[itemIndex] = updatedRequest; // استبدال العنصر بالكامل
+
+                    // [!!!] أضف هذا الـ Log هنا [!!!]
+                    if (updatedRequest.status === 'Cancelled') {
+                        console.log("[mediationReducer] UPDATING buyer's list. New list will contain:", newList);
+                    }
+
+                    return { ...originalListObject, list: newList };
+                }
+                return originalListObject;
+
+                const isFinished = ['Cancelled', 'Completed', 'AdminResolved'].includes(updatedRequest.status);
+
+                if (isFinished) {
+                    console.log(`   -> Request ${updatedRequest._id} has status '${updatedRequest.status}'. Removing from an active mediator list.`);
+                    return {
+                        ...originalListObject,
+                        list: currentList.filter(req => req._id !== updatedRequest._id),
+                        totalCount: Math.max(0, currentTotal - 1)
                     };
                 } else {
-                    const existingAcceptedIndex = newState.acceptedAwaitingPartiesAssignments.list.findIndex(req => req._id === updatedRequest._id);
-                    if (existingAcceptedIndex > -1) {
-                        newState.acceptedAwaitingPartiesAssignments = {
-                            ...newState.acceptedAwaitingPartiesAssignments,
-                            list: newState.acceptedAwaitingPartiesAssignments.list.map(req =>
-                                req._id === updatedRequest._id ? updatedRequest : req
-                            )
-                        };
-                    }
-                    // If the status changed such that it no longer belongs in "accepted/awaiting" (e.g., moved to InProgress, Disputed, Completed)
-                    // AND it wasn't just cancelled, it should also be removed from this specific list.
-                    // The current lists are for 'MediatorAssigned' (pendingDecision) and 'MediationOfferAccepted', 'EscrowFunded', etc. (acceptedAwaitingParties).
-                    // If status changes to 'InProgress', 'Disputed', 'Completed', it should be removed from these specific lists.
-                    const activeStatuses = ['MediationOfferAccepted', 'EscrowFunded', 'PartiesConfirmed', 'InProgress']; // InProgress is often a separate tab/view
-                    if (!activeStatuses.includes(updatedRequest.status) && updatedRequest.status !== 'Cancelled') {
-                        // Remove if status no longer fits this list's criteria
-                        const listWithoutIt = newState.acceptedAwaitingPartiesAssignments.list.filter(req => req._id !== updatedRequest._id);
-                        if (listWithoutIt.length !== newState.acceptedAwaitingPartiesAssignments.list.length) {
-                            newState.acceptedAwaitingPartiesAssignments = {
-                                ...newState.acceptedAwaitingPartiesAssignments,
-                                list: listWithoutIt,
-                                totalCount: Math.max(0, (newState.acceptedAwaitingPartiesAssignments.totalCount || 0) - 1)
-                            };
-                        }
-                    }
-                }
-            }
-
-            // Also update buyerRequests.list for consistency, as it might be displayed elsewhere
-            if (newState.buyerRequests && newState.buyerRequests.list) {
-                if (updatedRequest.status === 'Cancelled') {
-                    newState.buyerRequests = {
-                        ...newState.buyerRequests,
-                        list: newState.buyerRequests.list.filter(req => req._id !== updatedRequest._id),
-                        totalCount: Math.max(0, (newState.buyerRequests.totalCount || 0) - 1)
+                    console.log(`   -> Request ${updatedRequest._id} has status '${updatedRequest.status}'. Updating in an active mediator list.`);
+                    const newList = [...currentList];
+                    newList[itemIndex] = updatedRequest;
+                    return {
+                        ...originalListObject,
+                        list: newList
                     };
-                } else {
-                    const existingBuyerIndex = newState.buyerRequests.list.findIndex(req => req._id === updatedRequest._id);
-                    if (existingBuyerIndex > -1) {
-                        newState.buyerRequests = {
-                            ...newState.buyerRequests,
-                            list: newState.buyerRequests.list.map(req =>
-                                req._id === updatedRequest._id ? updatedRequest : req
-                            )
+                }
+            };
+
+            // ========================================================================
+            // دالة خاصة بقائمة طلبات المشتري (لأنها تحتفظ بالطلبات الملغاة)
+            // ========================================================================
+            const updateBuyerRequestList = (originalListObject) => {
+                const currentList = originalListObject.list || [];
+                const itemIndex = currentList.findIndex(req => req._id === updatedRequest._id);
+
+                if (itemIndex === -1) {
+                    // إذا لم يكن موجودًا وكان للمستخدم الحالي، أضفه (حالة نادرة)
+                    if (updatedRequest.buyer?._id === state.userReducer?.user?._id) {
+                        return {
+                            ...originalListObject,
+                            list: [updatedRequest, ...currentList],
+                            totalCount: (originalListObject.totalCount || 0) + 1,
                         };
                     }
+                    return originalListObject;
                 }
-            }
 
-            return newState;
-        }
+                console.log(`   -> Request ${updatedRequest._id} found in buyer's list. Updating with status '${updatedRequest.status}'.`);
+                const newList = [...currentList];
+                newList[itemIndex] = updatedRequest;
+                return {
+                    ...originalListObject,
+                    list: newList
+                };
+            };
+
+            // ========================================================================
+            // بناء الـ state الجديد
+            // ========================================================================
+            return {
+                ...state,
+                activeMediationDetails: state.activeMediationDetails?._id === updatedRequest._id
+                    ? updatedRequest
+                    : state.activeMediationDetails,
+
+                pendingDecisionAssignments: updateMediatorTaskList(state.pendingDecisionAssignments),
+                acceptedAwaitingPartiesAssignments: updateMediatorTaskList(state.acceptedAwaitingPartiesAssignments),
+                disputedCases: updateMediatorTaskList(state.disputedCases),
+
+                buyerRequests: updateBuyerRequestList(state.buyerRequests),
+            };
+            }
         case CLEAR_ACTIVE_MEDIATION_DETAILS:
             return { ...state, activeMediationDetails: null, loadingActiveMediationDetails: false, errorActiveMediationDetails: null, adminSubChats: { ...initialState.adminSubChats }, activeSubChat: { ...initialState.activeSubChat } };
 
@@ -771,6 +822,25 @@ const mediationReducer = (state = initialState, action) => {
                         adminSubChats: updateList(state.activeMediationDetails.adminSubChats),
                     }
                     : null,
+            };
+        }
+
+        case ADD_PENDING_ASSIGNMENT_FROM_SOCKET: {
+            const newAssignment = payload;
+            const list = state.pendingDecisionAssignments.list || [];
+
+            // تأكد من عدم إضافة نسخة مكررة
+            if (list.some(item => item._id === newAssignment._id)) {
+                return state;
+            }
+
+            return {
+                ...state,
+                pendingDecisionAssignments: {
+                    ...state.pendingDecisionAssignments,
+                    list: [newAssignment, ...list], // أضف المهمة الجديدة في بداية القائمة
+                    totalCount: (state.pendingDecisionAssignments.totalCount || 0) + 1,
+                },
             };
         }
 

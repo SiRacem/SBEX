@@ -67,6 +67,16 @@ const MediationRequestSchema = new Schema({
         ],
         default: 'PendingMediatorSelection'
     },
+
+    // --- [!!!] أضف هذا الحقل الجديد هنا [!!!] ---
+    cancellationDetails: {
+        cancelledBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        cancelledByType: { type: String, enum: ['Seller', 'Buyer', 'Mediator', 'Admin'] },
+        reason: { type: String, trim: true },
+        cancelledAt: { type: Date }
+    },
+    // --- نهاية الإضافة ---
+    
     disputeOverseers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     mediationFee: { type: Number, default: 0 },
     mediationFeeCurrency: { type: String, default: 'TND' },

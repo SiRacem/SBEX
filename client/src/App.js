@@ -186,12 +186,6 @@ function App() {
           }
         });
 
-        newSocket.on('product_updated', (updatedProductData) => {
-          if (updatedProductData && updatedProductData._id) {
-            dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProductData });
-          }
-        });
-
         newSocket.on('new_pending_mediator_application', (newApplicationData) => {
           if (user && user.userRole === 'Admin' && newApplicationData?._id) {
             dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: newApplicationData });
@@ -220,11 +214,30 @@ function App() {
         });
 
         newSocket.on('mediation_request_updated', (data) => {
+          // [!!!] أضف هذا الـ Log [!!!]
+          console.log("%c[App.js Socket] Received 'mediation_request_updated'. DATA:", "color: blue; font-weight: bold;", data);
+
           if (data && data.updatedMediationRequestData?._id) {
-            dispatch({ type: 'UPDATE_SINGLE_MEDIATION_REQUEST_IN_STORE', payload: data.updatedMediationRequestData });
+            dispatch({ type: 'UPDATE_MEDIATION_DETAILS_FROM_SOCKET', payload: data.updatedMediationRequestData });
             toast.info(`Mediation request for product "${data.updatedMediationRequestData.product?.title || 'N/A'}" has been updated.`);
           }
         });
+
+        newSocket.on('product_updated', (updatedProductData) => {
+          // [!!!] أضف هذا الـ Log [!!!]
+          console.log("%c[App.js Socket] Received 'product_updated'. DATA:", "color: green; font-weight: bold;", updatedProductData);
+
+          if (updatedProductData && updatedProductData._id) {
+            dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProductData });
+          }
+      });
+
+        newSocket.on('new_assignment_for_mediator', (data) => {
+          if (data && data.newAssignmentData) {
+            console.log('[Socket] Received new assignment for mediator.');
+            dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData });
+          }
+      });
 
         newSocket.on('new_notification', (notification) => {
           toast.info(`🔔 ${notification.title || 'New Notification!'}`, { position: "top-right", autoClose: 3000 });

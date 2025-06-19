@@ -12,7 +12,8 @@ import {
     PLACE_BID_REQUEST, PLACE_BID_SUCCESS, PLACE_BID_FAIL,
     CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
     REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL, UPDATE_SINGLE_PRODUCT_LOCALLY,
-    UPDATE_SINGLE_PRODUCT_IN_STORE, ADD_PENDING_PRODUCT_SOCKET, REMOVE_PENDING_PRODUCT_SOCKET
+    UPDATE_SINGLE_PRODUCT_IN_STORE, ADD_PENDING_PRODUCT_SOCKET, REMOVE_PENDING_PRODUCT_SOCKET,
+    UPDATE_MEDIATION_DETAILS_FROM_SOCKET
 } from '../actionTypes/productActionType'; // تأكد من المسار الصحيح
 
 const initialState = {
@@ -335,7 +336,7 @@ const productReducer = (state = initialState, { type, payload }) => {
                 return state;
             }
             const updatedProductData = payload;
-            console.log("REDUCER: UPDATE_SINGLE_PRODUCT_IN_STORE - Received payload:", updatedProductData);
+            console.log("[productReducer] Updating product from PRODUCT_UPDATED. New product data:", updatedProductData);
 
             let newProductsList = [...state.Products]; // ابدأ بنسخة من القائمة الحالية
             let newPendingProductsList = [...(state.pendingProducts || [])]; // ابدأ بنسخة من القائمة الحالية
@@ -407,9 +408,28 @@ const productReducer = (state = initialState, { type, payload }) => {
                 pendingProducts: state.pendingProducts.filter(p => p._id !== payload.productId),
             };
 
+        case UPDATE_MEDIATION_DETAILS_FROM_SOCKET: {
+            const updatedMediationRequest = payload;
+
+            if (!updatedMediationRequest || !updatedMediationRequest.product || !updatedMediationRequest.product._id) {
+                console.warn("productReducer: Received UPDATE_MEDIATION_DETAILS_FROM_SOCKET but no product data was attached.");
+                return state;
+            }
+
+            const updatedProductFromMediation = updatedMediationRequest.product;
+            console.log(`[productReducer] Updating product ${updatedProductFromMediation._id} via MEDIATION socket event.`);
+
+            return {
+                ...state,
+                Products: state.Products.map(p =>
+                    p._id === updatedProductFromMediation._id ? updatedProductFromMediation : p
+                ),
+            };
+            }
+
         default:
             return state;
     }
-};
+    };
 
 export default productReducer;

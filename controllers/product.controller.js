@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const MediationRequest = require('../models/MediationRequest');
 const mongoose = require('mongoose');
 const config = require('config');
+const { sendUserStatsUpdate } = require('./user.controller'); // [!!!] استيراد الدالة الجديدة
 
 // --- سعر الصرف ---
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
@@ -1237,6 +1238,27 @@ exports.acceptBid = async (req, res) => {
             .lean();
 
         console.log("   Returning updated product:", JSON.stringify(populatedUpdatedProductForResponse, null, 2));
+        
+        // --- [!!!] هذا هو التعديل الحاسم هنا [!!!] ---
+        // أرسل تحديثًا لإحصائيات البائع نفسه
+        const sellerSocketId = req.onlineUsers[sellerId.toString()];
+        if (sellerSocketId) {
+            // أعد حساب العدد الجديد للمنتجات النشطة
+            const newActiveListingsCount = await Product.countDocuments({
+                user: sellerId,
+                status: 'approved'
+            });
+
+            const profileUpdatePayload = {
+                _id: sellerId.toString(),
+                activeListingsCount: newActiveListingsCount
+            };
+
+            req.io.to(sellerSocketId).emit('user_profile_updated', profileUpdatePayload);
+            console.log(`   [Socket acceptBid] Emitted 'user_profile_updated' to seller ${sellerId} with new count: ${newActiveListingsCount}`);
+        }
+        // --- نهاية التعديل ---
+        await sendUserStatsUpdate(req, sellerId);
         res.status(200).json({
             msg: "Bid accepted successfully! Please select a mediator to proceed.",
             updatedProduct: populatedUpdatedProductForResponse

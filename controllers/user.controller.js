@@ -33,8 +33,34 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     }
 };
 
+// [!!!] دالة مساعدة جديدة لإرسال تحديثات الإحصائيات [!!!]
+const sendUserStatsUpdate = async (req, userId) => {
+    if (!req.io || !req.onlineUsers) {
+        console.warn(`[sendUserStatsUpdate] Socket.IO not available. Cannot send update for user ${userId}.`);
+        return;
+    }
+    const userSocketId = req.onlineUsers[userId.toString()];
+    if (userSocketId) {
+        try {
+            const activeListingsCount = await Product.countDocuments({ user: userId, status: 'approved' });
+            const soldCount = await Product.countDocuments({ user: userId, status: 'sold' });
+            const profileUpdatePayload = {
+                _id: userId.toString(),
+                activeListingsCount: activeListingsCount,
+                productsSoldCount: soldCount
+            };
+            req.io.to(userSocketId).emit('user_profile_updated', profileUpdatePayload);
+            console.log(`[Socket] Emitted 'user_profile_updated' to user ${userId} with new stats:`, profileUpdatePayload);
+        } catch (error) {
+            console.error(`[sendUserStatsUpdate] Failed to send stats update for user ${userId}:`, error);
+        }
+    } else {
+        console.log(`[sendUserStatsUpdate] User ${userId} is not online to receive stats update.`);
+    }
+};
+
 // --- Register ---
-exports.Register = async (req, res) => {
+const Register = async (req, res) => {
     const { fullName, email, phone, address, password, userRole, blocked = false } = req.body;
     console.log("--- Controller: Register Request ---");
     try {
@@ -65,7 +91,7 @@ exports.Register = async (req, res) => {
 };
 
 // --- Login ---
-exports.Login = async (req, res) => {
+const Login = async (req, res) => {
     const { email, password } = req.body;
     console.log(`--- Controller: Login attempt for ${email} ---`);
     try {
@@ -133,7 +159,7 @@ exports.Login = async (req, res) => {
 };
 
 // --- Auth (Get Profile) ---
-exports.Auth = async (req, res) => {
+const Auth = async (req, res) => {
     console.log(`--- Controller: Auth (Get Profile) for user ID: ${req.user?._id} ---`);
     if (!req.user || !req.user._id) {
         console.warn("Auth Controller: req.user or req.user._id is missing from token/middleware.");
@@ -167,7 +193,7 @@ exports.Auth = async (req, res) => {
 };
 
 // --- Check Email Exists ---
-exports.checkEmailExists = async (req, res) => {
+const checkEmailExists = async (req, res) => {
     const { email } = req.body;
     console.log(`--- Controller: checkEmailExists START for email: ${email} (Requested by: ${req.user?._id}) ---`);
     if (!email) {
@@ -199,7 +225,7 @@ exports.checkEmailExists = async (req, res) => {
 };
 
 // --- Get Users (Admin) ---
-exports.getUsers = async (req, res) => {
+const getUsers = async (req, res) => {
     console.log("--- Controller: getUsers (Admin) ---");
     try {
         const users = await User.find().select('-password').sort({ registerDate: -1 });
@@ -214,7 +240,7 @@ exports.getUsers = async (req, res) => {
 };
 
 // --- Update User (Admin) ---
-exports.updateUsers = async (req, res) => {
+const updateUsers = async (req, res) => {
     const userIdToUpdate = req.params.id;
     const updateData = req.body;
     const adminUserId = req.user?._id;
@@ -331,7 +357,7 @@ exports.updateUsers = async (req, res) => {
 };
 
 // --- Delete User (Admin) ---
-exports.deleteUsers = async (req, res) => {
+const deleteUsers = async (req, res) => {
     const userIdToDelete = req.params.id;
     console.log(`--- Controller: deleteUsers attempt for ID: ${userIdToDelete} by Admin: ${req.user?._id} ---`);
     try {
@@ -351,36 +377,60 @@ exports.deleteUsers = async (req, res) => {
 };
 
 // --- Get User Public Profile ---
-exports.getUserPublicProfile = async (req, res) => {
+const getUserPublicProfile = async (req, res) => {
     const { userId } = req.params;
     console.log(`--- Controller: getUserPublicProfile for ID: ${userId} ---`);
-    if (!mongoose.Types.ObjectId.isValid(userId)) return res.status(400).json({ msg: "Invalid User ID format." });
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ msg: "Invalid User ID format." });
+    }
+
     try {
+        // الخطوة 1: جلب بيانات المستخدم الأساسية من قاعدة البيانات
         const userProfile = await User.findById(userId)
-            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount');
-        if (!userProfile) return res.status(404).json({ msg: "User not found." });
-        const approvedProductCount = await Product.countDocuments({ user: userId, status: 'approved' });
-        const publicProfileData = {
-            _id: userProfile._id,
-            fullName: userProfile.fullName,
-            memberSince: userProfile.registerDate,
-            role: userProfile.userRole,
-            avatarUrl: userProfile.avatarUrl,
-            approvedProducts: approvedProductCount,
-            soldProducts: userProfile.productsSoldCount,
-            blocked: userProfile.blocked,
-            positiveRatings: userProfile.positiveRatings,
-            negativeRatings: userProfile.negativeRatings
+            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount level reputationLevel')
+            .lean(); // استخدم .lean() لتحسين الأداء
+
+        if (!userProfile) {
+            return res.status(404).json({ msg: "User not found." });
+        }
+
+        // الخطوة 2: جلب الإحصائيات الإضافية بشكل منفصل
+        const activeListings = await Product.countDocuments({ user: userId, status: 'approved' });
+
+        // الخطوة 3: بناء كائن الاستجابة بالبنية الصحيحة التي تتوقعها الواجهة الأمامية
+        const responseData = {
+            // كائن user يحتوي على تفاصيل المستخدم
+            user: {
+                _id: userProfile._id,
+                fullName: userProfile.fullName,
+                registerDate: userProfile.registerDate,
+                userRole: userProfile.userRole,
+                avatarUrl: userProfile.avatarUrl,
+                positiveRatings: userProfile.positiveRatings,
+                negativeRatings: userProfile.negativeRatings,
+                blocked: userProfile.blocked,
+                level: userProfile.level,
+                reputationLevel: userProfile.reputationLevel,
+            },
+            // الإحصائيات تكون في المستوى الأعلى من الكائن
+            activeListingsCount: activeListings,
+            productsSoldCount: userProfile.productsSoldCount || 0,
         };
-        res.status(200).json(publicProfileData);
+
+        console.log(`Successfully fetched public profile for ${userId}. Sending data...`);
+        res.status(200).json(responseData);
+
     } catch (error) {
         console.error(`Error fetching public profile for ${userId}:`, error);
-        if (!res.headersSent) res.status(500).json({ msg: "Server error fetching profile data." });
+        if (!res.headersSent) {
+            res.status(500).json({ msg: "Server error fetching profile data." });
+        }
     }
 };
 
 // --- Admin Get Available Mediators ---
-exports.adminGetAvailableMediators = async (req, res) => {
+const adminGetAvailableMediators = async (req, res) => {
     console.log(`--- Controller: adminGetAvailableMediators ---`);
     try {
         const mediators = await User.find({
@@ -401,7 +451,7 @@ exports.adminGetAvailableMediators = async (req, res) => {
 };
 
 // --- Apply For Mediator ---
-exports.applyForMediator = async (req, res) => {
+const applyForMediator = async (req, res) => {
     const userId = req.user._id;
     const { applicationType } = req.body;
     console.log(`--- Controller: applyForMediator - User: ${userId}, Type Requested: ${applicationType} ---`);
@@ -505,38 +555,38 @@ exports.applyForMediator = async (req, res) => {
 
         // --- إرسال حدث Socket.IO للمسؤولين بعد الـ Commit ---
         // هذا الجزء الآن يستخدم createdAdminNotifications و admins المعرفة في نطاق الدالة
-if (req.io && req.onlineUsers) {
-         const applicantDataForSocket = {
-             _id: user._id, fullName: user.fullName, email: user.email,
-             mediatorApplicationStatus: user.mediatorApplicationStatus,
-             mediatorApplicationBasis: user.mediatorApplicationBasis,
-             // أضف الحقول التي تحتاجها واجهة المراجعة مثل الرصيد والمستوى وتاريخ التقديم
-             level: user.level,
-             balance: user.balance, // الرصيد الحالي بعد أي خصم للضمان
-             mediatorEscrowGuarantee: user.mediatorEscrowGuarantee,
-             // استخدم تاريخ التقديم الفعلي إذا سجلته، أو updatedAt
-             updatedAt: user.updatedAt, // أو mediatorApplicationSubmittedAt إذا أضفته
-             createdAt: user.createdAt // قد يكون مفيدًا
-         };
+        if (req.io && req.onlineUsers) {
+            const applicantDataForSocket = {
+                _id: user._id, fullName: user.fullName, email: user.email,
+                mediatorApplicationStatus: user.mediatorApplicationStatus,
+                mediatorApplicationBasis: user.mediatorApplicationBasis,
+                // أضف الحقول التي تحتاجها واجهة المراجعة مثل الرصيد والمستوى وتاريخ التقديم
+                level: user.level,
+                balance: user.balance, // الرصيد الحالي بعد أي خصم للضمان
+                mediatorEscrowGuarantee: user.mediatorEscrowGuarantee,
+                // استخدم تاريخ التقديم الفعلي إذا سجلته، أو updatedAt
+                updatedAt: user.updatedAt, // أو mediatorApplicationSubmittedAt إذا أضفته
+                createdAt: user.createdAt // قد يكون مفيدًا
+            };
 
-         if (createdAdminNotifications.length > 0) {
-             createdAdminNotifications.forEach(adminNotification => {
-                 const adminSocketId = req.onlineUsers[adminNotification.user.toString()];
-                 if (adminSocketId) {
-                     req.io.to(adminSocketId).emit('new_notification', adminNotification.toObject());
-                     req.io.to(adminSocketId).emit('new_pending_mediator_application', applicantDataForSocket);
-                     console.log(`   [Socket] Emitted 'new_notification' and 'new_pending_mediator_application' to admin ${adminNotification.user}`);
-                 }
-             });
-         } else if (admins.length > 0) { // إذا كان هناك مسؤولون ولكن لم يتم إنشاء إشعارات (نادر)
-             admins.forEach(admin => {
-                 const adminSocketId = req.onlineUsers[admin._id.toString()];
-                 if (adminSocketId) {
-                     req.io.to(adminSocketId).emit('new_pending_mediator_application', applicantDataForSocket);
-                 }
-             });
-         }
-     }
+            if (createdAdminNotifications.length > 0) {
+                createdAdminNotifications.forEach(adminNotification => {
+                    const adminSocketId = req.onlineUsers[adminNotification.user.toString()];
+                    if (adminSocketId) {
+                        req.io.to(adminSocketId).emit('new_notification', adminNotification.toObject());
+                        req.io.to(adminSocketId).emit('new_pending_mediator_application', applicantDataForSocket);
+                        console.log(`   [Socket] Emitted 'new_notification' and 'new_pending_mediator_application' to admin ${adminNotification.user}`);
+                    }
+                });
+            } else if (admins.length > 0) { // إذا كان هناك مسؤولون ولكن لم يتم إنشاء إشعارات (نادر)
+                admins.forEach(admin => {
+                    const adminSocketId = req.onlineUsers[admin._id.toString()];
+                    if (adminSocketId) {
+                        req.io.to(adminSocketId).emit('new_pending_mediator_application', applicantDataForSocket);
+                    }
+                });
+            }
+        }
         // --- نهاية إرسال السوكيت ---
 
         res.status(200).json({ msg: "Your application has been submitted successfully and is pending review." });
@@ -558,7 +608,7 @@ if (req.io && req.onlineUsers) {
 };
 
 // --- Admin Get Pending Mediator Applications ---
-exports.adminGetPendingMediatorApplications = async (req, res) => {
+const adminGetPendingMediatorApplications = async (req, res) => {
     const { page = 1, limit = 15 } = req.query;
     console.log(`--- Controller: adminGetPendingMediatorApplications - Page: ${page}, Limit: ${limit} ---`);
     try {
@@ -586,7 +636,7 @@ exports.adminGetPendingMediatorApplications = async (req, res) => {
 };
 
 // --- Admin Approve Mediator Application ---
-exports.adminApproveMediatorApplication = async (req, res) => {
+const adminApproveMediatorApplication = async (req, res) => {
     const { userId } = req.params;
     const adminUserId = req.user._id;
     const adminFullName = req.user.fullName;
@@ -673,7 +723,7 @@ exports.adminApproveMediatorApplication = async (req, res) => {
 };
 
 // --- Admin Reject Mediator Application ---
-exports.adminRejectMediatorApplication = async (req, res) => {
+const adminRejectMediatorApplication = async (req, res) => {
     const { userId } = req.params;
     const { reason } = req.body;
     const adminUserId = req.user._id;
@@ -765,7 +815,7 @@ exports.adminRejectMediatorApplication = async (req, res) => {
 };
 
 // --- Update My Mediator Status (User) ---
-exports.updateMyMediatorStatus = async (req, res) => {
+const updateMyMediatorStatus = async (req, res) => {
     const userId = req.user._id;
     const { status } = req.body;
     console.log(`--- Controller: updateMyMediatorStatus - User: ${userId}, New Status: ${status} ---`);
@@ -805,7 +855,7 @@ exports.updateMyMediatorStatus = async (req, res) => {
 };
 
 // --- Update User Profile Picture ---
-exports.updateUserProfilePicture = async (req, res) => {
+const updateUserProfilePicture = async (req, res) => {
     const userId = req.user._id;
     console.log(`--- Controller: updateUserProfilePicture for User ID: ${userId} ---`);
     if (!req.file) {
@@ -876,7 +926,7 @@ exports.updateUserProfilePicture = async (req, res) => {
 };
 
 // --- Admin Update User Block Status ---
-exports.adminUpdateUserBlockStatus = async (req, res) => {
+const adminUpdateUserBlockStatus = async (req, res) => {
     const { userId } = req.params;
     const { blocked, reason } = req.body;
     const adminPerformerId = req.user._id;
@@ -965,4 +1015,24 @@ exports.adminUpdateUserBlockStatus = async (req, res) => {
             res.status(500).json({ msg: "Server error updating user block status." });
         }
     }
+};
+
+module.exports = {
+    Register,
+    Login,
+    Auth,
+    checkEmailExists,
+    getUsers,
+    updateUsers,
+    deleteUsers,
+    getUserPublicProfile,
+    adminGetAvailableMediators,
+    applyForMediator,
+    adminGetPendingMediatorApplications,
+    adminApproveMediatorApplication,
+    adminRejectMediatorApplication,
+    updateMyMediatorStatus,
+    updateUserProfilePicture,
+    adminUpdateUserBlockStatus,
+    sendUserStatsUpdate // <--- تأكد من تصدير دالتنا المساعدة
 };

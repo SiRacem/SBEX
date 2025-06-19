@@ -1,5 +1,5 @@
 // src/pages/UserProfilePage.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import {
@@ -24,30 +24,58 @@ import {
   FaMapMarkerAlt,
   FaThumbsUp,
   FaThumbsDown,
-  FaExclamationTriangle, // الأيقونة ستبقى كما هي
+  FaExclamationTriangle,
+  FaStar,
 } from "react-icons/fa";
 import "./UserProfilePage.css";
 import { useSelector } from "react-redux";
 import ReportUserModal from "./ReportUserModal";
+import { SocketContext } from "../App";
 
 const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const REPORT_COOLDOWN_HOURS = 24;
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-// --- دوال localStorage المساعدة (تبقى كما هي) ---
 const getRecentlyReportedUsers = () => {
-  /* ... */
+  try {
+    const reported = localStorage.getItem("recentlyReportedUsers");
+    return reported ? JSON.parse(reported) : {};
+  } catch (e) {
+    console.error(
+      "Failed to parse recently reported users from localStorage",
+      e
+    );
+    return {};
+  }
 };
+
 const markUserAsReported = (reportedUserId) => {
-  /* ... */
+  const reportedUsers = getRecentlyReportedUsers();
+  reportedUsers[reportedUserId] = Date.now();
+  try {
+    localStorage.setItem(
+      "recentlyReportedUsers",
+      JSON.stringify(reportedUsers)
+    );
+  } catch (e) {
+    console.error("Failed to save recently reported users to localStorage", e);
+  }
 };
+
 const checkIfRecentlyReported = (reportedUserId) => {
-  /* ... */
+  const reportedUsers = getRecentlyReportedUsers();
+  const reportTimestamp = reportedUsers[reportedUserId];
+  if (!reportTimestamp) return false;
+
+  const cooldownMilliseconds = REPORT_COOLDOWN_HOURS * 60 * 60 * 1000;
+  return Date.now() - reportTimestamp < cooldownMilliseconds;
 };
-// --- نهاية دوال localStorage ---
 
 const UserProfilePage = () => {
   const { userId: viewedUserId } = useParams();
   const currentUser = useSelector((state) => state.userReducer.user);
+  const socket = useContext(SocketContext);
 
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +92,9 @@ const UserProfilePage = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`/user/profile/${viewedUserId}`);
+      const { data } = await axios.get(
+        `${BACKEND_URL}/user/profile/${viewedUserId}`
+      );
       setProfileData(data);
     } catch (err) {
       setError(err.response?.data?.msg || "Failed to load user profile.");
@@ -80,14 +110,53 @@ const UserProfilePage = () => {
     }
   }, [fetchProfile, viewedUserId]);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleProfileUpdate = (updatedUserData) => {
+      if (updatedUserData && updatedUserData._id === viewedUserId) {
+        setProfileData((prevData) => ({
+          // الدمج يضمن تحديث الحقول الجديدة مع الحفاظ على القديمة
+          ...prevData,
+          ...updatedUserData,
+          user: {
+            ...(prevData?.user || {}),
+            ...(updatedUserData.user || updatedUserData),
+          },
+        }));
+      }
+    };
+
+    socket.on("user_profile_updated", handleProfileUpdate);
+
+    return () => {
+      socket.off("user_profile_updated", handleProfileUpdate);
+    };
+  }, [socket, viewedUserId]);
+
+  const userDetails = profileData?.user || profileData;
   const canReportThisUser =
-    currentUser && profileData && currentUser._id !== profileData._id;
+    currentUser && userDetails && currentUser._id !== userDetails._id;
   const reportButtonDisabled = isRecentlyReported;
 
   const handleReportSuccess = () => {
     markUserAsReported(viewedUserId);
     setIsRecentlyReported(true);
     setShowReportModal(false);
+  };
+
+  const getAvatarSrc = () => {
+    let avatarUrl = profileData?.avatarUrl;
+    if (!avatarUrl) {
+      avatarUrl = userDetails?.avatarUrl;
+    }
+    if (avatarUrl) {
+      if (avatarUrl.startsWith("http")) {
+        return avatarUrl;
+      }
+      return `${BACKEND_URL}/${avatarUrl}`;
+    }
+    return defaultAvatar;
   };
 
   if (loading)
@@ -109,7 +178,7 @@ const UserProfilePage = () => {
         </Alert>
       </Container>
     );
-  if (!profileData)
+  if (!userDetails)
     return (
       <Container className="py-5">
         <Alert variant="warning" className="text-center">
@@ -119,17 +188,17 @@ const UserProfilePage = () => {
     );
 
   const totalRatings =
-    (profileData.positiveRatings ?? 0) + (profileData.negativeRatings ?? 0);
+    (userDetails?.positiveRatings ?? 0) + (userDetails?.negativeRatings ?? 0);
   const positivePercentage =
     totalRatings > 0
-      ? Math.round(((profileData.positiveRatings ?? 0) / totalRatings) * 100)
+      ? Math.round(((userDetails.positiveRatings ?? 0) / totalRatings) * 100)
       : 0;
 
   const reportButtonTooltipText = isRecentlyReported
     ? `You have recently reported ${
-        profileData.fullName || "this user"
+        userDetails?.fullName || "this user"
       }. You can report again after ${REPORT_COOLDOWN_HOURS} hours.`
-    : `Report ${profileData.fullName || "this user"}`;
+    : `Report ${userDetails?.fullName || "this user"}`;
 
   return (
     <Container className="user-profile-page py-4 py-md-5">
@@ -140,7 +209,7 @@ const UserProfilePage = () => {
               <OverlayTrigger
                 placement="left"
                 overlay={
-                  <Tooltip id={`tooltip-report-${profileData._id}`}>
+                  <Tooltip id={`tooltip-report-${userDetails._id}`}>
                     {reportButtonTooltipText}
                   </Tooltip>
                 }
@@ -151,11 +220,8 @@ const UserProfilePage = () => {
                     top: "1rem",
                     right: "1rem",
                     zIndex: 10,
-                    // إضافة cursor: 'not-allowed' عندما يكون الزر معطلاً مباشرة على الـ div
-                    // لأن Tooltip قد يمنع ظهور cursor الـ button المعطل
                     cursor: reportButtonDisabled ? "not-allowed" : "pointer",
                   }}
-                  // لا نمرر onClick هنا مباشرة، بل للـ Button الداخلي
                 >
                   <Button
                     variant="link"
@@ -165,14 +231,14 @@ const UserProfilePage = () => {
                     className={`p-0 report-user-icon-button ${
                       reportButtonDisabled ? "disabled-report-button" : ""
                     }`}
-                    disabled={reportButtonDisabled} // التعطيل الفعلي للزر
+                    disabled={reportButtonDisabled}
                     aria-label={reportButtonTooltipText}
                   >
                     <FaExclamationTriangle
                       size={24}
                       style={{
-                        color: reportButtonDisabled ? "#adb5bd" : "#dc3545", // رمادي إذا معطل، أحمر إذا نشط
-                        opacity: reportButtonDisabled ? 0.6 : 1, // أقل وضوحًا إذا معطل
+                        color: reportButtonDisabled ? "#adb5bd" : "#dc3545",
+                        opacity: reportButtonDisabled ? 0.6 : 1,
                       }}
                     />
                   </Button>
@@ -184,27 +250,20 @@ const UserProfilePage = () => {
               <Row className="align-items-center gy-3">
                 <Col xs={12} md={2} className="text-center">
                   <Image
-                    src={profileData.avatarUrl || defaultAvatar}
+                    src={getAvatarSrc()}
                     roundedCircle
                     className="profile-avatar"
-                    alt={`${profileData.fullName}'s avatar`}
+                    alt={`${userDetails.fullName}'s avatar`}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = defaultAvatar;
                     }}
                   />
                 </Col>
-                <Col
-                  xs={12}
-                  md={
-                    profileData.userRole === "Admin" || !canReportThisUser
-                      ? 10
-                      : 9
-                  }
-                >
+                <Col xs={12} md={canReportThisUser ? 9 : 10}>
                   <div className="d-flex flex-column flex-md-row align-items-center justify-content-start mb-2">
                     <h2 className="profile-name mb-1 mb-md-0 me-md-3">
-                      {profileData.fullName}
+                      {userDetails.fullName}
                     </h2>
                   </div>
                   <Badge
@@ -213,21 +272,24 @@ const UserProfilePage = () => {
                     text="dark"
                     className="profile-role align-self-start mb-2"
                   >
-                    <FaTag className="me-1" /> {profileData.userRole || "User"}
+                    <FaTag className="me-1" /> {userDetails.userRole || "User"}
                   </Badge>
                   <p className="text-muted small mb-0">
                     <FaCalendarAlt size={14} className="me-1 opacity-75" />
                     Member since:{" "}
                     {new Date(
-                      profileData.registerDate || Date.now()
+                      userDetails.registerDate || Date.now()
                     ).toLocaleDateString()}
                   </p>
-                  {profileData.reputationLevel && profileData.level && (
+                  {userDetails.reputationLevel && userDetails.level && (
                     <div className="mt-2">
-                      <Badge bg="secondary" className="me-1">
-                        {profileData.reputationLevel}
+                      <Badge bg="secondary" className="me-2">
+                        {userDetails.reputationLevel}
                       </Badge>
-                      <Badge bg="primary">Level {profileData.level}</Badge>
+                      <Badge bg="primary">
+                        <FaStar size={12} className="me-1" /> Level{" "}
+                        {userDetails.level}
+                      </Badge>
                     </div>
                   )}
                 </Col>
@@ -244,7 +306,7 @@ const UserProfilePage = () => {
                         Listings
                       </span>
                       <Badge bg="light" text="dark" className="stat-badge">
-                        {profileData.activeListingsCount ?? 0}
+                        {profileData?.activeListingsCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
@@ -253,17 +315,17 @@ const UserProfilePage = () => {
                         Products Sold
                       </span>
                       <Badge bg="light" text="dark" className="stat-badge">
-                        {profileData.productsSoldCount ?? 0}
+                        {profileData?.productsSoldCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
-                    {profileData.address && (
+                    {userDetails.address && (
                       <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                         <span>
                           <FaMapMarkerAlt className="me-2 text-secondary icon" />{" "}
                           Location
                         </span>
                         <span className="text-muted small">
-                          {profileData.address}
+                          {userDetails.address}
                         </span>
                       </ListGroup.Item>
                     )}
@@ -290,11 +352,11 @@ const UserProfilePage = () => {
                       <div className="d-flex justify-content-center small">
                         <span className="me-3 rating-count positive">
                           <FaThumbsUp className="me-1" />
-                          {profileData.positiveRatings ?? 0}
+                          {userDetails.positiveRatings ?? 0}
                         </span>
                         <span className="rating-count negative">
                           <FaThumbsDown className="me-1" />
-                          {profileData.negativeRatings ?? 0}
+                          {userDetails.negativeRatings ?? 0}
                         </span>
                       </div>
                     </div>
@@ -309,12 +371,12 @@ const UserProfilePage = () => {
           </Card>
         </Col>
       </Row>
-      {profileData && canReportThisUser && (
+      {userDetails && canReportThisUser && (
         <ReportUserModal
           show={showReportModal && !isRecentlyReported}
           handleClose={() => setShowReportModal(false)}
-          reportedUserId={profileData._id}
-          reportedUserFullName={profileData.fullName}
+          reportedUserId={userDetails._id}
+          reportedUserFullName={userDetails.fullName}
           onReportSuccess={handleReportSuccess}
         />
       )}

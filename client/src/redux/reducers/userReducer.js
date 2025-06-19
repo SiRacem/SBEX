@@ -20,6 +20,7 @@ import {
   UPDATE_USER_BALANCES_SOCKET,
   ADMIN_ADD_PENDING_MEDIATOR_APPLICATION,
   UPDATE_USER_PROFILE_SOCKET,
+  UPDATE_USER_STATS,
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -325,11 +326,29 @@ const userReducer = (state = initialState, { type, payload }) => {
 
     case UPDATE_USER_PROFILE_SOCKET:
       if (state.user && state.user._id === payload._id) {
-        // Merge the new data with the existing user data
-        // This preserves fields that might not be in the payload
+        // الدمج يضمن تحديث الحقول الجديدة مع الحفاظ على القديمة
         return {
           ...state,
           user: { ...state.user, ...payload },
+        };
+      }
+      return state;
+
+    // [!!!] أضف هذه الحالة الجديدة هنا [!!!]
+    case UPDATE_USER_STATS:
+      if (state.user) {
+        // payload should contain { activeListingsCount_change: 1 or -1 }
+        // or { productsSoldCount_change: 1 or -1 }
+        const currentActiveCount = state.user.activeListingsCount || 0;
+        const currentSoldCount = state.user.productsSoldCount || 0;
+
+        return {
+          ...state,
+          user: {
+            ...state.user,
+            activeListingsCount: currentActiveCount + (payload.activeListingsCount_change || 0),
+            productsSoldCount: currentSoldCount + (payload.productsSoldCount_change || 0),
+          },
         };
       }
       return state;
