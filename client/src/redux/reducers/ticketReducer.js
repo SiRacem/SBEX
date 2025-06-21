@@ -10,7 +10,7 @@ import {
     ADMIN_UPDATE_TICKET_STATUS_REQUEST, ADMIN_UPDATE_TICKET_STATUS_SUCCESS, ADMIN_UPDATE_TICKET_STATUS_FAIL,
     ADMIN_UPDATE_TICKET_PRIORITY_REQUEST, ADMIN_UPDATE_TICKET_PRIORITY_SUCCESS, ADMIN_UPDATE_TICKET_PRIORITY_FAIL,
     ADMIN_ASSIGN_TICKET_REQUEST, ADMIN_ASSIGN_TICKET_SUCCESS, ADMIN_ASSIGN_TICKET_FAIL,
-    CLEAR_TICKET_ERRORS,
+    CLEAR_TICKET_ERRORS, ADMIN_ADD_NEW_TICKET_REALTIME, UPDATE_TICKET_DETAILS_REALTIME,
     // افترض أنك أضفت هذا في actionTypes.js
     // import { REALTIME_ADD_TICKET_REPLY } from '../actionTypes/ticketActionTypes';
     REALTIME_ADD_TICKET_REPLY // استخدام السلسلة مباشرة هنا للتبسيط، أو استيرادها
@@ -230,6 +230,46 @@ export const ticketReducer = (state = initialState, action) => {
                 errorAddReply: null, errorCloseTicket: null, errorAdminTickets: null,
                 errorAdminUpdate: null,
             };
+
+        // --- [!!!] أضف هذه الحالة الجديدة [!!!] ---
+        case ADMIN_ADD_NEW_TICKET_REALTIME:
+            // التأكد من أن التذكرة ليست موجودة بالفعل لتجنب التكرار
+            const ticketExists = state.adminTickets.some(ticket => ticket._id === action.payload._id);
+            if (ticketExists) {
+                return state; // لا تفعل شيئًا إذا كانت موجودة
+            }
+            return {
+                ...state,
+                // أضف التذكرة الجديدة في بداية المصفوفة لتظهر في الأعلى
+                adminTickets: [action.payload, ...state.adminTickets],
+                adminTicketsPagination: {
+                    ...state.adminTicketsPagination,
+                    // قم بزيادة العدد الإجمالي للتذاكر
+                    totalDocs: (state.adminTicketsPagination.totalDocs || 0) + 1,
+                }
+            };
+        // --- نهاية الإضافة ---
+
+        // --- [!!!] أضف هذه الحالة الجديدة [!!!] ---
+        case UPDATE_TICKET_DETAILS_REALTIME:
+            const updatedTicket = action.payload;
+            return {
+                ...state,
+                // تحديث التفاصيل إذا كانت هذه هي التذكرة النشطة
+                activeTicketDetails: state.activeTicketDetails && state.activeTicketDetails._id === updatedTicket._id
+                    ? updatedTicket
+                    : state.activeTicketDetails,
+                // تحديث التذكرة في قائمة تذاكر الأدمن
+                adminTickets: state.adminTickets.map(t =>
+                    t._id === updatedTicket._id ? updatedTicket : t
+                ),
+                // تحديث التذكرة في قائمة تذاكر المستخدم
+                userTickets: state.userTickets.map(t =>
+                    t._id === updatedTicket._id ? updatedTicket : t
+                ),
+            };
+                // --- نهاية الإضافة ---
+
         default:
             return state;
     }

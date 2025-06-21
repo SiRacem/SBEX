@@ -1,0 +1,18 @@
+/* src/pages/TicketDetailsPage.css */
+
+.add-reply-card .btn-light {
+    border-color: #dee2e6;
+    color: #495057;
+}
+
+.add-reply-card .btn-light:hover {
+    background-color: #e9ecef;
+}
+
+.reply-attachment-previews .btn-danger {
+    background-color: rgba(220, 53, 69, 0.8);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

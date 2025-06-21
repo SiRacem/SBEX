@@ -145,6 +145,17 @@
     flex-shrink: 0;
 }
 
+.sidebar-link .icons {
+    font-size: 1.4rem;
+    margin-right: 0.7rem;
+    /* مسافة بين الأيقونة والنص */
+    min-width: 20px;
+    /* عرض أدنى للأيقونة */
+    text-align: center;
+    /* توسيط الأيقونة */
+    flex-shrink: 0;
+}
+
 .sidebar-link .link-text {
     transition: opacity 0.2s ease-out;
 }
@@ -210,6 +221,11 @@
     .sidebar-link .icon {
         margin-right: 0 !important;
         font-size: 1.2rem;
+    }
+
+    .sidebar-link .icons {
+        margin-right: 0 !important;
+        font-size: 1.4rem;
     }
 
     .sidebar-link .link-text {
@@ -283,15 +299,33 @@
         flex-direction: row !important;
         align-items: center;
         /* محاذاة رأسية */
-        justify-content: flex-end;
-        /* الروابط تبدأ من اليمين */
+        justify-content: space-evenly;
+        /* [!!!] التعديل الأول: تغيير المحاذاة لتبدأ من اليسار */
         height: 100%;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
     }
 
+    /* [!!!] التعديل الثاني: إظهار وتنسيق شريط التمرير الأفقي */
     .sidebar-nav::-webkit-scrollbar {
-        display: none;
+        display: block;
+        /* إظهار الشريط */
+        height: 6px;
+        /* تحديد ارتفاع الشريط */
+    }
+
+    .sidebar-nav::-webkit-scrollbar-track {
+        background: #212529;
+        /* لون الخلفية للمسار */
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb {
+        background-color: #495057;
+        /* لون الشريط نفسه */
+        border-radius: 10px;
+        /* تقويس الحواف */
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb:hover {
+        background-color: #6c757d;
     }
 
     /* تنسيق الروابط في الشريط العلوي */
@@ -303,8 +337,8 @@
         flex-shrink: 0;
         height: calc(100% - 10px);
         /* ارتفاع أقل قليلاً مع هامش */
-        margin: 5px auto;
-        /* هامش بسيط بين الروابط */
+        margin: 5px 4px;
+        /* تعديل الهامش ليكون بين العناصر */
         border-bottom: none;
         /* لا خط سفلي */
     }

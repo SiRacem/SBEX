@@ -1,19 +1,25 @@
 // server/controllers/ticket.controller.js
 const mongoose = require('mongoose');
+const path = require('path'); // تأكد من استيراد 'path'
 const Ticket = require('../models/Ticket');
 const TicketReply = require('../models/TicketReply');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 
-// Helper function to handle file uploads for tickets
+// Helper function to handle file uploads for tickets (النسخة النهائية المعدلة)
 function handleFileUploadsForTicket(reqFiles) {
     const attachments = [];
-    if (reqFiles && reqFiles.length > 0) { // reqFiles could be an object if single field, or array from fields
-        const filesArray = Array.isArray(reqFiles) ? reqFiles : (reqFiles.attachments || []); // Handle both cases
+    // تحقق مزدوج للتأكد من أن reqFiles.attachments هو المصفوفة التي نريدها
+    const filesArray = reqFiles && reqFiles.attachments ? reqFiles.attachments : [];
+
+    if (filesArray.length > 0) {
         filesArray.forEach(file => {
+            // بناء المسار النسبي الذي يمكن للـ frontend استخدامه
+            const relativePath = path.join('uploads', 'ticket_attachments', file.filename).replace(/\\/g, '/');
+
             attachments.push({
                 fileName: file.originalname,
-                filePath: file.path,
+                filePath: relativePath, // استخدام المسار النسبي الصحيح
                 fileType: file.mimetype,
                 fileSize: file.size,
             });
@@ -31,9 +37,12 @@ exports.createTicket = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const attachments = handleFileUploadsForTicket(req.files); // Pass req.files directly
-        const newTicket = new Ticket({ user: userId, title, description, category, priority: priority || 'Medium', attachments });
+        const attachments = handleFileUploadsForTicket(req.files); // تمرير req.files مباشرة
+        let newTicket = new Ticket({ user: userId, title, description, category, priority: priority || 'Medium', attachments });
         await newTicket.save({ session });
+
+        // جلب بيانات المستخدم للتذكرة الجديدة قبل إرسالها عبر السوكيت
+        newTicket = await newTicket.populate('user', 'fullName email avatarUrl');
 
         const admins = await User.find({ userRole: { $in: ['Admin', 'Support'] } }).select('_id').lean().session(session);
         if (admins.length > 0) {
@@ -45,8 +54,23 @@ exports.createTicket = async (req, res) => {
             }));
             await Notification.create(notifications, { session });
         }
-        await session.commitTransaction();
+
+        await session.commitTransaction(); // انهاء الـ transaction قبل إرسال السوكيت
+
+        // إرسال حدث عبر Socket.IO إلى الأدمن/الدعم المتصلين
+        if (req.io && req.onlineUsers) {
+            const adminIds = admins.map(admin => admin._id.toString());
+            adminIds.forEach(adminId => {
+                const adminSocketId = req.onlineUsers[adminId];
+                if (adminSocketId) {
+                    req.io.to(adminSocketId).emit('new_ticket_created_for_admin', newTicket.toObject());
+                    console.log(`SOCKET: Emitted 'new_ticket_created_for_admin' to admin ${adminId} on socket ${adminSocketId}`);
+                }
+            });
+        }
+
         res.status(201).json({ msg: "Support ticket created successfully.", ticket: newTicket });
+
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error creating ticket:", error);
@@ -119,7 +143,7 @@ exports.addReplyToTicket = async (req, res) => {
         if (['Closed', 'Resolved'].includes(ticket.status) && isOwner && !isAdminOrSupport && ticket.status === 'Closed') { await session.abortTransaction(); await session.endSession(); return res.status(400).json({ msg: "Cannot reply to a closed ticket." }); }
 
 
-        const attachments = handleFileUploadsForTicket(req.files ? (req.files.attachments || []) : []);
+        const attachments = handleFileUploadsForTicket(req.files);
         const newReply = new TicketReply({ ticket: ticket._id, user: userId, message, attachments, isSupportReply: isAdminOrSupport });
         await newReply.save({ session });
 
@@ -139,7 +163,6 @@ exports.addReplyToTicket = async (req, res) => {
         if (oldStatus !== ticket.status) console.log(`Ticket ${ticket.ticketId} status changed: ${oldStatus} -> ${ticket.status}`);
         await ticket.save({ session });
 
-        // Notification Logic
         const senderName = req.user.fullName || (isAdminOrSupport ? 'Support Team' : 'User');
         const ticketTitleShort = ticket.title.substring(0, 30) + (ticket.title.length > 30 ? "..." : "");
         let recipientId = null;
@@ -155,7 +178,6 @@ exports.addReplyToTicket = async (req, res) => {
                 await Notification.create(adminNotifications, { session });
             }
         }
-        // End Notification Logic
 
         await session.commitTransaction();
         const populatedReply = await TicketReply.findById(newReply._id).populate('user', 'fullName avatarUrl userRole').lean();
@@ -243,26 +265,46 @@ exports.updateTicketStatusBySupport = async (req, res) => {
     const { ticketId } = req.params;
     const { status, resolutionNotes } = req.body;
     if (!status) return res.status(400).json({ msg: "New status is required." });
+
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketId) ? { _id: ticketId } : { ticketId: ticketId };
-        const ticket = await Ticket.findOne(ticketQuery).session(session);
-        if (!ticket) { await session.abortTransaction(); await session.endSession(); return res.status(404).json({ msg: "Ticket not found." }); }
+        // قم بعمل populate للمستخدم والمسؤول المعين للحصول على بياناتهم عند البث
+        const ticket = await Ticket.findOne(ticketQuery).session(session).populate('user', 'fullName email avatarUrl').populate('assignedTo', 'fullName email avatarUrl');
+        if (!ticket) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ msg: "Ticket not found." });
+        }
+
         const oldStatus = ticket.status;
         ticket.status = status;
         if (status === 'Resolved') ticket.resolvedAt = new Date();
         else if (status === 'Closed' && oldStatus !== 'Closed') ticket.closedAt = new Date();
         else if (oldStatus === 'Resolved' && status !== 'Closed') ticket.resolvedAt = null;
         else if (oldStatus === 'Closed' && status !== 'Closed') ticket.closedAt = null;
+
         await ticket.save({ session });
+
         let notifTitle = `Ticket Status: #${ticket.ticketId}`;
         let notifMessage = `Status of ticket "${ticket.title.substring(0, 30)}..." updated to ${status}.`;
         if (status === 'Resolved') notifMessage = `Ticket "${ticket.title.substring(0, 30)}..." resolved. ${resolutionNotes ? 'Notes: ' + resolutionNotes.substring(0, 50) + '...' : ''}`;
         else if (status === 'Closed') notifMessage = `Ticket "${ticket.title.substring(0, 30)}..." closed.`;
-        await Notification.create([{ user: ticket.user, type: 'TICKET_STATUS_UPDATED', title: notifTitle, message: notifMessage, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+
+        await Notification.create([{ user: ticket.user._id, type: 'TICKET_STATUS_UPDATED', title: notifTitle, message: notifMessage, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+
         await session.commitTransaction();
+
+        // بث الحدث إلى جميع المشتركين في غرفة التذكرة
+        if (req.io) {
+            const ticketRoomName = ticket._id.toString();
+            req.io.to(ticketRoomName).emit('ticket_updated', { updatedTicket: ticket.toObject() });
+            console.log(`SOCKET: Emitted 'ticket_updated' to room ${ticketRoomName} after status change.`);
+        }
+
         res.status(200).json({ msg: `Ticket status updated to ${status}.`, ticket });
+
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error updating ticket status by support:", error);
@@ -278,8 +320,18 @@ exports.updateTicketPriorityBySupport = async (req, res) => {
     if (!priority) return res.status(400).json({ msg: "New priority is required." });
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketId) ? { _id: ticketId } : { ticketId: ticketId };
-        const ticket = await Ticket.findOneAndUpdate(ticketQuery, { priority }, { new: true });
+        const ticket = await Ticket.findOneAndUpdate(ticketQuery, { priority }, { new: true })
+            .populate('user', 'fullName email avatarUrl')
+            .populate('assignedTo', 'fullName email avatarUrl');
+
         if (!ticket) return res.status(404).json({ msg: "Ticket not found." });
+
+        // بث الحدث بعد التحديث
+        if (req.io) {
+            req.io.to(ticket._id.toString()).emit('ticket_updated', { updatedTicket: ticket.toObject() });
+            console.log(`SOCKET: Emitted 'ticket_updated' to room ${ticket._id.toString()} after priority change.`);
+        }
+
         res.status(200).json({ msg: `Ticket priority updated to ${priority}.`, ticket });
     } catch (error) {
         console.error("Error updating ticket priority:", error);
@@ -291,28 +343,46 @@ exports.assignTicketToSupport = async (req, res) => {
     const { ticketId } = req.params;
     const { assignedToUserId } = req.body;
     if (assignedToUserId && !mongoose.Types.ObjectId.isValid(assignedToUserId)) return res.status(400).json({ msg: "Invalid support user ID." });
+
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketId) ? { _id: ticketId } : { ticketId: ticketId };
         const ticket = await Ticket.findOne(ticketQuery).session(session);
-        if (!ticket) { await session.abortTransaction(); await session.endSession(); return res.status(404).json({ msg: "Ticket not found." }); }
+        if (!ticket) { await session.abortTransaction(); session.endSession(); return res.status(404).json({ msg: "Ticket not found." }); }
+
         let assignedUser = null;
         if (assignedToUserId) {
             assignedUser = await User.findOne({ _id: assignedToUserId, userRole: { $in: ['Admin', 'Support'] } }).session(session);
-            if (!assignedUser) { await session.abortTransaction(); await session.endSession(); return res.status(404).json({ msg: "Support user for assignment not found or not qualified." }); }
+            if (!assignedUser) { await session.abortTransaction(); session.endSession(); return res.status(404).json({ msg: "Support user for assignment not found or not qualified." }); }
         }
+
         const oldAssignedTo = ticket.assignedTo;
         ticket.assignedTo = assignedUser ? assignedUser._id : null;
         if (ticket.status === 'Open' && ticket.assignedTo) ticket.status = 'InProgress';
         else if (ticket.status === 'InProgress' && !ticket.assignedTo) ticket.status = 'Open';
         await ticket.save({ session });
+
         if (assignedUser && (!oldAssignedTo || !oldAssignedTo.equals(assignedUser._id))) {
             await Notification.create([{ user: assignedUser._id, type: 'TICKET_ASSIGNED_TO_YOU', title: `Assigned Ticket: #${ticket.ticketId}`, message: `Ticket "${ticket.title.substring(0, 30)}..." assigned to you.`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
         }
         await Notification.create([{ user: ticket.user, type: 'TICKET_ASSIGNMENT_UPDATED', title: `Ticket Update: #${ticket.ticketId}`, message: assignedUser ? `Ticket now handled by ${assignedUser.fullName}.` : `Ticket assignment updated.`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+
         await session.commitTransaction();
-        res.status(200).json({ msg: assignedUser ? `Ticket assigned to ${assignedUser.fullName}.` : "Ticket assignment removed.", ticket });
+
+        // جلب النسخة النهائية من التذكرة مع البيانات المضمنة (populated)
+        const populatedTicket = await Ticket.findById(ticket._id)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('assignedTo', 'fullName email avatarUrl')
+            .lean();
+
+        // بث الحدث بعد التحديث
+        if (req.io && populatedTicket) {
+            req.io.to(populatedTicket._id.toString()).emit('ticket_updated', { updatedTicket: populatedTicket });
+            console.log(`SOCKET: Emitted 'ticket_updated' to room ${populatedTicket._id.toString()} after assignment change.`);
+        }
+
+        res.status(200).json({ msg: assignedUser ? `Ticket assigned to ${assignedUser.fullName}.` : "Ticket assignment removed.", ticket: populatedTicket });
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error assigning ticket:", error);

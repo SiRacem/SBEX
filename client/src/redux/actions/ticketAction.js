@@ -34,7 +34,7 @@ export const createTicketAction = (ticketData, files = []) => async (dispatch) =
     if (!config) {
         dispatch({ type: CREATE_TICKET_FAIL, payload: "Authorization required." });
         toast.error("Please login to create a ticket.");
-        return Promise.reject(new Error("Authorization required.")); // إرجاع Promise مرفوض
+        return Promise.reject(new Error("Authorization required."));
     }
 
     const formData = new FormData();
@@ -50,7 +50,6 @@ export const createTicketAction = (ticketData, files = []) => async (dispatch) =
     }
 
     try {
-        // استخدم `${API_PREFIX}/tickets`
         const { data } = await axios.post(`${API_PREFIX}/tickets`, formData, config);
         dispatch({ type: CREATE_TICKET_SUCCESS, payload: data.ticket });
         toast.success(data.msg || "Ticket created successfully!");
@@ -71,11 +70,10 @@ export const getUserTicketsAction = (params = {}) => async (dispatch) => {
     const config = getTokenConfig();
     if (!config) {
         dispatch({ type: GET_USER_TICKETS_FAIL, payload: "Auth required." });
-        return; // لا حاجة لـ toast هنا إذا كان GET_USER_TICKETS_FAIL يعرض شيئًا
+        return;
     }
 
     try {
-        // استخدم `${API_PREFIX}/tickets`
         const { data } = await axios.get(`${API_PREFIX}/tickets`, { ...config, params });
         dispatch({ type: GET_USER_TICKETS_SUCCESS, payload: data });
     } catch (error) {
@@ -95,13 +93,11 @@ export const getTicketDetailsAction = (ticketId) => async (dispatch) => {
     }
 
     try {
-        // استخدم `${API_PREFIX}/tickets/${ticketId}`
-        const { data } = await axios.get(`${API_PREFIX}/tickets/${ticketId}`, config); 
-        dispatch({ type: GET_TICKET_DETAILS_SUCCESS, payload: data }); // data = { ticket, replies }
+        const { data } = await axios.get(`${API_PREFIX}/tickets/${ticketId}`, config);
+        dispatch({ type: GET_TICKET_DETAILS_SUCCESS, payload: data });
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to fetch ticket details.";
         dispatch({ type: GET_TICKET_DETAILS_FAIL, payload: message });
-        // الـ Toast للخطأ يمكن أن يكون أكثر تحديدًا إذا كان الخطأ 403 أو 404
         if (error.response?.status === 403) {
             toast.error("Access Denied: You do not have permission to view this ticket.");
         } else if (error.response?.status === 404) {
@@ -113,13 +109,13 @@ export const getTicketDetailsAction = (ticketId) => async (dispatch) => {
 };
 
 // --- إضافة رد على تذكرة ---
-export const addTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch) => { // <--- تأكد من وجود export هنا
+export const addTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch) => {
     dispatch({ type: ADD_TICKET_REPLY_REQUEST, payload: { ticketId } });
-    const config = getTokenConfig(true);
+    const config = getTokenConfig(true); // isFormData is true
     if (!config) {
-        dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: "Auth required."});
+        dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: "Auth required." });
         toast.error("Please login to reply.");
-        return Promise.reject(new Error("Auth required.")); // أو throw new Error
+        return Promise.reject(new Error("Auth required."));
     }
 
     const formData = new FormData();
@@ -130,55 +126,50 @@ export const addTicketReplyAction = (ticketId, replyData, files = []) => async (
 
     try {
         const { data } = await axios.post(`${API_PREFIX}/tickets/${ticketId}/replies`, formData, config);
-        dispatch({ 
-            type: ADD_TICKET_REPLY_SUCCESS, 
-            payload: { 
-                reply: data.reply, 
-                ticketId: ticketId, // أو استخدم ticketId من data.reply.ticket إذا كان الـ backend يرجعها
-                updatedTicketStatus: data.updatedTicketStatus 
-            } 
+        dispatch({
+            type: ADD_TICKET_REPLY_SUCCESS,
+            payload: {
+                reply: data.reply,
+                ticketId: ticketId,
+                updatedTicketStatus: data.updatedTicketStatus
+            }
         });
-        toast.success(data.msg || "Reply added successfully!");
-        // لا تحتاج لإعادة Promise هنا إذا كنت لا تستخدم .then() في المكون مباشرة لهذا الـ action
+        // الـ toast سيظهر في المكون
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to add reply.";
         dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: message });
         toast.error(message);
-        throw error; // أعد رمي الخطأ ليتم التقاطه في المكون إذا أردت
+        throw error;
     }
 };
 
-export const clearTicketDetailsAction = () => ({ type: CLEAR_TICKET_DETAILS });
-
-// --- إضافة رد على تذكرة ---
-export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch, getState) => {
-    dispatch({ type: ADD_TICKET_REPLY_REQUEST, payload: { ticketId } }); // يمكن إعادة استخدام types الطلب والخطأ
-    const config = getTokenConfig(true);
+// --- إضافة رد على تذكرة من قبل الأدمن ---
+export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch) => {
+    dispatch({ type: ADD_TICKET_REPLY_REQUEST, payload: { ticketId } });
+    const config = getTokenConfig(true); // isFormData is true
     if (!config) {
-        dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: "Auth required."});
+        dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: "Auth required." });
         toast.error("Please login to reply.");
         return Promise.reject(new Error("Auth required."));
     }
 
     const formData = new FormData();
     formData.append('message', replyData.message);
-    // formData.append('isSupportReply', true); // يمكن إضافته هنا أو يعتمد على الـ controller
     if (files && files.length > 0) {
         files.forEach(file => formData.append('attachments', file));
     }
 
     try {
-        // المسار الصحيح لرد الأدمن
         const { data } = await axios.post(`${API_PREFIX}/panel/tickets/${ticketId}/replies`, formData, config);
-        dispatch({ 
-            type: ADD_TICKET_REPLY_SUCCESS, 
-            payload: { 
-                reply: data.reply, 
-                ticketId: ticketId, 
-                updatedTicketStatus: data.updatedTicketStatus 
-            } 
+        dispatch({
+            type: ADD_TICKET_REPLY_SUCCESS,
+            payload: {
+                reply: data.reply,
+                ticketId: ticketId,
+                updatedTicketStatus: data.updatedTicketStatus
+            }
         });
-        toast.success(data.msg || "Reply added successfully by support!");
+        // الـ toast سيظهر في المكون
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to add reply as support.";
         dispatch({ type: ADD_TICKET_REPLY_FAIL, payload: message });
@@ -187,7 +178,7 @@ export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => as
     }
 };
 
-// --- إضافة رد على تذكرة من قبل المستخدم ---
+export const clearTicketDetailsAction = () => ({ type: CLEAR_TICKET_DETAILS });
 export const resetAddTicketReplyStatus = () => ({ type: ADD_TICKET_REPLY_RESET });
 
 // --- المستخدم يغلق تذكرته ---
@@ -200,11 +191,10 @@ export const closeTicketByUserAction = (ticketId) => async (dispatch) => {
     }
 
     try {
-        // استخدم `${API_PREFIX}/tickets/${ticketId}/close`
         const { data } = await axios.put(`${API_PREFIX}/tickets/${ticketId}/close`, {}, config);
         dispatch({ type: CLOSE_TICKET_BY_USER_SUCCESS, payload: { ticketId: ticketId, updatedTicket: data.ticket } });
         toast.success(data.msg || "Ticket closed successfully.");
-        return data.ticket; // إرجاع التذكرة المحدثة إذا كان المكون يحتاجها
+        return data.ticket;
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to close ticket.";
         dispatch({ type: CLOSE_TICKET_BY_USER_FAIL, payload: message });
@@ -214,17 +204,12 @@ export const closeTicketByUserAction = (ticketId) => async (dispatch) => {
 };
 
 // --- Admin/Support Actions ---
-// لاحظ أن مسارات الأدمن قد تكون لها بادئة مختلفة في ticket.router.js مثل /panel/
-// لذا، إذا كانت البادئة /support عامة لكل شيء في ticketRoute، فسنضيفها هنا أيضًا.
-// وإذا كان /panel/tickets هو المسار الكامل، فستكون البادئة /support/panel/tickets
-
 export const adminGetAllTicketsAction = (params = {}) => async (dispatch) => {
     dispatch({ type: ADMIN_GET_ALL_TICKETS_REQUEST });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: ADMIN_GET_ALL_TICKETS_FAIL, payload: "Auth required." });
 
     try {
-        // استخدم `${API_PREFIX}/panel/tickets`
         const { data } = await axios.get(`${API_PREFIX}/panel/tickets`, { ...config, params });
         dispatch({ type: ADMIN_GET_ALL_TICKETS_SUCCESS, payload: data });
     } catch (error) {
@@ -240,7 +225,6 @@ export const adminUpdateTicketStatusAction = (ticketId, statusData) => async (di
     if (!config) return dispatch({ type: ADMIN_UPDATE_TICKET_STATUS_FAIL, payload: "Auth required." });
 
     try {
-        // استخدم `${API_PREFIX}/panel/tickets/${ticketId}/status`
         const { data } = await axios.put(`${API_PREFIX}/panel/tickets/${ticketId}/status`, statusData, config);
         dispatch({ type: ADMIN_UPDATE_TICKET_STATUS_SUCCESS, payload: { ticketId: ticketId, updatedTicket: data.ticket } });
         toast.success(data.msg || `Ticket status updated to ${statusData.status}.`);
@@ -251,10 +235,8 @@ export const adminUpdateTicketStatusAction = (ticketId, statusData) => async (di
     }
 };
 
-
-// --- [جديد] جلب تفاصيل تذكرة معينة للأدمن/الدعم ---
 export const adminGetTicketDetailsAction = (ticketId) => async (dispatch) => {
-    dispatch({ type: ADMIN_GET_TICKET_DETAILS_REQUEST, payload: { ticketId } }); // استخدم Action Type الجديد
+    dispatch({ type: ADMIN_GET_TICKET_DETAILS_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) {
         dispatch({ type: ADMIN_GET_TICKET_DETAILS_FAIL, payload: "Auth required." });
@@ -263,21 +245,15 @@ export const adminGetTicketDetailsAction = (ticketId) => async (dispatch) => {
     }
 
     try {
-        // المسار الصحيح للأدمن
         const { data } = await axios.get(`${API_PREFIX}/panel/tickets/${ticketId}`, config);
-        // سنستخدم نفس حقول الحالة في Reducer (activeTicketDetails, activeTicketReplies)
-        // ولكن يتم جلبها بواسطة action مختلف ومسار مختلف
-        dispatch({ type: GET_TICKET_DETAILS_SUCCESS, payload: data }); // يمكن إعادة استخدام SUCCESS type إذا كان الـ payload متطابقًا
-        // أو استخدم ADMIN_GET_TICKET_DETAILS_SUCCESS إذا كنت تريد معالجة مختلفة في الـ reducer
-        // dispatch({ type: ADMIN_GET_TICKET_DETAILS_SUCCESS, payload: data }); 
+        dispatch({ type: GET_TICKET_DETAILS_SUCCESS, payload: data });
     } catch (error) {
         const message = error.response?.data?.msg || error.message || "Failed to fetch ticket details for admin.";
-        dispatch({ type: ADMIN_GET_TICKET_DETAILS_FAIL, payload: message }); // استخدم FAIL type الجديد
+        dispatch({ type: ADMIN_GET_TICKET_DETAILS_FAIL, payload: message });
         toast.error(message);
     }
 };
 
-// --- تحديث أولوية التذكرة بواسطة الأدمن ---
 export const adminUpdateTicketPriorityAction = (ticketId, priorityData) => async (dispatch) => {
     dispatch({ type: ADMIN_UPDATE_TICKET_PRIORITY_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();

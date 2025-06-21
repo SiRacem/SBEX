@@ -536,6 +536,22 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
+    socket.on('join_ticket_room', (ticketId) => {
+        if (ticketId) {
+            socket.join(ticketId.toString());
+            console.log(`[Socket Event - join_ticket_room] Socket ${socket.id} joined room for ticket: ${ticketId}`);
+        }
+    });
+
+    socket.on('leave_ticket_room', (ticketId) => {
+        if (ticketId) {
+            socket.leave(ticketId.toString());
+            console.log(`[Socket Event - leave_ticket_room] Socket ${socket.id} left room for ticket: ${ticketId}`);
+        }
+    });
+        // --- نهاية الإضافة ---
+
     socket.on('disconnect', (reason) => {
         if (socket.userIdForChat) {
             const userIdStr = socket.userIdForChat.toString();

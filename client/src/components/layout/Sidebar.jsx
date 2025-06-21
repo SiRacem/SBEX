@@ -18,8 +18,10 @@ import {
   FaChalkboardTeacher,
   FaExclamationTriangle,
 } from "react-icons/fa";
+import { TbReport } from "react-icons/tb";
+import { ImTicket } from "react-icons/im";
 import { useSelector, useDispatch } from "react-redux";
-import { Form, Nav, Badge } from "react-bootstrap"; // <--- أضفت Nav و Badge
+import { Form, Badge } from "react-bootstrap"; // <--- أضفت Nav و Badge
 import { logoutUser } from "../../redux/actions/userAction";
 import { adminGetDisputedMediationsAction } from "../../redux/actions/mediationAction"; // <--- استيراد الـ action
 import "./Sidebar.css";
@@ -133,14 +135,6 @@ const Sidebar = ({ onSearchChange }) => {
           <>
             <NavLink
               className="sidebar-link"
-              to="/dashboard/admin/tickets"
-              title="Support"
-            >
-              <FaHeadset className="icon" />
-              <span className="link-text">Support</span>
-            </NavLink>
-            <NavLink
-              className="sidebar-link"
               to="/dashboard/admin/products"
               title="Manage Products"
             >
@@ -173,29 +167,41 @@ const Sidebar = ({ onSearchChange }) => {
             </NavLink>
             <NavLink
               className="sidebar-link"
+              to="/dashboard/admin/reports"
+              title="Mediator Applications"
+            >
+              <TbReport className="icons" />
+              <span className="link-text">Manage Reports</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/tickets"
+              title="Mediator Applications"
+            >
+              <ImTicket className="icons" />
+              <span className="link-text">Manage Tickets</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/disputes"
+              title="Disputed Cases"
+            >
+              <FaExclamationTriangle className="icon" />
+              <span className="link-text">Disputed Cases</span>
+              {disputedCasesCount > 0 && (
+                <Badge pill bg="danger" className="ms-2">
+                  {disputedCasesCount}
+                </Badge>
+              )}
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
               to="/dashboard/admin/mediator-review"
               title="Mediator Applications"
             >
               <FaUserCheck className="icon" />
               <span className="link-text">Mediator Apps</span>
             </NavLink>
-            {/* --- [!!!] استخدام NavLink بدلاً من Nav.Link لـ react-router-dom [!!!] --- */}
-            <NavLink
-              className="sidebar-link" // استخدم نفس الـ class للاتساق
-              to="/dashboard/admin/disputes"
-              title="Disputed Cases"
-              // activeClassName="active" // NavLink يتعامل مع active تلقائيًا إذا كان المسار متطابقًا
-            >
-              <FaExclamationTriangle className="icon" />
-              {/* تعديل: icon بدلاً من me-2 */}
-              <span className="link-text">Disputed Cases</span>
-              {disputedCasesCount > 0 && ( // <--- استخدام disputedCasesCount
-                <Badge pill bg="danger" className="ms-2">
-                  {disputedCasesCount}
-                </Badge>
-              )}
-            </NavLink>
-            {/* ---------------------------------------------------------------------- */}
           </>
         )}
 

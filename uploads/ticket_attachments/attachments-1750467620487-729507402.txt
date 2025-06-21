@@ -1,0 +1,41 @@
+Split ("") => i9asemlek fi table : 1997 => ["1","9","9","7"]
+-------
+Number : ["1","9","9","7"] => [1,9,9,7]
+-------
+Math.pow(9,2) => 9²
+-------
+join ("") => iraja3lek table lil numbers mab3athhom : [ 1 , 81 , 81 , 49] => "1818149"
+-------
+.toString() => tbadelek number lil chaine de caractere
+-------
+.toUpperCase() => MAJ
+-------
+.toLowerCase() => Minscule
+-------
+push => izidek fi e5er el table
+-------
+.sort(function(a,b)
+  {
+    return b - a
+  }
+-------
+Math.sqrt(sq) => Racine carré mta3 sq
+-------
+isInteger()
+-------
+repeat(n) => t3awed el kelma 9adech min mara n ex: n = 3
+-------
+replace(/./gi,"#") => g : global - i : tebou Maj w Min - . ya3ni te5thou el kol 
+-------
+sum.toFixed(2); => toFixed(2) => 2 number ba3d el vercile
+-------
+Math.round => 2.5 or > 2.5 => 3
+Math.ceil => 2.0001 => 3
+Math.floor => 2.49 => 2
+-------
+endsWith => toufa biha walla => true OR false
+includes => mawjouda partie walla => true OR false
+-------
+Array(5).fill(1) => [1,1,1,1,1]
+-------
+startsWith("R") => tebda b R

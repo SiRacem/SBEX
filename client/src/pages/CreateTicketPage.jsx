@@ -30,15 +30,25 @@ const TICKET_PRIORITIES = [
     { value: 'Urgent', label: 'Urgent' }
 ];
 
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 15;
 const MAX_FILES_COUNT = 5;
-const ALLOWED_FILE_TYPES_FRONTEND = [ // قائمة للتحقق في الواجهة الأمامية (قد تكون أوسع قليلاً)
+// --- [!!!] بداية التعديل [!!!] ---
+const ALLOWED_FILE_TYPES_FRONTEND = [ 
+    // الأنواع الحالية
     'image/jpeg', 'image/png', 'image/gif', 'application/pdf',
     'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain', 'application/zip', 'application/x-rar-compressed', 'application/vnd.rar',
-    // بعض المتصفحات قد لا تتعرف على MIME type لـ .rar بشكل صحيح، لذا يمكن الاعتماد على الامتداد
+    
+    // إضافة أنواع الفيديو
+    'video/mp4', 'video/webm', 'video/mov', 'video/quicktime',
+
+    // إضافة أنواع الصوت
+    'audio/mpeg', // for .mp3
+    'audio/wav',
+    'audio/mp3', // بعض المتصفحات قد ترسل هذا
 ];
-const ALLOWED_EXTENSIONS_FRONTEND = /\.(jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar)$/i;
+const ALLOWED_EXTENSIONS_FRONTEND = /\.(jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar|mp4|webm|mov|mp3|wav)$/i;
+// --- [!!!] نهاية التعديل [!!!] ---
 
 
 const formatFileSize = (bytes) => {

@@ -1,5 +1,5 @@
 // src/pages/TicketDetailsPage.jsx
-import React, { useEffect, useState, useMemo, useContext } from "react"; // **** تم إضافة useContext هنا ****
+import React, { useEffect, useState, useMemo, useContext, useRef } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -14,7 +14,15 @@ import {
   Form,
   ListGroup,
   InputGroup,
+  Image,
+  OverlayTrigger,
+  Popover,
 } from "react-bootstrap";
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
+import { useDropzone } from "react-dropzone";
+import EmojiPicker from "emoji-picker-react";
+
 import {
   getTicketDetailsAction,
   adminGetTicketDetailsAction,
@@ -36,27 +44,30 @@ import {
   FaHeadset,
   FaTicketAlt,
   FaFileAlt,
-  FaEdit,
   FaUserShield,
   FaTasks,
   FaHighlighter,
   FaUserTie,
-  // FaGiftOpen, // إذا كنت ستستخدمها لاحقًا
+  FaFileVideo,
+  FaFileAudio,
+  FaImage,
+  FaSmile,
 } from "react-icons/fa";
 import { FiSend, FiUsers } from "react-icons/fi";
 import moment from "moment";
 import { toast } from "react-toastify";
-import { SocketContext } from "../App"; // **** تم إضافة استيراد SocketContext هنا ****
+import { SocketContext } from "../App";
+import "./TicketDetailsPage.css";
 
-// --- (بقية الكود كما هو من الرد السابق) ---
 const formatFileSize = (bytes) => {
-  /* ... */ if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
   const dm = 2;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
+
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
@@ -69,6 +80,7 @@ const TICKET_STATUSES_OPTIONS = [
   { value: "Closed", label: "Closed" },
   { value: "OnHold", label: "On Hold" },
 ];
+
 const TICKET_PRIORITIES_OPTIONS = [
   { value: "Low", label: "Low" },
   { value: "Medium", label: "Medium" },
@@ -81,7 +93,7 @@ const TicketDetailsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const socket = useContext(SocketContext); // <-- استخدام useContext
+  const socket = useContext(SocketContext);
 
   const {
     activeTicketDetails: ticket,
@@ -113,13 +125,70 @@ const TicketDetailsPage = () => {
   const [assignToUserIdAdmin, setAssignToUserIdAdmin] = useState("");
   const [resolutionNotesAdmin, setResolutionNotesAdmin] = useState("");
 
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const [previewLightboxOpen, setPreviewLightboxOpen] = useState(false);
+  const [previewLightboxIndex, setPreviewLightboxIndex] = useState(0);
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyFiles, setReplyFiles] = useState([]);
+  const textAreaRef = useRef(null);
+
+  const onEmojiClick = (emojiObject) => {
+    const cursor = textAreaRef.current.selectionStart;
+    const text =
+      replyMessage.slice(0, cursor) +
+      emojiObject.emoji +
+      replyMessage.slice(cursor);
+    setReplyMessage(text);
+    setShowEmojiPicker(false);
+    textAreaRef.current.focus();
+  };
+
+  const onDrop = (acceptedFiles) => {
+    const newFiles = acceptedFiles.map((file) =>
+      Object.assign(file, {
+        preview: URL.createObjectURL(file),
+      })
+    );
+    setReplyFiles((prev) => [...prev, ...newFiles].slice(0, 5));
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [],
+      "application/pdf": [],
+      "video/*": [],
+      "audio/*": [],
+    },
+    maxSize: 15 * 1024 * 1024,
+  });
+
+  const removeReplyFile = (fileToRemove) => {
+    setReplyFiles((prevFiles) => {
+      const newFiles = prevFiles.filter(
+        (file) => file.path !== fileToRemove.path
+      );
+      URL.revokeObjectURL(fileToRemove.preview);
+      return newFiles;
+    });
+  };
+
+  const imageAttachments = useMemo(() => {
+    if (!ticket?.attachments) return [];
+    return ticket.attachments.filter(
+      (att) => att.fileType && att.fileType.startsWith("image/")
+    );
+  }, [ticket]);
+
   useEffect(() => {
     if (ticketId) {
-      if (isAdminView && isUserAdminOrSupport) {
+      if (isAdminView && isUserAdminOrSupport)
         dispatch(adminGetTicketDetailsAction(ticketId));
-      } else if (!isAdminView && user) {
-        dispatch(getTicketDetailsAction(ticketId));
-      } else if (isAdminView && user && !isUserAdminOrSupport) {
+      else if (!isAdminView && user) dispatch(getTicketDetailsAction(ticketId));
+      else if (isAdminView && user && !isUserAdminOrSupport) {
         toast.error("Access Denied for admin view.");
         navigate("/dashboard/tickets");
       }
@@ -128,6 +197,16 @@ const TicketDetailsPage = () => {
       dispatch(clearTicketDetailsAction());
     };
   }, [dispatch, ticketId, isAdminView, isUserAdminOrSupport, user, navigate]);
+
+  useEffect(() => {
+    if (socket && ticket && ticket._id) {
+      const ticketRoomId = ticket._id.toString();
+      socket.emit("join_ticket_room", ticketRoomId);
+      return () => {
+        socket.emit("leave_ticket_room", ticketRoomId);
+      };
+    }
+  }, [socket, ticket]);
 
   useEffect(() => {
     if (ticket && isAdminView) {
@@ -140,6 +219,8 @@ const TicketDetailsPage = () => {
   useEffect(() => {
     if (successAddReply) {
       setReplyMessage("");
+      replyFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+      setReplyFiles([]);
       toast.success("Reply added successfully!");
       dispatch(resetAddTicketReplyStatus());
     }
@@ -147,21 +228,16 @@ const TicketDetailsPage = () => {
       toast.error(errorAddReply);
       dispatch(resetAddTicketReplyStatus());
     }
-  }, [successAddReply, errorAddReply, dispatch]);
+  }, [successAddReply, errorAddReply, dispatch, replyFiles]);
 
   useEffect(() => {
     if (socket && ticket && ticket._id) {
-      const ticketRoomId = ticket._id.toString();
       const handleNewReply = (data) => {
         if (
           data.ticketId === ticket._id &&
           (!replies || !replies.find((r) => r._id === data.reply._id))
         ) {
-          // التحقق من replies قبل find
           dispatch({ type: "REALTIME_ADD_TICKET_REPLY", payload: data });
-          toast.info("New reply received for this ticket.", {
-            autoClose: 3000,
-          });
         }
       };
       socket.on("new_ticket_reply", handleNewReply);
@@ -171,19 +247,19 @@ const TicketDetailsPage = () => {
 
   const handleAddReply = (e) => {
     e.preventDefault();
-    if (!replyMessage.trim()) {
-      toast.error("Reply message cannot be empty.");
+    if (!replyMessage.trim() && replyFiles.length === 0) {
+      toast.error("Reply message or an attachment is required.");
       return;
     }
-    const currentTicketId = ticket?._id || ticketId;
-    if (isAdminView && isUserAdminOrSupport)
+    const currentTicketId = ticket?.ticketId || ticket?._id || ticketId;
+    const replyData = { message: replyMessage };
+    if (isAdminView && isUserAdminOrSupport) {
       dispatch(
-        adminAddTicketReplyAction(currentTicketId, { message: replyMessage })
+        adminAddTicketReplyAction(currentTicketId, replyData, replyFiles)
       );
-    else
-      dispatch(
-        addTicketReplyAction(currentTicketId, { message: replyMessage })
-      );
+    } else {
+      dispatch(addTicketReplyAction(currentTicketId, replyData, replyFiles));
+    }
   };
 
   const handleCloseTicket = () => {
@@ -191,10 +267,6 @@ const TicketDetailsPage = () => {
       dispatch(closeTicketByUserAction(ticket?._id || ticketId));
   };
   const handleAdminUpdateStatus = () => {
-    if (!newStatusAdmin) {
-      toast.warn("Select status.");
-      return;
-    }
     if (ticket && isUserAdminOrSupport)
       dispatch(
         adminUpdateTicketStatusAction(ticket.ticketId || ticket._id, {
@@ -204,10 +276,6 @@ const TicketDetailsPage = () => {
       );
   };
   const handleAdminUpdatePriority = () => {
-    if (!newPriorityAdmin) {
-      toast.warn("Select priority.");
-      return;
-    }
     if (ticket && isUserAdminOrSupport)
       dispatch(
         adminUpdateTicketPriorityAction(ticket.ticketId || ticket._id, {
@@ -259,7 +327,7 @@ const TicketDetailsPage = () => {
     }
   };
 
-  if (!user && !loadingTicketDetails) {
+  if (!user && !loadingTicketDetails)
     return (
       <Container className="py-5 text-center">
         <Alert variant="warning">
@@ -268,8 +336,6 @@ const TicketDetailsPage = () => {
         </Alert>
       </Container>
     );
-  }
-
   if (loadingTicketDetails && !ticket)
     return (
       <Container className="py-5 text-center">
@@ -291,11 +357,7 @@ const TicketDetailsPage = () => {
           <p>{errorTicketDetails}</p>
           <Button
             as={Link}
-            to={
-              isAdminView
-                ? "/dashboard/admin/tickets"
-                : "/dashboard/support/tickets"
-            }
+            to={isAdminView ? "/dashboard/admin/tickets" : "/dashboard/tickets"}
             variant="primary"
           >
             Back
@@ -313,11 +375,7 @@ const TicketDetailsPage = () => {
           <p>Ticket details not found.</p>
           <Button
             as={Link}
-            to={
-              isAdminView
-                ? "/dashboard/admin/tickets"
-                : "/dashboard/support/tickets"
-            }
+            to={isAdminView ? "/dashboard/admin/tickets" : "/dashboard/tickets"}
             variant="secondary"
           >
             Back
@@ -325,22 +383,19 @@ const TicketDetailsPage = () => {
         </Alert>
       </Container>
     );
-
   if (ticket && user) {
-    const isOwner = user._id === ticket.user?._id;
-    if (!isAdminView && !isOwner)
+    if (!isAdminView && user._id !== ticket.user?._id)
       return (
         <Container className="py-5 text-center">
           <Alert variant="danger">Not authorized.</Alert>
         </Container>
       );
-  } else if (!loadingTicketDetails) {
+  } else if (!loadingTicketDetails)
     return (
       <Container className="py-5 text-center">
         <Alert variant="info">Preparing details...</Alert>
       </Container>
     );
-  }
 
   const supportStaffList =
     allUsersList?.filter(
@@ -351,7 +406,6 @@ const TicketDetailsPage = () => {
     <Container className="ticket-details-page py-4 py-lg-5">
       <Row className="justify-content-center">
         <Col md={10} lg={9} xl={8}>
-          {/* Ticket Info Card */}
           <Card className="shadow-lg border-0 mb-4">
             <Card.Header className="bg-light p-3 d-flex justify-content-between align-items-center ticket-details-header">
               <div>
@@ -365,7 +419,7 @@ const TicketDetailsPage = () => {
                 to={
                   isAdminView
                     ? "/dashboard/admin/tickets"
-                    : "/dashboard/support/tickets"
+                    : "/dashboard/tickets"
                 }
                 variant="outline-secondary"
                 size="sm"
@@ -441,49 +495,123 @@ const TicketDetailsPage = () => {
                 </pre>
               </div>
               {ticket.attachments && ticket.attachments.length > 0 && (
-                <div className="mt-3">
-                  <h6 className="mb-2 small text-muted">
-                    <FaPaperclip className="me-1" /> Attachments:
-                  </h6>
+                <div className="mt-4">
+                  <h5 className="mb-3">
+                    <FaPaperclip className="me-2" /> Attachments
+                  </h5>
                   <ListGroup
                     variant="flush"
                     className="attachment-list-details"
                   >
-                    {ticket.attachments.map((att, idx) => (
-                      <ListGroup.Item key={idx} className="px-0 py-1 small">
-                        <a
-                          href={`${BACKEND_URL}/${att.filePath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-decoration-none"
+                    {ticket.attachments.map((att, idx) => {
+                      const fileType = att.fileType || "";
+                      const isImage = fileType.startsWith("image/");
+                      const isVideo = fileType.startsWith("video/");
+                      const isAudio = fileType.startsWith("audio/");
+                      const fullUrl = `${BACKEND_URL}/${att.filePath}`;
+                      return (
+                        <ListGroup.Item
+                          key={idx}
+                          className="px-0 py-2 d-flex align-items-center"
                         >
-                          <FaFileAlt className="me-1" /> {att.fileName} (
-                          {formatFileSize(att.fileSize)})
-                        </a>
-                      </ListGroup.Item>
-                    ))}
+                          <div
+                            className="flex-shrink-0"
+                            style={{ width: "100px", marginRight: "15px" }}
+                          >
+                            {isImage ? (
+                              <div
+                                onClick={() => {
+                                  const imageIndex = imageAttachments.findIndex(
+                                    (img) => img.filePath === att.filePath
+                                  );
+                                  if (imageIndex > -1) {
+                                    setLightboxIndex(imageIndex);
+                                    setLightboxOpen(true);
+                                  }
+                                }}
+                                style={{ cursor: "pointer" }}
+                                title={`View ${att.fileName}`}
+                              >
+                                <img
+                                  src={fullUrl}
+                                  alt={att.fileName}
+                                  style={{
+                                    width: "80px",
+                                    height: "80px",
+                                    objectFit: "cover",
+                                    borderRadius: "8px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                />
+                              </div>
+                            ) : isVideo ? (
+                              <div className="text-center">
+                                <FaFileVideo
+                                  size={40}
+                                  className="text-primary"
+                                />
+                                <span className="d-block small text-muted">
+                                  Video
+                                </span>
+                              </div>
+                            ) : isAudio ? (
+                              <div className="text-center">
+                                <FaFileAudio size={40} className="text-info" />
+                                <span className="d-block small text-muted">
+                                  Audio
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <FaFileAlt
+                                  size={40}
+                                  className="text-secondary"
+                                />
+                                <span className="d-block small text-muted">
+                                  File
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <a
+                              href={fullUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-decoration-none fw-semibold d-block"
+                            >
+                              {att.fileName}
+                            </a>
+                            <span className="text-muted small">
+                              {formatFileSize(att.fileSize)}
+                            </span>
+                          </div>
+                        </ListGroup.Item>
+                      );
+                    })}
                   </ListGroup>
                 </div>
               )}
             </Card.Body>
           </Card>
 
-          {/* Admin Actions Panel */}
           {isAdminView && isUserAdminOrSupport && ticket && (
             <Card className="shadow-sm border-0 mb-4 admin-ticket-actions-panel">
+              {" "}
               <Card.Header className="bg-secondary text-white py-2">
                 <h5 className="mb-0">
-                  <FaUserShield className="me-2" />
-                  Admin Controls
+                  <FaUserShield className="me-2" /> Admin Controls
                 </h5>
-              </Card.Header>
+              </Card.Header>{" "}
               <Card.Body className="p-3">
+                {" "}
                 <Row className="g-3">
+                  {" "}
                   <Col md={6} className="mb-3 mb-md-0">
+                    {" "}
                     <Form.Group controlId="adminChangeStatus">
                       <Form.Label className="small fw-semibold">
-                        <FaTasks className="me-1" />
-                        Change Status
+                        <FaTasks className="me-1" /> Change Status
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
@@ -491,13 +619,11 @@ const TicketDetailsPage = () => {
                           onChange={(e) => setNewStatusAdmin(e.target.value)}
                         >
                           <option value="">Select status...</option>
-                          {TICKET_STATUSES_OPTIONS.filter((s) => s.value).map(
-                            (s) => (
-                              <option key={s.value} value={s.value}>
-                                {s.label}
-                              </option>
-                            )
-                          )}
+                          {TICKET_STATUSES_OPTIONS.map((s) => (
+                            <option key={s.value} value={s.value}>
+                              {s.label}
+                            </option>
+                          ))}
                         </Form.Select>
                         <Button
                           variant="outline-info"
@@ -507,13 +633,13 @@ const TicketDetailsPage = () => {
                           Update
                         </Button>
                       </InputGroup>
-                    </Form.Group>
-                  </Col>
+                    </Form.Group>{" "}
+                  </Col>{" "}
                   <Col md={6} className="mb-3 mb-md-0">
+                    {" "}
                     <Form.Group controlId="adminChangePriority">
                       <Form.Label className="small fw-semibold">
-                        <FaHighlighter className="me-1" />
-                        Change Priority
+                        <FaHighlighter className="me-1" /> Change Priority
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
@@ -535,13 +661,13 @@ const TicketDetailsPage = () => {
                           Update
                         </Button>
                       </InputGroup>
-                    </Form.Group>
-                  </Col>
+                    </Form.Group>{" "}
+                  </Col>{" "}
                   <Col md={12} className="mt-md-3">
+                    {" "}
                     <Form.Group controlId="adminAssignTicket">
                       <Form.Label className="small fw-semibold">
-                        <FiUsers className="me-1" />
-                        Assign To
+                        <FiUsers className="me-1" /> Assign To
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
@@ -565,8 +691,8 @@ const TicketDetailsPage = () => {
                           Assign
                         </Button>
                       </InputGroup>
-                    </Form.Group>
-                  </Col>
+                    </Form.Group>{" "}
+                  </Col>{" "}
                   {newStatusAdmin === "Resolved" && (
                     <Col md={12} className="mt-md-3">
                       <Form.Group controlId="adminResolutionNotes">
@@ -584,18 +710,17 @@ const TicketDetailsPage = () => {
                         />
                       </Form.Group>
                     </Col>
-                  )}
-                </Row>
+                  )}{" "}
+                </Row>{" "}
                 {loadingAdminUpdate && (
                   <div className="text-center mt-2">
                     <Spinner animation="border" size="sm" variant="info" />
                   </div>
-                )}
-              </Card.Body>
+                )}{" "}
+              </Card.Body>{" "}
             </Card>
           )}
 
-          {/* Conversation/Replies Card */}
           <Card className="shadow-sm border-0 mb-4">
             <Card.Header className="bg-light p-3">
               <h5 className="mb-0">Conversation</h5>
@@ -609,7 +734,9 @@ const TicketDetailsPage = () => {
                       reply.isSupportReply ? "reply-support" : "reply-user"
                     }`}
                   >
+                    {" "}
                     <div className="d-flex justify-content-between align-items-center mb-2">
+                      {" "}
                       <strong className="reply-author">
                         {reply.isSupportReply ? (
                           <FaHeadset className="me-1 text-info" />
@@ -618,22 +745,23 @@ const TicketDetailsPage = () => {
                         )}
                         {reply.user?.fullName ||
                           (reply.isSupportReply ? "Support Team" : "User")}
-                      </strong>
+                      </strong>{" "}
                       <small className="text-muted">
                         {moment(reply.createdAt).fromNow()}
-                      </small>
-                    </div>
+                      </small>{" "}
+                    </div>{" "}
                     <pre
                       className="reply-message"
                       style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}
                     >
                       {reply.message}
-                    </pre>
+                    </pre>{" "}
                     {reply.attachments && reply.attachments.length > 0 && (
                       <div className="mt-2 reply-attachments">
+                        {" "}
                         <small className="text-muted d-block mb-1">
                           Attachments:
-                        </small>
+                        </small>{" "}
                         {reply.attachments.map((att, rix) => (
                           <a
                             key={rix}
@@ -644,9 +772,9 @@ const TicketDetailsPage = () => {
                           >
                             <FaPaperclip size="0.8em" /> {att.fileName}
                           </a>
-                        ))}
+                        ))}{" "}
                       </div>
-                    )}
+                    )}{" "}
                   </ListGroup.Item>
                 ))
               ) : (
@@ -657,14 +785,13 @@ const TicketDetailsPage = () => {
             </ListGroup>
           </Card>
 
-          {/* Add Reply Form */}
           {ticket &&
             ticket.status !== "Closed" &&
             ((user &&
               (user._id === ticket.user?._id || isUserAdminOrSupport) &&
               ticket.status !== "Resolved") ||
               (isUserAdminOrSupport && ticket.status === "Resolved")) && (
-              <Card className="shadow-sm border-0">
+              <Card className="shadow-sm border-0 add-reply-card">
                 <Card.Header className="bg-light p-3">
                   <h5 className="mb-0">
                     <FaReply className="me-2" /> Add Your Reply
@@ -672,40 +799,105 @@ const TicketDetailsPage = () => {
                 </Card.Header>
                 <Card.Body className="p-3 p-md-4">
                   <Form onSubmit={handleAddReply}>
-                    <Form.Group className="mb-3" controlId="replyMessageForm">
+                    {replyFiles.length > 0 && (
+                      <div className="d-flex flex-wrap gap-2 mb-3 reply-attachment-previews">
+                        {replyFiles.map((file, i) => (
+                          <div key={i} className="position-relative">
+                            <Image
+                              src={file.preview}
+                              thumbnail
+                              style={{
+                                width: "70px",
+                                height: "70px",
+                                objectFit: "cover",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => {
+                                if (file.type.startsWith("image/")) {
+                                  setPreviewLightboxIndex(i);
+                                  setPreviewLightboxOpen(true);
+                                } else {
+                                  window.open(file.preview, "_blank");
+                                }
+                              }}
+                            />
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              className="position-absolute top-0 end-0 m-1 p-0"
+                              style={{
+                                lineHeight: "1",
+                                width: "20px",
+                                height: "20px",
+                                borderRadius: "50%",
+                              }}
+                              onClick={() => removeReplyFile(file)}
+                            >
+                              <FaTimesCircle />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <Form.Group className="mb-2" controlId="replyMessageForm">
                       <Form.Control
+                        ref={textAreaRef}
                         as="textarea"
                         rows={5}
                         placeholder="Type your reply here..."
                         value={replyMessage}
                         onChange={(e) => setReplyMessage(e.target.value)}
-                        required
                       />
                     </Form.Group>
-                    <Button
-                      variant="success"
-                      type="submit"
-                      disabled={loadingAddReply}
-                      className="w-100 py-2"
-                    >
-                      {loadingAddReply ? (
-                        <Spinner
-                          as="span"
-                          animation="border"
-                          size="sm"
-                          className="me-1"
-                        />
-                      ) : (
-                        <FiSend className="me-1" />
-                      )}{" "}
-                      Submit Reply
-                    </Button>
+                    <div className="d-flex justify-content-between align-items-center mt-2">
+                      <div className="d-flex gap-2">
+                        <OverlayTrigger
+                          trigger="click"
+                          placement="top"
+                          show={showEmojiPicker}
+                          onToggle={setShowEmojiPicker}
+                          rootClose
+                          overlay={
+                            <Popover id="popover-emoji-picker">
+                              <EmojiPicker onEmojiClick={onEmojiClick} />
+                            </Popover>
+                          }
+                        >
+                          <Button variant="light" size="sm">
+                            <FaSmile />
+                          </Button>
+                        </OverlayTrigger>
+                        <div {...getRootProps({ className: "dropzone" })}>
+                          <input {...getInputProps()} />
+                          <Button variant="light" size="sm">
+                            <FaImage />
+                          </Button>
+                        </div>
+                      </div>
+                      <Button
+                        variant="success"
+                        type="submit"
+                        disabled={loadingAddReply}
+                        className="px-4"
+                      >
+                        {loadingAddReply ? (
+                          <Spinner
+                            as="span"
+                            animation="border"
+                            size="sm"
+                            className="me-1"
+                          />
+                        ) : (
+                          <FiSend className="me-1" />
+                        )}
+                        Submit
+                      </Button>
+                    </div>
                   </Form>
                 </Card.Body>
               </Card>
             )}
 
-          {/* Close Ticket Button for User */}
           {user &&
             user._id === ticket?.user?._id &&
             !["Closed", "Resolved"].includes(ticket?.status) && (
@@ -726,6 +918,26 @@ const TicketDetailsPage = () => {
             )}
         </Col>
       </Row>
+
+      <Lightbox
+        open={lightboxOpen}
+        close={() => setLightboxOpen(false)}
+        slides={imageAttachments.map((att) => ({
+          src: `${BACKEND_URL}/${att.filePath}`,
+        }))}
+        index={lightboxIndex}
+        on={{ view: ({ index }) => setLightboxIndex(index) }}
+      />
+
+      <Lightbox
+        open={previewLightboxOpen}
+        close={() => setPreviewLightboxOpen(false)}
+        slides={replyFiles
+          .filter((file) => file.type.startsWith("image/"))
+          .map((file) => ({ src: file.preview }))}
+        index={previewLightboxIndex}
+        on={{ view: ({ index }) => setPreviewLightboxIndex(index) }}
+      />
     </Container>
   );
 };

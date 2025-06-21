@@ -28,7 +28,7 @@ import MediationChatPage from './pages/MediationChatPage';
 import MediationsListPage from './pages/MediationsListPage';
 import AdminDisputesPage from './components/admin/AdminDisputesPage';
 import AdminReportsPage from './components/admin/AdminReportsPage';
-import { FaComments } from 'react-icons/fa';
+import { FaComments, FaTicketAlt } from 'react-icons/fa';
 import { getTransactionsForDashboard, getTransactions } from './redux/actions/transactionAction';
 import CreateTicketPage from './pages/CreateTicketPage';
 import TicketDetailsPage from './pages/TicketDetailsPage';
@@ -277,6 +277,32 @@ function App() {
             dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId));
           }
         });
+
+        // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
+        newSocket.on('new_ticket_created_for_admin', (newTicket) => {
+          console.log("[Socket] Received 'new_ticket_created_for_admin'. Dispatching to reducer:", newTicket);
+          if (user && (user.userRole === 'Admin' || user.userRole === 'Support')) {
+            toast.info(
+              <div>
+                <FaTicketAlt className="me-2" />
+                New Support Ticket Created!
+                <div className="small text-muted">Title: {newTicket.title}</div>
+              </div>,
+              { position: "top-right", autoClose: 5000 }
+            );
+            // إرسال action إلى الـ reducer لتحديث الحالة
+            dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: newTicket });
+          }
+        });
+              // --- نهاية الإضافة ---
+
+        // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
+        newSocket.on('ticket_updated', (data) => {
+          console.log("[Socket] Received 'ticket_updated'. Dispatching to reducer:", data.updatedTicket);
+          toast.info(`Ticket #${data.updatedTicket.ticketId} has been updated.`, { autoClose: 3500 });
+          dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
+        });
+        // --- نهاية الإضافة ---
 
         newSocket.on('disconnect', (reason) => {
           console.warn('[App.js Socket] Disconnected:', reason);

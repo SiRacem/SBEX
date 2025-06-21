@@ -34,27 +34,44 @@ const storage = multer.diskStorage({
     }
 });
 
-// تعريف ثابت لحجم الملف الأقصى (يمكن استيراده من ملف إعدادات إذا أردت)
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+// --- [!!!] بداية التعديل [!!!] ---
+// قم بزيادة الحد الأقصى للحجم هنا أيضًا
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
 
 // فلتر للتحقق من أنواع الملفات المسموح بها وحجمها
 const fileFilter = (req, file, cb) => {
     const allowedMimeTypes = [
-        'image/jpeg', 'image/pjpeg', // .jpeg, .jpg
+        // الأنواع الحالية
+        'image/jpeg', 'image/pjpeg',
         'image/png',
         'image/gif',
         'application/pdf',
-        'application/msword', // .doc
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-        'text/plain', // .txt
-        'application/zip', // .zip (شائع)
-        'application/x-zip-compressed', // .zip (بديل)
-        'application/vnd.rar', // .rar (MIME type رسمي)
-        'application/x-rar-compressed', // .rar (شائع أيضًا)
-        'application/octet-stream' // نوع عام، قد يستخدم لبعض أنواع الملفات إذا لم يتم التعرف عليها
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'application/zip',
+        'application/x-zip-compressed',
+        'application/vnd.rar',
+        'application/x-rar-compressed',
+
+        // إضافة أنواع الفيديو
+        'video/mp4',
+        'video/webm',
+        'video/ogg',
+        'video/quicktime', // for .mov files
+
+        // إضافة أنواع الصوت
+        'audio/mpeg', // for .mp3
+        'audio/mp3',
+        'audio/wav',
+        'audio/x-wav',
+        'audio/ogg',
+
+        'application/octet-stream' // اترك هذا كحل بديل
     ];
     // امتدادات الملفات كحل ثانوي وللتحقق الإضافي
-    const allowedExtensions = /\.(jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar)$/i;
+    const allowedExtensions = /\.(jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar|mp4|webm|mov|mp3|wav|ogg)$/i;
+// --- [!!!] نهاية التعديل [!!!] ---
 
     const isMimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
     const originalExtension = path.extname(file.originalname).toLowerCase();
