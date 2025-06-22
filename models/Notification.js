@@ -94,6 +94,7 @@ const NotificationSchema = new Schema({
             'TICKET_ASSIGNED_TO_YOU',
             'TICKET_ASSIGNMENT_UPDATED',
             'MEDIATION_CANCELLED_BY_BUYER',
+            'BID_CANCELLED_BY_UPDATE',
         ],
         required: true
     },

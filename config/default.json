@@ -4,5 +4,6 @@
     "db" : "mongodb+srv://SiRacem:0000@onlinegroupdb.iqlvt.mongodb.net/SAEX?retryWrites=true&w=majority&appName=OnlineGroupDB",
     "FRONTEND_URL": "http://localhost:3000",
     "TND_USD_EXCHANGE_RATE": 3.0,
-    "PLATFORM_BASE_CURRENCY": "TND"
+    "PLATFORM_BASE_CURRENCY": "TND",
+    "TRANSFER_FEE_PERCENT": 2.0
 }

@@ -170,7 +170,7 @@ const Wallet = () => {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   // Send Modal State
-  const [modalStep, setModalStep] = useState(1);
+  const [modalStep, setModalStep] = useState(1); // Step 1: Recipient, Step 2: Source (optional), Step 3: Amount, Step 4: Confirm
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientUser, setRecipientUser] = useState(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
@@ -178,6 +178,7 @@ const Wallet = () => {
   const [sendCurrency, setSendCurrency] = useState("TND");
   const [sendAmount, setSendAmount] = useState("");
   const [amountError, setAmountError] = useState(null);
+  const [sendFromSource, setSendFromSource] = useState("principal"); // "principal" or "seller"
   const [transferFee, setTransferFee] = useState(0);
   const [totalDeductedTND, setTotalDeductedTND] = useState(0);
   const [isSending, setIsSending] = useState(false);
@@ -197,6 +198,7 @@ const Wallet = () => {
       setSendCurrency("TND");
       setSendAmount("");
       setAmountError(null);
+      setSendFromSource("principal"); // Reset source
       setTransferFee(0);
       setTotalDeductedTND(0);
       setSendError(null);
@@ -262,6 +264,11 @@ const Wallet = () => {
     let totalDeducted = 0;
     let minSend =
       sendCurrency === "USD" ? MIN_SEND_AMOUNT_USD : MIN_SEND_AMOUNT_TND;
+    const selectedBalanceTND =
+      sendFromSource === "seller"
+        ? user?.sellerAvailableBalance || 0
+        : userBalanceTND;
+
     if (sendAmount === "" || isNaN(amountNum)) {
       setAmountError(null);
       setTransferFee(0);
@@ -277,27 +284,60 @@ const Wallet = () => {
       )}`;
     } else {
       fee = (amountNum * TRANSFER_FEE_PERCENT) / 100;
+      let amountInTND = amountNum;
       if (sendCurrency === "USD") {
-        totalDeducted = (amountNum + fee) * TND_TO_USD_RATE;
+        amountInTND = amountNum * TND_TO_USD_RATE; // Amount to send in TND
+        totalDeducted = (amountNum + fee) * TND_TO_USD_RATE; // Total including fee in TND
       } else {
-        totalDeducted = amountNum + fee;
+        totalDeducted = amountNum + fee; // Total including fee in TND
       }
-      if (totalDeducted > userBalanceTND) {
-        errorMsg = "Insufficient balance to cover amount and fee.";
+
+      // Check if the TND equivalent of the amount to send (if source is USD) or the amount itself (if source is TND)
+      // exceeds the selected balance in TND.
+      // The fee is calculated on the sendAmount (in its original currency), then converted to TND if needed for totalDeducted.
+      // The balance check should always be against the TND equivalent of the total amount to be deducted.
+      if (totalDeducted > selectedBalanceTND) {
+        errorMsg =
+          "Insufficient balance from selected source to cover amount and fee.";
       }
     }
     setAmountError(errorMsg);
-    setTransferFee(Number(fee.toFixed(2)));
-    setTotalDeductedTND(Number(totalDeducted.toFixed(2)));
-  }, [sendAmount, sendCurrency, userBalanceTND, userBalanceUSD]);
+    setTransferFee(Number(fee.toFixed(2))); // Fee is in 'sendCurrency'
+    setTotalDeductedTND(Number(totalDeducted.toFixed(2))); // totalDeducted is always in TND
+  }, [
+    sendAmount,
+    sendCurrency,
+    userBalanceTND,
+    user?.sellerAvailableBalance,
+    sendFromSource,
+    TND_TO_USD_RATE,
+  ]);
+
   const handleSetMaxAmount = useCallback(() => {
     let maxPossibleToSend = 0;
-    let balance = sendCurrency === "USD" ? userBalanceUSD : userBalanceTND;
-    maxPossibleToSend = balance / (1 + TRANSFER_FEE_PERCENT / 100);
+    const balanceTND =
+      sendFromSource === "seller"
+        ? user?.sellerAvailableBalance || 0
+        : userBalanceTND;
+
+    let effectiveBalance = balanceTND; // This is in TND
+    if (sendCurrency === "USD") {
+      effectiveBalance = balanceTND / TND_TO_USD_RATE; // Convert available TND balance to USD equivalent for calculation
+    }
+    // effectiveBalance is now in the sendCurrency
+
+    maxPossibleToSend = effectiveBalance / (1 + TRANSFER_FEE_PERCENT / 100);
     maxPossibleToSend = Math.max(0, Math.floor(maxPossibleToSend * 100) / 100);
+
     setSendAmount(maxPossibleToSend.toFixed(2));
     setAmountError(null);
-  }, [sendCurrency, userBalanceTND, userBalanceUSD]);
+  }, [
+    sendCurrency,
+    userBalanceTND,
+    user?.sellerAvailableBalance,
+    sendFromSource,
+    TND_TO_USD_RATE,
+  ]);
   const handleSendConfirm = useCallback(async () => {
     const amountToSendNum = parseFloat(sendAmount);
     const feeToSend = transferFee;
@@ -324,6 +364,7 @@ const Wallet = () => {
           recipientId: recipientUser._id,
           amount: amountToSendNum,
           currency: sendCurrency,
+          source: sendFromSource, // Added source parameter
         },
         config
       );
@@ -336,8 +377,10 @@ const Wallet = () => {
         recipientId: recipientUser?._id,
         amount: amountToSendNum,
         currency: sendCurrency,
-        userBalanceTND: userBalanceTND, // للتحقق من الرصيد في الواجهة
-        totalDeductedTND: totalDeductedTND, // للتحقق من الحساب في الواجهة
+        source: sendFromSource,
+        userBalanceTND: userBalanceTND,
+        sellerAvailableBalance: user?.sellerAvailableBalance,
+        totalDeductedTND: totalDeductedTND,
       });
     } catch (error) {
       const message =
@@ -360,14 +403,44 @@ const Wallet = () => {
   const goToNextStep = useCallback(() => {
     const minSend =
       sendCurrency === "USD" ? MIN_SEND_AMOUNT_USD : MIN_SEND_AMOUNT_TND;
-    if (modalStep === 1 && recipientUser) setModalStep(2);
-    if (modalStep === 2 && !amountError && parseFloat(sendAmount) >= minSend)
+    if (modalStep === 1 && recipientUser) {
+      // If user has seller balance, go to source selection, else skip to amount
+      if (user?.sellerAvailableBalance > 0) {
+        setModalStep(2); // Go to Source Selection
+      } else {
+        setModalStep(3); // Skip to Amount Input
+      }
+    } else if (modalStep === 2) {
+      // From Source Selection to Amount
       setModalStep(3);
-  }, [modalStep, recipientUser, amountError, sendAmount, sendCurrency]);
+    } else if (
+      modalStep === 3 &&
+      !amountError &&
+      parseFloat(sendAmount) >= minSend
+    ) {
+      // From Amount to Confirm
+      setModalStep(4);
+    }
+  }, [
+    modalStep,
+    recipientUser,
+    amountError,
+    sendAmount,
+    sendCurrency,
+    user?.sellerAvailableBalance,
+  ]);
+
   const goToPrevStep = useCallback(() => {
-    if (modalStep === 3) setModalStep(2);
-    if (modalStep === 2) setModalStep(1);
-  }, [modalStep]);
+    if (modalStep === 4) setModalStep(3); // Confirm back to Amount
+    else if (modalStep === 3) {
+      // Amount back to Source or Recipient
+      if (user?.sellerAvailableBalance > 0) {
+        setModalStep(2); // Go back to Source Selection
+      } else {
+        setModalStep(1); // Go back to Recipient
+      }
+    } else if (modalStep === 2) setModalStep(1); // Source back to Recipient
+  }, [modalStep, user?.sellerAvailableBalance]);
   const handleShowReceiveModal = useCallback(() => {
     setIsCopied(false);
     setShowReceiveModal(true);
@@ -820,11 +893,18 @@ const Wallet = () => {
       >
         <Modal.Header closeButton>
           <Modal.Title>
-            {modalStep === 1
-              ? "Send Funds - Step 1: Recipient"
-              : modalStep === 2
-              ? "Send Funds - Step 2: Amount"
-              : "Send Funds - Step 3: Confirm"}
+            {modalStep === 1 && "Send Funds - Step 1: Recipient"}
+            {modalStep === 2 &&
+              user?.sellerAvailableBalance > 0 &&
+              "Send Funds - Step 2: Select Source"}
+            {modalStep === 3 &&
+              "Send Funds - Step " +
+                (user?.sellerAvailableBalance > 0 ? "3" : "2") +
+                ": Amount"}
+            {modalStep === 4 &&
+              "Send Funds - Step " +
+                (user?.sellerAvailableBalance > 0 ? "4" : "3") +
+                ": Confirm"}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -893,143 +973,204 @@ const Wallet = () => {
               </Button>
             </Form>
           )}
-          {modalStep === 2 && recipientUser && (
-            <Form
-              onSubmit={(e) => {
-                e.preventDefault();
-                goToNextStep();
-              }}
-            >
-              <Alert
-                variant="light"
-                className="text-center mb-3 recipient-info"
-              >
-                Sending to: <strong>{recipientUser.fullName}</strong> (
-                {recipientUser.email})
-              </Alert>
-              <Form.Group className="mb-3">
-                <Form.Label>Send Currency:</Form.Label>
-                <ButtonGroup className="d-flex">
-                  <Button
-                    variant={
-                      sendCurrency === "TND" ? "primary" : "outline-secondary"
-                    }
-                    onClick={() => {
-                      setSendCurrency("TND");
-                      setSendAmount("");
-                      setAmountError(null);
-                    }}
-                  >
-                    TND
-                  </Button>
-                  <Button
-                    variant={
-                      sendCurrency === "USD" ? "primary" : "outline-secondary"
-                    }
-                    onClick={() => {
-                      setSendCurrency("USD");
-                      setSendAmount("");
-                      setAmountError(null);
-                    }}
-                  >
-                    USD
-                  </Button>
-                </ButtonGroup>
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Available Balance ({sendCurrency})</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={formatCurrency(
-                    sendCurrency === "USD" ? userBalanceUSD : userBalanceTND,
-                    sendCurrency
-                  )}
-                  readOnly
-                  disabled
-                />
-              </Form.Group>
-              <Form.Group controlId="sendAmountInput">
-                <FloatingLabel
-                  label={`Amount to Send (${sendCurrency})`}
-                  className="mb-1"
+          {modalStep === 2 &&
+            user?.sellerAvailableBalance > 0 &&
+            recipientUser && (
+              <div>
+                <Alert
+                  variant="light"
+                  className="text-center mb-3 recipient-info"
                 >
-                  <InputGroup>
-                    <Form.Control
-                      type="number"
-                      placeholder="0.00"
-                      value={sendAmount}
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                      required
-                      min={
-                        sendCurrency === "USD"
-                          ? MIN_SEND_AMOUNT_USD
-                          : MIN_SEND_AMOUNT_TND
-                      }
-                      step="0.01"
-                      isInvalid={!!amountError}
-                      autoFocus
-                    />
+                  Sending to: <strong>{recipientUser.fullName}</strong> (
+                  {recipientUser.email})
+                </Alert>
+                <Form.Group className="mb-3">
+                  <Form.Label>Select Fund Source:</Form.Label>
+                  <ButtonGroup className="d-flex">
                     <Button
-                      variant="outline-secondary"
-                      onClick={handleSetMaxAmount}
+                      variant={
+                        sendFromSource === "principal"
+                          ? "primary"
+                          : "outline-secondary"
+                      }
+                      onClick={() => setSendFromSource("principal")}
                     >
-                      MAX
+                      Principal ({principalBalanceDisplay.displayValue})
                     </Button>
-                    <InputGroup.Text>{sendCurrency}</InputGroup.Text>
-                  </InputGroup>
-                  <Form.Control.Feedback type="invalid">
-                    {amountError}
-                  </Form.Control.Feedback>
-                </FloatingLabel>
-                {sendCurrency === "USD" &&
-                  parseFloat(sendAmount) > 0 &&
-                  !amountError && (
-                    <Form.Text className="text-muted d-block text-end">
-                      ~
-                      {formatCurrency(
-                        parseFloat(sendAmount) * TND_TO_USD_RATE,
-                        "TND"
-                      )}
-                    </Form.Text>
-                  )}
-              </Form.Group>
-            </Form>
-          )}
-          {modalStep === 3 && recipientUser && (
-            <div className="confirmation-details">
-              <h5 className="text-center mb-3">Confirm Transaction:</h5>
-              {sendError && <Alert variant="danger">{sendError}</Alert>}
-              {sendSuccess && <Alert variant="success">{sendSuccess}</Alert>}
-              <ListGroup variant="flush" className="mb-3">
-                <ListGroup.Item className="d-flex justify-content-between">
-                  <span>To:</span>
-                  <strong>
-                    {recipientUser.fullName} ({recipientUser.email})
-                  </strong>
-                </ListGroup.Item>
-                <ListGroup.Item className="d-flex justify-content-between">
-                  <span>Amount to Send:</span>
-                  <strong>
-                    {formatCurrency(parseFloat(sendAmount), sendCurrency)}
-                  </strong>
-                </ListGroup.Item>
-                <ListGroup.Item className="d-flex justify-content-between">
-                  <span>Transfer Fee ({TRANSFER_FEE_PERCENT}%):</span>
-                  <strong className="text-warning">
-                    - {formatCurrency(transferFee, sendCurrency)}
-                  </strong>
-                </ListGroup.Item>
-                <ListGroup.Item className="d-flex justify-content-between total-amount pt-3 mt-2 border-top">
-                  <span>Total Deducted (TND):</span>
-                  <strong className="fs-5 text-danger">
-                    {formatCurrency(totalDeductedTND, "TND")}
-                  </strong>
-                </ListGroup.Item>
-              </ListGroup>
-            </div>
-          )}
+                    <Button
+                      variant={
+                        sendFromSource === "seller"
+                          ? "primary"
+                          : "outline-secondary"
+                      }
+                      onClick={() => setSendFromSource("seller")}
+                      disabled={!(user?.sellerAvailableBalance > 0)}
+                    >
+                      Seller ({sellerAvailableBalanceDisplay.displayValue})
+                    </Button>
+                  </ButtonGroup>
+                </Form.Group>
+              </div>
+            )}
+          {modalStep === 3 &&
+            recipientUser && ( // This is Amount step
+              <Form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  goToNextStep();
+                }}
+              >
+                <Alert
+                  variant="light"
+                  className="text-center mb-3 recipient-info"
+                >
+                  Sending to: <strong>{recipientUser.fullName}</strong> (
+                  {recipientUser.email})
+                </Alert>
+                <Form.Group className="mb-3">
+                  <Form.Label>Send Currency:</Form.Label>
+                  <ButtonGroup className="d-flex">
+                    <Button
+                      variant={
+                        sendCurrency === "TND" ? "primary" : "outline-secondary"
+                      }
+                      onClick={() => {
+                        setSendCurrency("TND");
+                        setSendAmount("");
+                        setAmountError(null);
+                      }}
+                    >
+                      TND
+                    </Button>
+                    <Button
+                      variant={
+                        sendCurrency === "USD" ? "primary" : "outline-secondary"
+                      }
+                      onClick={() => {
+                        setSendCurrency("USD");
+                        setSendAmount("");
+                        setAmountError(null);
+                      }}
+                    >
+                      USD
+                    </Button>
+                  </ButtonGroup>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>
+                    Available from{" "}
+                    {sendFromSource === "seller" ? "Seller" : "Principal"} (
+                    {sendCurrency})
+                  </Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={formatCurrency(
+                      sendCurrency === "USD"
+                        ? sendFromSource === "seller"
+                          ? (user?.sellerAvailableBalance || 0) /
+                            TND_TO_USD_RATE
+                          : userBalanceUSD
+                        : sendFromSource === "seller"
+                        ? user?.sellerAvailableBalance || 0
+                        : userBalanceTND,
+                      sendCurrency
+                    )}
+                    readOnly
+                    disabled
+                  />
+                </Form.Group>
+                <Form.Group controlId="sendAmountInput">
+                  <FloatingLabel
+                    label={`Amount to Send (${sendCurrency})`}
+                    className="mb-1"
+                  >
+                    <InputGroup>
+                      <Form.Control
+                        type="number"
+                        placeholder="0.00"
+                        value={sendAmount}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        required
+                        min={
+                          sendCurrency === "USD"
+                            ? MIN_SEND_AMOUNT_USD
+                            : MIN_SEND_AMOUNT_TND
+                        }
+                        step="0.01"
+                        isInvalid={!!amountError}
+                        autoFocus
+                      />
+                      <Button
+                        variant="outline-secondary"
+                        onClick={handleSetMaxAmount}
+                      >
+                        MAX
+                      </Button>
+                      <InputGroup.Text>{sendCurrency}</InputGroup.Text>
+                    </InputGroup>
+                    <Form.Control.Feedback type="invalid">
+                      {amountError}
+                    </Form.Control.Feedback>
+                  </FloatingLabel>
+                  {sendCurrency === "USD" &&
+                    parseFloat(sendAmount) > 0 &&
+                    !amountError && (
+                      <Form.Text className="text-muted d-block text-end">
+                        ~
+                        {formatCurrency(
+                          parseFloat(sendAmount) * TND_TO_USD_RATE,
+                          "TND"
+                        )}
+                      </Form.Text>
+                    )}
+                </Form.Group>
+              </Form>
+            )}
+          {modalStep === 4 &&
+            recipientUser && ( // This is Confirmation Step
+              <div className="confirmation-details">
+                <h5 className="text-center mb-3">Confirm Transaction:</h5>
+                {sendError && <Alert variant="danger">{sendError}</Alert>}
+                {sendSuccess && <Alert variant="success">{sendSuccess}</Alert>}
+                <ListGroup variant="flush" className="mb-3">
+                  <ListGroup.Item className="d-flex justify-content-between">
+                    <span>To:</span>
+                    <strong>
+                      {recipientUser.fullName} ({recipientUser.email})
+                    </strong>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between">
+                    <span>From:</span>
+                    <strong>
+                      {sendFromSource === "seller"
+                        ? "Seller Available Balance"
+                        : "Principal Balance"}
+                    </strong>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between">
+                    <span>Amount to Send:</span>
+                    <strong>
+                      {formatCurrency(parseFloat(sendAmount), sendCurrency)}
+                    </strong>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between">
+                    <span>Transfer Fee ({TRANSFER_FEE_PERCENT}%):</span>
+                    <strong className="text-warning">
+                      - {formatCurrency(transferFee, sendCurrency)}
+                    </strong>
+                  </ListGroup.Item>
+                  <ListGroup.Item className="d-flex justify-content-between total-amount pt-3 mt-2 border-top">
+                    <span>Total Deducted (TND):</span>
+                    <strong className="fs-5 text-danger">
+                      {formatCurrency(totalDeductedTND, "TND")}
+                    </strong>
+                  </ListGroup.Item>
+                </ListGroup>
+              </div>
+            )}
         </Modal.Body>
         <Modal.Footer className="d-flex justify-content-between">
+          {/* Back Button - Common for steps > 1 */}
           {modalStep > 1 && (
             <Button
               variant="outline-secondary"
@@ -1039,7 +1180,9 @@ const Wallet = () => {
               <FaArrowLeft className="me-1" /> Back
             </Button>
           )}
-          {(modalStep === 1 || (modalStep === 3 && !sendSuccess)) && (
+
+          {/* Close Button - Conditional display */}
+          {(modalStep === 1 || (modalStep === 4 && !sendSuccess)) && (
             <Button
               variant="secondary"
               onClick={handleCloseSendModal}
@@ -1048,7 +1191,9 @@ const Wallet = () => {
               Close
             </Button>
           )}
-          {modalStep === 1 && (
+
+          {/* Next/Confirm Buttons - Step specific */}
+          {modalStep === 1 && ( // Recipient Step
             <Button
               variant="primary"
               onClick={goToNextStep}
@@ -1057,7 +1202,13 @@ const Wallet = () => {
               Next <FaArrowRight className="ms-1" />
             </Button>
           )}
-          {modalStep === 2 && (
+          {modalStep === 2 &&
+            user?.sellerAvailableBalance > 0 && ( // Source Selection Step
+              <Button variant="primary" onClick={goToNextStep}>
+                Next <FaArrowRight className="ms-1" />
+              </Button>
+            )}
+          {modalStep === 3 && ( // Amount Step
             <Button
               variant="primary"
               onClick={goToNextStep}
@@ -1071,7 +1222,7 @@ const Wallet = () => {
               Next <FaArrowRight className="ms-1" />
             </Button>
           )}
-          {modalStep === 3 && (
+          {modalStep === 4 && ( // Confirmation Step
             <Button
               variant="success"
               onClick={handleSendConfirm}

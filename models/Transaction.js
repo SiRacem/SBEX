@@ -45,6 +45,7 @@ const TransactionSchema = new Schema({
             'DISPUTE_PAYOUT_SELLER_WON', // دفع تعويض للبائع في حالة فوز النزاع
             'TRANSFER', // تحويل أموال بين المستخدمين (يمكن أن يكون داخلي أو خارجي)
             'ESCROW_RETURNED_MEDIATION_CANCELLED', // إرجاع الأموال من الضمان في حالة إلغاء الوساطة
+            'MEDIATION_FEE_PAID_BY_BUYER', //  عمولة الوساطة مدفوعة من المشتري (عادة من الضمان عند الإلغاء)
         ],
         index: true
     },

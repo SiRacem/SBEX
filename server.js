@@ -550,7 +550,7 @@ io.on('connection', (socket) => {
             console.log(`[Socket Event - leave_ticket_room] Socket ${socket.id} left room for ticket: ${ticketId}`);
         }
     });
-        // --- نهاية الإضافة ---
+    // --- نهاية الإضافة ---
 
     socket.on('disconnect', (reason) => {
         if (socket.userIdForChat) {

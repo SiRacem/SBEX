@@ -122,7 +122,7 @@ const MyMediationRequestsPage = () => {
       buyerRequests?.currentPage &&
       buyerRequests.currentPage !== currentPageLocal
     ) {
-      setCurrentPageLocal(buyerRequests.currentPage);
+      // setCurrentPageLocal(buyerRequests.currentPage);
     }
   }, [buyerRequests?.currentPage, currentPageLocal]);
 
@@ -640,11 +640,15 @@ const MyMediationRequestsPage = () => {
                       {request.product?.title && (
                         <div>Product: {request.product.title}</div>
                       )}
-                      {/* --- هذا الجزء سيعمل الآن بشكل صحيح --- */}
-                      {request.cancellationDetails?.reason && (
-                        <div>Reason: {request.cancellationDetails.reason}</div>
-                      )}
-                      {!request.cancellationDetails?.reason && (
+                      {/* --- تعديل لعرض سبب الإلغاء بشكل صحيح --- */}
+                      {request.resolutionDetails ||
+                      request.cancellationDetails?.reason ? (
+                        <div>
+                          Reason:
+                          {request.resolutionDetails ||
+                            request.cancellationDetails.reason}
+                        </div>
+                      ) : (
                         <div>Reason: Not specified.</div>
                       )}
                     </Alert>
