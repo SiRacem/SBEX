@@ -9,6 +9,8 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const cron = require('node-cron');
 const { releaseDuePendingFunds } = require('./services/pendingFundsReleaseService');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -572,6 +574,17 @@ cron.schedule('*/5 * * * *', async () => {
         console.error('[CRON MASTER] Critical error during scheduled "releaseDuePendingFunds" job:', error);
     }
 });
+app.use(helmet());
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // نافذة زمنية مدتها 15 دقيقة
+    max: 100, // الحد الأقصى: 100 طلب لكل IP خلال الـ 15 دقيقة
+    message: { msg: "Too many requests from this IP, please try again after 15 minutes" },
+    standardHeaders: true, // يضيف Headers قياسية للمتصفح لإعلامه بالحد
+    legacyHeaders: false, // لا يضيف Headers القديمة (X-RateLimit-*)
+});
+
+app.use(apiLimiter);
 
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json());

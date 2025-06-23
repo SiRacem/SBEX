@@ -12,7 +12,22 @@ exports.isAdmin = (req, res, next) => {
     }
 };
 
-// --- [!!!] MIDDLEWARE جديد للتحقق مما إذا كان المستخدم هو الوسيط المعين [!!!] ---
+exports.isSupport = (req, res, next) => {
+    if (req.user && req.user.userRole === 'Support') {
+        return next();
+    }
+    console.warn(`Role check failed: User ${req.user?.email || 'Unknown'} is not Support. Role: ${req.user?.userRole}`);
+    return res.status(403).json({ msg: 'Access denied. Support privileges required.' });
+};
+
+exports.isAdminOrSupport = (req, res, next) => {
+    if (req.user && (req.user.userRole === 'Admin' || req.user.userRole === 'Support')) {
+        return next();
+    }
+    console.warn(`Role check failed: User ${req.user?.email || 'Unknown'} is not Admin/Support. Role: ${req.user?.userRole}`);
+    return res.status(403).json({ msg: 'Access denied. Admin or Support privileges required.' });
+};
+
 exports.isAssignedMediator = async (req, res, next) => {
     try {
         const { mediationRequestId } = req.params;
@@ -99,4 +114,15 @@ exports.canAccessAdminSubChat = async (req, res, next) => {
         console.error("Error in canAccessAdminSubChat middleware:", error);
         res.status(500).json({ msg: "Server error during sub-chat authorization." });
     }
+};
+
+exports.isOwnerOrAdmin = (req, res, next) => {
+    const targetUserId = req.params.userId || req.params.id; // يعمل مع /:userId أو /:id
+    const requesterId = req.user._id;
+    const requesterRole = req.user.userRole;
+
+    if (requesterRole === 'Admin' || (targetUserId && requesterId.equals(targetUserId))) {
+        return next();
+    }
+    return res.status(403).json({ msg: 'Forbidden: You do not have permission to access this resource.' });
 };

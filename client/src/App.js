@@ -315,6 +315,10 @@ function App() {
           }
         });
 
+        newSocket.on('server_error', (data) => {
+          toast.error(data.message || 'An unexpected error occurred.');
+        });
+
         socketRef.current = newSocket;
       }
     } else {

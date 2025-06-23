@@ -42,16 +42,19 @@ const {
 } = require('../controllers/mediation.controller');
 const isQualifiedMediator = require('../middlewares/isQualifiedMediator');
 const { isSellerOfMediation, isBuyerOfMediation } = require('../middlewares/mediationPartyCheck');
-// --- مسارات الأدمن ---
 
-// GET /mediation/admin/pending-assignment - جلب الطلبات التي تنتظر تعيين وسيط
+// --- مسارات الأدمن ---
+// جلب الطلبات التي تنتظر تعيين وسيط
 router.get('/admin/pending-assignment', verifyAuth, isAdmin, adminGetPendingAssignmentRequests);
 
 // PUT /mediation/admin/assign/:requestId - تعيين وسيط لطلب محدد
 router.put('/admin/assign/:requestId', verifyAuth, isAdmin, adminAssignMediator);
 
 router.get(
-    '/available-random/:mediationRequestId', verifyAuth, getAvailableRandomMediators // الدالة الجديدة في الـ controller
+    '/available-random/:mediationRequestId',
+    verifyAuth,
+    isSellerOfMediation, // <-- إضافة التحقق من أن الطالب هو البائع
+    getAvailableRandomMediators
 );
 
 // --- [!!!] ROUTE جديد للبائع لتعيين الوسيط المختار [!!!] ---

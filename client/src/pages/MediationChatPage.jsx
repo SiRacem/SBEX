@@ -64,6 +64,7 @@ import "./MediationChatPage.css";
 import RatingForm from "../components/ratings/RatingForm";
 import { getRatingsForMediationAction } from "../redux/actions/ratingAction";
 import TypingIndicator from "../components/chat/TypingIndicator";
+import DOMPurify from "dompurify"; // <--- [تعديل] إضافة هذا الاستيراد
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -123,6 +124,31 @@ const formatMessageTimestampForDisplay = (timestamp) => {
   );
 };
 
+// --- [تعديل] إضافة مكون جديد لتحليل وعرض الرسائل الآمن
+const SafeHtmlRenderer = ({ htmlContent }) => {
+  // تطهير الـ HTML كإجراء وقائي
+  const cleanHtml = DOMPurify.sanitize(htmlContent, {
+    USE_PROFILES: { html: true },
+  });
+
+  // تقسيم النص بناءً على الأنماط التي نريد التعامل معها
+  const parts = cleanHtml.split(/(\*\*.*?\*\*|🛡️)/g).filter(Boolean);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={index}>{part.slice(2, -2)}</strong>;
+        }
+        if (part === "🛡️") {
+          return <FaShieldAlt key={index} className="mx-1" />;
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </>
+  );
+};
+
 const ParticipantAvatar = ({ participant, size = 40 }) => {
   if (!participant) return null;
 
@@ -155,10 +181,12 @@ const ParticipantAvatar = ({ participant, size = 40 }) => {
     roleIcon = (
       <FaStore className="participant-role-icon seller-icon" title="Seller" />
     );
-  }
-  else if (role.includes("buyer")) {
+  } else if (role.includes("buyer")) {
     roleIcon = (
-      <PiHandCoinsDuotone className="participant-role-icon buyer-icon" title="buyer" />
+      <PiHandCoinsDuotone
+        className="participant-role-icon buyer-icon"
+        title="buyer"
+      />
     );
   }
 
@@ -254,31 +282,25 @@ const MediationChatPage = () => {
   const subChatEmojiPickerRef = useRef(null);
   const subChatEmojiButtonRef = useRef(null);
 
-  // --- [!!!] بداية دالة جديدة لمعالجة اختيار الملف في الشات الفرعي [!!!] ---
   const handleSubChatFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         toast.error("File is too large. Maximum size is 5MB.");
         return;
       }
       setSubChatFile(file);
       setSubChatImagePreview(URL.createObjectURL(file));
-      // لا تقم بمسح حقل النص هنا
     }
   };
 
-  // --- [!!!] دالة لإزالة الصورة المختارة [!!!] ---
   const handleRemoveSubChatImage = () => {
     setSubChatFile(null);
     setSubChatImagePreview(null);
-    // Clear the file input so the same file can be selected again
     if (subChatFileInputRef.current) {
       subChatFileInputRef.current.value = "";
     }
   };
-  // --- [!!!] نهاية الدوال الجديدة [!!!] ---
 
   const adminSubChatsList = useMemo(() => {
     return adminSubChats?.list || [];
@@ -761,20 +783,14 @@ const MediationChatPage = () => {
     }
   };
 
-  // --- [!!!] بداية التعديل الجوهري لدالة الإرسال [!!!] ---
   const handleSendSubChatMessage = async (e) => {
     e.preventDefault();
     const textToSend = newSubChatMessage.trim();
-
-    // يجب أن يكون هناك نص أو صورة على الأقل للإرسال
     if (!textToSend && !subChatFile) return;
-
     if (!socket?.connected || !activeSubChatId) {
       toast.error("Not connected to chat.");
       return;
     }
-
-    // إيقاف مؤشر الكتابة إذا كان يعمل
     if (subChatTypingTimeoutRef.current) {
       clearTimeout(subChatTypingTimeoutRef.current);
       subChatTypingTimeoutRef.current = null;
@@ -784,10 +800,7 @@ const MediationChatPage = () => {
         userId: currentUserId,
       });
     }
-
     let imageUrlToSend = null;
-
-    // رفع الصورة إذا كانت موجودة
     if (subChatFile) {
       try {
         const formData = new FormData();
@@ -806,24 +819,18 @@ const MediationChatPage = () => {
         toast.error(
           uploadError.response?.data?.msg || "Sub-chat image upload failed."
         );
-        // لا توقف العملية، ربما يريد المستخدم إرسال النص فقط
       }
     }
-
-    // إرسال الرسالة عبر Socket.IO مع النص والصورة (إن وجدت)
     socket.emit("sendAdminSubChatMessage", {
       mediationRequestId,
       subChatId: activeSubChatId,
-      messageText: textToSend, // <== نرسل النص الذي تم التقاطه
+      messageText: textToSend,
       imageUrl: imageUrlToSend,
     });
-
-    // إعادة تعيين الحالة بعد الإرسال
     setNewSubChatMessage("");
-    handleRemoveSubChatImage(); // هذه الدالة ستعيد تعيين الصورة والمعاينة
+    handleRemoveSubChatImage();
     setShowSubChatEmojiPicker(false);
   };
-  // --- [!!!] نهاية التعديل الجوهري لدالة الإرسال [!!!] ---
 
   const partiesNotYetRatedByCurrentUser = useMemo(() => {
     if (
@@ -1641,19 +1648,7 @@ const MediationChatPage = () => {
                         className="message-item system-message text-center my-2 border-0"
                       >
                         <div className="d-inline-block p-2 rounded bg-light-subtle text-muted small">
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: msg.message
-                                .replace(
-                                  /\*\*(.*?)\*\*/g,
-                                  "<strong>$1</strong>"
-                                )
-                                .replace(
-                                  /🛡️/g,
-                                  '<i class="fa-solid fa-shield-halved"></i>'
-                                ),
-                            }}
-                          />
+                          <SafeHtmlRenderer htmlContent={msg.message} />
                           <div className="message-timestamp mt-1">
                             {formatMessageTimestampForDisplay(msg.timestamp)}
                           </div>
@@ -2096,7 +2091,6 @@ const MediationChatPage = () => {
               currentUserId={currentUserId}
             />
           </div>
-          {/* --- [!!!] بداية منطقة المعاينة الجديدة والمحسنة [!!!] --- */}
           {subChatImagePreview && (
             <div className="subchat-image-preview-container">
               <Image
@@ -2119,7 +2113,6 @@ const MediationChatPage = () => {
               </Button>
             </div>
           )}
-          {/* --- [!!!] نهاية منطقة المعاينة الجديدة والمحسنة [!!!] --- */}
           <Form onSubmit={handleSendSubChatMessage} className="w-100">
             <Row className="g-2 align-items-center">
               <Col xs="auto">
@@ -2137,7 +2130,7 @@ const MediationChatPage = () => {
                   accept="image/*"
                   ref={subChatFileInputRef}
                   style={{ display: "none" }}
-                  onChange={handleSubChatFileSelect} // <-- الربط هنا
+                  onChange={handleSubChatFileSelect}
                 />
                 <Button
                   variant="light"

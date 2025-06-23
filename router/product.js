@@ -1,6 +1,6 @@
 const express = require('express');
 const { verifyAuth } = require('../middlewares/verifyAuth');
-const { isAdmin } = require('../middlewares/roleCheck');
+const { isAdmin, isOwnerOrAdmin } = require('../middlewares/roleCheck');
 
 const {
     addProduct,
@@ -33,7 +33,7 @@ router.get('/:productId/bids', getProductBids); // جلب مزايدات منت�
 router.post('/add_product', verifyAuth, addProduct);        // إضافة منتج
 router.put('/update_products/:id', verifyAuth, updateProducts); // تحديث منتج
 router.delete('/delete_products/:id', verifyAuth, deleteProducts); // حذف منتج
-router.get('/get_product_counts/:userId', verifyAuth, getProductCountsByUser); // إحصائيات منتجات مستخدم
+router.get('/get_product_counts/:userId', verifyAuth, isOwnerOrAdmin, getProductCountsByUser); // إحصائيات منتجات مستخدم
 router.put('/:productId/like', verifyAuth, toggleLikeProduct); // تبديل الإعجاب بمنتج
 router.post('/:productId/bids', verifyAuth, placeBidOnProduct); // وضع مزايدة على منتج
 

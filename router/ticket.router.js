@@ -1,7 +1,8 @@
 // server/router/ticket.router.js
 const express = require('express');
 const router = express.Router();
-const { verifyAuth, verifyAdmin, verifySupport, verifyAdminOrSupport } = require('../middlewares/verifyAuth');
+const { verifyAuth } = require('../middlewares/verifyAuth');
+const { isAdmin, isSupport, isAdminOrSupport } = require('../middlewares/roleCheck'); // <--- [!!! تعديل مهم]
 const { handleFileUpload } = require('../middlewares/fileUpload');
 const ticketController = require('../controllers/ticket.controller');
 
@@ -36,14 +37,14 @@ router.put('/tickets/:ticketId/close', verifyAuth, ticketController.closeTicketB
 router.get(
     '/panel/tickets',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     ticketController.getAllTicketsForAdmin
 );
 // ***** مسار الأدمن لجلب تذكرة معينة *****
 router.get(
     '/panel/tickets/:ticketId',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     ticketController.getTicketByIdForAdmin // دالة مختلفة للأدمن
 );
 // ***********************************
@@ -52,26 +53,26 @@ router.get(
 router.post(
     '/panel/tickets/:ticketId/replies',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     handleFileUpload([{ name: 'attachments', maxCount: 5 }]),
     ticketController.addReplyToTicket
 );
 router.put(
     '/panel/tickets/:ticketId/status',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     ticketController.updateTicketStatusBySupport
 );
 router.put(
     '/panel/tickets/:ticketId/priority',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     ticketController.updateTicketPriorityBySupport
 );
 router.put(
     '/panel/tickets/:ticketId/assign',
     verifyAuth,
-    verifyAdminOrSupport,
+    isAdminOrSupport,
     ticketController.assignTicketToSupport
 );
 
