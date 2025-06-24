@@ -1,0 +1,70 @@
+{
+  "sidebar": {
+    "searchPlaceholder": "Rechercher...",
+    "main": "Principal",
+    "wallet": "Portefeuille",
+    "profile": "Profil",
+    "faq": "FAQ",
+    "mediatorHub": "Pôle Médiateur",
+    "myAccountsBids": "Mes Comptes & Enchères",
+    "products": "Produits",
+    "users": "Utilisateurs",
+    "manageFAQ": "Gérer la FAQ",
+    "paymentMethods": "Moyens de Paiement",
+    "manageDeposits": "Gérer les Dépôts",
+    "manageReports": "Gérer les Rapports",
+    "manageTickets": "Gérer les Tickets",
+    "disputedCases": "Litiges en Cours",
+    "mediatorApps": "Candidatures Médiateur",
+    "support": "Support",
+    "myOrders": "Mes Commandes",
+    "logout": "Déconnexion"
+  },
+  "dashboard": {
+    "balances": {
+      "principal": "Solde Principal",
+      "sellerAvailable": "Solde Vendeur Disponible",
+      "onHold": "Solde en Attente"
+    },
+    "currencies": {
+      "TND": "Dinar Tunisien",
+      "USD": "Dollar Américain",
+      "EUR": "Euro"
+    },
+    "activities": {
+      "title": "Activités Récentes",
+      "displaying": "Affichage des {{count}} dernières activités",
+      "noActivities": "Aucune Activité Récente",
+      "description": "Vos activités sur la plateforme apparaîtront ici."
+    },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "mediations": {
+      "title": "Médiations / Messages"
+    },
+    "quickOptions": {
+      "title": "Options Rapides",
+      "settings": "Paramètres & Langue",
+      "news": "Dernières Noutés",
+      "support": "Support Technique",
+      "logout": "Déconnexion"
+    },
+    "settings": {
+      "title": "Paramètres",
+      "languageTitle": "Langue de la plateforme"
+    }
+  },
+  "faq": {
+    "title": "Conseils et réponses de notre équipe",
+    "subtitle": "Votre ressource incontournable pour l'aide et l'information.",
+    "searchPlaceholder": "Rechercher des articles...",
+    "backToCategories": "Retour à toutes les catégories",
+    "noResults": "Aucun résultat trouvé pour \"{{query}}\". Essayez un autre terme de recherche.",
+    "noFaqs": "Aucune FAQ disponible pour le moment.",
+    "listUpdated": "La liste a été mise à jour."
+  },
+  "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
+  "forSellersOnly": "Pour les vendeurs uniquement.",
+  "pleaseLogin": "Veuillez vous connecter pour continuer."
+}

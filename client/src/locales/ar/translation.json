@@ -1,0 +1,70 @@
+{
+  "sidebar": {
+    "searchPlaceholder": "ابحث...",
+    "main": "الرئيسية",
+    "wallet": "المحفظة",
+    "profile": "الملف الشخصي",
+    "faq": "الأسئلة الشائعة",
+    "mediatorHub": "مركز الوسيط",
+    "myAccountsBids": "حساباتي ومزايداتي",
+    "products": "المنتجات",
+    "users": "المستخدمون",
+    "manageFAQ": "إدارة الأسئلة",
+    "paymentMethods": "طرق الدفع",
+    "manageDeposits": "إدارة الإيداعات",
+    "manageReports": "إدارة التقارير",
+    "manageTickets": "إدارة التذاكر",
+    "disputedCases": "القضايا المتنازع عليها",
+    "mediatorApps": "طلبات الوسطاء",
+    "support": "الدعم الفني",
+    "myOrders": "طلباتي",
+    "logout": "تسجيل الخروج"
+  },
+  "dashboard": {
+    "balances": {
+      "principal": "الرصيد الأساسي",
+      "sellerAvailable": "الرصيد المتاح للبائع",
+      "onHold": "الرصيد المعلّق"
+    },
+    "currencies": {
+      "TND": "دينار تونسي",
+      "USD": "دولار أمريكي",
+      "EUR": "يورو"
+    },
+    "activities": {
+      "title": "الأنشطة الأخيرة",
+      "displaying": "عرض آخر {{count}} أنشطة",
+      "noActivities": "لا توجد أنشطة حديثة",
+      "description": "ستظهر أنشطتك على المنصة هنا."
+    },
+    "notifications": {
+      "title": "الإشعارات"
+    },
+    "mediations": {
+      "title": "الوساطات / الرسائل"
+    },
+    "quickOptions": {
+      "title": "خيارات سريعة",
+      "settings": "الإعدادات واللغة",
+      "news": "آخر الأخبار والتحديثات",
+      "support": "الدعم الفني",
+      "logout": "تسجيل الخروج"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "languageTitle": "لغة المنصة"
+    }
+  },
+  "faq": {
+    "title": "نصائح وإجابات من فريقنا",
+    "subtitle": "مرجعك الأساسي للمساعدة والمعلومات.",
+    "searchPlaceholder": "ابحث عن مقالات...",
+    "backToCategories": "العودة إلى جميع الفئات",
+    "noResults": "لا توجد نتائج للبحث عن \"{{query}}\". جرب كلمة بحث أخرى.",
+    "noFaqs": "لا توجد أسئلة شائعة متاحة في الوقت الحالي.",
+    "listUpdated": "تم تحديث القائمة."
+  },
+  "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
+  "forSellersOnly": "هذه الميزة للبائعين فقط.",
+  "pleaseLogin": "الرجاء تسجيل الدخول للمتابعة."
+}

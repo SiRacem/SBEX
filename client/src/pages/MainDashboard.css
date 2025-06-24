@@ -64,3 +64,79 @@
 
 /* Responsive adjustments (تبقى كما هي) */
 @media (max-width: 768px) { /* ... */ }
+
+/* For elements where we use me-* (margin-end) classes from Bootstrap */
+[dir="rtl"] .comms-link .icon,
+[dir="rtl"] .options-card .option-item .icon {
+    /* Bootstrap's me-3 class becomes margin-left in RTL. We need to reverse it. */
+    margin-right: 0 !important;
+    margin-left: 1rem !important;
+    /* The value of me-3 is 1rem */
+}
+
+/* For the notification badge that uses ms-* (margin-start) */
+[dir="rtl"] .notification-link-badge {
+    margin-left: 0 !important;
+    margin-right: 8px !important;
+}
+
+/* For the balance boxes, if icons are on the right */
+[dir="rtl"] .balance-box .fa-wallet,
+[dir="rtl"] .seller-box .fa-balancescale,
+[dir="rtl"] .seller-box .fa-hourglasshalf {
+    /* This assumes they are part of a flex container and on the end.
+       The flex container itself will handle the reordering.
+       No change might be needed if using justify-content-between. */
+}
+
+/* For the recent activities section */
+[dir="rtl"] .transaction-icon-dash {
+    /* The me-3 class will become margin-left, which is what we want. */
+    /* But if it's not working, we override it */
+    margin-right: 0 !important;
+    margin-left: 1rem !important;
+}
+
+[dir="rtl"] .transaction-title-dash .ms-2 {
+    /* Bootstrap's ms-2 will become margin-right, which is correct. */
+    /* No change needed unless it's not working. */
+}
+
+/* For the status badge icon */
+[dir="rtl"] .status-badge-dash .me-1 {
+    margin-right: 0 !important;
+    margin-left: 0.25rem !important;
+    /* The value of me-1 */
+}
+
+/* --- A more robust, modern solution using logical properties --- */
+/* You can replace all me-* and ms-* classes in your JSX
+   with a custom class and apply logical properties. */
+
+.icon-with-spacing {
+    /* This replaces me-3 or ms-3 */
+    margin-inline-end: 1rem;
+    /* This means margin-right in LTR, and margin-left in RTL */
+}
+
+/* --- [!] RTL Specific Adjustments for MainDashboard --- */
+
+[dir="rtl"] .d-flex .me-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+}
+
+[dir="rtl"] .d-flex .me-3 {
+    margin-right: 0 !important;
+    margin-left: 1rem !important;
+}
+
+[dir="rtl"] .d-flex .ms-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+}
+
+[dir="rtl"] .d-flex .ms-3 {
+    margin-left: 0 !important;
+    margin-right: 1rem !important;
+}

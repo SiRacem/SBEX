@@ -1,0 +1,69 @@
+{
+  "sidebar": {
+    "searchPlaceholder": "لوّج...",
+    "main": "الرئيسية",
+    "wallet": "البورطفاي",
+    "profile": "البروفيل",
+    "faq": "أسئلة شايعة",
+    "mediatorHub": "مركز الوسيط",
+    "myAccountsBids": "كونتواتي ومزايداتي",
+    "products": "المنتوجات",
+    "users": "المستخدمين",
+    "manageFAQ": "جيستيون الأسئلة",
+    "paymentMethods": "طرق الخلاص",
+    "manageDeposits": "جيستيون الصبان",
+    "manageReports": "جيستيون التقارير",
+    "manageTickets": "جيستيون التذاكر",
+    "disputedCases": "القضايا المعارضة",
+    "mediatorApps": "طلبات الوسطاء",
+    "support": "الدعم الفني",
+    "myOrders": "طلباتي",
+    "logout": "الخروج"
+  },
+  "dashboard": {
+    "balances": {
+      "principal": "الرصيد الأساسي",
+      "sellerAvailable": "رصيد البايع الموجود",
+      "onHold": "الرصيد المجمّد"
+    },
+    "currencies": {
+      "TND": "دينار",
+      "USD": "دولار"
+    },
+    "activities": {
+      "title": "الأنشطة لخرانية",
+      "displaying": "عرض آخر {{count}} نشاطات",
+      "noActivities": "ما فماش أنشطة جديدة",
+      "description": "أنشطتك في المنصة باش تظهر هوني."
+    },
+    "notifications": {
+      "title": "الإشعارات"
+    },
+    "mediations": {
+      "title": "الوساطات / الميساجات"
+    },
+    "quickOptions": {
+      "title": "خيارات سريعة",
+      "settings": "الريڨلاج واللغة",
+      "news": "آخر الأخبار والتحديثات",
+      "support": "الدعم الفني",
+      "logout": "الخروج"
+    },
+    "settings": {
+      "title": "الريڨلاج",
+      "languageTitle": "لغة المنصة"
+    }
+  },
+  "faq": {
+    "title": "نصايح و جوابات من ليكيب متاعنا",
+    "subtitle": "البلاصة وين تلقى العون والمعلومة.",
+    "searchPlaceholder": "لوّج على مقالات...",
+    "backToCategories": "ارجع للتصنيفات الكل",
+    "noResults": "ما لقينا شي على \"{{query}}\". جرّب كلمة أخرى.",
+    "noFaqs": "ما فماش أسئلة متداولة توّا.",
+    "listUpdated": "القائمة تحدثت."
+  },
+  "confirmLogout": "بالرسمي تحب تخرج؟",
+  "forSellersOnly": "للبائعين فقط.",
+  "pleaseLogin": "الرجاء تسجيل الدخول."
+}

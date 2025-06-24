@@ -1,13 +1,8 @@
 // src/pages/MainDashboard.jsx
-import React, {
-  useEffect,
-  useMemo,
-  useCallback,
-  useState,
-  useContext,
-} from "react";
+import React, { useEffect, useCallback, useState, useContext } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   FaWallet,
   FaUserCircle,
@@ -19,13 +14,11 @@ import {
   FaBalanceScale,
   FaHourglassHalf,
   FaReceipt,
-  FaArrowUp,
-  FaArrowDown,
-  FaInfoCircle,
   FaGift,
   FaCheckCircle,
   FaQuestionCircle,
   FaExternalLinkAlt,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
@@ -34,7 +27,7 @@ import {
   FiSend,
   FiInbox,
 } from "react-icons/fi";
-import { logoutUser, getProfile } from "../redux/actions/userAction"; // getProfile لا يزال مستورداً ولكنه غير مستخدم مباشرة هنا
+import { logoutUser } from "../redux/actions/userAction";
 import { getNotifications } from "../redux/actions/notificationAction";
 import {
   Badge,
@@ -48,15 +41,17 @@ import {
   Button,
   OverlayTrigger,
   Tooltip,
+  Offcanvas,
 } from "react-bootstrap";
 import useCurrencyDisplay from "../hooks/useCurrencyDisplay";
 import { getMyMediationSummaries } from "../redux/actions/mediationAction";
+import { getTransactionsForDashboard } from "../redux/actions/transactionAction";
 import PendingFundsDetailsModal from "../components/commun/PendingFundsDetailsModal";
 import TransactionDetailsProduct from "../components/commun/TransactionDetailsProduct";
-import { getTransactionsForDashboard } from "../redux/actions/transactionAction";
+import LanguageSwitcher from "../components/commun/LanguageSwitcher";
+import { SocketContext } from "../App";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
-import { SocketContext } from "../App"; // SocketContext سيتم توفيره من App.js
 
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -77,9 +72,10 @@ const formatCurrency = (amount, currencyCode = "TND") => {
 };
 
 const MainDashboard = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const socket = useContext(SocketContext); // احصل على الـ socket من الـ Context
+  const socket = useContext(SocketContext);
 
   const currentUserState = useSelector((state) => state.userReducer);
   const user = currentUserState?.user;
@@ -131,13 +127,15 @@ const MainDashboard = () => {
     useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] =
     useState(null);
+  const [showSettingsOffcanvas, setShowSettingsOffcanvas] = useState(false);
 
   const handleLogout = useCallback(() => {
-    if (window.confirm("Are you sure you want to logout?")) {
+    if (window.confirm(t("confirmLogout"))) {
+      // استخدام الترجمة للتأكيد
       dispatch(logoutUser());
       navigate("/login");
     }
-  }, [dispatch, navigate]);
+  }, [dispatch, navigate, t]);
 
   useEffect(() => {
     if (isAuth && user?._id) {
@@ -147,30 +145,19 @@ const MainDashboard = () => {
     }
   }, [dispatch, isAuth, user?._id]);
 
-  // تم نقل منطق الاستماع لـ 'dashboard_transactions_updated' و 'user_balances_updated'
-  // إلى App.js ليكون مركزيًا ويتجنب إعادة ربط المستمعين بشكل غير ضروري هنا
-  // أو استدعاء getProfile بشكل متكرر من هنا.
-  // سيعمل App.js على تحديث البيانات ذات الصلة في Redux store،
-  // و MainDashboard سيُعاد عرضه تلقائيًا بسبب التغييرات في useSelector.
-
-  // مثال: إذا تم تحديث الأرصدة عبر socket في App.js وتحديث user في Redux،
-  // فإن useCurrencyDisplay سيُعاد حسابه تلقائيًا.
-  // إذا تم تحديث dashboardTransactions عبر socket في App.js،
-  // فإن useSelector لـ dashboardTransactions سيُحدِّث الواجهة هنا.
-
   const handleShowPendingFundsDetails = () => {
     if (user?.userRole === "Vendor" || user?.userRole === "Admin")
       setShowPendingFundsModal(true);
-    else toast.info("For sellers.");
+    else toast.info(t("forSellersOnly"));
   };
 
   const handleShowTransactionDetails = useCallback((transaction) => {
-    console.log("handleShowTransactionDetails called with:", transaction);
     setSelectedTransactionForDetails(transaction);
     setShowTransactionDetailsModal(true);
   }, []);
 
   const renderTransactionItem = (tx) => {
+    // ... (منطق renderTransactionItem كما هو)
     if (!tx || !tx._id) return null;
     let IconComponent = FaReceipt;
     let iconColorClass = "text-secondary";
@@ -306,7 +293,6 @@ const MainDashboard = () => {
       Math.abs(displayAmount),
       displayCurrency
     );
-
     return (
       <ListGroup.Item
         key={tx._id}
@@ -375,13 +361,7 @@ const MainDashboard = () => {
     );
   };
 
-  // --- بداية قسم التحقق من حالة التحميل والمستخدم ---
-  // مهم جداً لتقديم تجربة مستخدم جيدة أثناء التحميل ومنع الاختفاء المفاجئ
-  if (userLoading && !user && !currentUserState.error) {
-    // إذا كان التحميل جاري ولم يتم جلب المستخدم بعد ولم يكن هناك خطأ بعد
-    console.log(
-      "[MainDashboard] Rendering global loading state (user loading, no user yet)"
-    );
+  if (userLoading && !user)
     return (
       <Container
         fluid
@@ -393,16 +373,10 @@ const MainDashboard = () => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <span className="ms-3 fs-5">Loading Dashboard Data...</span>
+        <span className="ms-3 fs-5">Loading Dashboard...</span>
       </Container>
     );
-  }
-
-  if (!isAuth && !userLoading) {
-    // إذا لم يكن مصادقًا عليه وانتهى التحميل
-    console.log("[MainDashboard] Not authenticated, navigating to login.");
-    // لا تعرض شيئاً هنا، ProtectedRoute في App.js سيعيد التوجيه
-    // أو يمكنك عرض رسالة "الرجاء تسجيل الدخول" إذا كان هذا المكون يُعرض بطريقة ما بدون ProtectedRoute
+  if (!isAuth && !userLoading)
     return (
       <Container fluid className="py-4 text-center">
         <Alert variant="warning">Please login to view the dashboard.</Alert>
@@ -411,68 +385,7 @@ const MainDashboard = () => {
         </Button>
       </Container>
     );
-  }
-
-  if (isAuth && !user && !userLoading && currentUserState.error) {
-    // مصادق عليه ولكن فشل جلب بيانات المستخدم
-    console.log(
-      "[MainDashboard] Error fetching user profile:",
-      currentUserState.error
-    );
-    return (
-      <Container fluid className="py-4 text-center">
-        <Alert variant="danger">
-          Error loading your profile: {currentUserState.error}. Please try
-          <Button
-            variant="link"
-            onClick={() => dispatch(getProfile())}
-            className="p-0 ms-1 me-1"
-          >
-            retrying
-          </Button>
-          or logging out and in again.
-        </Alert>
-        <Button onClick={handleLogout} variant="outline-secondary">
-          Logout
-        </Button>
-      </Container>
-    );
-  }
-
-  if (isAuth && !user && !userLoading && !currentUserState.error) {
-    // مصادق عليه ولكن لا يوجد بيانات مستخدم لسبب غير معروف (نادر جداً)
-    console.log(
-      "[MainDashboard] Authenticated, but no user data and no error. This is unusual."
-    );
-    return (
-      <Container fluid className="py-4 text-center">
-        <Alert variant="info">
-          Loading user data... If this persists, please try refreshing or
-          logging out and in again.
-        </Alert>
-        <Button
-          onClick={handleLogout}
-          variant="outline-secondary"
-          className="me-2"
-        >
-          Logout
-        </Button>
-        <Button
-          onClick={() => window.location.reload()}
-          variant="outline-primary"
-        >
-          Refresh Page
-        </Button>
-      </Container>
-    );
-  }
-
-  if (!user) {
-    // حالة افتراضية إذا لم يتمكن أي من الشروط السابقة من التعامل مع الوضع
-    console.log("[MainDashboard] No user data available to render dashboard.");
-    return null; // أو عرض مكون تحميل/خطأ عام أكثر
-  }
-  // --- نهاية قسم التحقق من حالة التحميل والمستخدم ---
+  if (!user) return null;
 
   return (
     <div className="dashboard-container container-fluid py-4">
@@ -482,11 +395,12 @@ const MainDashboard = () => {
         </Alert>
       )}
       <Row className="g-4 mb-4">
+        {/* Balance and Comms Cards */}
         <Col lg={4} md={6}>
           <Card className="info-box balance-box text-white p-3 rounded shadow-sm h-100">
             <Card.Body className="d-flex flex-column">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="mb-0">Principal Balance</h5>
+                <h5 className="mb-0">{t("dashboard.balances.principal")}</h5>
                 <FaWallet size={24} />
               </div>
               <h3 className="display-6 fw-bold mb-1">
@@ -507,7 +421,9 @@ const MainDashboard = () => {
             <Card className="info-box seller-box text-white p-3 rounded shadow-sm h-100">
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center mb-1">
-                  <h5 className="mb-0">Seller Available</h5>
+                  <h5 className="mb-0">
+                    {t("dashboard.balances.sellerAvailable")}
+                  </h5>
                   <FaBalanceScale size={24} />
                 </div>
                 <h4 className="fw-bold mb-1">
@@ -518,25 +434,19 @@ const MainDashboard = () => {
                 </p>
                 <hr className="border-light opacity-50 my-2" />
                 <div className="d-flex justify-content-between align-items-center mb-1">
-                  <h5 className="mb-0">On Hold Balance</h5>
+                  <h5 className="mb-0">{t("dashboard.balances.onHold")}</h5>
                   <div className="d-flex align-items-center">
                     <FaHourglassHalf size={20} className="me-2" />
-                    {user.sellerPendingBalance &&
-                      parseFloat(
-                        String(user.sellerPendingBalance).replace(
-                          /[^\d.-]/g,
-                          ""
-                        )
-                      ) > 0 && (
-                        <Button
-                          variant="link"
-                          className="p-0 text-white-75 icon-button-hover"
-                          onClick={handleShowPendingFundsDetails}
-                          title="View On Hold Details"
-                        >
-                          <FaInfoCircle size={18} />
-                        </Button>
-                      )}
+                    {user.sellerPendingBalance > 0 && (
+                      <Button
+                        variant="link"
+                        className="p-0 text-white-75 icon-button-hover"
+                        onClick={handleShowPendingFundsDetails}
+                        title="View On Hold Details"
+                      >
+                        <FaInfoCircle size={18} />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <h4 className="fw-bold mb-1">
@@ -560,7 +470,9 @@ const MainDashboard = () => {
                 className="comms-link d-flex align-items-center text-decoration-none mb-3 position-relative"
               >
                 <FaBell size={22} className="me-3 text-primary icon" />
-                <span className="link-text">Notifications</span>
+                <span className="link-text">
+                  {t("dashboard.notifications.title")}
+                </span>
                 {!notificationsLoading && unreadCount > 0 && (
                   <Badge pill bg="danger" className="notification-link-badge">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -581,7 +493,9 @@ const MainDashboard = () => {
                 className="comms-link d-flex align-items-center text-decoration-none mt-3 position-relative"
               >
                 <FaComments size={22} className="me-3 text-success icon" />
-                <span className="link-text">Mediations / Messages</span>
+                <span className="link-text">
+                  {t("dashboard.mediations.title")}
+                </span>
                 {!mediationSummariesLoading &&
                   totalUnreadMediationMessages > 0 && (
                     <Badge
@@ -611,10 +525,14 @@ const MainDashboard = () => {
         <Col lg={8}>
           <Card className="shadow-sm mb-4 h-100 recent-transactions-card">
             <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-              <h5 className="mb-0 text-secondary">Recent Activities</h5>
+              <h5 className="mb-0 text-secondary">
+                {t("dashboard.activities.title")}
+              </h5>
               {!transactionsLoading && !transactionsError && (
                 <span className="text-muted small">
-                  Displaying last {dashboardTransactions.length} activities
+                  {t("dashboard.activities.displaying", {
+                    count: dashboardTransactions.length,
+                  })}
                 </span>
               )}
             </Card.Header>
@@ -644,9 +562,11 @@ const MainDashboard = () => {
                   style={{ minHeight: "200px" }}
                 >
                   <FaReceipt size={40} className="text-muted opacity-50 mb-3" />
-                  <h6 className="text-muted fw-normal">No Recent Activities</h6>
+                  <h6 className="text-muted fw-normal">
+                    {t("dashboard.activities.noActivities")}
+                  </h6>
                   <p className="text-muted small mb-0">
-                    Your platform activities will appear here.
+                    {t("dashboard.activities.description")}
                   </p>
                 </div>
               )}
@@ -656,9 +576,20 @@ const MainDashboard = () => {
         <Col lg={4}>
           <Card className="shadow-sm options-card">
             <Card.Header className="bg-white text-center">
-              <h5 className="mb-0 text-secondary">Quick Options</h5>
+              <h5 className="mb-0 text-secondary">
+                {t("dashboard.quickOptions.title")}
+              </h5>
             </Card.Header>
             <ListGroup variant="flush">
+              <ListGroup.Item
+                action
+                onClick={() => setShowSettingsOffcanvas(true)}
+                className="d-flex align-items-center option-item"
+                style={{ cursor: "pointer" }}
+              >
+                <BsGearFill size={20} className="me-3 text-secondary icon" />
+                {t("dashboard.quickOptions.settings")}
+              </ListGroup.Item>
               <ListGroup.Item
                 action
                 as={Link}
@@ -666,7 +597,7 @@ const MainDashboard = () => {
                 className="d-flex align-items-center option-item"
               >
                 <FaNewspaper size={20} className="me-3 text-primary icon" />
-                Latest News & Updates
+                {t("dashboard.quickOptions.news")}
               </ListGroup.Item>
               <ListGroup.Item
                 action
@@ -675,7 +606,7 @@ const MainDashboard = () => {
                 className="d-flex align-items-center option-item"
               >
                 <FaHeadset size={20} className="me-3 text-success icon" />
-                Technical Support
+                {t("dashboard.quickOptions.support")}
               </ListGroup.Item>
               <ListGroup.Item
                 action
@@ -684,7 +615,7 @@ const MainDashboard = () => {
                 style={{ cursor: "pointer" }}
               >
                 <FaSignOutAlt size={20} className="me-3 icon" />
-                Logout
+                {t("dashboard.quickOptions.logout")}
               </ListGroup.Item>
             </ListGroup>
           </Card>
@@ -706,6 +637,23 @@ const MainDashboard = () => {
           transaction={selectedTransactionForDetails}
         />
       )}
+
+      <Offcanvas
+        show={showSettingsOffcanvas}
+        onHide={() => setShowSettingsOffcanvas(false)}
+        placement="end"
+      >
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>{t("dashboard.settings.title")}</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <h6 className="text-muted mb-3">
+            {t("dashboard.settings.languageTitle")}
+          </h6>
+          <LanguageSwitcher as="list" />
+          <hr className="my-4" />
+        </Offcanvas.Body>
+      </Offcanvas>
     </div>
   );
 };

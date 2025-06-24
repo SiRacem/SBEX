@@ -1,0 +1,70 @@
+{
+  "sidebar": {
+    "searchPlaceholder": "Search...",
+    "main": "Main",
+    "wallet": "Wallet",
+    "profile": "Profile",
+    "faq": "FAQ",
+    "mediatorHub": "Mediator Hub",
+    "myAccountsBids": "My Accounts & Bids",
+    "products": "Products",
+    "users": "Users",
+    "manageFAQ": "Manage FAQ",
+    "paymentMethods": "Payment Methods",
+    "manageDeposits": "Manage Deposits",
+    "manageReports": "Manage Reports",
+    "manageTickets": "Manage Tickets",
+    "disputedCases": "Disputed Cases",
+    "mediatorApps": "Mediator Apps",
+    "support": "Support",
+    "myOrders": "My Orders",
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "balances": {
+      "principal": "Principal Balance",
+      "sellerAvailable": "Seller Available",
+      "onHold": "On Hold Balance"
+    },
+    "currencies": {
+      "TND": "TND",
+      "USD": "USD",
+      "EUR": "EUR"
+    },
+    "activities": {
+      "title": "Recent Activities",
+      "displaying": "Displaying last {{count}} activities",
+      "noActivities": "No Recent Activities",
+      "description": "Your platform activities will appear here."
+    },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "mediations": {
+      "title": "Mediations / Messages"
+    },
+    "quickOptions": {
+      "title": "Quick Options",
+      "settings": "Settings & Language",
+      "news": "Latest News & Updates",
+      "support": "Technical Support",
+      "logout": "Logout"
+    },
+    "settings": {
+      "title": "Settings",
+      "languageTitle": "Platform Language"
+    }
+  },
+  "faq": {
+    "title": "Advice and answers from our Team",
+    "subtitle": "Your go-to resource for help and information.",
+    "searchPlaceholder": "Search for articles...",
+    "backToCategories": "Back to All Categories",
+    "noResults": "No results found for \"{{query}}\". Try a different search term.",
+    "noFaqs": "No FAQs available at the moment.",
+    "listUpdated": "The list has been updated."
+  },
+  "confirmLogout": "Are you sure you want to logout?",
+  "forSellersOnly": "For sellers only.",
+  "pleaseLogin": "Please login to continue."
+}

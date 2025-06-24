@@ -1,7 +1,9 @@
 // src/components/layout/Sidebar.jsx
 
-import React, { useState, useCallback, useEffect } from "react"; // أضفت useEffect
-import { Link, NavLink, useLocation } from "react-router-dom"; // <--- أضفت useLocation
+import React, { useState, useCallback, useEffect } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next"; // <-- [!] الخطوة 1: استيراد الهوك
+
 import {
   FaHome,
   FaWallet,
@@ -17,42 +19,40 @@ import {
   FaClipboardList,
   FaChalkboardTeacher,
   FaExclamationTriangle,
+  FaQuestion,
 } from "react-icons/fa";
+import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
 import { ImTicket } from "react-icons/im";
 import { useSelector, useDispatch } from "react-redux";
-import { Form, Badge } from "react-bootstrap"; // <--- أضفت Nav و Badge
+import { Form, Badge } from "react-bootstrap";
 import { logoutUser } from "../../redux/actions/userAction";
-import { adminGetDisputedMediationsAction } from "../../redux/actions/mediationAction"; // <--- استيراد الـ action
+import { adminGetDisputedMediationsAction } from "../../redux/actions/mediationAction";
 import "./Sidebar.css";
 
 const logoUrl =
   "https://res.cloudinary.com/draghygoj/image/upload/v1746477147/wmremove-transformed-removebg-preview_adyzjs.png";
 
 const Sidebar = ({ onSearchChange }) => {
+  const { t } = useTranslation(); // <-- [!] الخطوة 2: الحصول على دالة الترجمة
+
   const dispatch = useDispatch();
-  const location = useLocation(); // <--- استخدام hook useLocation
   const [searchTerm, setSearchTerm] = useState("");
 
   const user = useSelector((state) => state.userReducer.user);
   const userRole = user?.userRole;
   const isMediatorQualified = user?.isMediatorQualified;
 
-  // --- [!!!] جلب عدد النزاعات المعلقة للأدمن [!!!] ---
   const { adminDisputedMediations } = useSelector(
     (state) => state.mediationReducer
   );
-  const disputedCasesCount = adminDisputedMediations?.totalCount ?? 0; // القيمة الافتراضية 0
+  const disputedCasesCount = adminDisputedMediations?.totalCount ?? 0;
 
   useEffect(() => {
-    // جلب عدد النزاعات عندما يكون المستخدم أدمن وعند تحميل الشريط الجانبي
-    // هذا سيضمن أن العدد محدث بشكل معقول
-    // يمكنك تحسين هذا لاحقًا إذا أردت تحديثًا في الوقت الفعلي للـ Badge
     if (userRole === "Admin") {
-      dispatch(adminGetDisputedMediationsAction(1, 1)); // جلب الصفحة الأولى، نحتاج فقط للعدد الإجمالي
+      dispatch(adminGetDisputedMediationsAction(1, 1));
     }
   }, [dispatch, userRole]);
-  // -------------------------------------------------
 
   const handleLogout = useCallback(() => {
     dispatch(logoutUser());
@@ -79,9 +79,10 @@ const Sidebar = ({ onSearchChange }) => {
             className="d-flex sidebar-search-form"
             onSubmit={(e) => e.preventDefault()}
           >
+            {/* [!] الخطوة 3: تطبيق الترجمة على النصوص الثابتة */}
             <Form.Control
               type="search"
-              placeholder="Search..."
+              placeholder={t("sidebar.searchPlaceholder")}
               aria-label="Search"
               className="form-control-sm search-input"
               value={searchTerm}
@@ -91,30 +92,49 @@ const Sidebar = ({ onSearchChange }) => {
         </div>
       </div>
       <nav className="sidebar-nav">
-        <NavLink className="sidebar-link" to="/dashboard" end title="Dashboard">
-          <FaHome className="icon" /> <span className="link-text">Main</span>
+        {/* [!] الخطوة 3: تطبيق الترجمة على النصوص الثابتة */}
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard"
+          end
+          title={t("sidebar.main")}
+        >
+          <FaHome className="icon" />
+          <span className="link-text">{t("sidebar.main")}</span>
         </NavLink>
-        <NavLink className="sidebar-link" to="/dashboard/wallet" title="Wallet">
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/wallet"
+          title={t("sidebar.wallet")}
+        >
           <FaWallet className="icon" />
-          <span className="link-text">Wallet</span>
+          <span className="link-text">{t("sidebar.wallet")}</span>
         </NavLink>
         <NavLink
           className="sidebar-link"
           to="/dashboard/profile"
-          title="Profile"
+          title={t("sidebar.profile")}
         >
           <FaUserCircle className="icon" />
-          <span className="link-text">Profile</span>
+          <span className="link-text">{t("sidebar.profile")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/FAQ"
+          title={t("sidebar.faq")}
+        >
+          <FaQuestion className="icon" />
+          <span className="link-text">{t("sidebar.faq")}</span>
         </NavLink>
 
         {isMediatorQualified && (
           <NavLink
             className="sidebar-link"
             to="/dashboard/mediator/assignments"
-            title="Mediator Dashboard"
+            title={t("sidebar.mediatorHub")}
           >
             <FaChalkboardTeacher className="icon" />
-            <span className="link-text">Mediator Hub</span>
+            <span className="link-text">{t("sidebar.mediatorHub")}</span>
           </NavLink>
         )}
 
@@ -123,10 +143,10 @@ const Sidebar = ({ onSearchChange }) => {
             <NavLink
               className="sidebar-link"
               to="/dashboard/comptes_bids"
-              title="My Accounts & Bids"
+              title={t("sidebar.myAccountsBids")}
             >
               <FaImages className="icon" />
-              <span className="link-text">My Accounts & Bids</span>
+              <span className="link-text">{t("sidebar.myAccountsBids")}</span>
             </NavLink>
           </>
         )}
@@ -136,58 +156,66 @@ const Sidebar = ({ onSearchChange }) => {
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/products"
-              title="Manage Products"
+              title={t("sidebar.products")}
             >
               <FaTasks className="icon" />
-              <span className="link-text">Products</span>
+              <span className="link-text">{t("sidebar.products")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/users"
-              title="Manage Users"
+              title={t("sidebar.users")}
             >
               <FaUsers className="icon" />
-              <span className="link-text">Users</span>
+              <span className="link-text">{t("sidebar.users")}</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/faq"
+              title={t("sidebar.manageFAQ")}
+            >
+              <HiMiniPaintBrush className="icons" />
+              <span className="link-text">{t("sidebar.manageFAQ")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/payment-methods"
-              title="Payment Methods"
+              title={t("sidebar.paymentMethods")}
             >
               <FaMoneyCheckAlt className="icon" />
-              <span className="link-text">Payment Methods</span>
+              <span className="link-text">{t("sidebar.paymentMethods")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/deposits"
-              title="Manage Deposits"
+              title={t("sidebar.manageDeposits")}
             >
               <FaGavel className="icon" />
-              <span className="link-text">Manage Deposits</span>
+              <span className="link-text">{t("sidebar.manageDeposits")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/reports"
-              title="Mediator Applications"
+              title={t("sidebar.manageReports")}
             >
               <TbReport className="icons" />
-              <span className="link-text">Manage Reports</span>
+              <span className="link-text">{t("sidebar.manageReports")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/tickets"
-              title="Mediator Applications"
+              title={t("sidebar.manageTickets")}
             >
               <ImTicket className="icons" />
-              <span className="link-text">Manage Tickets</span>
+              <span className="link-text">{t("sidebar.manageTickets")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/disputes"
-              title="Disputed Cases"
+              title={t("sidebar.disputedCases")}
             >
               <FaExclamationTriangle className="icon" />
-              <span className="link-text">Disputed Cases</span>
+              <span className="link-text">{t("sidebar.disputedCases")}</span>
               {disputedCasesCount > 0 && (
                 <Badge pill bg="danger" className="ms-2">
                   {disputedCasesCount}
@@ -197,10 +225,10 @@ const Sidebar = ({ onSearchChange }) => {
             <NavLink
               className="sidebar-link"
               to="/dashboard/admin/mediator-review"
-              title="Mediator Applications"
+              title={t("sidebar.mediatorApps")}
             >
               <FaUserCheck className="icon" />
-              <span className="link-text">Mediator Apps</span>
+              <span className="link-text">{t("sidebar.mediatorApps")}</span>
             </NavLink>
           </>
         )}
@@ -210,18 +238,18 @@ const Sidebar = ({ onSearchChange }) => {
             <NavLink
               className="sidebar-link"
               to="/dashboard/tickets"
-              title="Support"
+              title={t("sidebar.support")}
             >
               <FaHeadset className="icon" />
-              <span className="link-text">Support</span>
+              <span className="link-text">{t("sidebar.support")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"
               to="/my-mediation-requests"
-              title="My Orders"
+              title={t("sidebar.myOrders")}
             >
               <FaClipboardList className="icon" />
-              <span className="link-text">My Orders</span>
+              <span className="link-text">{t("sidebar.myOrders")}</span>
             </NavLink>
           </>
         )}
@@ -233,7 +261,7 @@ const Sidebar = ({ onSearchChange }) => {
           onClick={handleLogout}
         >
           <FaSignOutAlt className="icon" />
-          <span className="link-text">Logout</span>
+          <span className="link-text">{t("sidebar.logout")}</span>
         </Link>
       </div>
     </div>

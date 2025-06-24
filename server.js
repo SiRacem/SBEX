@@ -39,6 +39,7 @@ const withdrawalRoute = require('./router/withdrawal.router');
 const mediationRoute = require('./router/mediation.router');
 const ticketRoute = require('./router/ticket.router');
 const reportRoute = require('./router/report');
+const faqRoute = require('./router/faq.router');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -615,6 +616,7 @@ app.use('/withdrawals', withdrawalRoute);
 app.use('/mediation', mediationRoute);
 app.use('/reports', reportRoute);
 app.use('/support', ticketRoute);
+app.use('/faq', faqRoute);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to SBEX API!' }));
 

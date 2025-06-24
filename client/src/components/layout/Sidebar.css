@@ -362,3 +362,33 @@
 
     /* خلفية خفيفة للنشط */
 }
+
+/* --- [!] RTL Specific Adjustments for Sidebar --- */
+
+[dir="rtl"] .sidebar-link .icon,
+[dir="rtl"] .sidebar-link .icons {
+    /* عكس margin-right */
+    margin-right: 0;
+    margin-left: 0.85rem;
+}
+
+[dir="rtl"] .logout-button .icon {
+    margin-right: 0;
+    margin-left: 0.85rem;
+}
+
+/* عكس Badge في القائمة */
+[dir="rtl"] .sidebar-link .ms-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+}
+
+/* عكس الشعار ومبدل اللغة في الهيدر */
+[dir="rtl"] .sidebar-header {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .sidebar-logo-link {
+    margin-right: 0;
+    margin-left: 0.75rem;
+}
