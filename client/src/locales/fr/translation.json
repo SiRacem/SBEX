@@ -14,8 +14,8 @@
     "manageDeposits": "Gérer les Dépôts",
     "manageReports": "Gérer les Rapports",
     "manageTickets": "Gérer les Tickets",
-    "disputedCases": "Litiges en Cours",
-    "mediatorApps": "Candidatures Médiateur",
+    "disputedCases": "Litiges",
+    "mediatorApps": "Candidatures",
     "support": "Support",
     "myOrders": "Mes Commandes",
     "logout": "Déconnexion"
@@ -35,18 +35,14 @@
       "title": "Activités Récentes",
       "displaying": "Affichage des {{count}} dernières activités",
       "noActivities": "Aucune Activité Récente",
-      "description": "Vos activités sur la plateforme apparaîtront ici."
+      "description": "Vos activités apparaîtront ici."
     },
-    "notifications": {
-      "title": "Notifications"
-    },
-    "mediations": {
-      "title": "Médiations / Messages"
-    },
+    "notifications": { "title": "Notifications" },
+    "mediations": { "title": "Médiations / Messages" },
     "quickOptions": {
       "title": "Options Rapides",
       "settings": "Paramètres & Langue",
-      "news": "Dernières Noutés",
+      "news": "Actualités",
       "support": "Support Technique",
       "logout": "Déconnexion"
     },
@@ -57,12 +53,203 @@
   },
   "faq": {
     "title": "Conseils et réponses de notre équipe",
-    "subtitle": "Votre ressource incontournable pour l'aide et l'information.",
-    "searchPlaceholder": "Rechercher des articles...",
-    "backToCategories": "Retour à toutes les catégories",
-    "noResults": "Aucun résultat trouvé pour \"{{query}}\". Essayez un autre terme de recherche.",
-    "noFaqs": "Aucune FAQ disponible pour le moment.",
+    "subtitle": "Votre ressource pour l'aide et l'information.",
+    "searchPlaceholder": "Rechercher...",
+    "backToCategories": "Retour aux catégories",
+    "noResults": "Aucun résultat pour \"{{query}}\".",
+    "noFaqs": "Aucune FAQ disponible.",
     "listUpdated": "La liste a été mise à jour."
+  },
+  "transactionModal": {
+    "title": "Détails de la Transaction",
+    "close": "Fermer",
+    "transactionId": "ID de Transaction",
+    "type": "Type",
+    "status": "Statut",
+    "date": "Date",
+    "product": "Produit",
+    "amount": "Montant",
+    "description": "Description",
+    "mediationLink": "Lien de Médiation",
+    "viewMediation": "Voir Médiation",
+    "buyer": "Acheteur",
+    "seller": "Vendeur"
+  },
+  "transactionTypes": {
+    "PRODUCT_SALE_FUNDS_RELEASED": "Fonds libérés",
+    "PRODUCT_PURCHASE_COMPLETED": "Achat",
+    "PRODUCT_SALE_FUNDS_PENDING": "Fonds en attente",
+    "LEVEL_UP_REWARD_RECEIVED": "Récompense de niveau",
+    "DEPOSIT_COMPLETED": "Dépôt",
+    "WITHDRAWAL_COMPLETED": "Retrait"
+  },
+  "transactionStatuses": {
+    "COMPLETED": "Terminé",
+    "PENDING": "En attente",
+    "ON_HOLD": "En attente",
+    "FAILED": "Échoué",
+    "CANCELLED": "Annulé",
+    "REJECTED": "Rejeté",
+    "PROCESSING": "En cours"
+  },
+  "notificationsPage": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu ({{count}})",
+    "loading": "Chargement...",
+    "error": "Échec du chargement: {{error}}",
+    "noNotifications": "Aucune notification.",
+    "viewAll": "Voir tout",
+    "defaultTitle": "Notification"
+  },
+  "adminProducts": {
+    "pendingApprovals": "Approbations en attente",
+    "loading": "Chargement...",
+    "error": "Erreur: {{error}}",
+    "noPending": "Aucun produit en attente.",
+    "table": {
+      "image": "Image",
+      "title": "Titre",
+      "vendor": "Vendeur",
+      "price": "Prix",
+      "dateAdded": "Date d'ajout",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDetails": "Détails",
+      "approve": "Approuver",
+      "reject": "Rejeter"
+    },
+    "detailsModal": {
+      "title": "Détails du produit : {{title}}",
+      "by": "Par",
+      "description": "Description",
+      "linkType": "Type de lien",
+      "price": "Prix",
+      "quantity": "Quantité",
+      "submitted": "Soumis le",
+      "close": "Fermer"
+    },
+    "rejectModal": {
+      "title": "Rejeter : {{title}}",
+      "reason": "Raison (Requise)",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "rejecting": "Rejet...",
+      "reasonRequired": "La raison est requise."
+    },
+    "confirmApprove": "Êtes-vous sûr d'approuver ce produit ?"
+  },
+  "auth": {
+    "welcomeBack": "Content de vous revoir !",
+    "emailLabel": "Adresse e-mail",
+    "emailPlaceholder": "Entrez votre e-mail",
+    "passwordLabel": "Mot de passe",
+    "passwordPlaceholder": "Entrez votre mot de passe",
+    "loginButton": "Connexion",
+    "loggingIn": "Connexion...",
+    "noAccount": "Pas de compte ?",
+    "signUpLink": "Inscrivez-vous",
+    "createAccount": "Créez votre compte",
+    "fullNameLabel": "Nom complet",
+    "fullNamePlaceholder": "Entrez le nom complet",
+    "phoneLabel": "Téléphone",
+    "phonePlaceholder": "Entrez le numéro",
+    "addressLabel": "Adresse",
+    "addressPlaceholder": "Entrez l'adresse",
+    "registerAsLabel": "S'inscrire en tant que",
+    "userRole": "Utilisateur",
+    "vendorRole": "Vendeur",
+    "passwordMinChars": "Mot de passe (6 car. min)",
+    "confirmPasswordLabel": "Confirmer le mot de passe",
+    "confirmPasswordPlaceholder": "Confirmez",
+    "registerButton": "S'inscrire",
+    "registering": "Inscription...",
+    "haveAccount": "Déjà un compte ?",
+    "loginLink": "Connectez-vous",
+    "loginRegisterButton": "Connexion / Inscription",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas !",
+    "toast": {
+      "welcomeBack": "Content de vous revoir, {{name}} !",
+      "loggedOut": "Vous avez été déconnecté.",
+      "accountBlocked": "Votre compte est bloqué.",
+      "registerSuccess": "Compte créé avec succès ! Veuillez vous connecter.",
+      "registerFail": "Échec de l'inscription : {{error}}",
+      "loginError": "Échec de la connexion : {{error}}"
+    }
+  },
+  "home": {
+    "heroTitle": "Trouvez votre prochain favori",
+    "heroSubtitle": "Explorez une large gamme de produits uniques proposés par notre communauté. Transactions sécurisées et offres exceptionnelles vous attendent.",
+    "filterByType": "Filtrer par type de lien",
+    "allLinkTypes": "Tous les types",
+    "sortBy": "Trier par",
+    "sortByAria": "Trier les produits",
+    "sort": {
+      "newest": "Le plus récent",
+      "priceAsc": "Prix : Croissant",
+      "priceDesc": "Prix : Décroissant"
+    },
+    "noProducts": "Aucun produit disponible pour le moment.",
+    "noProductsMatch": "Aucun produit trouvé pour \"{{criteria}}\".",
+    "loading": "Chargement des produits...",
+    "errorTitle": "Erreur de chargement des produits",
+    "viewGallery": "Voir la galerie",
+    "outOfStock": "Épuisé",
+    "soldBy": "Vendu par",
+    "seller": "Vendeur",
+    "unknownSeller": "Vendeur inconnu",
+    "yourItem": "C'est votre article",
+    "productDataUnavailable": "Données produit indisponibles",
+    "productImageAlt": "{{title}} - image {{index}}",
+    "highestBidTooltip": "Enchère la plus élevée : {{amount}}",
+    "like": "J'aime",
+    "unlike": "Je n'aime plus",
+    "bidders": "Enchérisseurs",
+    "updateBid": "Modifier l'enchère",
+    "placeBid": "Enchérir",
+    "addToCart": "Ajouter au panier",
+    "pleaseLoginToBid": "Veuillez vous connecter pour enchérir.",
+    "pleaseLoginToLike": "Veuillez vous connecter pour aimer les produits.",
+    "likeUpdateFailed": "La mise à jour du statut 'J'aime' a échoué.",
+    "bidUpdatedSuccess": "Enchère mise à jour avec succès !",
+    "bidPlacedSuccess": "Enchère placée avec succès !",
+    "imageNotAvailable": "Image non disponible.",
+    "bidModal": {
+      "updateTitle": "Mettre à jour l'enchère",
+      "placeTitle": "Placer une enchère",
+      "bids": "Enchères",
+      "basePrice": "Prix de base",
+      "highestBid": "Enchère la plus élevée",
+      "yourCurrentBid": "Votre enchère actuelle",
+      "bidAmountLabel_your": "Votre montant d'enchère ({{currency}})",
+      "bidAmountLabel_new": "Nouveau montant d'enchère ({{currency}})",
+      "currentBalance": "Votre solde actuel",
+      "minBalanceRequired": "(Min. {{amount}} requis pour enchérir)"
+    }
+  },
+  "common": {
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "processing": "En cours...",
+    "confirmBid": "Confirmer l'enchère"
+  },
+  "userProfilePage": {
+    "memberSince": "Membre depuis",
+    "userStats": "Statistiques",
+    "userRating": "Évaluation",
+    "activeListings": "Annonces actives",
+    "productsSold": "Produits vendus",
+    "location": "Lieu",
+    "positiveRating": "Évaluation positive",
+    "noRatings": "Aucune évaluation pour le moment."
+  },
+  "apiErrors": {
+    "Invalid credentials": "L'e-mail ou le mot de passe est incorrect.",
+    "Email already exists": "Cet e-mail est déjà enregistré.",
+    "unknownRegistrationError": "Une erreur est survenue lors de l'inscription. Veuillez réessayer.",
+    "requestFailedWithCode": "La requête a échoué avec le code : {{code}}",
+    "networkError": "Une erreur réseau est survenue, veuillez réessayer.",
+    "unknownError": "Une erreur inconnue est survenue : {{message}}"
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",

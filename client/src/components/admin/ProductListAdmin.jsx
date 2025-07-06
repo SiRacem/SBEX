@@ -1,5 +1,6 @@
 // src/components/admin/ProductListAdmin.jsx
-
+// (الكود الكامل من الرد السابق، لأنه كان بالفعل كاملاً ومعدلاً)
+// للتأكيد، سأقوم بإدراجه هنا مرة أخرى بدون أي اختصارات.
 import React, {
   useState,
   useEffect,
@@ -8,6 +9,7 @@ import React, {
   useContext,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   Button,
@@ -33,7 +35,7 @@ import {
   rejectProduct,
 } from "../../redux/actions/productAction";
 import { toast } from "react-toastify";
-import ImageGalleryModal from "./ImageGalleryModal"; // <--- استيراد المودال الجديد
+import ImageGalleryModal from "./ImageGalleryModal";
 import "./ProductListAdmin.css";
 import { SocketContext } from "../../App";
 
@@ -43,32 +45,38 @@ const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
 const ProductDetailsModal = ({ show, onHide, product }) => {
-  const formatCurrency = useCallback((amount, currencyCode = "TND") => {
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount)) {
-      return "N/A";
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-    }).format(numericAmount);
-  }, []);
-
+  const { t, i18n } = useTranslation();
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const numericAmount = Number(amount);
+      if (isNaN(numericAmount)) return "N/A";
+      const currencyName = t(
+        `dashboard.currencies.${currencyCode}`,
+        currencyCode
+      );
+      const formattedAmount = numericAmount.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      return i18n.dir() === "rtl"
+        ? `${formattedAmount} ${currencyName}`
+        : `${currencyName} ${formattedAmount}`;
+    },
+    [t, i18n]
+  );
   const handleImageError = useCallback((e) => {
-    if (e.target.src !== fallbackImageUrl) {
-      e.target.onerror = null;
-      e.target.src = fallbackImageUrl;
-    }
+    e.target.src = fallbackImageUrl;
   }, []);
-
   if (!product) return null;
   const images = Array.isArray(product.imageUrls) ? product.imageUrls : [];
-
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
+    <Modal show={show} onHide={onHide} size="lg" centered dir={i18n.dir()}>
       <Modal.Header closeButton>
-        <Modal.Title>Product Details: {product.title || "N/A"}</Modal.Title>
+        <Modal.Title>
+          {t("adminProducts.detailsModal.title", {
+            title: product.title || "N/A",
+          })}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Row>
@@ -112,12 +120,12 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
           <Col md={6}>
             <h4>{product.title || "N/A"}</h4>
             <p className="text-muted small">
-              By: {product.user?.fullName || "N/A"} (
-              {product.user?.email || "N/A"})
+              {t("adminProducts.detailsModal.by")}{" "}
+              {product.user?.fullName || "N/A"} ({product.user?.email || "N/A"})
             </p>
             <hr />
             <p>
-              <strong>Description:</strong>
+              <strong>{t("adminProducts.detailsModal.description")}:</strong>
             </p>
             <div
               style={{
@@ -130,21 +138,23 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
               <p>{product.description || "N/A"}</p>
             </div>
             <p className="mt-2">
-              <strong>Link Type:</strong> {product.linkType || "N/A"}
+              <strong>{t("adminProducts.detailsModal.linkType")}:</strong>{" "}
+              {product.linkType || "N/A"}
             </p>
             <p>
-              <strong>Price:</strong>{" "}
+              <strong>{t("adminProducts.detailsModal.price")}:</strong>{" "}
               <span className="fw-bold">
                 {formatCurrency(product.price, product.currency)}
               </span>
             </p>
             <p>
-              <strong>Quantity:</strong> {product.quantity ?? 1}
+              <strong>{t("adminProducts.detailsModal.quantity")}:</strong>{" "}
+              {product.quantity ?? 1}
             </p>
             <p className="small text-muted">
-              Submitted:{" "}
+              {t("adminProducts.detailsModal.submitted")}:{" "}
               {product.date_added
-                ? new Date(product.date_added).toLocaleString()
+                ? new Date(product.date_added).toLocaleString(i18n.language)
                 : "N/A"}
             </p>
           </Col>
@@ -152,7 +162,7 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>
-          Close
+          {t("adminProducts.detailsModal.close")}
         </Button>
       </Modal.Footer>
     </Modal>
@@ -160,9 +170,9 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
 };
 
 const ProductListAdmin = ({ search }) => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const socket = useContext(SocketContext);
-
   const pendingProducts = useSelector(
     (state) => state.productReducer?.pendingProducts ?? []
   );
@@ -176,7 +186,6 @@ const ProductListAdmin = ({ search }) => {
   const loadingReject = useSelector(
     (state) => state.productReducer?.loadingReject || {}
   );
-
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -184,29 +193,18 @@ const ProductListAdmin = ({ search }) => {
   const [showImageGallery, setShowImageGallery] = useState(false);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryProductName, setGalleryProductName] = useState("");
-
   useEffect(() => {
     dispatch(getPendingProducts());
   }, [dispatch]);
-
   useEffect(() => {
     if (!socket) return;
-
     const handleNewProduct = (newProductData) => {
-      console.log(
-        "[Socket] Received 'new_product_for_approval':",
-        newProductData
-      );
-      // Add the new product to the Redux store
       dispatch({ type: "ADD_PENDING_PRODUCT_SOCKET", payload: newProductData });
       toast.info(
         `🔔 New product "${newProductData.title}" is awaiting approval.`
       );
     };
-
     const handleProductUpdated = (updatedProductData) => {
-      // This listener handles when a product is approved/rejected elsewhere,
-      // removing it from this component's list.
       if (updatedProductData.status !== "pending") {
         dispatch({
           type: "REMOVE_PENDING_PRODUCT_SOCKET",
@@ -214,36 +212,31 @@ const ProductListAdmin = ({ search }) => {
         });
       }
     };
-
     socket.on("new_product_for_approval", handleNewProduct);
-    socket.on("product_updated", handleProductUpdated); // To remove when action taken by another admin
-
+    socket.on("product_updated", handleProductUpdated);
     return () => {
       socket.off("new_product_for_approval", handleNewProduct);
       socket.off("product_updated", handleProductUpdated);
     };
   }, [socket, dispatch]);
-
   const handleApprove = useCallback(
     (productId) => {
       if (loadingApprove[productId] || loadingReject[productId] || !productId)
         return;
-      if (window.confirm("Are you sure you want to approve this product?")) {
+      if (window.confirm(t("adminProducts.confirmApprove"))) {
         dispatch(approveProduct(productId));
       }
     },
-    [dispatch, loadingApprove, loadingReject]
+    [dispatch, loadingApprove, loadingReject, t]
   );
-
   const openRejectModal = useCallback((product) => {
     setSelectedProduct(product);
     setRejectReason("");
     setShowRejectModal(true);
   }, []);
-
   const handleReject = useCallback(() => {
     if (!rejectReason.trim()) {
-      toast.warn("Rejection reason is required.");
+      toast.warn(t("adminProducts.rejectModal.reasonRequired"));
       return;
     }
     if (
@@ -253,30 +246,32 @@ const ProductListAdmin = ({ search }) => {
     ) {
       dispatch(rejectProduct(selectedProduct._id, rejectReason));
       setShowRejectModal(false);
-      setRejectReason(""); // Clear reason after submission
+      setRejectReason("");
     }
-  }, [dispatch, selectedProduct, rejectReason, loadingReject, loadingApprove]);
-
+  }, [
+    dispatch,
+    selectedProduct,
+    rejectReason,
+    loadingReject,
+    loadingApprove,
+    t,
+  ]);
   const openDetailsModal = useCallback((product) => {
     setSelectedProduct(product);
     setShowDetailsModal(true);
   }, []);
-
   const closeDetailsModal = useCallback(() => {
     setShowDetailsModal(false);
-    setSelectedProduct(null); // Clear selected product
+    setSelectedProduct(null);
   }, []);
-
   const openImageGallery = useCallback((product) => {
     setGalleryImages(Array.isArray(product.imageUrls) ? product.imageUrls : []);
     setGalleryProductName(product.title || "Product");
     setShowImageGallery(true);
   }, []);
-
   const closeImageGallery = useCallback(() => {
     setShowImageGallery(false);
   }, []);
-
   const filteredProducts = useMemo(() => {
     if (!Array.isArray(pendingProducts)) return [];
     const currentSearch = search !== undefined ? search : "";
@@ -295,28 +290,26 @@ const ProductListAdmin = ({ search }) => {
       <Row className="mb-3 align-items-center">
         <Col>
           <h2 className="page-title mb-0">
-            Pending Approvals{" "}
+            {t("adminProducts.pendingApprovals")}{" "}
             <Badge bg="warning" text="dark" pill className="align-middle ms-2">
               {filteredProducts.length}
             </Badge>
           </h2>
         </Col>
       </Row>
-
       {loading && (
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2 text-muted">Loading pending products...</p>
+          <p className="mt-2 text-muted">{t("adminProducts.loading")}</p>
         </div>
       )}
-
       {!loading && error && (
         <Alert variant="danger" className="text-center">
-          Error loading products:{" "}
-          {typeof error === "string" ? error : JSON.stringify(error)}
+          {t("adminProducts.error", {
+            error: typeof error === "string" ? error : JSON.stringify(error),
+          })}
         </Alert>
       )}
-
       {!loading && !error && (
         <Card className="shadow-sm">
           <Card.Body className="p-0">
@@ -329,12 +322,14 @@ const ProductListAdmin = ({ search }) => {
               <thead className="table-light">
                 <tr>
                   <th>#</th>
-                  <th>Image</th>
-                  <th>Title</th>
-                  <th>Vendor</th>
-                  <th>Price</th>
-                  <th>Date Added</th>
-                  <th className="text-center">Actions</th>
+                  <th>{t("adminProducts.table.image")}</th>
+                  <th>{t("adminProducts.table.title")}</th>
+                  <th>{t("adminProducts.table.vendor")}</th>
+                  <th>{t("adminProducts.table.price")}</th>
+                  <th>{t("adminProducts.table.dateAdded")}</th>
+                  <th className="text-center">
+                    {t("adminProducts.table.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -380,17 +375,27 @@ const ProductListAdmin = ({ search }) => {
                         </td>
                         <td>{product.user?.fullName || "N/A"}</td>
                         <td>
-                          {product.price} {product.currency}
+                          {product.price}{" "}
+                          {t(
+                            `dashboard.currencies.${product.currency}`,
+                            product.currency
+                          )}
                         </td>
                         <td>
                           {product.date_added
-                            ? new Date(product.date_added).toLocaleDateString()
+                            ? new Date(product.date_added).toLocaleDateString(
+                                i18n.language
+                              )
                             : "N/A"}
                         </td>
                         <td className="text-center action-cell">
                           <OverlayTrigger
                             placement="top"
-                            overlay={<Tooltip>View Details</Tooltip>}
+                            overlay={
+                              <Tooltip>
+                                {t("adminProducts.actions.viewDetails")}
+                              </Tooltip>
+                            }
                           >
                             <Button
                               variant="outline-secondary"
@@ -404,7 +409,11 @@ const ProductListAdmin = ({ search }) => {
                           </OverlayTrigger>
                           <OverlayTrigger
                             placement="top"
-                            overlay={<Tooltip>Approve Product</Tooltip>}
+                            overlay={
+                              <Tooltip>
+                                {t("adminProducts.actions.approve")}
+                              </Tooltip>
+                            }
                           >
                             <Button
                               variant="outline-success"
@@ -422,7 +431,11 @@ const ProductListAdmin = ({ search }) => {
                           </OverlayTrigger>
                           <OverlayTrigger
                             placement="top"
-                            overlay={<Tooltip>Reject Product</Tooltip>}
+                            overlay={
+                              <Tooltip>
+                                {t("adminProducts.actions.reject")}
+                              </Tooltip>
+                            }
                           >
                             <Button
                               variant="outline-danger"
@@ -445,7 +458,7 @@ const ProductListAdmin = ({ search }) => {
                 ) : (
                   <tr>
                     <td colSpan={7} className="text-center text-muted py-4">
-                      No pending products found.
+                      {t("adminProducts.noPending")}
                     </td>
                   </tr>
                 )}
@@ -459,19 +472,24 @@ const ProductListAdmin = ({ search }) => {
         show={showRejectModal}
         onHide={() => {
           setShowRejectModal(false);
-          setSelectedProduct(null); // Clear selected product on close
-          setRejectReason(""); // Clear reason on close
+          setSelectedProduct(null);
+          setRejectReason("");
         }}
         centered
+        dir={i18n.dir()}
       >
         <Modal.Header closeButton>
-          <Modal.Title>Reject: {selectedProduct?.title}</Modal.Title>
+          <Modal.Title>
+            {t("adminProducts.rejectModal.title", {
+              title: selectedProduct?.title,
+            })}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group controlId="rejectReason">
             <FloatingLabel
               controlId="rejectReasonInput"
-              label="Reason (Required)"
+              label={t("adminProducts.rejectModal.reason")}
               className="mb-3"
             >
               <Form.Control
@@ -496,7 +514,7 @@ const ProductListAdmin = ({ search }) => {
             }}
             disabled={loadingReject[selectedProduct?._id]}
           >
-            Cancel
+            {t("adminProducts.rejectModal.cancel")}
           </Button>
           <Button
             variant="danger"
@@ -507,10 +525,11 @@ const ProductListAdmin = ({ search }) => {
           >
             {loadingReject[selectedProduct?._id] ? (
               <>
-                <Spinner size="sm" animation="border" /> Rejecting...
+                <Spinner size="sm" animation="border" />{" "}
+                {t("adminProducts.rejectModal.rejecting")}
               </>
             ) : (
-              "Confirm Rejection"
+              <>{t("adminProducts.rejectModal.confirm")}</>
             )}
           </Button>
         </Modal.Footer>
@@ -521,7 +540,6 @@ const ProductListAdmin = ({ search }) => {
         onHide={closeDetailsModal}
         product={selectedProduct}
       />
-
       <ImageGalleryModal
         show={showImageGallery}
         onHide={closeImageGallery}

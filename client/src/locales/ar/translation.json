@@ -37,12 +37,8 @@
       "noActivities": "لا توجد أنشطة حديثة",
       "description": "ستظهر أنشطتك على المنصة هنا."
     },
-    "notifications": {
-      "title": "الإشعارات"
-    },
-    "mediations": {
-      "title": "الوساطات / الرسائل"
-    },
+    "notifications": { "title": "الإشعارات" },
+    "mediations": { "title": "الوساطات / الرسائل" },
     "quickOptions": {
       "title": "خيارات سريعة",
       "settings": "الإعدادات واللغة",
@@ -50,19 +46,197 @@
       "support": "الدعم الفني",
       "logout": "تسجيل الخروج"
     },
-    "settings": {
-      "title": "الإعدادات",
-      "languageTitle": "لغة المنصة"
-    }
+    "settings": { "title": "الإعدادات", "languageTitle": "لغة المنصة" }
   },
   "faq": {
     "title": "نصائح وإجابات من فريقنا",
     "subtitle": "مرجعك الأساسي للمساعدة والمعلومات.",
     "searchPlaceholder": "ابحث عن مقالات...",
     "backToCategories": "العودة إلى جميع الفئات",
-    "noResults": "لا توجد نتائج للبحث عن \"{{query}}\". جرب كلمة بحث أخرى.",
-    "noFaqs": "لا توجد أسئلة شائعة متاحة في الوقت الحالي.",
+    "noResults": "لا توجد نتائج للبحث عن \"{{query}}\".",
+    "noFaqs": "لا توجد أسئلة شائعة متاحة حالياً.",
     "listUpdated": "تم تحديث القائمة."
+  },
+  "transactionModal": {
+    "title": "تفاصيل المعاملة",
+    "close": "إغلاق",
+    "transactionId": "معرّف المعاملة",
+    "type": "النوع",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "product": "المنتج",
+    "amount": "المبلغ",
+    "description": "الوصف",
+    "mediationLink": "رابط الوساطة",
+    "viewMediation": "عرض الوساطة",
+    "buyer": "المشتري",
+    "seller": "البائع"
+  },
+  "transactionTypes": {
+    "PRODUCT_SALE_FUNDS_RELEASED": "أموال محررة",
+    "PRODUCT_PURCHASE_COMPLETED": "شراء",
+    "PRODUCT_SALE_FUNDS_PENDING": "أموال معلّقة",
+    "LEVEL_UP_REWARD_RECEIVED": "مكافأة مستوى",
+    "DEPOSIT_COMPLETED": "إيداع",
+    "WITHDRAWAL_COMPLETED": "سحب"
+  },
+  "transactionStatuses": {
+    "COMPLETED": "مكتمل",
+    "PENDING": "قيد الانتظار",
+    "ON_HOLD": "معلّق",
+    "FAILED": "فشلت",
+    "CANCELLED": "ملغاة",
+    "REJECTED": "مرفوضة",
+    "PROCESSING": "قيد المعالجة"
+  },
+  "notificationsPage": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء ({{count}})",
+    "loading": "جاري تحميل الإشعارات...",
+    "error": "فشل تحميل الإشعارات: {{error}}",
+    "noNotifications": "ليس لديك أي إشعارات.",
+    "viewAll": "عرض جميع الإشعارات",
+    "defaultTitle": "إشعار"
+  },
+  "adminProducts": {
+    "pendingApprovals": "موافقات معلقة",
+    "loading": "جاري تحميل المنتجات...",
+    "error": "خطأ في تحميل المنتجات: {{error}}",
+    "noPending": "لا توجد منتجات معلقة.",
+    "table": {
+      "image": "صورة",
+      "title": "العنوان",
+      "vendor": "البائع",
+      "price": "السعر",
+      "dateAdded": "تاريخ الإضافة",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "viewDetails": "عرض التفاصيل",
+      "approve": "موافقة",
+      "reject": "رفض"
+    },
+    "detailsModal": {
+      "title": "تفاصيل المنتج: {{title}}",
+      "by": "بواسطة",
+      "description": "الوصف",
+      "linkType": "نوع الربط",
+      "price": "السعر",
+      "quantity": "الكمية",
+      "submitted": "أُرسل في",
+      "close": "إغلاق"
+    },
+    "rejectModal": {
+      "title": "رفض: {{title}}",
+      "reason": "السبب (مطلوب)",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد الرفض",
+      "rejecting": "جاري الرفض...",
+      "reasonRequired": "سبب الرفض مطلوب."
+    },
+    "confirmApprove": "هل أنت متأكد من الموافقة على هذا المنتج؟"
+  },
+  "auth": {
+    "welcomeBack": "مرحباً بعودتك!",
+    "emailLabel": "البريد الإلكتروني",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "passwordLabel": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "loginButton": "تسجيل الدخول",
+    "loggingIn": "جاري تسجيل الدخول...",
+    "noAccount": "ليس لديك حساب؟",
+    "signUpLink": "أنشئ حساباً",
+    "createAccount": "أنشئ حسابك",
+    "fullNameLabel": "الاسم الكامل",
+    "fullNamePlaceholder": "أدخل الاسم الكامل",
+    "phoneLabel": "رقم الهاتف",
+    "phonePlaceholder": "أدخل رقم الهاتف",
+    "addressLabel": "العنوان",
+    "addressPlaceholder": "أدخل عنوانك",
+    "registerAsLabel": "تسجيل كـ",
+    "userRole": "مستخدم",
+    "vendorRole": "بائع",
+    "passwordMinChars": "كلمة المرور (6 أحرف على الأقل)",
+    "confirmPasswordLabel": "تأكيد كلمة المرور",
+    "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور",
+    "registerButton": "إنشاء حساب",
+    "registering": "جاري التسجيل...",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "loginLink": "سجل الدخول هنا",
+    "loginRegisterButton": "تسجيل الدخول / إنشاء حساب",
+    "passwordsDoNotMatch": "كلمتا المرور غير متطابقتين!",
+    "toast": {
+      "welcomeBack": "مرحباً بعودتك، {{name}}!",
+      "loggedOut": "تم تسجيل خروجك بنجاح.",
+      "accountBlocked": "حسابك محظور. الوصول محدود.",
+      "registerSuccess": "تم إنشاء الحساب بنجاح! الرجاء تسجيل الدخول.",
+      "registerFail": "فشل التسجيل: {{error}}",
+      "loginError": "فشل تسجيل الدخول: {{error}}"
+    }
+  },
+  "home": {
+    "heroTitle": "اعثر على منتجك المفضل التالي",
+    "heroSubtitle": "اكتشف مجموعة واسعة من المنتجات الفريدة التي يقدمها مجتمعنا. معاملات آمنة وصفقات رائعة في انتظارك.",
+    "filterByType": "تصفية حسب نوع الربط",
+    "allLinkTypes": "جميع أنواع الربط",
+    "sortBy": "ترتيب حسب",
+    "sortByAria": "ترتيب المنتجات",
+    "sort": {
+      "newest": "الأحدث أولاً",
+      "priceAsc": "السعر: من الأقل للأعلى",
+      "priceDesc": "السعر: من الأعلى للأقل"
+    },
+    "noProducts": "لا توجد منتجات متاحة حالياً.",
+    "noProductsMatch": "لا توجد منتجات تطابق \"{{criteria}}\".",
+    "loading": "جاري تحميل المنتجات...",
+    "errorTitle": "خطأ في تحميل المنتجات",
+    "viewGallery": "عرض الصور",
+    "outOfStock": "نفدت الكمية",
+    "soldBy": "مباع بواسطة",
+    "seller": "البائع",
+    "unknownSeller": "بائع غير معروف",
+    "yourItem": "هذا منتجك",
+    "productDataUnavailable": "بيانات المنتج غير متوفرة",
+    "productImageAlt": "{{title}} - صورة {{index}}",
+    "highestBidTooltip": "أعلى مزايدة: {{amount}}",
+    "like": "إعجاب",
+    "unlike": "إلغاء الإعجاب",
+    "bidders": "المزايدون",
+    "updateBid": "تحديث المزايدة",
+    "placeBid": "ضع مزايدة",
+    "addToCart": "أضف للسلة",
+    "pleaseLoginToBid": "الرجاء تسجيل الدخول للمزايدة.",
+    "pleaseLoginToLike": "الرجاء تسجيل الدخول للإعجاب بالمنتجات.",
+    "likeUpdateFailed": "فشل تحديث حالة الإعجاب.",
+    "bidUpdatedSuccess": "تم تحديث المزايدة بنجاح!",
+    "bidPlacedSuccess": "تم وضع المزايدة بنجاح!",
+    "imageNotAvailable": "الصورة غير متوفرة.",
+    "bidModal": {
+      "updateTitle": "تحديث مزايدتك",
+      "placeTitle": "ضع مزايدتك",
+      "bids": "المزايدات",
+      "basePrice": "السعر الأساسي",
+      "highestBid": "أعلى مزايدة",
+      "yourCurrentBid": "مزايدتك الحالية",
+      "bidAmountLabel_your": "مبلغ مزايدتك ({{currency}})",
+      "bidAmountLabel_new": "مبلغ المزايدة الجديد ({{currency}})",
+      "currentBalance": "رصيدك الحالي",
+      "minBalanceRequired": "(مطلوب {{amount}} على الأقل للمزايدة)"
+    }
+  },
+  "common": {
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "processing": "جاري المعالجة...",
+    "confirmBid": "تأكيد المزايدة"
+  },
+  "apiErrors": {
+    "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    "Email already exists": "هذا البريد الإلكتروني مسجل بالفعل.",
+    "unknownRegistrationError": "حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.",
+    "requestFailedWithCode": "فشل الطلب مع الرمز: {{code}}",
+    "networkError": "حدث خطأ في الشبكة، يرجى المحاولة مرة أخرى.",
+    "unknownError": "حدث خطأ غير معروف: {{message}}"
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",

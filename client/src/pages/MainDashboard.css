@@ -1,142 +1,153 @@
-.page-title { color: #343a40; }
+/* --- الأنماط كما هي ... --- */
+.page-title {
+    color: #343a40;
+}
 
-/* Info Boxes General */
-.info-box { min-height: 180px; }
+.info-box {
+    min-height: 180px;
+}
 
-/* Balance Boxes */
-.balance-box { background-color: #c9302c; border-left: 5px solid #a94442; }
-.seller-box { background-color: #2a4160; border-left: 5px solid #1d2c41; }
-.balance-box .card-body, .seller-box .card-body { display: flex; flex-direction: column; } /* لـ mt-auto في اسم المستخدم */
-.balance-box h5, .seller-box h5 { margin-bottom: 0.5rem; } /* تقليل الهامش */
-.balance-box h3, .seller-box h4 { margin-bottom: 0.75rem; }
+.balance-box {
+    background-color: #dc3545;
+    border-inline-start: 5px solid #a71d2a;
+}
 
-/* --- *** تعديلات صندوق الإشعارات/الرسائل *** --- */
+/* RTL/LTR safe */
+.seller-box {
+    background-color: #1c293a;
+    border-inline-start: 5px solid #0f1721;
+}
+
+/* RTL/LTR safe */
+.balance-box .card-body,
+.seller-box .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.balance-box h5,
+.seller-box h5 {
+    margin-bottom: 0.5rem;
+}
+
+.balance-box h3,
+.seller-box h4 {
+    margin-bottom: 0.75rem;
+}
+
 .comms-box {
     background-color: #ffffff;
-    border: 1px solid #e9ecef; /* خط أفتح قليلاً */
+    border: 1px solid #e9ecef;
 }
-/* جعل Card.Body يستخدم Flexbox لتوزيع الروابط */
+
 .comms-box .card-body {
-    display: flex !important; /* تأكيد Flex */
+    display: flex !important;
     flex-direction: column !important;
-    justify-content: space-around !important; /* توزيع المسافة بالتساوي */
-    padding: 1rem 1.5rem; /* تعديل padding */
+    justify-content: space-around !important;
+    padding: 1rem 1.5rem;
 }
 
 .comms-link {
-    color: #495057; /* لون أغمق قليلاً */
+    color: #495057;
     font-weight: 500;
-    font-size: 1.05rem; /* تكبير الخط قليلاً */
-    padding: 0.75rem 0; /* زيادة padding الرأسي */
+    font-size: 1.05rem;
+    padding: 0.75rem 0;
     transition: color 0.2s ease, transform 0.2s ease;
-    display: flex; /* التأكيد على flex للعناصر الداخلية */
+    display: flex;
     align-items: center;
 }
+
 .comms-link:hover {
-    color: #0d6efd; /* أزرق Bootstrap */
-    transform: translateX(3px); /* حركة بسيطة عند المرور */
+    color: #0d6efd;
+    transform: translateX(3px);
 }
+
 .comms-link .icon {
     opacity: 0.9;
 }
+
 .comms-link .link-text {
-    flex-grow: 1; /* جعل النص يأخذ المساحة المتبقية */
+    flex-grow: 1;
 }
 
 .notification-link-badge {
-    font-size: 0.7em; line-height: 1; padding: 0.3em 0.5em;
-    /* تعديل الموضع ليكون بجانب النص وليس الأيقونة */
-    position: static !important; /* إلغاء absolute */
-    transform: none !important; /* إلغاء transform */
-    margin-left: 8px; /* إضافة هامش لليسار */
-    vertical-align: middle; /* محاذاة رأسية أفضل */
-}
-/* --- *** نهاية تعديلات الصندوق *** --- */
-
-
-/* Bottom Row Cards */
-.card { border: none; border-radius: 0.5rem; }
-.card-header { border-bottom: 1px solid #f0f0f0; }
-.list-group-item { border: none; padding-top: 1rem; padding-bottom: 1rem; }
-.list-group-item svg { opacity: 0.7; }
-.logout-button-dashboard { background: none; border: none; width: 100%; text-align: left; cursor: pointer; padding-left: 1.25rem; /* ليتناسق مع الروابط */}
-.logout-button-dashboard:hover { background-color: rgba(220, 53, 69, 0.1); }
-
-/* Responsive adjustments (تبقى كما هي) */
-@media (max-width: 768px) { /* ... */ }
-
-/* For elements where we use me-* (margin-end) classes from Bootstrap */
-[dir="rtl"] .comms-link .icon,
-[dir="rtl"] .options-card .option-item .icon {
-    /* Bootstrap's me-3 class becomes margin-left in RTL. We need to reverse it. */
-    margin-right: 0 !important;
-    margin-left: 1rem !important;
-    /* The value of me-3 is 1rem */
+    font-size: 0.7em;
+    line-height: 1;
+    padding: 0.3em 0.5em;
+    margin-inline-end: 8px;
+    vertical-align: middle;
 }
 
-/* For the notification badge that uses ms-* (margin-start) */
-[dir="rtl"] .notification-link-badge {
-    margin-left: 0 !important;
-    margin-right: 8px !important;
+.card {
+    border: none;
+    border-radius: 0.5rem;
 }
 
-/* For the balance boxes, if icons are on the right */
-[dir="rtl"] .balance-box .fa-wallet,
-[dir="rtl"] .seller-box .fa-balancescale,
-[dir="rtl"] .seller-box .fa-hourglasshalf {
-    /* This assumes they are part of a flex container and on the end.
-       The flex container itself will handle the reordering.
-       No change might be needed if using justify-content-between. */
+.card-header {
+    border-bottom: 1px solid #f0f0f0;
 }
 
-/* For the recent activities section */
-[dir="rtl"] .transaction-icon-dash {
-    /* The me-3 class will become margin-left, which is what we want. */
-    /* But if it's not working, we override it */
-    margin-right: 0 !important;
-    margin-left: 1rem !important;
+.list-group-item {
+    border: none;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.list-group-item svg {
+    opacity: 0.7;
+}
+
+.logout-button-dashboard {
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: start;
+    cursor: pointer;
+}
+
+.logout-button-dashboard:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.icon-button-hover {
+    transition: opacity 0.2s;
+}
+
+.icon-button-hover:hover {
+    opacity: 0.8;
+}
+
+
+/* --- [!!!] الحل الأفضل والأبسط لمشكلة المسافات في RTL --- */
+.icon-with-spacing {
+    margin-inline-end: 0.75rem !important;
+    /* يضيف مسافة على اليمين في LTR وعلى اليسار في RTL */
+}
+
+.icon-with-spacing-sm {
+    margin-inline-end: 0.25rem !important;
+    /* مسافة أصغر */
+}
+
+/* --- نهاية الحل --- */
+
+
+/* [!] RTL Specific Adjustments */
+[dir="rtl"] .comms-link:hover {
+    transform: translateX(-3px);
+    /* عكس اتجاه الحركة عند المرور */
+}
+
+[dir="rtl"] .list-group-item {
+    text-align: right;
+}
+
+[dir="rtl"] .logout-button-dashboard,
+[dir="rtl"] .options-card .option-item span {
+    flex-grow: 1;
 }
 
 [dir="rtl"] .transaction-title-dash .ms-2 {
-    /* Bootstrap's ms-2 will become margin-right, which is correct. */
-    /* No change needed unless it's not working. */
-}
-
-/* For the status badge icon */
-[dir="rtl"] .status-badge-dash .me-1 {
-    margin-right: 0 !important;
-    margin-left: 0.25rem !important;
-    /* The value of me-1 */
-}
-
-/* --- A more robust, modern solution using logical properties --- */
-/* You can replace all me-* and ms-* classes in your JSX
-   with a custom class and apply logical properties. */
-
-.icon-with-spacing {
-    /* This replaces me-3 or ms-3 */
-    margin-inline-end: 1rem;
-    /* This means margin-right in LTR, and margin-left in RTL */
-}
-
-/* --- [!] RTL Specific Adjustments for MainDashboard --- */
-
-[dir="rtl"] .d-flex .me-2 {
-    margin-right: 0 !important;
-    margin-left: 0.5rem !important;
-}
-
-[dir="rtl"] .d-flex .me-3 {
-    margin-right: 0 !important;
-    margin-left: 1rem !important;
-}
-
-[dir="rtl"] .d-flex .ms-2 {
     margin-left: 0 !important;
     margin-right: 0.5rem !important;
-}
-
-[dir="rtl"] .d-flex .ms-3 {
-    margin-left: 0 !important;
-    margin-right: 1rem !important;
 }

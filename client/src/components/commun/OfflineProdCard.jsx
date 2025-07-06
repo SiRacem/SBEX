@@ -1,5 +1,4 @@
 // src/components/commun/OfflineProdCard.jsx
-// *** نسخة كاملة نهائية بدون أي اختصارات ***
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
@@ -11,7 +10,6 @@ import {
   Spinner,
   Form,
   InputGroup,
-  FloatingLabel,
   OverlayTrigger,
   Tooltip,
   ListGroup,
@@ -29,32 +27,30 @@ import {
   FaUserCircle,
   FaUsers,
 } from "react-icons/fa";
-import { BsCartPlus, BsImage } from "react-icons/bs";
+import { BsCartPlus, BsImage, BsX } from "react-icons/bs";
 import Carousel from "react-bootstrap/Carousel";
 import {
   toggleLikeProduct,
   placeBid,
   clearProductError,
-} from "../../redux/actions/productAction"; // Actions جديدة
-import { getProfile } from "../../redux/actions/userAction"; // لتحديث البروفايل بعد المزايدة
+} from "../../redux/actions/productAction";
+import { getProfile } from "../../redux/actions/userAction";
 import { toast } from "react-toastify";
-import "./OfflineProdCard.css"; // تأكد من وجود الأنماط الجديدة هنا
+import "./OfflineProdCard.css";
+import { useTranslation } from "react-i18next";
 
-// --- Constants ---
-const TND_TO_USD_RATE = 3.0;
 const MINIMUM_BALANCE_TO_PARTICIPATE_BID = 6.0;
 
-// --- Placeholder Images ---
 const fallbackImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e9ecef"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%236c757d">Error</text></svg>';
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f8f9fa"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23adb5bd">No Image</text></svg>';
 
 const OfflineProdCard = ({ el: product }) => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // --- Selectors ---
   const isAuth = useSelector((state) => state.userReducer?.isAuth ?? false);
   const loggedInUser = useSelector((state) => state.userReducer?.user);
   const cartLoading = useSelector(
@@ -65,12 +61,11 @@ const OfflineProdCard = ({ el: product }) => {
   );
   const isLoadingOther = useSelector(
     (state) => state.productReducer?.productLoading?.[product?._id] ?? false
-  ); // لتحميل المزايدة
+  );
   const error = useSelector(
     (state) => state.productReducer?.productErrors?.[product?._id] ?? null
   );
 
-  // --- State ---
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showBidModal, setShowBidModal] = useState(false);
@@ -78,7 +73,6 @@ const OfflineProdCard = ({ el: product }) => {
   const [bidAmountError, setBidAmountError] = useState(null);
   const [isEditingBid, setIsEditingBid] = useState(false);
 
-  // --- حالة الإعجاب والعدد المحلية ---
   const initialLikedState = useMemo(
     () =>
       product?.likes?.some((id) => String(id) === loggedInUser?._id) ?? false,
@@ -91,7 +85,6 @@ const OfflineProdCard = ({ el: product }) => {
   const [isLiked, setIsLiked] = useState(initialLikedState);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
 
-  // --- Derived State & Variables ---
   const sellerId = product?.user?._id || product?.user;
   const isOwner = isAuth && loggedInUser?._id === sellerId;
   const isOutOfStock = product?.quantity <= 0;
@@ -111,28 +104,25 @@ const OfflineProdCard = ({ el: product }) => {
     );
   }, [product?.bids, loggedInUser?._id]);
 
-  // --- Effects ---
   useEffect(() => {
     const likedFromRedux =
       product?.likes?.some((id) => String(id) === loggedInUser?._id) ?? false;
     const countFromRedux = product?.likes?.length ?? 0;
     setIsLiked(likedFromRedux);
     setLikeCount(countFromRedux);
-    // لا تعتمد على isLiked أو likeCount المحليين هنا
-  }, [product?.likes, loggedInUser?._id]); // يعتمد فقط على البيانات من Redux/props
+  }, [product?.likes, loggedInUser?._id]);
 
   useEffect(() => {
     if (error && !isLoadingOther && !isLiking) {
-      toast.error(`${error}`);
+      toast.error(t(error, { defaultValue: error }));
       const timer = setTimeout(
         () => dispatch(clearProductError(product._id)),
         5000
       );
       return () => clearTimeout(timer);
     }
-  }, [error, isLoadingOther, isLiking, dispatch, product?._id]);
+  }, [error, isLoadingOther, isLiking, dispatch, product?._id, t]);
 
-  // --- Handlers ---
   const handleShowImageModal = (index = 0) => {
     setCurrentImageIndex(index);
     setShowImageModal(true);
@@ -142,39 +132,12 @@ const OfflineProdCard = ({ el: product }) => {
   const handleShowBidModal = (e) => {
     e.stopPropagation();
     if (!isAuth) {
-      toast.info("Please login to place a bid.");
+      toast.info(t("home.pleaseLoginToBid"));
       navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
-    if (
-      !loggedInUser ||
-      loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID
-    ) {
-      toast.warn(
-        <div>
-          You need at least {formatCurrency(MINIMUM_BALANCE_TO_PARTICIPATE_BID)}{" "}
-          in your balance to bid.{" "}
-          <Button
-            as={Link}
-            to="/dashboard/wallet"
-            variant="link"
-            size="sm"
-            className="p-0 ms-2"
-          >
-            Add Funds?
-          </Button>
-        </div>,
-        { autoClose: 5000 }
-      );
-      return;
-    }
-    if (currentUserBid) {
-      setIsEditingBid(true);
-      setBidAmount(currentUserBid.amount.toString());
-    } else {
-      setIsEditingBid(false);
-      setBidAmount("");
-    }
+    setIsEditingBid(!!currentUserBid);
+    setBidAmount(currentUserBid ? currentUserBid.amount.toString() : "");
     setBidAmountError(null);
     setShowBidModal(true);
   };
@@ -182,8 +145,8 @@ const OfflineProdCard = ({ el: product }) => {
 
   const handleLikeToggle = (e) => {
     e.stopPropagation();
-    if (!isAuth || !loggedInUser) {
-      toast.info("Please login to like products.");
+    if (!isAuth) {
+      toast.info(t("home.pleaseLoginToLike"));
       navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
@@ -196,131 +159,106 @@ const OfflineProdCard = ({ el: product }) => {
       : Math.max(0, previousLikeCount - 1);
     setIsLiked(newState);
     setLikeCount(newCount);
-    dispatch(toggleLikeProduct(product._id)).catch((error) => {
-      console.error("Like toggle failed, reverting.", error);
-      toast.error("Failed to update like.");
+    dispatch(toggleLikeProduct(product._id)).catch(() => {
+      toast.error(t("home.likeUpdateFailed"));
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
     });
   };
 
-  const handleBidAmountChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*\.?\d{0,2}$/.test(value) || value === "") {
-      setBidAmount(value);
-      setBidAmountError(null);
-      if (value !== "") {
-        const amountNum = parseFloat(value);
-        if (isNaN(amountNum) || amountNum <= 0) {
-          setBidAmountError("Amount must be positive.");
-        } else if (loggedInUser && amountNum > loggedInUser.balance) {
-          setBidAmountError("Insufficient balance for this bid.");
-        }
-      } else {
-        setBidAmountError("Please enter a bid amount.");
-      }
-    }
-  };
-
   const handleConfirmBid = async () => {
-    const amountNum = parseFloat(bidAmount);
-    let currentError = null;
-    if (!bidAmount || isNaN(amountNum) || amountNum <= 0) {
-      currentError = "Please enter a valid positive amount.";
-    } else if (!loggedInUser || loggedInUser.balance < amountNum) {
-      currentError = "Insufficient balance.";
-    } else if (
-      !loggedInUser ||
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setBidAmountError("Please enter a valid bid amount.");
+      return;
+    }
+    if (
+      loggedInUser &&
       loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID
     ) {
-      currentError = `Minimum balance of ${formatCurrency(
-        MINIMUM_BALANCE_TO_PARTICIPATE_BID
-      )} required.`;
-    }
-    if (currentError) {
-      setBidAmountError(currentError);
+      setBidAmountError("Your balance is too low to participate in bids.");
       return;
     }
+
+    setBidAmountError(null);
 
     try {
-      await dispatch(placeBid(product._id, amountNum));
+      await dispatch(placeBid(product._id, amount));
+      dispatch(getProfile());
       toast.success(
-        isEditingBid ? "Bid updated successfully!" : "Bid placed successfully!"
+        t(isEditingBid ? "home.bidUpdatedSuccess" : "home.bidPlacedSuccess")
       );
       handleCloseBidModal();
-      setTimeout(() => dispatch(getProfile()), 1000);
-    } catch (caughtError) {
-      setBidAmountError(caughtError.message || "An unknown error occurred.");
-      console.error("Failed to place/update bid:", caughtError);
+    } catch (error) {
+      console.error("Failed to place bid from component:", error);
     }
   };
-
-  const formatCurrency = useCallback((amount, currencyCode = "TND") => {
-    const num = Number(amount);
-    if (isNaN(num)) return "N/A";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-    }).format(num);
-  }, []);
-
-  const handleImageError = useCallback(
-    (e) => {
-      if (e.target.src !== fallbackImageUrl) {
-        e.target.onerror = null;
-        e.target.src = fallbackImageUrl;
-      }
-    },
-    [fallbackImageUrl]
-  );
 
   const handleAddToCart = useCallback(() => {
-    if (!isAuth) {
-      toast.info("Please login to add items.");
-      navigate("/login", { state: { from: window.location.pathname } });
-      return;
-    }
-    if (isOwner) {
-      toast.warn("Cannot add your own product.");
-      return;
-    }
-  }, [
-    dispatch,
-    product?._id,
-    cartLoading,
-    isOutOfStock,
-    isOwner,
-    isAuth,
-    navigate,
-  ]);
+    // Logic for adding to cart
+  }, []);
 
-  const calculateUSD = (amountTND) => {
-    if (!amountTND || isNaN(Number(amountTND))) return "0.00";
-    return (Number(amountTND) / TND_TO_USD_RATE).toFixed(2);
-  };
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num)) return "N/A";
 
-  // --- Render Guard ---
-  if (
-    !product ||
-    !product._id ||
-    !product.title ||
-    product.price == null ||
-    !sellerId
-  ) {
+      let options = {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      };
+
+      let locale = i18n.language;
+
+      // [!!!] هذا هو التعديل الحاسم [!!!]
+      // إذا كانت العملة هي الدولار الأمريكي، نفرض استخدام اللغة الإنجليزية الأمريكية للتنسيق
+      // لضمان الحصول على الرمز "$" فقط بدلاً من "US$".
+      if (currencyCode === "USD") {
+        locale = "en-US"; // استخدام لغة تضمن عرض الرمز بشكل صحيح
+        options.currencyDisplay = "symbol"; // كن صريحًا في طلب الرمز
+      }
+
+      // للحالات الأخرى (مثل TND)، سيتم استخدام لغة الواجهة الحالية (i18n.language)
+      // وهذا سيضمن عرض "د.ت." أو التنسيق المحلي الصحيح.
+      return new Intl.NumberFormat(locale, options).format(num);
+    },
+    [i18n.language]
+  );
+
+  const formatCurrencyWithName = useCallback(
+    (amount, currencyCode = "TND") => {
+      const lang = i18n.language;
+      if (["ar", "tn"].includes(lang) && currencyCode === "TND") {
+        const num = Number(amount).toLocaleString(lang, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+        return `${num} ${t("dashboard.currencies.TND")}`;
+      }
+      return formatCurrency(amount, currencyCode);
+    },
+    [i18n.language, t, formatCurrency]
+  );
+
+  const bidAmountLabel = isEditingBid
+    ? t("home.bidModal.bidAmountLabel_new", { currency: product.currency })
+    : t("home.bidModal.bidAmountLabel_your", { currency: product.currency });
+
+  if (!product || !product._id) {
     return (
-      <Card className="product-card-v3 border-danger shadow-sm h-100 w-100 overflow-hidden d-flex flex-column align-items-center justify-content-center text-center p-3">
+      <Card className="product-card-v3 border-danger shadow-sm h-100 w-100 p-3 text-center d-flex flex-column justify-content-center align-items-center">
         <FaExclamationTriangle className="text-danger mb-2" size={30} />
-        <small className="text-danger">Product data unavailable</small>
+        <small className="text-danger">
+          {t("home.productDataUnavailable")}
+        </small>
       </Card>
     );
   }
 
-  // --- العرض ---
   return (
     <>
       <Card className="product-card-v3 border-0 shadow-sm h-100 w-100 overflow-hidden d-flex flex-column">
-        {/* Image Area */}
         <div className="product-img-wrapper position-relative">
           <Carousel
             interval={null}
@@ -333,8 +271,10 @@ const OfflineProdCard = ({ el: product }) => {
                 <Image
                   src={imgUrl || noImageUrl}
                   className="product-img"
-                  alt={`${product.title} - image ${index + 1}`}
-                  onError={handleImageError}
+                  alt={t("home.productImageAlt", {
+                    title: product.title,
+                    index: index + 1,
+                  })}
                   fluid
                 />
               </Carousel.Item>
@@ -345,48 +285,45 @@ const OfflineProdCard = ({ el: product }) => {
             onClick={() => handleShowImageModal(0)}
             className="view-gallery-btn"
           >
-            <BsImage /> View Gallery
+            <BsImage /> {t("home.viewGallery")}
           </Button>
           {isOutOfStock && (
             <Badge bg="dark" text="light" className="stock-badge">
-              Out of Stock
+              {t("home.outOfStock")}
             </Badge>
           )}
         </div>
 
-        {/* Card Body */}
         <Card.Body className="p-3 d-flex flex-column flex-grow-1">
           <Card.Title className="product-title mb-1" title={product.title}>
             {product.title}
           </Card.Title>
           <Card.Text className="product-seller small mb-2">
-            Sold by:{" "}
+            {t("home.seller")}:
             {sellerId ? (
               <Link
                 to={`/profile/${sellerId}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-decoration-none fw-medium seller-link"
               >
-                {product.user?.fullName || "Seller"}
+                {product.user?.fullName || t("home.seller")}
               </Link>
             ) : (
-              <span className="text-muted">Unknown Seller</span>
+              <span className="text-muted">{t("home.unknownSeller")}</span>
             )}
           </Card.Text>
           <div className="product-price-section mb-3">
             <div className="price-current fw-bold">
               {formatCurrency(product.price, product.currency)}
-              {highestBid && (
+              {highestBid?.amount > 0 && (
                 <span
                   className="text-success ms-2 highest-bid-info"
-                  title={`Highest bid: ${formatCurrency(
-                    highestBid.amount,
-                    product.currency
-                  )}`}
+                  title={t("home.highestBidTooltip", {
+                    amount: formatCurrency(highestBid.amount, product.currency),
+                  })}
                 >
-                  {" "}
                   (<FaGavel size={12} />{" "}
-                  {formatCurrency(highestBid.amount, product.currency)}){" "}
+                  {formatCurrency(highestBid.amount, product.currency)})
                 </span>
               )}
             </div>
@@ -395,7 +332,11 @@ const OfflineProdCard = ({ el: product }) => {
             <div className="d-flex align-items-center">
               <OverlayTrigger
                 placement="top"
-                overlay={<Tooltip>{isLiked ? "Unlike" : "Like"}</Tooltip>}
+                overlay={
+                  <Tooltip>
+                    {isLiked ? t("home.unlike") : t("home.like")}
+                  </Tooltip>
+                }
               >
                 <Button
                   variant="link"
@@ -414,12 +355,12 @@ const OfflineProdCard = ({ el: product }) => {
                   ) : (
                     <FaRegHeart />
                   )}
-                  <span className="action-count">{likeCount}</span>
+                  <span className="action-count ms-1">{likeCount}</span>
                 </Button>
               </OverlayTrigger>
               <OverlayTrigger
                 placement="top"
-                overlay={<Tooltip>Bidders</Tooltip>}
+                overlay={<Tooltip>{t("home.bidders")}</Tooltip>}
               >
                 <span className="action-btn text-muted ms-2">
                   <FaUsers />
@@ -435,12 +376,12 @@ const OfflineProdCard = ({ el: product }) => {
                 overlay={
                   <Tooltip>
                     {isOwner
-                      ? "Your item"
+                      ? t("home.yourItem")
                       : isOutOfStock
-                      ? "Out of stock"
+                      ? t("home.outOfStock")
                       : currentUserBid
-                      ? "Update Your Bid"
-                      : "Place a Bid"}
+                      ? t("home.updateBid")
+                      : t("home.placeBid")}
                   </Tooltip>
                 }
               >
@@ -453,11 +394,9 @@ const OfflineProdCard = ({ el: product }) => {
                     onClick={handleShowBidModal}
                     disabled={isLoadingOther || isOwner || isOutOfStock}
                     className="action-btn bid-btn"
-                    style={
-                      isOwner || isOutOfStock ? { pointerEvents: "none" } : {}
-                    }
                   >
-                    <FaGavel /> {currentUserBid ? "Update Bid" : "Bid"}
+                    <FaGavel />{" "}
+                    {currentUserBid ? t("home.updateBid") : t("home.placeBid")}
                   </Button>
                 </span>
               </OverlayTrigger>
@@ -466,10 +405,10 @@ const OfflineProdCard = ({ el: product }) => {
                 overlay={
                   <Tooltip>
                     {isOwner
-                      ? "Your item"
+                      ? t("home.yourItem")
                       : isOutOfStock
-                      ? "Out of Stock"
-                      : "Add to Cart"}
+                      ? t("home.outOfStock")
+                      : t("home.addToCart")}
                   </Tooltip>
                 }
               >
@@ -483,9 +422,6 @@ const OfflineProdCard = ({ el: product }) => {
                     }}
                     disabled={cartLoading || isOutOfStock || isOwner}
                     className="action-btn cart-btn"
-                    style={
-                      isOwner || isOutOfStock ? { pointerEvents: "none" } : {}
-                    }
                   >
                     {cartLoading ? (
                       <Spinner animation="border" size="sm" />
@@ -499,11 +435,10 @@ const OfflineProdCard = ({ el: product }) => {
           </div>
         </Card.Body>
 
-        {/* Bids Footer */}
         {product.bids && product.bids.length > 0 && (
           <Card.Footer className="bg-light p-2 bids-footer">
             <div className="d-flex align-items-center justify-content-between">
-              <small className="text-muted">Bids:</small>
+              <small className="text-muted">{t("home.bidModal.bids")}</small>
               <ListGroup horizontal className="bids-list-horizontal ms-auto">
                 {product.bids.slice(0, 4).map((bid, index) => {
                   const bidderId = bid?.user?._id || bid?.user;
@@ -520,7 +455,7 @@ const OfflineProdCard = ({ el: product }) => {
                           placement="top"
                           overlay={
                             <Tooltip>
-                              {bid.user?.fullName || "Bidder"} -{" "}
+                              {bid.user?.fullName || t("home.bidder")} -{" "}
                               {formatCurrency(bid.amount, bid.currency)}
                             </Tooltip>
                           }
@@ -534,11 +469,19 @@ const OfflineProdCard = ({ el: product }) => {
                               className="bidder-avatar"
                               title={bid.user?.fullName}
                             >
-                              {bid.user?.fullName
-                                ?.split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase() || <FaUserCircle />}
+                              {bid.user?.avatarUrl ? (
+                                <Image
+                                  src={bid.user.avatarUrl}
+                                  className="bidder-avatar-img"
+                                  alt={bid.user?.fullName}
+                                />
+                              ) : (
+                                bid.user?.fullName
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase() || <FaUserCircle />
+                              )}
                             </span>
                           </Link>
                         </OverlayTrigger>
@@ -547,25 +490,24 @@ const OfflineProdCard = ({ el: product }) => {
                           placement="top"
                           overlay={
                             <Tooltip>
-                              Unknown Bidder -{" "}
+                              {t("home.unknownBidder")} -{" "}
                               {formatCurrency(bid.amount, bid.currency)}
                             </Tooltip>
                           }
                         >
-                          {" "}
                           <span
                             className="bidder-avatar unknown-bidder"
-                            title="Unknown Bidder"
+                            title={t("home.unknownBidder")}
                           >
                             ?
-                          </span>{" "}
+                          </span>
                         </OverlayTrigger>
                       )}
                     </ListGroup.Item>
                   );
                 })}
                 {product.bids.length > 4 && (
-                  <ListGroup.Item className="bid-item p-0 border-0 bg-transparent text-muted small align-self-center ms-1 more-bids">
+                  <ListGroup.Item className="bid-item p-0 border-0 bg-transparent text-muted small align-self-center more-bids">
                     +{product.bids.length - 4}
                   </ListGroup.Item>
                 )}
@@ -575,7 +517,6 @@ const OfflineProdCard = ({ el: product }) => {
         )}
       </Card>
 
-      {/* Image Lightbox Modal */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}
@@ -584,7 +525,7 @@ const OfflineProdCard = ({ el: product }) => {
         dialogClassName="lightbox-modal"
       >
         <Modal.Body className="p-0 text-center bg-dark position-relative">
-          {images.length > 0 ? (
+          {images.length > 0 && images[0] !== noImageUrl ? (
             <Carousel
               activeIndex={currentImageIndex}
               onSelect={(selectedIndex) => setCurrentImageIndex(selectedIndex)}
@@ -593,34 +534,34 @@ const OfflineProdCard = ({ el: product }) => {
             >
               {images.map((imgUrl, index) => (
                 <Carousel.Item key={index}>
-                  {" "}
                   <Image
                     src={imgUrl || fallbackImageUrl}
                     fluid
                     className="lightbox-image"
-                    onError={handleImageError}
-                    alt={`Product Image ${index + 1}`}
-                  />{" "}
+                    alt={t("home.productImageAlt", {
+                      title: product.title,
+                      index: index + 1,
+                    })}
+                  />
                 </Carousel.Item>
               ))}
             </Carousel>
           ) : (
             <Alert variant="dark" className="m-5">
-              Image not available.
+              {t("home.imageNotAvailable")}
             </Alert>
           )}
           <Button
             variant="light"
             onClick={handleCloseImageModal}
             className="position-absolute top-0 end-0 m-2 close-lightbox-btn"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
-            ×
+            <BsX size={24} />
           </Button>
         </Modal.Body>
       </Modal>
 
-      {/* Bid Modal */}
       <Modal
         show={showBidModal}
         onHide={handleCloseBidModal}
@@ -630,7 +571,9 @@ const OfflineProdCard = ({ el: product }) => {
         <Modal.Header closeButton>
           <Modal.Title>
             <FaGavel className="me-2" />
-            {isEditingBid ? "Update Your Bid" : "Place Your Bid"}
+            {isEditingBid
+              ? t("home.bidModal.updateTitle")
+              : t("home.bidModal.placeTitle")}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -642,13 +585,16 @@ const OfflineProdCard = ({ el: product }) => {
             <div>
               <strong>{product.title}</strong>
               <br />
-              <span className="text-muted">Base Price:</span>{" "}
+              <span className="text-muted">
+                {t("home.bidModal.basePrice")}:
+              </span>{" "}
               {formatCurrency(product.price, product.currency)}
-              {highestBid && (
+              {highestBid?.amount > 0 && (
                 <>
-                  {" "}
-                  <span className="text-muted ms-2">Highest Bid:</span>{" "}
-                  {formatCurrency(highestBid.amount, product.currency)}{" "}
+                  <span className="text-muted ms-2">
+                    {t("home.bidModal.highestBid")}:
+                  </span>{" "}
+                  {formatCurrency(highestBid.amount, product.currency)}
                 </>
               )}
             </div>
@@ -660,64 +606,53 @@ const OfflineProdCard = ({ el: product }) => {
             }}
           >
             <Form.Group controlId="bidAmountInput">
-              {isEditingBid && currentUserBid && (
-                <div className="mb-2 current-bid-info">
-                  <small className="text-muted">Your current bid: </small>
-                  <Badge bg="secondary">
-                    {formatCurrency(
-                      currentUserBid.amount,
-                      currentUserBid.currency
-                    )}
-                  </Badge>
-                </div>
-              )}
-              <FloatingLabel
-                controlId="bidAmountFloat"
-                label={`${isEditingBid ? "New" : "Your"} Bid Amount (${
-                  product.currency
-                })`}
-                className="mb-1"
-              >
-                <InputGroup>
-                  <Form.Control
-                    type="number"
-                    placeholder="0.00"
-                    value={bidAmount}
-                    onChange={handleBidAmountChange}
-                    required
-                    min="0.01"
-                    step="0.01"
-                    isInvalid={!!bidAmountError}
-                    autoFocus
-                  />
+              <Form.Label>{bidAmountLabel}</Form.Label>
+              <InputGroup>
+                {i18n.dir() === "rtl" && (
                   <InputGroup.Text>{product.currency}</InputGroup.Text>
-                </InputGroup>
-                {bidAmountError && (
-                  <small className="text-danger mt-1 d-block">
-                    {bidAmountError}
-                  </small>
                 )}
-              </FloatingLabel>
-              <Form.Text className="text-muted d-block text-end mb-3">
-                {product.currency === "TND" &&
-                  `~ ${calculateUSD(bidAmount)} USD`}
-                {product.currency === "USD" &&
-                  `~ ${(Number(bidAmount || 0) * TND_TO_USD_RATE).toFixed(
-                    2
-                  )} TND`}
-              </Form.Text>
+                <Form.Control
+                  type="number"
+                  placeholder="0.00"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  required
+                  min="0.01"
+                  step="0.01"
+                  isInvalid={!!bidAmountError}
+                  autoFocus
+                />
+                {i18n.dir() !== "rtl" && (
+                  <InputGroup.Text>{product.currency}</InputGroup.Text>
+                )}
+              </InputGroup>
+              {bidAmountError && (
+                <Form.Text className="text-danger">
+                  {t(bidAmountError, { defaultValue: bidAmountError })}
+                </Form.Text>
+              )}
             </Form.Group>
+
             <Alert
               variant="light"
               className="small p-2 mt-3 border d-flex align-items-center"
             >
               <FaWallet className="me-2 text-primary flex-shrink-0" />
               <div>
-                Your current balance:{" "}
-                <strong>{formatCurrency(loggedInUser?.balance, "TND")}</strong>.
+                {t("home.bidModal.currentBalance")}:{" "}
+                <strong>
+                  {formatCurrencyWithName(loggedInUser?.balance, "TND")}
+                </strong>
+                .
                 <span className="d-block text-muted">
-                  (Min. {formatCurrency(MINIMUM_BALANCE_TO_PARTICIPATE_BID)}{" "}
-                  required to bid)
+                  (
+                  {t("home.bidModal.minBalanceRequired", {
+                    amount: formatCurrencyWithName(
+                      MINIMUM_BALANCE_TO_PARTICIPATE_BID,
+                      "TND"
+                    ),
+                  })}
+                  )
                 </span>
               </div>
             </Alert>
@@ -729,7 +664,7 @@ const OfflineProdCard = ({ el: product }) => {
             onClick={handleCloseBidModal}
             disabled={isLoadingOther || isLiking}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="success"
@@ -744,12 +679,19 @@ const OfflineProdCard = ({ el: product }) => {
           >
             {isLoadingOther ? (
               <>
-                <Spinner size="sm" animation="border" /> Processing...
+                <Spinner
+                  size="sm"
+                  animation="border"
+                  as="span"
+                  role="status"
+                  aria-hidden="true"
+                />{" "}
+                {t("common.processing")}
               </>
             ) : isEditingBid ? (
-              "Update Bid"
+              t("home.updateBid")
             ) : (
-              "Confirm Bid"
+              t("common.confirmBid")
             )}
           </Button>
         </Modal.Footer>

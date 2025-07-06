@@ -49,6 +49,10 @@ const initialState = {
   errorUpdateAvatar: null,
   successUpdateAvatar: false,
   onlineUserIds: [],
+  successMessage: null, // رسالة نجاح مؤقتة
+  successMessageParams: null,
+  errorMessage: null, // رسالة خطأ مؤقتة (غير أخطاء API)
+  errorMessageParams: null,
 };
 
 const userReducer = (state = initialState, { type, payload }) => {
@@ -56,36 +60,55 @@ const userReducer = (state = initialState, { type, payload }) => {
     case LOGIN_REQUEST:
       return { ...state, loading: true, errors: null, authChecked: false }; // authChecked false أثناء محاولة تسجيل الدخول
     case LOGIN_SUCCESS:
-      console.log('[Reducer] LOGIN_SUCCESS', payload);
       return {
         ...state,
-        loading: false,
-        isAuth: true,
-        user: payload.user,
-        token: payload.token,
-        errors: null,
-        authChecked: true, // المصادقة تمت بنجاح
-      };
+        loading: false, isAuth: true, user: payload.user, token: payload.token, errors: null, authChecked: true,
+        successMessage: payload.successMessage,
+        successMessageParams: payload.successMessageParams,
+        errorMessage: payload.errorMessage,
+        };
     case LOGIN_FAIL:
       return {
         ...state,
         loading: false,
-        errors: payload,
+        // errors: payload, // <-- السطر القديم: سنستبدله
+        errorMessage: 'auth.toast.loginError', // <-- الجديد: مفتاح الترجمة للخطأ
+        errorMessageParams: { error: payload },  // <-- الجديد: رسالة الخطأ الفعلية كمتغير
         isAuth: false,
         user: null,
         token: null,
-        authChecked: true, // تم محاولة المصادقة وفشلت
-      };
+        authChecked: true,
+          };
 
     case REGISTER_REQUEST:
       return { ...state, loading: true, errors: null, registrationStatus: null };
+
     case REGISTER_SUCCESS:
-      return { ...state, loading: false, registrationStatus: 'success', errors: null };
+      // الآن الـ reducer هو من يحدد رسالة النجاح
+      return {
+        ...state,
+        loading: false,
+        registrationStatus: 'success',
+        errors: null,
+        // نضع مفتاح الترجمة مباشرة هنا
+        successMessage: 'auth.toast.registerSuccess'
+      };
+
     case REGISTER_FAIL:
-      return { ...state, loading: false, registrationStatus: 'fail', errors: payload };
+      // هذا الجزء يعالج الخطأ القادم من الأكشن بشكل صحيح
+      return {
+        ...state,
+        loading: false,
+        registrationStatus: 'fail',
+        // نستخدم مفتاح الترجمة للخطأ
+        errorMessage: 'auth.toast.registerFail',
+        // ونمرر الخطأ الفعلي من الـ API كمتغير
+        errorMessageParams: { error: payload },
+      };
+
     case CLEAR_REGISTRATION_STATUS:
       return { ...state, registrationStatus: null };
-
+      
     case GET_PROFILE_REQUEST:
       return { ...state, loading: true, errors: null }; // لا تعدل authChecked هنا
     case GET_PROFILE_SUCCESS:
@@ -129,15 +152,21 @@ const userReducer = (state = initialState, { type, payload }) => {
       };
 
     case LOGOUT:
-      // localStorage.removeItem("token") و ("userId") يتم في action creator
-      console.log('[Reducer] LOGOUT');
       return {
-        ...initialState, // يعيد كل شيء إلى الحالة الأولية
-        token: null,
-        isAuth: false,
-        user: null,
-        authChecked: true, // تم تسجيل الخروج، لذا المصادقة "تم فحصها" (لا يوجد مستخدم)
-      };
+        ...initialState,
+        token: null, isAuth: false, user: null, authChecked: true,
+        successMessage: 'auth.toast.loggedOut',
+        };
+
+    case 'CLEAR_USER_MESSAGES':
+      return {
+        ...state,
+        successMessage: null,
+        successMessageParams: null,
+        errorMessage: null,
+        errorMessageParams: null, // <-- أضف هذا السطر لمسح متغيرات الخطأ
+        errors: null
+          };
 
     case CLEAR_USER_ERRORS:
       return { ...state, errors: null };

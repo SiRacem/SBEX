@@ -1,8 +1,11 @@
+// src/App.js
+
 import React, { useState, useEffect, useRef, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import io from 'socket.io-client';
-import { getProfile, setOnlineUsers, updateUserBalances, logoutUser } from './redux/actions/userAction';
+import { useTranslation } from 'react-i18next';
+import { getProfile, setOnlineUsers, logoutUser } from './redux/actions/userAction';
 import { Alert, Spinner, Button } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import NotFound from './pages/NotFound';
@@ -112,12 +115,69 @@ const BlockedWarning = ({ isAuth, user }) => {
   );
 };
 
+// هذا هو المكون الوحيد الذي يجب أن يكون لحاوية الإشعارات
+// وهو يدعم RTL بشكل صحيح
+const CustomToastContainer = () => {
+  const { i18n } = useTranslation();
+  return <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={i18n.dir() === 'rtl'} pauseOnFocusLoss draggable pauseOnHover theme="colored" />;
+};
+
 function App() {
+  const { t, i18n } = useTranslation();
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
-  const { isAuth, authChecked, user, loading: userLoading, error: userError } = useSelector(state => state.userReducer);
+  // استدعاء كل الحالات الضرورية بما في ذلك errorMessageParams
+  const {
+    errors,
+    successMessage,
+    registrationStatus,
+    successMessageParams,
+    errorMessage,
+    errorMessageParams, // <-- تمت إضافته هنا
+    isAuth,
+    user,
+    authChecked,
+    userLoading,
+    userError
+  } = useSelector(state => state.userReducer);
+
   const currentUserId = user?._id;
   const socketRef = useRef(null);
+
+  // useEffect مركزي ومُحسّن لعرض الإشعارات (هنا التعديل الرئيسي)
+  useEffect(() => {
+    // 1. التعامل مع رسائل النجاح
+    if (successMessage) {
+      toast.success(t(successMessage, successMessageParams));
+      dispatch({ type: 'CLEAR_USER_MESSAGES' });
+    }
+    // 2. التعامل مع رسائل الخطأ (المنطق الجديد والمحسّن)
+    else if (errorMessage) {
+      // نجهز متغيرات الترجمة
+      const params = { ...errorMessageParams };
+
+      // خطوة اختيارية لكنها ممتازة: حاول ترجمة رسالة الخطأ الداخلية نفسها
+      // مثال: إذا كانت params.error هي "Invalid credentials"
+      // سيبحث عن ترجمتها في "apiErrors.Invalid credentials"
+      if (params && params.error && typeof params.error === 'string') {
+        const innerErrorTranslation = t(`apiErrors.${params.error}`, { defaultValue: params.error });
+        params.error = innerErrorTranslation;
+      }
+
+      // الآن نترجم الرسالة الرئيسية ونمرر لها المتغيرات (التي قد تكون مترجمة أيضًا)
+      // مثال: t('auth.toast.loginError', { error: 'الإيميل ولا كلمة السر غالطين.' })
+      toast.error(t(errorMessage, params));
+      dispatch({ type: 'CLEAR_USER_MESSAGES' });
+    }
+    // 3. التعامل مع الأخطاء القديمة (كإجراء احتياطي)
+    else if (errors) {
+      const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
+      toast.error(errorMessageText);
+      dispatch({ type: 'CLEAR_USER_ERRORS' });
+    }
+
+    // إضافة errorMessageParams إلى مصفوفة الاعتماديات
+  }, [successMessage, errorMessage, errors, registrationStatus, dispatch, t, successMessageParams, errorMessageParams]);
 
   useEffect(() => {
     const localToken = localStorage.getItem('token');
@@ -133,11 +193,9 @@ function App() {
     }
   }, [dispatch, authChecked, user, userLoading]);
 
-  // --- [!!!] START OF FINAL MODIFICATION FOR SOCKET LOGIC [!!!] ---
+  // منطق الاتصال بـ Socket.IO
   useEffect(() => {
-    // هذا التأثير يعمل فقط عندما يكون المستخدم مصادقًا ولديه ID
     if (isAuth && currentUserId) {
-      // إذا لم يكن هناك اتصال Socket حالي، قم بإنشاء واحد جديد
       if (!socketRef.current) {
         console.log(`[App.js Socket Effect] Auth is TRUE. Setting up NEW Socket.IO connection for user: ${currentUserId}`);
 
@@ -147,7 +205,6 @@ function App() {
           auth: { token: localStorage.getItem("token") }
         });
 
-        // --- إعداد جميع المستمعين مرة واحدة فقط عند الإنشاء ---
         newSocket.on("connect", () => {
           console.log(`%c[App.js Socket] CONNECTED! Socket ID: ${newSocket.id}`, "color: green; font-weight: bold;");
           newSocket.emit("addUser", currentUserId);
@@ -160,7 +217,6 @@ function App() {
         newSocket.on('user_balances_updated', (updatedBalanceData) => {
           if (updatedBalanceData && updatedBalanceData._id === currentUserId) {
             console.log("[Socket] Received 'user_balances_updated'. Dispatching to reducer:", updatedBalanceData);
-            // Dispatching the data directly to the reducer
             dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: updatedBalanceData });
             toast.info("Your account balance has been updated.", { autoClose: 2500 });
           }
@@ -174,16 +230,9 @@ function App() {
         });
 
         newSocket.on('user_profile_updated', (updatedUserData) => {
-          // Check if the update is for the currently logged-in user
           if (updatedUserData && updatedUserData._id === currentUserId) {
-
-            // --- [!!!] THE CRITICAL CHANGE IS HERE [!!!] ---
             console.log(`[Socket] Received 'user_profile_updated' for self. Refetching profile...`);
-
-            // Instead of dispatching with a payload, we dispatch the 'getProfile' thunk.
-            // This forces a fresh fetch from the server, guaranteeing the latest data.
             dispatch(getProfile());
-
             toast.info("Your profile information has been updated.", { autoClose: 2500 });
           }
         });
@@ -216,9 +265,7 @@ function App() {
         });
 
         newSocket.on('mediation_request_updated', (data) => {
-          // [!!!] أضف هذا الـ Log [!!!]
           console.log("%c[App.js Socket] Received 'mediation_request_updated'. DATA:", "color: blue; font-weight: bold;", data);
-
           if (data && data.updatedMediationRequestData?._id) {
             dispatch({ type: 'UPDATE_MEDIATION_DETAILS_FROM_SOCKET', payload: data.updatedMediationRequestData });
             toast.info(`Mediation request for product "${data.updatedMediationRequestData.product?.title || 'N/A'}" has been updated.`);
@@ -226,20 +273,18 @@ function App() {
         });
 
         newSocket.on('product_updated', (updatedProductData) => {
-          // [!!!] أضف هذا الـ Log [!!!]
           console.log("%c[App.js Socket] Received 'product_updated'. DATA:", "color: green; font-weight: bold;", updatedProductData);
-
           if (updatedProductData && updatedProductData._id) {
             dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProductData });
           }
-      });
+        });
 
         newSocket.on('new_assignment_for_mediator', (data) => {
           if (data && data.newAssignmentData) {
             console.log('[Socket] Received new assignment for mediator.');
             dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData });
           }
-      });
+        });
 
         newSocket.on('new_notification', (notification) => {
           toast.info(`🔔 ${notification.title || 'New Notification!'}`, { position: "top-right", autoClose: 3000 });
@@ -247,10 +292,8 @@ function App() {
         });
 
         newSocket.on('dispute_opened_for_admin', () => {
-          // Check if the current user is an admin before dispatching
           if (user && user.userRole === 'Admin') {
             console.log('[Socket] Admin received "dispute_opened_for_admin", refetching disputed cases count.');
-            // This action will refetch the list of disputes, updating the totalCount used for the badge.
             dispatch(adminGetDisputedMediationsAction(1, 1));
           }
         });
@@ -271,16 +314,13 @@ function App() {
           }
         });
 
-        // هذا هو المستمع الحاسم لمشكلتنا
         newSocket.on('new_admin_sub_chat_message', (data) => {
           console.log('[App.js Socket] Received "new_admin_sub_chat_message" globally:', data);
           if (data && data.message) {
-            // نمرر ID المستخدم الحالي ليتمكن الـ Reducer من التمييز بين المرسل والمستقبل
             dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId));
           }
         });
 
-        // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
         newSocket.on('new_ticket_created_for_admin', (newTicket) => {
           console.log("[Socket] Received 'new_ticket_created_for_admin'. Dispatching to reducer:", newTicket);
           if (user && (user.userRole === 'Admin' || user.userRole === 'Support')) {
@@ -292,19 +332,15 @@ function App() {
               </div>,
               { position: "top-right", autoClose: 5000 }
             );
-            // إرسال action إلى الـ reducer لتحديث الحالة
             dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: newTicket });
           }
         });
-              // --- نهاية الإضافة ---
 
-        // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
         newSocket.on('ticket_updated', (data) => {
           console.log("[Socket] Received 'ticket_updated'. Dispatching to reducer:", data.updatedTicket);
           toast.info(`Ticket #${data.updatedTicket.ticketId} has been updated.`, { autoClose: 3500 });
           dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
         });
-        // --- نهاية الإضافة ---
 
         newSocket.on('disconnect', (reason) => {
           console.warn('[App.js Socket] Disconnected:', reason);
@@ -324,21 +360,13 @@ function App() {
         socketRef.current = newSocket;
       }
     } else {
-      // إذا لم يكن المستخدم مصادقًا أو لا يوجد ID، تأكد من فصل أي اتصال موجود
       if (socketRef.current) {
         console.log("[App.js Socket Effect] Auth is FALSE. Disconnecting Socket.IO.");
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     }
-
-    // دالة التنظيف هذه مهمة لمنع تسرب الذاكرة عند تسجيل الخروج
-    return () => {
-      // لا نفصل الاتصال هنا لأن هذا التأثير قد يعمل عدة مرات
-      // سيتم فصل الاتصال فقط عندما يتغير isAuth إلى false (في الكتلة أعلاه)
-    };
-  }, [isAuth, currentUserId, dispatch, user]); // الاعتماديات صحيحة
-  // --- [!!!] END OF FINAL MODIFICATION FOR SOCKET LOGIC [!!!] ---
+  }, [isAuth, currentUserId, dispatch, user]);
 
   const localTokenExistsForLoadingCheck = !!localStorage.getItem('token');
   if (!authChecked && (userLoading || (localTokenExistsForLoadingCheck && !user && !userError))) {
@@ -368,7 +396,10 @@ function App() {
   return (
     <SocketContext.Provider value={socketRef.current}>
       <div className={`app-container ${isAuth && user ? 'layout-authenticated' : 'layout-public'}`}>
-        <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
+
+        {/* الحل الصحيح: استخدام الحاوية المخصصة مرة واحدة فقط */}
+        <CustomToastContainer />
+
         {isAuth && user && <Sidebar onSearchChange={handleSearchChange} />}
         <main className={`main-content-area flex-grow-1 ${isAuth && user ? 'content-authenticated' : 'content-public'}`}>
           {isAuth && user && <BlockedWarning isAuth={isAuth} user={user} />}
@@ -376,7 +407,6 @@ function App() {
             <Route path="/login" element={!isAuth || !user ? <Login /> : <Navigate to="/dashboard" replace />} />
             <Route path="/register" element={!isAuth || !user ? <Register /> : <Navigate to="/dashboard" replace />} />
             <Route path="/" element={<OfflineProd />} />
-
             <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
@@ -389,7 +419,6 @@ function App() {
             <Route path="/dashboard/support/tickets/:ticketId" element={<ProtectedRoute><TicketDetailsPage /></ProtectedRoute>} />
             <Route path="/dashboard/support/create-ticket" element={<ProtectedRoute><CreateTicketPage /></ProtectedRoute>} />
             <Route path="/dashboard/faq" element={<ProtectedRoute><FAQPage /></ProtectedRoute>} />
-
             <Route path="/dashboard/admin/products" element={<ProtectedRoute requiredRole="Admin"><ProductListAdmin search={search} /></ProtectedRoute>} />
             <Route path="/dashboard/admin/users" element={<ProtectedRoute requiredRole="Admin"><UserListAd search={search} /></ProtectedRoute>} />
             <Route path="/dashboard/admin/deposits" element={<ProtectedRoute requiredRole="Admin"><AdminTransactionRequests type="deposits" search={search} /></ProtectedRoute>} />
@@ -401,11 +430,8 @@ function App() {
             <Route path="/dashboard/admin/tickets" element={<ProtectedRoute requiredRole="Admin"><AdminTicketsDashboardPage /></ProtectedRoute>} />
             <Route path="/dashboard/admin/ticket-view/:ticketId" element={<ProtectedRoute requiredRole="Admin"><TicketDetailsPage /></ProtectedRoute>} />
             <Route path="/dashboard/admin/faq" element={<ProtectedRoute requiredRole="Admin"><AdminFAQManagement /></ProtectedRoute>} />
-
             <Route path="/dashboard/mediator/assignments" element={<ProtectedRoute isMediatorRoute={true}><MediatorDashboardPage /></ProtectedRoute>} />
-
             <Route path="/dashboard/mediation-chat/:mediationRequestId" element={<ProtectedRoute><MediationChatPage /></ProtectedRoute>} />
-
             <Route path="/profile/:userId" element={<UserProfilePage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

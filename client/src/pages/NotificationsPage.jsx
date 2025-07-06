@@ -2,6 +2,7 @@
 import React, { useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Container, ListGroup, Spinner, Alert, Button } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
   FaCheckDouble,
   FaRegEnvelope,
@@ -17,16 +18,10 @@ import {
   FaMoneyBillWave,
   FaUsersCog,
   FaMedal,
-  FaGavel, // أيقونة للوساطة
-  FaCommentDots, // أيقونة لرسائل الشات
+  FaGavel,
+  FaCommentDots,
 } from "react-icons/fa";
-import {
-  // أيقونات إضافية قد تكون مفيدة
-  FiTrendingUp, // للودائع
-  FiTrendingDown, // للسحوبات
-  FiAlertTriangle, // للمشاكل أو النزاعات
-} from "react-icons/fi";
-
+import { FiTrendingUp, FiTrendingDown, FiAlertTriangle } from "react-icons/fi";
 import {
   getNotifications,
   markNotificationsRead,
@@ -35,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 import "./NotificationsPage.css";
 
 const NotificationsPage = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.userReducer);
@@ -383,7 +379,7 @@ const NotificationsPage = () => {
   return (
     <Container fluid className="notifications-page py-4">
       <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h2 className="page-title mb-0">Notifications</h2>
+        <h2 className="page-title mb-0">{t("notificationsPage.title")}</h2>
         {unreadCount > 0 && (
           <Button
             size="sm"
@@ -396,7 +392,7 @@ const NotificationsPage = () => {
             ) : (
               <FaCheckDouble className="me-1" />
             )}
-            Mark All Read ({unreadCount})
+            {t("notificationsPage.markAllRead", { count: unreadCount })}
           </Button>
         )}
       </div>
@@ -404,12 +400,12 @@ const NotificationsPage = () => {
       {loading && (
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Loading notifications...</p>
+          <p className="mt-2">{t("notificationsPage.loading")}</p>
         </div>
       )}
       {!loading && error && (
         <Alert variant="danger" className="text-center">
-          Failed to load notifications: {error}
+          {t("notificationsPage.error", { error: error })}
         </Alert>
       )}
 
@@ -434,17 +430,23 @@ const NotificationsPage = () => {
                       !notif.isRead ? "fw-bold" : ""
                     }`}
                   >
-                    {notif.title || "Notification"}
+                    {t(notif.title, { defaultValue: notif.title })}
                   </p>
                   <p
                     className={`mb-1 notification-message small ${
                       !notif.isRead ? "" : "text-muted"
                     }`}
                   >
-                    {notif.message}
+                    {t(notif.message, {
+                      ...notif.messageParams,
+                      defaultValue: notif.message,
+                    })}
                   </p>
                   <small className="text-muted notification-date">
-                    {new Date(notif.createdAt).toLocaleString()}
+                    {new Date(notif.createdAt).toLocaleString(i18n.language, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
                   </small>
                 </div>
               </ListGroup.Item>
@@ -452,7 +454,7 @@ const NotificationsPage = () => {
           ) : (
             <ListGroup.Item className="text-center text-muted py-5">
               <FaInfoCircle size={30} className="mb-3 d-block mx-auto" />
-              You have no notifications.
+              {t("notificationsPage.noNotifications")}
             </ListGroup.Item>
           )}
         </ListGroup>

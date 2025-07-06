@@ -20,7 +20,6 @@ import {
 import { toast } from 'react-toastify';
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
-// import { clearMediationData } from './mediationAction';
 
 const getTokenConfig = (isFormData = false) => {
     const token = localStorage.getItem("token");
@@ -39,12 +38,13 @@ export const registerUser = (newUser) => async (dispatch) => {
     dispatch({ type: REGISTER_REQUEST });
     try {
         const { data } = await axios.post("/user/register", newUser);
-        dispatch({ type: REGISTER_SUCCESS, payload: { msg: data.msg || "Registration successful! Please login." } });
-        toast.success(data.msg || "Registration successful! Please login.", { toastId: "register-success" });
+        dispatch({ type: REGISTER_SUCCESS });
+
     } catch (error) {
-        const message = error.response?.data?.errors?.[0]?.msg || error.response?.data?.msg || error.message || 'Registration failed';
+        // --- [!!!] التعديل هنا [!!!] ---
+        // بدلاً من نص إنجليزي، نمرر مفتاحًا يمكن ترجمته
+        const message = error.response?.data?.msg || 'unknownRegistrationError';
         dispatch({ type: REGISTER_FAIL, payload: message });
-        toast.error(message, { toastId: "register-fail" });
     }
 };
 
@@ -56,26 +56,22 @@ export const loginUser = (loggedUser) => async (dispatch) => {
     dispatch(clearUserErrors());
     try {
         const { data } = await axios.post("/user/login", loggedUser);
-        if (!data.token || !data.user) {
-            throw new Error("Login response missing token or user data.");
-        }
+        if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
+
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user._id);
-        dispatch({ type: LOGIN_SUCCESS, payload: data });
+
         if (data.user.blocked) {
-            toast.error("Your account is currently blocked. Access will be restricted.", {
-                theme: "colored", autoClose: 5000, toastId: "blocked-account-msg",
-            });
+            data.errorMessage = "auth.toast.accountBlocked";
         } else {
-            const welcomeMessage = `Welcome back, ${data.user.fullName || 'User'}!`;
-            toast.success(welcomeMessage, {
-                theme: "colored", autoClose: 2500, toastId: "welcome-msg",
-            });
+            data.successMessage = "auth.toast.welcomeBack";
+            data.successMessageParams = { name: data.user.fullName || 'User' };
         }
+        dispatch({ type: LOGIN_SUCCESS, payload: data });
+
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Login failed. Please check credentials.';
+        const message = error.response?.data?.msg || 'Login failed. Please check credentials.';
         dispatch({ type: LOGIN_FAIL, payload: message });
-        toast.error(message, { theme: "colored", autoClose: 4000, toastId: "login-error" });
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
     }
@@ -130,14 +126,11 @@ export const getProfile = () => async (dispatch, getState) => {
 };
 
 export const logoutUser = () => (dispatch) => {
-    console.log("logoutUser action dispatched");
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     dispatch({ type: LOGOUT });
     dispatch(clearNotifications());
     dispatch(clearWalletTransactions());
-    // dispatch(clearMediationData()); 
-    toast.info("You have been logged out.", { toastId: "logout-msg" });
 };
 
 export const adminGetAvailableMediators = () => async (dispatch) => {

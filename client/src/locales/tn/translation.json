@@ -13,7 +13,7 @@
     "paymentMethods": "طرق الخلاص",
     "manageDeposits": "جيستيون الصبان",
     "manageReports": "جيستيون التقارير",
-    "manageTickets": "جيستيون التذاكر",
+    "manageTickets": "إدارة التذاكر",
     "disputedCases": "القضايا المعارضة",
     "mediatorApps": "طلبات الوسطاء",
     "support": "الدعم الفني",
@@ -26,22 +26,15 @@
       "sellerAvailable": "رصيد البايع الموجود",
       "onHold": "الرصيد المجمّد"
     },
-    "currencies": {
-      "TND": "دينار",
-      "USD": "دولار"
-    },
+    "currencies": { "TND": "دينار", "USD": "دولار", "EUR": "أورو" },
     "activities": {
       "title": "الأنشطة لخرانية",
       "displaying": "عرض آخر {{count}} نشاطات",
       "noActivities": "ما فماش أنشطة جديدة",
       "description": "أنشطتك في المنصة باش تظهر هوني."
     },
-    "notifications": {
-      "title": "الإشعارات"
-    },
-    "mediations": {
-      "title": "الوساطات / الميساجات"
-    },
+    "notifications": { "title": "الإشعارات" },
+    "mediations": { "title": "الوساطات / الميساجات" },
     "quickOptions": {
       "title": "خيارات سريعة",
       "settings": "الريڨلاج واللغة",
@@ -49,21 +42,209 @@
       "support": "الدعم الفني",
       "logout": "الخروج"
     },
-    "settings": {
-      "title": "الريڨلاج",
-      "languageTitle": "لغة المنصة"
-    }
+    "settings": { "title": "الريڨلاج", "languageTitle": "لغة المنصة" }
   },
   "faq": {
     "title": "نصايح و جوابات من ليكيب متاعنا",
     "subtitle": "البلاصة وين تلقى العون والمعلومة.",
     "searchPlaceholder": "لوّج على مقالات...",
     "backToCategories": "ارجع للتصنيفات الكل",
-    "noResults": "ما لقينا شي على \"{{query}}\". جرّب كلمة أخرى.",
+    "noResults": "ما لقينا شي على \"{{query}}\".",
     "noFaqs": "ما فماش أسئلة متداولة توّا.",
     "listUpdated": "القائمة تحدثت."
   },
+  "transactionModal": {
+    "title": "تفاصيل المعاملة",
+    "close": "سكر",
+    "transactionId": "معرّف المعاملة",
+    "type": "النوع",
+    "status": "الحالة",
+    "date": "التاريخ",
+    "product": "المنتوج",
+    "amount": "المبلغ",
+    "description": "الوصف",
+    "mediationLink": "رابط الوساطة",
+    "viewMediation": "شوف الوساطة",
+    "buyer": "الشاري",
+    "seller": "البايع"
+  },
+  "transactionTypes": {
+    "PRODUCT_SALE_FUNDS_RELEASED": "الفلوس اللي تصبت مالبيعة",
+    "PRODUCT_PURCHASE_COMPLETED": "شريان منتوج",
+    "PRODUCT_SALE_FUNDS_PENDING": "فلوس البيعة (تستنى)",
+    "LEVEL_UP_REWARD_RECEIVED": "كادو متع مستوى جديد",
+    "DEPOSIT_COMPLETED": "صبان",
+    "WITHDRAWAL_COMPLETED": "جبدان"
+  },
+  "transactionStatuses": {
+    "COMPLETED": "كملت",
+    "PENDING": "تستنى",
+    "ON_HOLD": "مجمّدة",
+    "FAILED": "فشلت",
+    "CANCELLED": "تلغات",
+    "REJECTED": "مرفوضة",
+    "PROCESSING": "تتخدم"
+  },
+  "notificationsPage": {
+    "title": "الإشعارات",
+    "markAllRead": "علم الكل مقري ({{count}})",
+    "loading": "قاعدين نحملو...",
+    "error": "فما مشكل: {{error}}",
+    "noNotifications": "ما عندك حتى إشعار.",
+    "viewAll": "شوف الإشعارات الكل",
+    "defaultTitle": "إشعار"
+  },
+  "adminProducts": {
+    "pendingApprovals": "موافقات تستنى",
+    "loading": "تحميل المنتوجات...",
+    "error": "فما مشكل: {{error}}",
+    "noPending": "ما فماش منتوجات تستنى.",
+    "table": {
+      "image": "تصويرة",
+      "title": "العنوان",
+      "vendor": "البايع",
+      "price": "السوم",
+      "dateAdded": "تاريخ الإضافة",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "viewDetails": "شوف التفاصيل",
+      "approve": "وافق",
+      "reject": "ارفض"
+    },
+    "detailsModal": {
+      "title": "تفاصيل المنتوج: {{title}}",
+      "by": "من عند",
+      "description": "الوصف",
+      "linkType": "نوع الربط",
+      "price": "السوم",
+      "quantity": "الكمية",
+      "submitted": "تبعث في",
+      "close": "سكر"
+    },
+    "rejectModal": {
+      "title": "رفض: {{title}}",
+      "reason": "السبب (لازم)",
+      "cancel": "أنّيلي",
+      "confirm": "أكد الرفض",
+      "rejecting": "الرفض ماشي...",
+      "reasonRequired": "لازم تكتب سبب الرفض."
+    },
+    "confirmApprove": "بالرسمي تحب توافق؟"
+  },
+  "auth": {
+    "welcomeBack": "مرحبا بيك مرة أخرى!",
+    "emailLabel": "الإيميل",
+    "emailPlaceholder": "أكتب الإيميل متاعك",
+    "passwordLabel": "كلمة السر",
+    "passwordPlaceholder": "أكتب كلمة السر",
+    "loginButton": "ادخل",
+    "loggingIn": "قاعدين ندخلو...",
+    "noAccount": "ما عندكش كونت؟",
+    "signUpLink": "أعمل كونت",
+    "createAccount": "أعمل الكونت متاعك",
+    "fullNameLabel": "الاسم واللقب",
+    "fullNamePlaceholder": "أكتب اسمك ولقبك",
+    "phoneLabel": "النومرو",
+    "phonePlaceholder": "أكتب نومرو التليفون",
+    "addressLabel": "العنوان",
+    "addressPlaceholder": "أكتب العنوان متاعك",
+    "registerAsLabel": "سجل روحك كـ",
+    "userRole": "مستخدم",
+    "vendorRole": "بايع",
+    "passwordMinChars": "كلمة السر (أقل شي 6 حروف)",
+    "confirmPasswordLabel": "عاود كلمة السر",
+    "confirmPasswordPlaceholder": "عاود كلمة السر",
+    "registerButton": "تسجيل",
+    "registering": "التسجيل ماشي...",
+    "haveAccount": "عندك كونت ديجا؟",
+    "loginLink": "ادخل من هوني",
+    "loginRegisterButton": "ادخل / أعمل كونت",
+    "passwordsDoNotMatch": "كلمات السر موش كيف كيف!",
+    "toast": {
+      "welcomeBack": "مرحبا بيك مرة أخرى، {{name}}!",
+      "loggedOut": "خرجت من الكونت.",
+      "accountBlocked": "الكونت متاعك مبلوكي.",
+      "registerSuccess": "الكونت تحل! هيا ادخل توّا.",
+      "registerFail": "التسجيل ما تمش: {{error}}",
+      "loginError": "ما تنجمش تدخل: {{error}}"
+    }
+  },
+  "home": {
+    "heroTitle": "لوّج على حاجتك الباهية الجاية",
+    "heroSubtitle": "اكتشف برشا منتوجات من عند جماعتنا. معاملات مضمونة وأسوام ما تتعاودش تستنى فيك.",
+    "filterByType": "صفي حسب نوع الربط",
+    "allLinkTypes": "الأنواع الكل",
+    "sortBy": "رتّب حسب",
+    "sortByAria": "رتّب المنتوجات",
+    "sort": {
+      "newest": "الجديد أولاً",
+      "priceAsc": "السوم: من الرخيص للغالي",
+      "priceDesc": "السوم: من الغالي للرخيص"
+    },
+    "noProducts": "ما فماش منتوجات متوفرة توّا.",
+    "noProductsMatch": "ما لقينا حتى منتوج يطابق \"{{criteria}}\".",
+    "loading": "قاعدين نحملو المنتوجات...",
+    "errorTitle": "مشكل في تحميل المنتوجات",
+    "viewGallery": "شوف التصاور",
+    "outOfStock": "وفات السلعة",
+    "soldBy": "باعها",
+    "seller": "البايع",
+    "unknownSeller": "بايع موش معروف",
+    "yourItem": "هذي سلعتك",
+    "productDataUnavailable": "معلومات المنتوج موش موجودة",
+    "productImageAlt": "{{title}} - تصويرة {{index}}",
+    "highestBidTooltip": "أغلى سوم: {{amount}}",
+    "like": "جيم",
+    "unlike": "نحّي الجيم",
+    "bidders": "المزايدين",
+    "updateBid": "بدّل السوم",
+    "placeBid": "حط سوم",
+    "addToCart": "زيد للبانية",
+    "pleaseLoginToBid": "حل كونت باش تنجم تزايد.",
+    "pleaseLoginToLike": "حل كونت باش تعمل جيم للمنتوجات.",
+    "likeUpdateFailed": "فما مشكلة في تحديث الجيم.",
+    "bidUpdatedSuccess": "تبدلت المزايدة متاعك!",
+    "bidPlacedSuccess": "تحطت المزايدة متاعك!",
+    "imageNotAvailable": "التصويرة موش موجودة.",
+    "bidModal": {
+      "updateTitle": "بدّل المزايدة متاعك",
+      "placeTitle": "حط المزايدة متاعك",
+      "bids": "الأسوام",
+      "basePrice": "السوم الأصلي",
+      "highestBid": "أغلى سوم",
+      "yourCurrentBid": "السوم اللي حطيتو",
+      "bidAmountLabel_your": "السوم اللي باش تحطو ({{currency}})",
+      "bidAmountLabel_new": "السوم الجديد ({{currency}})",
+      "currentBalance": "فلوسك الموجودة",
+      "minBalanceRequired": "(لازمك أقل شي {{amount}} باش تزايد)"
+    }
+  },
+  "common": {
+    "cancel": "أنّيلي",
+    "close": "سكر",
+    "processing": "تتخدم...",
+    "confirmBid": "أكد المزايدة"
+  },
+  "userProfilePage": {
+    "memberSince": "عضو منذ",
+    "userStats": "إحصائيات",
+    "userRating": "تقييم",
+    "activeListings": "منتوجات موجودة",
+    "productsSold": "منتوجات تباعت",
+    "location": "البلاصة",
+    "positiveRating": "تقييم باهي",
+    "noRatings": "ما فماش تقييمات."
+  },
+  "apiErrors": {
+    "Invalid credentials": "الإيميل ولا كلمة السر غالطين.",
+    "Email already exists": "الإيميل هذا موجود ديجا.",
+    "unknownRegistrationError": "فما مشكل في التسجيل. حاول مرة أخرى.",
+    "requestFailedWithCode": "فشل الطلب مع الرمز: {{code}}",
+    "networkError": "مشكل في الشبكة، يرحم والديك حاول مرة أخرى.",
+    "unknownError": "صارت غلطة موش معروفة: {{message}}"
+  },
   "confirmLogout": "بالرسمي تحب تخرج؟",
-  "forSellersOnly": "للبائعين فقط.",
-  "pleaseLogin": "الرجاء تسجيل الدخول."
+  "forSellersOnly": "للبايعة أكهو.",
+  "pleaseLogin": "يرحم والديك، حل الكونت متاعك."
 }

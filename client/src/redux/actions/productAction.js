@@ -36,8 +36,22 @@ export const getProducts = () => async (dispatch) => {
         const { data } = await axios.get('/product/get_products');
         dispatch({ type: GET_PRODUCTS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.errors?.[0]?.msg || error.response?.data?.msg || error.message || 'Failed to fetch products';
-        dispatch({ type: GET_PRODUCTS_FAIL, payload: message });
+        // [!!!] هذا هو التعديل الحاسم هنا [!!!]
+        let errorPayload;
+        if (error.response) {
+            // خطأ من الخادم (مثل 404, 500)
+            errorPayload = {
+                key: 'apiErrors.requestFailedWithCode',
+                params: { code: error.response.status }
+            };
+        } else if (error.request) {
+            // الطلب تم إرساله ولكن لم يتم تلقي أي رد (مشكلة شبكة)
+            errorPayload = { key: 'apiErrors.networkError' };
+        } else {
+            // خطأ آخر حدث أثناء إعداد الطلب
+            errorPayload = { key: 'apiErrors.unknownError', params: { message: error.message } };
+        }
+        dispatch({ type: GET_PRODUCTS_FAIL, payload: errorPayload });
     }
 };
 
@@ -218,7 +232,6 @@ export const placeBid = (productId, amount) => async (dispatch) => {
                 bids: data.bids
             }
         });
-        toast.success("Bid placed successfully!");
         return Promise.resolve(data);
     } catch (error) {
         const message = error.response?.data?.msg || error.message || 'Failed to place bid.';

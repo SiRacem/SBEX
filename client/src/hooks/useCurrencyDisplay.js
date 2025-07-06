@@ -1,13 +1,17 @@
 // src/hooks/useCurrencyDisplay.js
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { useTranslation } from 'react-i18next'; // <-- 1. استيراد الهوك
+import { useTranslation } from 'react-i18next';
 
+/**
+ * Hook مخصص لحساب وعرض العملات بناءً على التفضيل العام واللغة الحالية.
+ * @param {number | string | undefined} baseAmountTND - المبلغ الأساسي بالدينار التونسي.
+ * @returns {{ displayValue: string, approxValue: string }} - كائن يحتوي على المبلغ المعروض والمبلغ التقريبي.
+ */
 const useCurrencyDisplay = (baseAmountTND) => {
-    // 2. الحصول على دالة الترجمة t و instance i18n
     const { t, i18n } = useTranslation();
 
-    // تأكد من أن مسار displayCurrency في الـ reducer صحيح
+    // تأكد من أن مسار الـ reducer صحيح أو استخدم قيمًا افتراضية
     const displayCurrency = useSelector(state => state.currencyReducer?.selectedCurrency || 'TND');
     const exchangeRates = useSelector(state => state.currencyReducer?.exchangeRates || {});
 
@@ -18,46 +22,59 @@ const useCurrencyDisplay = (baseAmountTND) => {
         let approximateAmount;
         let approximateCurrency;
 
-        // تحديد المبلغ المعروض والمبلغ التقريبي
+        // منطق حساب العملة
         if (displayCurrency === 'USD') {
-            displayedAmount = baseAmount * (exchangeRates.USD || (1 / 3.0)); // استخدام سعر الصرف أو قيمة افتراضية
-            approximateAmount = baseAmount; // المبلغ الأصلي بالـ TND
+            // لنفترض أن exchangeRates.TND_per_USD هو سعر الدولار بالدينار (مثل 3.0)
+            displayedAmount = baseAmount / (exchangeRates.TND_per_USD || 3.0);
+            approximateAmount = baseAmount;
+            approximateCurrency = 'TND';
+        } else if (displayCurrency === 'EUR') {
+            // لنفترض أن exchangeRates.TND_per_EUR هو سعر اليورو بالدينار (مثل 3.3)
+            displayedAmount = baseAmount / (exchangeRates.TND_per_EUR || 3.3);
+            approximateAmount = baseAmount;
             approximateCurrency = 'TND';
         } else { // الحالة الافتراضية هي TND
             displayedAmount = baseAmount;
-            approximateAmount = baseAmount * (exchangeRates.USD || (1 / 3.0));
+            approximateAmount = baseAmount / (exchangeRates.TND_per_USD || 3.0);
             approximateCurrency = 'USD';
         }
 
-        // 3. استخدام لغة i18n الحالية لتهيئة الأرقام (للفواصل العشرية وآلاف)
-        const numberFormatter = new Intl.NumberFormat(i18n.language, {
+        // 1. تهيئة الرقم كنص مع فواصل عشرية فقط، بدون رمز العملة.
+        const numberFormatter = (num) => num.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         });
 
-        const formattedAmount = numberFormatter.format(displayedAmount);
+        const formattedAmount = numberFormatter(displayedAmount);
 
-        // 4. ترجمة رمز العملة إلى اسمها الكامل
+        // 2. ترجمة اسم العملة (مثل "دينار تونسي", "TND", "دينار")
         const currencyDisplayName = t(`dashboard.currencies.${displayCurrency}`, displayCurrency);
 
-        // 5. تحديد مكان رمز العملة بناءً على اتجاه اللغة
+        // 3. نركب السلسلة النهائية يدويًا بناءً على اتجاه اللغة
         const displayValue = i18n.dir() === 'rtl'
             ? `${formattedAmount} ${currencyDisplayName}`
             : `${currencyDisplayName} ${formattedAmount}`;
 
+        // 4. نفس المنطق للجزء التقريبي، مع استخدام الرموز العالمية للألفة
         let approxValue = '';
-        if (approximateCurrency) {
-            const formattedApproxAmount = numberFormatter.format(approximateAmount);
-            const approxCurrencyDisplayName = t(`dashboard.currencies.${approximateCurrency}`, approximateCurrency);
+        if (approximateCurrency && approximateAmount !== undefined) {
+            const formattedApproxAmount = numberFormatter(approximateAmount);
 
-            approxValue = i18n.dir() === 'rtl'
-                ? `≈ ${formattedApproxAmount} ${approxCurrencyDisplayName}`
-                : `≈ ${approxCurrencyDisplayName} ${formattedApproxAmount}`;
+            if (approximateCurrency === 'USD') {
+                approxValue = `≈ $${formattedApproxAmount}`;
+            } else if (approximateCurrency === 'EUR') {
+                approxValue = `≈ €${formattedApproxAmount}`;
+            } else if (approximateCurrency === 'TND') {
+                const tndDisplayName = t('dashboard.currencies.TND', 'TND');
+                approxValue = i18n.dir() === 'rtl'
+                    ? `≈ ${formattedApproxAmount} ${tndDisplayName}`
+                    : `≈ ${tndDisplayName} ${formattedApproxAmount}`;
+            }
         }
 
         return { displayValue, approxValue };
 
-    }, [baseAmount, displayCurrency, exchangeRates, t, i18n.language, i18n.dir]);
+    }, [baseAmount, displayCurrency, exchangeRates, t, i18n]);
 
     return formattedValue;
 };

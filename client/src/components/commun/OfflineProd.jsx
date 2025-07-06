@@ -1,68 +1,49 @@
 // src/components/commun/OfflineProd.jsx
-// *** نسخة كاملة ومصححة للحلقة اللانهائية واستخدام useSelector الآمن ***
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import {
-  Spinner,
-  Alert,
-  Container,
-  Row,
-  Col,
-  Form,
-  Dropdown,
-} from "react-bootstrap";
+import { Spinner, Alert, Container, Row, Col, Form } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import OfflineHeader from "./OfflineHeader"; // تأكد من المسار الصحيح
-import OfflineProdCard from "./OfflineProdCard"; // تأكد من المسار الصحيح
-import { getProducts } from "../../redux/actions/productAction"; // تأكد من المسار الصحيح
-import "./OfflineProd.css"; // تأكد من المسار الصحيح
+import OfflineHeader from "./OfflineHeader";
+import OfflineProdCard from "./OfflineProdCard";
+import { getProducts } from "../../redux/actions/productAction";
+import "./OfflineProd.css";
+import { useTranslation } from "react-i18next";
 
-// تعريف سعر الصرف (يفضل وضعه في ملف config أو متغير بيئة)
 const TND_TO_USD_RATE = 3.0;
 
 const OfflineProd = () => {
+  const { t } = useTranslation(); // <-- [!] دالة الترجمة
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("");
   const [selectedSort, setSelectedSort] = useState("newest");
-  const productsFetched = useRef(false); // Flag لمنع الجلب المتكرر
+  const productsFetched = useRef(false);
 
-  // --- [!] Selectors محسّنة ومفصولة ---
   const Products = useSelector((state) => state.productReducer?.Products ?? []);
   const loading = useSelector(
     (state) => state.productReducer?.loading ?? false
   );
   const errors = useSelector((state) => state.productReducer?.errors ?? null);
-  // ----------------------------------
 
-  // --- useEffect لجلب المنتجات مرة واحدة فقط عند التحميل ---
   useEffect(() => {
-    // التحقق من الفلاغ أولاً. إذا لم يتم الجلب من قبل، قم بالجلب.
     if (!productsFetched.current) {
-      // console.log("[OfflineProd Effect - useRef Guard] Attempting initial product fetch."); // للـ Debugging فقط
       dispatch(getProducts());
-      productsFetched.current = true; // <-- تعيين الفلاغ بعد إرسال الطلب الأول مباشرة
+      productsFetched.current = true;
     }
-    // لا توجد اعتماديات متغيرة هنا، سيعمل مرة واحدة بعد المونت
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch]); // الاعتماد فقط على dispatch المستقر
+  }, [dispatch]);
 
-  // --- دالة البحث ---
   const handleSearch = (term) => setSearchTerm(term);
 
-  // --- الحصول على أنواع الربط المتاحة للفلترة ---
   const availableLinkTypes = useMemo(() => {
     if (!Array.isArray(Products)) return [];
     const types = Products.filter(
       (p) => p?.status === "approved" && p.linkType
     ).map((p) => p.linkType);
-    return [...new Set(types)].sort(); // فرز الأنواع أبجديًا
+    return [...new Set(types)].sort();
   }, [Products]);
 
-  // --- الفلترة والفرز باستخدام useMemo ---
   const filteredAndSortedProducts = useMemo(() => {
     if (!Array.isArray(Products)) return [];
-
     const upperSearchTerm = searchTerm?.toUpperCase().trim() || "";
 
     let filtered = Products.filter(
@@ -73,24 +54,20 @@ const OfflineProd = () => {
         product.price != null &&
         product.user?._id &&
         product.currency
-    ) // التأكد من وجود العملة
-      .filter((product) => product.status === "approved");
+    ).filter((product) => product.status === "approved");
 
-    // تطبيق فلتر البحث
     if (upperSearchTerm) {
       filtered = filtered.filter((product) =>
         product.title?.toUpperCase().includes(upperSearchTerm)
       );
     }
 
-    // تطبيق فلتر نوع الربط
     if (selectedFilter) {
       filtered = filtered.filter(
         (product) => product.linkType === selectedFilter
       );
     }
 
-    // --- دالة مساعدة لتحويل السعر إلى TND ---
     const getPriceInTND = (product) => {
       if (!product || product.price == null || !product.currency) return 0;
       if (product.currency === "USD") {
@@ -98,10 +75,8 @@ const OfflineProd = () => {
       }
       return product.price;
     };
-    // -------------------------------------------
 
-    // تطبيق الفرز مع التحويل
-    const sorted = [...filtered]; // إنشاء نسخة جديدة للفرز
+    const sorted = [...filtered];
     switch (selectedSort) {
       case "price_asc":
         sorted.sort((a, b) => getPriceInTND(a) - getPriceInTND(b));
@@ -115,20 +90,18 @@ const OfflineProd = () => {
           (a, b) =>
             new Date(b.date_added || b.createdAt || 0) -
             new Date(a.date_added || a.createdAt || 0)
-        ); // إضافة 0 كاحتياط
+        );
         break;
     }
     return sorted;
-  }, [Products, searchTerm, selectedFilter, selectedSort]); // الاعتماديات الصحيحة
+  }, [Products, searchTerm, selectedFilter, selectedSort]);
 
-  // --- تحديد المحتوى للعرض ---
   let content;
   if (loading && !productsFetched.current) {
-    // عرض التحميل فقط عند الجلب الأولي
     content = (
       <Col xs={12} className="text-center mt-5 pt-5 loading-placeholder">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">Loading products...</p>
+        <p className="mt-2 text-muted">{t("home.loading")}</p> {/* [!] مترجم */}
       </Col>
     );
   } else if (errors) {
@@ -138,8 +111,8 @@ const OfflineProd = () => {
           variant="danger"
           className="w-75 mt-4 mx-auto text-center shadow-sm"
         >
-          <h4>Error Loading Products</h4>
-          <p>{typeof errors === "string" ? errors : JSON.stringify(errors)}</p>
+          <h4>{t("home.errorTitle")}</h4> {/* [!] مترجم */}
+          <p>{t(errors.key, errors.params)}</p>
         </Alert>
       </Col>
     );
@@ -151,64 +124,60 @@ const OfflineProd = () => {
         sm={6}
         md={6}
         lg={4}
-        xl={3}
+        xl={4}
         className="mb-4 d-flex align-items-stretch product-grid-item"
       >
-        <OfflineProdCard el={product} /> {/* تمرير المنتج للبطاقة */}
+        <OfflineProdCard el={product} />
       </Col>
     ));
   } else if (productsFetched.current && !loading) {
-    // عرض "لا يوجد" فقط إذا اكتمل الجلب ولم يكن هناك تحميل
     content = (
       <Col xs={12}>
         <Alert
           variant="secondary"
           className="mt-4 text-center no-results-alert"
         >
+          {/* [!] مترجم مع متغير */}
           {searchTerm || selectedFilter
-            ? `No products found matching your criteria.`
-            : "No products currently available."}
+            ? t("home.noProductsMatch", {
+                criteria: searchTerm || selectedFilter,
+              })
+            : t("home.noProducts")}
         </Alert>
       </Col>
     );
   } else {
-    content = null; // لا تعرض شيئاً إذا كان التحميل جارياً بعد عرض المنتجات الأولية
+    content = null;
   }
 
   return (
     <div className="offline-page">
-      {" "}
-      {/* كلاس للحاوية الرئيسية */}
-      <OfflineHeader onSearch={handleSearch} /> {/* تمرير دالة البحث للهيدر */}
-      {/* --- Hero Section --- */}
+      <OfflineHeader onSearch={handleSearch} />
       <section className="hero-section text-center text-white py-5">
         <Container>
           <h1 className="display-4 fw-bold mb-3 hero-title">
-            Find Your Next Favorite
+            {t("home.heroTitle")}
           </h1>
           <p className="lead col-lg-8 mx-auto mb-4 hero-subtitle">
-            Explore a wide range of unique products offered by our community.
-            Secure transactions and great deals await.
+            {t("home.heroSubtitle")}
           </p>
         </Container>
       </section>
-      {/* --- نهاية Hero Section --- */}
       <Container fluid="xl" className="py-4 py-md-5 products-section">
-        {/* --- صف الفلترة والفرز --- */}
         <Row className="mb-4 align-items-center filter-sort-row">
           <Col md={6} lg={4} className="mb-3 mb-md-0">
             <Form.Group controlId="filterLinkType">
               <Form.Label className="visually-hidden">
-                Filter by Link Type
+                {t("home.filterByType")}
               </Form.Label>
               <Form.Select
-                aria-label="Filter by Link Type"
+                aria-label={t("home.filterByType")}
                 value={selectedFilter}
                 onChange={(e) => setSelectedFilter(e.target.value)}
                 size="sm"
                 className="filter-select"
               >
-                <option value="">All Link Types</option>
+                <option value="">{t("home.allLinkTypes")}</option>
                 {availableLinkTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -227,25 +196,23 @@ const OfflineProd = () => {
               className="d-flex align-items-center"
             >
               <Form.Label className="me-2 mb-0 text-muted small text-nowrap">
-                Sort by:
+                {t("home.sortBy")}:
               </Form.Label>
               <Form.Select
-                aria-label="Sort products"
+                aria-label={t("home.sortByAria")}
                 value={selectedSort}
                 onChange={(e) => setSelectedSort(e.target.value)}
                 size="sm"
                 className="sort-select"
               >
-                <option value="newest">Newest First</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="newest">{t("home.sort.newest")}</option>
+                <option value="price_asc">{t("home.sort.priceAsc")}</option>
+                <option value="price_desc">{t("home.sort.priceDesc")}</option>
               </Form.Select>
             </Form.Group>
           </Col>
         </Row>
-        {/* --- نهاية صف الفلترة والفرز --- */}
-        {/* عرض المنتجات */}
-        <Row className="g-4">{content}</Row> {/* استخدام g-4 للمسافات */}
+        <Row className="g-4">{content}</Row>
       </Container>
     </div>
   );

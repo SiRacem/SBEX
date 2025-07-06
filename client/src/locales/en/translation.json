@@ -26,23 +26,15 @@
       "sellerAvailable": "Seller Available",
       "onHold": "On Hold Balance"
     },
-    "currencies": {
-      "TND": "TND",
-      "USD": "USD",
-      "EUR": "EUR"
-    },
+    "currencies": { "TND": "TND", "USD": "USD", "EUR": "EUR" },
     "activities": {
       "title": "Recent Activities",
       "displaying": "Displaying last {{count}} activities",
       "noActivities": "No Recent Activities",
       "description": "Your platform activities will appear here."
     },
-    "notifications": {
-      "title": "Notifications"
-    },
-    "mediations": {
-      "title": "Mediations / Messages"
-    },
+    "notifications": { "title": "Notifications" },
+    "mediations": { "title": "Mediations / Messages" },
     "quickOptions": {
       "title": "Quick Options",
       "settings": "Settings & Language",
@@ -50,19 +42,207 @@
       "support": "Technical Support",
       "logout": "Logout"
     },
-    "settings": {
-      "title": "Settings",
-      "languageTitle": "Platform Language"
-    }
+    "settings": { "title": "Settings", "languageTitle": "Platform Language" }
   },
   "faq": {
     "title": "Advice and answers from our Team",
     "subtitle": "Your go-to resource for help and information.",
     "searchPlaceholder": "Search for articles...",
     "backToCategories": "Back to All Categories",
-    "noResults": "No results found for \"{{query}}\". Try a different search term.",
+    "noResults": "No results found for \"{{query}}\".",
     "noFaqs": "No FAQs available at the moment.",
     "listUpdated": "The list has been updated."
+  },
+  "transactionModal": {
+    "title": "Transaction Details",
+    "close": "Close",
+    "transactionId": "Transaction ID",
+    "type": "Type",
+    "status": "Status",
+    "date": "Date",
+    "product": "Product",
+    "amount": "Amount",
+    "description": "Description",
+    "mediationLink": "Mediation Link",
+    "viewMediation": "View Mediation",
+    "buyer": "Buyer",
+    "seller": "Seller"
+  },
+  "transactionTypes": {
+    "PRODUCT_SALE_FUNDS_RELEASED": "Funds Released",
+    "PRODUCT_PURCHASE_COMPLETED": "Purchase",
+    "PRODUCT_SALE_FUNDS_PENDING": "Funds on Hold",
+    "LEVEL_UP_REWARD_RECEIVED": "Level Up Reward",
+    "DEPOSIT_COMPLETED": "Deposit",
+    "WITHDRAWAL_COMPLETED": "Withdrawal"
+  },
+  "transactionStatuses": {
+    "COMPLETED": "Completed",
+    "PENDING": "Pending",
+    "ON_HOLD": "On Hold",
+    "FAILED": "Failed",
+    "CANCELLED": "Cancelled",
+    "REJECTED": "Rejected",
+    "PROCESSING": "Processing"
+  },
+  "notificationsPage": {
+    "title": "Notifications",
+    "markAllRead": "Mark All Read ({{count}})",
+    "loading": "Loading notifications...",
+    "error": "Failed to load notifications: {{error}}",
+    "noNotifications": "You have no notifications.",
+    "viewAll": "View All Notifications",
+    "defaultTitle": "Notification"
+  },
+  "adminProducts": {
+    "pendingApprovals": "Pending Approvals",
+    "loading": "Loading pending products...",
+    "error": "Error loading products: {{error}}",
+    "noPending": "No pending products found.",
+    "table": {
+      "image": "Image",
+      "title": "Title",
+      "vendor": "Vendor",
+      "price": "Price",
+      "dateAdded": "Date Added",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "detailsModal": {
+      "title": "Product Details: {{title}}",
+      "by": "By",
+      "description": "Description",
+      "linkType": "Link Type",
+      "price": "Price",
+      "quantity": "Quantity",
+      "submitted": "Submitted",
+      "close": "Close"
+    },
+    "rejectModal": {
+      "title": "Reject: {{title}}",
+      "reason": "Reason (Required)",
+      "cancel": "Cancel",
+      "confirm": "Confirm Rejection",
+      "rejecting": "Rejecting...",
+      "reasonRequired": "Rejection reason is required."
+    },
+    "confirmApprove": "Are you sure you want to approve this product?"
+  },
+  "auth": {
+    "welcomeBack": "Welcome Back!",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "loginButton": "Login",
+    "loggingIn": "Logging in...",
+    "noAccount": "Don't have an account?",
+    "signUpLink": "Sign Up",
+    "createAccount": "Create Your Account",
+    "fullNameLabel": "Full Name",
+    "fullNamePlaceholder": "Enter full name",
+    "phoneLabel": "Phone",
+    "phonePlaceholder": "Enter phone number",
+    "addressLabel": "Address",
+    "addressPlaceholder": "Enter your address",
+    "registerAsLabel": "Register as",
+    "userRole": "User",
+    "vendorRole": "Vendor",
+    "passwordMinChars": "Password (min 6 chars)",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "registerButton": "Register",
+    "registering": "Registering...",
+    "haveAccount": "Already have an account?",
+    "loginLink": "Login here",
+    "loginRegisterButton": "Login / Register",
+    "passwordsDoNotMatch": "Passwords do not match!",
+    "toast": {
+      "welcomeBack": "Welcome back, {{name}}!",
+      "loggedOut": "You have been logged out.",
+      "accountBlocked": "Your account is blocked. Access is restricted.",
+      "registerSuccess": "Account created successfully! Please log in.",
+      "registerFail": "Registration failed: {{error}}",
+      "loginError": "Login failed: {{error}}"
+    }
+  },
+  "home": {
+    "heroTitle": "Find Your Next Favorite",
+    "heroSubtitle": "Explore a wide range of unique products offered by our community. Secure transactions and great deals await.",
+    "filterByType": "Filter by Link Type",
+    "allLinkTypes": "All Link Types",
+    "sortBy": "Sort by",
+    "sortByAria": "Sort products",
+    "sort": {
+      "newest": "Newest First",
+      "priceAsc": "Price: Low to High",
+      "priceDesc": "Price: High to Low"
+    },
+    "noProducts": "No products currently available.",
+    "noProductsMatch": "No products found matching \"{{criteria}}\".",
+    "loading": "Loading products...",
+    "errorTitle": "Error Loading Products",
+    "viewGallery": "View Gallery",
+    "outOfStock": "Out of Stock",
+    "soldBy": "Sold by",
+    "seller": "Seller",
+    "unknownSeller": "Unknown Seller",
+    "yourItem": "This is your item",
+    "productDataUnavailable": "Product data unavailable",
+    "productImageAlt": "{{title}} - image {{index}}",
+    "highestBidTooltip": "Highest bid: {{amount}}",
+    "like": "Like",
+    "unlike": "Unlike",
+    "bidders": "Bidders",
+    "updateBid": "Update Bid",
+    "placeBid": "Place Bid",
+    "addToCart": "Add to Cart",
+    "pleaseLoginToBid": "Please login to place a bid.",
+    "pleaseLoginToLike": "Please login to like products.",
+    "likeUpdateFailed": "Failed to update like status.",
+    "bidUpdatedSuccess": "Bid updated successfully!",
+    "bidPlacedSuccess": "Bid placed successfully!",
+    "imageNotAvailable": "Image not available.",
+    "bidModal": {
+      "updateTitle": "Update Your Bid",
+      "placeTitle": "Place Your Bid",
+      "bids": "Bids",
+      "basePrice": "Base Price",
+      "highestBid": "Highest Bid",
+      "yourCurrentBid": "Your current bid",
+      "bidAmountLabel_your": "Your Bid Amount ({{currency}})",
+      "bidAmountLabel_new": "New Bid Amount ({{currency}})",
+      "currentBalance": "Your current balance",
+      "minBalanceRequired": "Min. {{amount}} required to bid"
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "processing": "Processing...",
+    "confirmBid": "Confirm Bid"
+  },
+  "userProfilePage": {
+    "memberSince": "Member since",
+    "userStats": "User Statistics",
+    "userRating": "User Rating",
+    "activeListings": "Active Listings",
+    "productsSold": "Products Sold",
+    "location": "Location",
+    "positiveRating": "Positive Rating",
+    "noRatings": "No ratings available yet."
+  },
+  "apiErrors": {
+    "Invalid credentials": "The email or password you entered is incorrect.",
+    "Email already exists": "This email is already registered.",
+    "unknownRegistrationError": "An error occurred during registration. Please try again.",
+    "requestFailedWithCode": "Request failed with code: {{code}}",
+    "networkError": "A network error occurred, please try again.",
+    "unknownError": "An unknown error occurred: {{message}}"
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",

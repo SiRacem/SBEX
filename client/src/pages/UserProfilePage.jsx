@@ -1,4 +1,3 @@
-// src/pages/UserProfilePage.jsx
 import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -16,6 +15,7 @@ import {
   Tooltip,
   OverlayTrigger,
 } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
   FaCalendarAlt,
   FaTag,
@@ -73,6 +73,7 @@ const checkIfRecentlyReported = (reportedUserId) => {
 };
 
 const UserProfilePage = () => {
+  const { t, i18n } = useTranslation();
   const { userId: viewedUserId } = useParams();
   const currentUser = useSelector((state) => state.userReducer.user);
   const socket = useContext(SocketContext);
@@ -82,6 +83,10 @@ const UserProfilePage = () => {
   const [error, setError] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isRecentlyReported, setIsRecentlyReported] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dir = i18n.dir();
+  }, [i18n, i18n.language]);
 
   const fetchProfile = useCallback(async () => {
     if (!viewedUserId || !/^[0-9a-fA-F]{24}$/.test(viewedUserId)) {
@@ -265,22 +270,22 @@ const UserProfilePage = () => {
                     <h2 className="profile-name mb-1 mb-md-0 me-md-3">
                       {userDetails.fullName}
                     </h2>
+                    <Badge
+                      pill
+                      bg="info"
+                      text="dark"
+                      className="profile-role me-2"
+                    >
+                      {t(`roles.${userDetails.userRole}`, userDetails.userRole)}
+                    </Badge>
+                    <p className="text-muted small mb-0">
+                      <FaCalendarAlt size={14} className="me-1 opacity-75" />
+                      {t("userProfilePage.memberSince")}:{" "}
+                      {new Date(
+                        userDetails.registerDate || Date.now()
+                      ).toLocaleDateString(i18n.language)}
+                    </p>
                   </div>
-                  <Badge
-                    pill
-                    bg="info"
-                    text="dark"
-                    className="profile-role align-self-start mb-2"
-                  >
-                    <FaTag className="me-1" /> {userDetails.userRole || "User"}
-                  </Badge>
-                  <p className="text-muted small mb-0">
-                    <FaCalendarAlt size={14} className="me-1 opacity-75" />
-                    Member since:{" "}
-                    {new Date(
-                      userDetails.registerDate || Date.now()
-                    ).toLocaleDateString()}
-                  </p>
                   {userDetails.reputationLevel && userDetails.level && (
                     <div className="mt-2">
                       <Badge bg="secondary" className="me-2">
@@ -298,23 +303,25 @@ const UserProfilePage = () => {
             <Card.Body className="p-4">
               <Row>
                 <Col md={6} className="mb-4 mb-md-0">
-                  <h5 className="mb-3 section-sub-title">User Statistics</h5>
+                  <h5 className="mb-3 section-sub-title">
+                    {t("userProfilePage.userStats")}
+                  </h5>
                   <ListGroup variant="flush" className="stats-list">
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                       <span>
-                        <FaBoxOpen className="me-2 text-primary icon" /> Active
-                        Listings
+                        <FaBoxOpen className="me-2 text-primary icon" />{" "}
+                        {t("userProfilePage.activeListings")}
                       </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
+                      <Badge bg="light" text="dark">
                         {profileData?.activeListingsCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                       <span>
                         <FaCheckCircle className="me-2 text-success icon" />{" "}
-                        Products Sold
+                        {t("userProfilePage.productsSold")}
                       </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
+                      <Badge bg="light" text="dark">
                         {profileData?.productsSoldCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
@@ -322,7 +329,7 @@ const UserProfilePage = () => {
                       <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                         <span>
                           <FaMapMarkerAlt className="me-2 text-secondary icon" />{" "}
-                          Location
+                          {t("userProfilePage.location")}
                         </span>
                         <span className="text-muted small">
                           {userDetails.address}
@@ -332,22 +339,16 @@ const UserProfilePage = () => {
                   </ListGroup>
                 </Col>
                 <Col md={6}>
-                  <h5 className="mb-3 section-sub-title">User Rating</h5>
+                  <h5 className="mb-3 section-sub-title">
+                    {t("userProfilePage.userRating")}
+                  </h5>
                   {totalRatings > 0 ? (
                     <div className="rating-box text-center p-3 bg-light rounded border">
-                      <div
-                        className={`rating-percentage display-6 fw-bold mb-2 ${
-                          positivePercentage >= 75
-                            ? "text-success"
-                            : positivePercentage >= 50
-                            ? "text-warning"
-                            : "text-danger"
-                        }`}
-                      >
+                      <div className={`rating-percentage ...`}>
                         {positivePercentage}%
                       </div>
                       <div className="rating-text small text-muted mb-2">
-                        Positive Rating
+                        {t("userProfilePage.positiveRating")}
                       </div>
                       <div className="d-flex justify-content-center small">
                         <span className="me-3 rating-count positive">
@@ -362,7 +363,7 @@ const UserProfilePage = () => {
                     </div>
                   ) : (
                     <div className="text-center text-muted p-3 bg-light rounded border">
-                      <small>No ratings available yet.</small>
+                      <small>{t("userProfilePage.noRatings")}</small>
                     </div>
                   )}
                 </Col>

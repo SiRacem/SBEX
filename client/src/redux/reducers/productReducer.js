@@ -67,7 +67,7 @@ const productReducer = (state = initialState, { type, payload }) => {
             return { ...state, loading: false, Products: Array.isArray(payload) ? payload : [], errors: null };
         case GET_PRODUCTS_FAIL: // مثال على حالة فشل
             console.error("REDUCER: GET_PRODUCTS_FAIL - Setting error:", payload);
-            return { ...state, loading: false, errors: typeof payload === 'string' ? payload : "Failed to fetch products.", Products: [] }; // تأكد أن errors هو نص
+            return { ...state, loading: false, errors: payload, Products: [] };
 
         // --- إضافة منتج ---
         case ADD_PRODUCT_REQUEST:

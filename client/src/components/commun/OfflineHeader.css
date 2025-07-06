@@ -37,8 +37,17 @@
 }
 
 @media (max-width: 768px) {
-    .sidebar-logo {
-        height: 175px;
+    .main-header {
+        padding: 10px;
+        /* تقليل الحشو في الشاشات الصغيرة */
+    }
+    .header-brand {
+        font-size: 1.2rem;
+        /* تقليل حجم الخط في الشاشات الصغيرة */
+    }
+    .main-header .nav-link {
+        font-size: 0.9rem;
+        /* تقليل حجم الخط في الشاشات الصغيرة */
     }
     
 }
