@@ -13,7 +13,7 @@ import {
   Button,
   Accordion,
 } from "react-bootstrap";
-import { useTranslation } from "react-i18next"; // استيراد الهوك الخاص بالترجمة
+import { useTranslation } from "react-i18next";
 import { getActiveFAQs } from "../redux/actions/faqAction";
 import {
   FaQuestionCircle,
@@ -26,14 +26,12 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 import { SocketContext } from "../App";
-import "./FAQPageRedesigned.css"; // تأكد من استيراد ملف CSS
-import { toast } from 'react-toastify';
+import "./FAQPageRedesigned.css";
+import { toast } from "react-toastify";
 
-// مكون البطاقة لكل فئة
 const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
-  const { t } = useTranslation(); // للحصول على الترجمة داخل المكون الفرعي إذا احتجت
+  const { t } = useTranslation();
 
-  // يمكنك هنا تعيين أيقونات مخصصة لكل فئة
   const getCategoryIcon = (category) => {
     const lowerCaseCategory = category.toLowerCase();
     if (
@@ -58,9 +56,11 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
       return <FaDollarSign size={28} />;
     if (lowerCaseCategory.includes("general"))
       return <FaQuestionCircle size={28} />;
-    // أيقونة افتراضية إذا لم تتطابق أي فئة
     return <FaBook size={28} />;
   };
+
+  const articleCountText =
+    faqs.length === 1 ? t("faq.article") : t("faq.articles");
 
   return (
     <Col md={6} lg={4} className="mb-4">
@@ -72,14 +72,19 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
           <div className="icon-container mb-3">
             {getCategoryIcon(categoryName)}
           </div>
+          {/* استخدام الترجمة لعنوان ووصف الفئة */}
           <Card.Title as="h4" className="mb-2">
-            {categoryName}
+            {t(`faqCategories.${categoryName}.title`, {
+              defaultValue: categoryName,
+            })}
           </Card.Title>
           <Card.Text className="text-muted flex-grow-1">
-            Find answers related to {categoryName.toLowerCase()}.
+            {t(`faqCategories.${categoryName}.description`, {
+              defaultValue: `Find answers related to ${categoryName.toLowerCase()}`,
+            })}
           </Card.Text>
           <div className="mt-3 articles-count">
-            {faqs.length} {faqs.length === 1 ? "article" : "articles"}
+            {faqs.length} {articleCountText}
           </div>
         </Card.Body>
       </Card>
@@ -88,7 +93,7 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
 };
 
 const FAQPage = () => {
-  const { t, i18n } = useTranslation(); // استخدام الهوك للحصول على دالة الترجمة t و instance i18n
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const socket = useContext(SocketContext);
   const { groupedFAQs, loading, error } = useSelector(
@@ -99,17 +104,15 @@ const FAQPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
 
-  // useEffect لجلب البيانات عند تحميل الصفحة
   useEffect(() => {
     dispatch(getActiveFAQs());
   }, [dispatch]);
 
-  // useEffect للاستماع إلى تحديثات Socket.IO
   useEffect(() => {
     if (socket) {
       const handleFaqUpdate = () => {
         console.log("SOCKET: Re-fetching FAQs due to 'faqs_updated' event.");
-        toast.info(t("faq.listUpdated"), { autoClose: 2000 }); // استخدام الترجمة للـ toast
+        toast.info(t("faq.listUpdated"), { autoClose: 2000 });
         dispatch(getActiveFAQs());
       };
       socket.on("faqs_updated", handleFaqUpdate);
@@ -117,15 +120,13 @@ const FAQPage = () => {
         socket.off("faqs_updated", handleFaqUpdate);
       };
     }
-  }, [socket, dispatch, t]); // أضف t إلى الاعتماديات إذا كنت تستخدمها داخل الـ effect
+  }, [socket, dispatch, t]);
 
-  // useEffect لتحديث اتجاه الصفحة عند تغيير اللغة
   useEffect(() => {
     document.documentElement.lang = i18n.language;
     document.documentElement.dir = i18n.dir(i18n.language);
   }, [i18n, i18n.language]);
 
-  // تصفية الأسئلة والفئات بناءً على البحث
   const filteredFAQs = useMemo(() => {
     if (!searchQuery) return groupedFAQs;
     const lowercasedQuery = searchQuery.toLowerCase();
@@ -219,7 +220,11 @@ const FAQPage = () => {
             >
               ← {t("faq.backToCategories")}
             </Button>
-            <h2 className="mb-3 category-title">{selectedCategory}</h2>
+            <h2 className="mb-3 category-title">
+              {t(`faqCategories.${selectedCategory}.title`, {
+                defaultValue: selectedCategory,
+              })}
+            </h2>
 
             {(filteredFAQs[selectedCategory] || []).map((faq) => (
               <div key={faq._id} className="question-item-wrapper">
@@ -267,7 +272,11 @@ const FAQPage = () => {
                 .map((category) =>
                   searchQuery ? (
                     <div key={category} className="w-100 mb-4">
-                      <h4 className="mb-3 text-muted">{category}</h4>
+                      <h4 className="mb-3 text-muted">
+                        {t(`faqCategories.${category}.title`, {
+                          defaultValue: category,
+                        })}
+                      </h4>
                       {filteredFAQs[category].map((faq) => (
                         <div
                           key={faq._id}

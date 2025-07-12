@@ -1,4 +1,5 @@
 // src/components/commun/Profile.jsx
+
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -18,6 +19,7 @@ import {
   Form,
 } from "react-bootstrap";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   getProfile,
   updateProfilePicture,
@@ -64,12 +66,12 @@ import LevelsModal from "../ratings/LevelsModal";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
+const MAX_LEVEL_CAP_FRONTEND = 100;
+
+// Helper functions for level calculations
 const BASE_POINTS_FOR_LEVEL_2_FRONTEND = 10;
 const POINTS_INCREMENT_PER_LEVEL_STEP_FRONTEND = 5;
-const BASE_REWARD_FOR_LEVEL_2_FRONTEND = 2;
-const REWARD_INCREMENT_PER_LEVEL_FRONTEND = 2;
-const DEFAULT_CURRENCY_FRONTEND = "TND";
-const MAX_LEVEL_CAP_FRONTEND = 100;
 
 function calculateCumulativePointsForLevelFrontend(targetLevel) {
   if (targetLevel <= 1) return 0;
@@ -83,29 +85,18 @@ function calculateCumulativePointsForLevelFrontend(targetLevel) {
   }
   return totalPoints;
 }
-function calculateRewardForLevelFrontend(targetLevel) {
-  if (targetLevel < 2)
-    return { amount: 0, currency: DEFAULT_CURRENCY_FRONTEND };
-  const rewardAmount =
-    BASE_REWARD_FOR_LEVEL_2_FRONTEND +
-    (targetLevel - 2) * REWARD_INCREMENT_PER_LEVEL_FRONTEND;
-  return { amount: rewardAmount, currency: DEFAULT_CURRENCY_FRONTEND };
-}
+
 const calculatePositiveFeedbackPercent = (p, n) => {
   const t = p + n;
   return t === 0 ? 0 : Math.round((p / t) * 100);
 };
+
 const calculateNegativeFeedbackPercent = (p, n) => {
   const t = p + n;
   return t === 0 ? 0 : Math.round((n / t) * 100);
 };
 
-// --- [!!!] تعريف الدالة هنا [!!!] ---
-// This function should ideally mirror the logic in your backend's determineReputationBadge
 function determineReputationBadgeFrontend(numericLevel) {
-  // Ensure icons are returned as JSX elements for ReputationBadgeDisplay component
-  // The 'color' here will be used for the icon via style prop
-  // 'badgeClasses' in ReputationBadgeDisplay will determine the badge's background/text color from CSS
   if (numericLevel >= 35)
     return {
       name: "Mythic",
@@ -129,17 +120,17 @@ function determineReputationBadgeFrontend(numericLevel) {
   if (numericLevel >= 3)
     return { name: "Bronze", IconComponent: FaAward, color: "#CD7F32" };
   if (numericLevel >= 1)
-    return { name: "Novice", IconComponent: FaStar, color: "#6C757D" }; // Default for level 1 & 2
+    return { name: "Novice", IconComponent: FaStar, color: "#6C757D" };
   return {
     name: "Unranked",
     IconComponent: FaQuestionCircle,
     color: "#6C757D",
-  }; // Fallback
+  };
 }
 
 const Profile = ({ profileForOtherUser = null }) => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
-  const socket = useContext(SocketContext);
   const { username: routeUsername } = useParams();
   const currentUserState = useSelector((state) => state.userReducer);
 
@@ -152,11 +143,6 @@ const Profile = ({ profileForOtherUser = null }) => {
   const handleCloseLevelsModal = () => setShowLevelsModal(false);
 
   const isViewingOwnProfile = !routeUsername && !profileForOtherUser;
-  const targetUserId = useMemo(() => {
-    if (isViewingOwnProfile) return currentUserState.user?._id;
-    if (profileForOtherUser) return profileForOtherUser._id;
-    return null;
-  }, [isViewingOwnProfile, currentUserState.user, profileForOtherUser]);
 
   useEffect(() => {
     const fetchProfileData = () => {
@@ -173,15 +159,14 @@ const Profile = ({ profileForOtherUser = null }) => {
           dispatch(getProfile());
         } else if (!currentUserState.isAuth && !currentUserState.loading) {
           setIsLoadingProfile(false);
-          setProfileError("Please login to view your profile.");
-        } else setIsLoadingProfile(currentUserState.loading);
+          setProfileError(t("profilePage.loginPrompt"));
+        } else {
+          setIsLoadingProfile(currentUserState.loading);
+        }
       } else if (profileForOtherUser) {
         setProfileData(profileForOtherUser);
         setIsLoadingProfile(false);
       } else if (routeUsername) {
-        console.warn(
-          "Viewing other user's profile by route username requires dedicated API and Redux logic."
-        );
         setIsLoadingProfile(false);
         if (
           currentUserState.user &&
@@ -189,10 +174,14 @@ const Profile = ({ profileForOtherUser = null }) => {
             routeUsername.toLowerCase()
         ) {
           setProfileData(currentUserState.user);
-        } else setProfileError(`Profile for ${routeUsername} is unavailable.`);
+        } else {
+          setProfileError(
+            t("profilePage.unavailable", { username: routeUsername })
+          );
+        }
       } else {
         setIsLoadingProfile(false);
-        setProfileError("Unable to determine which profile to display.");
+        setProfileError(t("profilePage.unableToDisplay"));
       }
     };
     fetchProfileData();
@@ -205,32 +194,8 @@ const Profile = ({ profileForOtherUser = null }) => {
     currentUserState.error,
     profileForOtherUser,
     routeUsername,
+    t,
   ]);
-
-  // useEffect(() => {
-  //   if (socket && targetUserId) {
-  //     const handleProfileUpdate = (updatedUserData) => {
-  //       if (updatedUserData && updatedUserData._id === targetUserId) {
-  //         toast.info(
-  //           `${
-  //             isViewingOwnProfile
-  //               ? "Your"
-  //               : (updatedUserData.fullName || "User") + "'s"
-  //           } profile has been updated.`,
-  //           { autoClose: 2000 }
-  //         );
-  //         if (isViewingOwnProfile) dispatch(getProfile());
-  //         else
-  //           setProfileData((prevData) => ({
-  //             ...(prevData || {}),
-  //             ...updatedUserData,
-  //           }));
-  //       }
-  //     };
-  //     socket.on("user_profile_updated", handleProfileUpdate);
-  //     return () => socket.off("user_profile_updated", handleProfileUpdate);
-  //   }
-  // }, [socket, targetUserId, dispatch, isViewingOwnProfile]);
 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -296,28 +261,34 @@ const Profile = ({ profileForOtherUser = null }) => {
   const activeListingsCount = profileData?.activeListingsCount ?? 0;
   const soldProductsCount = profileData?.productsSoldCount ?? 0;
 
+  const avatarSrc = useMemo(() => {
+    const url = profileData?.avatarUrl;
+    if (url) {
+      return url.startsWith("http")
+        ? url
+        : `${BACKEND_URL}/${url.replace(/\\/g, "/")}`;
+    }
+    return defaultAvatar;
+  }, [profileData?.avatarUrl]);
+
   const handleOpenAvatarModal = () => {
     if (!isViewingOwnProfile) return;
-    setPreviewImage(
-      profileData?.avatarUrl
-        ? profileData.avatarUrl.startsWith("http")
-          ? profileData.avatarUrl
-          : `${BACKEND_URL}/${profileData.avatarUrl}`
-        : "https://bootdey.com/img/Content/avatar/avatar7.png"
-    );
+    setPreviewImage(avatarSrc);
     setSelectedFile(null);
     setShowAvatarModal(true);
   };
+
   const handleCloseAvatarModal = () => {
     setShowAvatarModal(false);
     setPreviewImage(null);
     setSelectedFile(null);
   };
+
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        toast.error("Max 2MB.");
+        toast.error(t("profilePage.avatarUpdateError"));
         return;
       }
       if (
@@ -325,119 +296,44 @@ const Profile = ({ profileForOtherUser = null }) => {
           file.type
         )
       ) {
-        toast.error("JPG, PNG, GIF, WEBP only.");
+        toast.error(t("profilePage.avatarUpdateTypeError"));
         return;
       }
       setSelectedFile(file);
       setPreviewImage(URL.createObjectURL(file));
     }
   };
+
   const handleUploadAvatar = () => {
     if (!isViewingOwnProfile || !selectedFile) return;
     const formData = new FormData();
     formData.append("avatar", selectedFile);
     dispatch(updateProfilePicture(formData))
-      .then((res) => !res?.error && handleCloseAvatarModal())
+      .then((res) => {
+        if (!res?.error) {
+          handleCloseAvatarModal();
+        }
+      })
       .catch((err) => console.error("Avatar upload err", err));
   };
-  const avatarSrc = useMemo(() => {
-    if (profileData?.avatarUrl)
-      return profileData.avatarUrl.startsWith("http")
-        ? profileData.avatarUrl
-        : `${BACKEND_URL}/${profileData.avatarUrl}`;
-    return "https://bootdey.com/img/Content/avatar/avatar7.png";
-  }, [profileData?.avatarUrl]);
 
   const ReputationBadgeDisplay = ({ reputationLevelName, numericLevel }) => {
-    // Use reputationLevelName from DB if available, otherwise determine from numericLevel
-    const actualBadgeName =
+    const badgeName =
       reputationLevelName ||
       determineReputationBadgeFrontend(numericLevel).name;
-    const badgeDetails = determineReputationBadgeFrontend(numericLevel); // Still useful for icon & fallback color
-
-    let iconToUse = badgeDetails.IconComponent ? (
-      <badgeDetails.IconComponent />
-    ) : (
-      <FaQuestionCircle />
-    );
-    let finalBadgeClasses = "profile-badge-default";
-    let iconColorToUse = badgeDetails.color || "#6c757d"; // Fallback color
-
-    // Override based on the actualBadgeName (which might come from DB)
-    switch (String(actualBadgeName).toLowerCase()) {
-      case "novice":
-        iconToUse = <FaStar />;
-        finalBadgeClasses = "profile-badge-novice";
-        iconColorToUse = "#6C757D";
-        break;
-      case "bronze":
-        iconToUse = <FaAward />;
-        finalBadgeClasses = "profile-badge-bronze";
-        iconColorToUse = "#8c531b";
-        break;
-      case "silver":
-        iconToUse = <FaMedal />;
-        finalBadgeClasses = "profile-badge-silver";
-        iconColorToUse = "#505050";
-        break;
-      case "gold":
-        iconToUse = <FaTrophy />;
-        finalBadgeClasses = "profile-badge-gold";
-        iconColorToUse = "#a16c00";
-        break;
-      case "platinum":
-        iconToUse = <FaShieldAlt />;
-        finalBadgeClasses = "profile-badge-platinum";
-        iconColorToUse = "#3e5660";
-        break;
-      case "diamond":
-        iconToUse = <FaGem />;
-        finalBadgeClasses = "profile-badge-diamond";
-        iconColorToUse = "#1a6a73";
-        break;
-      case "master":
-        iconToUse = <FaCrown />;
-        finalBadgeClasses = "profile-badge-master";
-        iconColorToUse = "#790079";
-        break;
-      case "grandmaster":
-        iconToUse = (
-          <FaCrown style={{ filter: "hue-rotate(280deg) saturate(1.5)" }} />
-        );
-        finalBadgeClasses = "profile-badge-grandmaster";
-        iconColorToUse = "#d43a00";
-        break;
-      case "legend":
-        iconToUse = <FaDragon />;
-        finalBadgeClasses = "profile-badge-legend";
-        iconColorToUse = "#b87300";
-        break;
-      case "mythic":
-        iconToUse = <FaSkullCrossbones />;
-        finalBadgeClasses = "profile-badge-mythic";
-        iconColorToUse = "#3a0068";
-        break;
-      default:
-        iconToUse = <FaQuestionCircle />;
-        finalBadgeClasses = "profile-badge-info";
-        iconColorToUse = "white"; // Default if unexpected name
-    }
-
-    const styledIcon = React.cloneElement(iconToUse, {
-      style: {
-        ...iconToUse.props.style,
-        color: iconColorToUse,
-        fontSize: "1em",
-      },
-      className: "me-1",
-    });
+    const badgeDetails = determineReputationBadgeFrontend(numericLevel);
+    const iconToUse = badgeDetails.IconComponent;
 
     return (
       <div
-        className={`d-inline-flex align-items-center reputation-badge ${finalBadgeClasses} px-3 py-1 mt-2 shadow-sm`}
+        className={`d-inline-flex align-items-center reputation-badge profile-badge-${badgeName.toLowerCase()} px-3 py-1 mt-2 shadow-sm`}
       >
-        <span>{styledIcon}</span>
-        <span className="ms-1 badge-text">{actualBadgeName}</span>
+        <span>
+          <iconToUse className="me-1" style={{ color: badgeDetails.color }} />
+        </span>
+        <span className="ms-1 badge-text">
+          {t(`reputationLevels.${badgeName}`, { defaultValue: badgeName })}
+        </span>
       </div>
     );
   };
@@ -446,29 +342,26 @@ const Profile = ({ profileForOtherUser = null }) => {
     if (!profileData) return null;
     const numericLevel = profileData.level || 1;
     const nextNumericLevel = numericLevel + 1;
+    const BASE_REWARD_FOR_LEVEL_2_FRONTEND = 2;
+    const REWARD_INCREMENT_PER_LEVEL_FRONTEND = 2;
+    const DEFAULT_CURRENCY_FRONTEND = "TND";
+    function calculateRewardForLevelFrontend(targetLevel) {
+      if (targetLevel < 2)
+        return { amount: 0, currency: DEFAULT_CURRENCY_FRONTEND };
+      const rewardAmount =
+        BASE_REWARD_FOR_LEVEL_2_FRONTEND +
+        (targetLevel - 2) * REWARD_INCREMENT_PER_LEVEL_FRONTEND;
+      return { amount: rewardAmount, currency: DEFAULT_CURRENCY_FRONTEND };
+    }
     const rewardForNextLevelInfo =
       calculateRewardForLevelFrontend(nextNumericLevel);
     const nextLevelRewardText =
       numericLevel >= MAX_LEVEL_CAP_FRONTEND
-        ? "Max Level Reached!"
+        ? t("profilePage.levelWidget.maxLevel")
         : rewardForNextLevelInfo.amount > 0
         ? `${rewardForNextLevelInfo.amount} ${rewardForNextLevelInfo.currency}`
-        : "Next Perk";
-    const hasClaimedRewardForNextLevelTarget = (
-      profileData.claimedLevelRewards || []
-    ).includes(nextNumericLevel);
-    let rewardIconToShow = <FaGift className="text-warning me-1" />;
-    if (
-      rewardForNextLevelInfo.amount > 0 &&
-      hasClaimedRewardForNextLevelTarget
-    ) {
-      rewardIconToShow = (
-        <FaGift
-          className="text-muted me-1"
-          title={`Reward for Level ${nextNumericLevel} already claimed`}
-        />
-      );
-    }
+        : t("profilePage.levelWidget.nextReward");
+
     let levelBackgroundClass = "level-bg-default";
     if (numericLevel >= 10) levelBackgroundClass = "level-bg-high";
     else if (numericLevel >= 7) levelBackgroundClass = "level-bg-advanced";
@@ -480,17 +373,24 @@ const Profile = ({ profileForOtherUser = null }) => {
         className={`level-section-widget-v2 mt-3 ${levelBackgroundClass}`}
         onClick={handleOpenLevelsModal}
         style={{ cursor: "pointer" }}
-        title="Click to see all levels and rewards"
+        title={t("profilePage.levelWidget.viewAllTooltip")}
       >
         <div className="d-flex justify-content-between align-items-center mb-2">
           <Badge bg={null} className="level-badge-main me-2 px-2 py-1">
-            <FaStar className="me-1" /> Level {numericLevel}
+            <FaStar className="me-1" />{" "}
+            {t("profilePage.levelWidget.level", { level: numericLevel })}
           </Badge>
           <OverlayTrigger
             placement="top"
-            overlay={<Tooltip>Total Reputation Points</Tooltip>}
+            overlay={
+              <Tooltip>
+                {t("profilePage.levelWidget.totalPointsTooltip")}
+              </Tooltip>
+            }
           >
-            <span className="reputation-points">{currentPoints} pts</span>
+            <span className="reputation-points">
+              {t("profilePage.levelWidget.points", { points: currentPoints })}
+            </span>
           </OverlayTrigger>
         </div>
         {numericLevel < MAX_LEVEL_CAP_FRONTEND ? (
@@ -506,33 +406,39 @@ const Profile = ({ profileForOtherUser = null }) => {
             </ProgressBar>
             <div className="d-flex justify-content-between align-items-center small progress-labels">
               <span>
-                {pointsProgress} / {pointsNeededForThisLevelStep} pts to Level
-                {nextNumericLevel}
+                {t("profilePage.levelWidget.progressLabel", {
+                  progress: pointsProgress,
+                  needed: pointsNeededForThisLevelStep,
+                  nextLevel: nextNumericLevel,
+                })}
               </span>
               <OverlayTrigger
                 placement="top"
                 overlay={
                   <Tooltip>
-                    Reward for reaching Level {nextNumericLevel}
+                    {t("profilePage.levelWidget.rewardLabel", {
+                      nextLevel: nextNumericLevel,
+                    })}
                   </Tooltip>
                 }
               >
                 <span className="next-reward">
-                  {rewardIconToShow} {nextLevelRewardText}
+                  <FaGift className="text-warning me-1" /> {nextLevelRewardText}
                 </span>
               </OverlayTrigger>
             </div>
           </>
         ) : (
           <div className="text-center text-success small mt-3">
-            <FaCheckCircle className="me-1" /> Max Level Reached!
+            <FaCheckCircle className="me-1" />{" "}
+            {t("profilePage.levelWidget.maxLevel")}
           </div>
         )}
       </div>
     );
   };
 
-  if (isLoadingProfile && !profileData)
+  if (isLoadingProfile && !profileData) {
     return (
       <Container
         className="d-flex justify-content-center align-items-center"
@@ -543,17 +449,19 @@ const Profile = ({ profileForOtherUser = null }) => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <p className="ms-3 fs-5">Loading profile...</p>
+        <p className="ms-3 fs-5">{t("profilePage.loading")}</p>
       </Container>
     );
-  if (profileError || !profileData)
+  }
+
+  if (profileError || !profileData) {
     return (
       <Container className="py-5">
         <Alert
           variant={profileError ? "danger" : "warning"}
           className="text-center fs-5"
         >
-          {profileError || "Profile data is unavailable."}
+          {profileError || t("profilePage.error")}
         </Alert>
         {isViewingOwnProfile &&
           !currentUserState.isAuth &&
@@ -562,7 +470,7 @@ const Profile = ({ profileForOtherUser = null }) => {
               to="/login"
               className="btn btn-primary d-block mx-auto mt-3 fs-5"
             >
-              Login
+              {t("profilePage.login")}
             </Link>
           )}
         {isViewingOwnProfile &&
@@ -573,11 +481,12 @@ const Profile = ({ profileForOtherUser = null }) => {
               variant="primary"
               className="d-block mx-auto mt-3 fs-5"
             >
-              Retry
+              {t("profilePage.retry")}
             </Button>
           )}
       </Container>
     );
+  }
 
   return (
     <Container fluid className="profile-page-professional py-4 px-md-4">
@@ -593,7 +502,11 @@ const Profile = ({ profileForOtherUser = null }) => {
                 onClick={
                   isViewingOwnProfile ? handleOpenAvatarModal : undefined
                 }
-                title={isViewingOwnProfile ? "Click to change avatar" : ""}
+                title={
+                  isViewingOwnProfile
+                    ? t("profilePage.changeAvatarTooltip")
+                    : ""
+                }
               >
                 <Image
                   src={avatarSrc}
@@ -602,6 +515,10 @@ const Profile = ({ profileForOtherUser = null }) => {
                   height={120}
                   className="profile-avatar-lg"
                   alt={`${profileData.fullName || "User"}'s avatar`}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = defaultAvatar;
+                  }}
                 />
                 {isViewingOwnProfile && (
                   <div className="profile-avatar-overlay rounded-circle d-flex justify-content-center align-items-center">
@@ -615,7 +532,7 @@ const Profile = ({ profileForOtherUser = null }) => {
               <p className="text-muted mb-2">{profileData.email}</p>
               <p className="text-muted small mb-3">
                 <MapPin size={14} className="me-1" />
-                {profileData.address || "Location not set"}
+                {profileData.address || t("profilePage.locationNotSet")}
               </p>
               <div className="mb-1">
                 <Badge
@@ -628,7 +545,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                   ) : (
                     <FaCheckCircle size={14} className="me-1" />
                   )}
-                  {profileData.blocked ? "Blocked" : "Active"}
+                  {profileData.blocked
+                    ? t("profilePage.statusBlocked")
+                    : t("profilePage.statusActive")}
                 </Badge>
                 <Badge
                   pill
@@ -636,10 +555,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                   className="role-badge-lg me-2 px-2 py-1"
                 >
                   <FaUserShield size={14} className="me-1" />
-                  {profileData.userRole}
+                  {t(`roles.${profileData.userRole}`)}
                 </Badge>
               </div>
-              {/* تمرير profileData.reputationLevel مباشرة */}
               <ReputationBadgeDisplay
                 reputationLevelName={profileData.reputationLevel}
                 numericLevel={profileData.level}
@@ -652,7 +570,8 @@ const Profile = ({ profileForOtherUser = null }) => {
                   className="mediator-badge-lg mt-2 px-2 py-1 d-inline-block"
                   style={{ maxWidth: "fit-content" }}
                 >
-                  <Briefcase size={14} className="me-1" /> Mediator
+                  <Briefcase size={14} className="me-1" />
+                  {t("profilePage.roleMediator")}
                 </Badge>
               )}
               <div className="mt-auto w-100">{renderLevelSection()}</div>
@@ -660,7 +579,7 @@ const Profile = ({ profileForOtherUser = null }) => {
             {positiveRatings > 0 || negativeRatings > 0 ? (
               <Card.Footer className="bg-light p-3 border-top">
                 <h6 className="text-muted small mb-2 text-center">
-                  User Rating
+                  {t("profilePage.ratingSectionTitle")}
                 </h6>
                 <div className="d-flex justify-content-around align-items-center mb-2">
                   <div className="text-success small">
@@ -695,7 +614,7 @@ const Profile = ({ profileForOtherUser = null }) => {
               </Card.Footer>
             ) : (
               <Card.Footer className="bg-light p-3 border-top text-center text-muted small">
-                No ratings yet.
+                {t("profilePage.noRatings")}
               </Card.Footer>
             )}
           </Card>
@@ -704,8 +623,8 @@ const Profile = ({ profileForOtherUser = null }) => {
           <Card className="shadow-sm border-0 mb-4">
             <Card.Header className="bg-white p-3 border-0 d-flex justify-content-between align-items-center">
               <h5 className="mb-0 section-title-modern">
-                <IoWalletOutline className="me-2 text-primary" /> Account
-                Balances
+                <IoWalletOutline className="me-2 text-primary" />{" "}
+                {t("profilePage.balancesSectionTitle")}
               </h5>
               {isViewingOwnProfile && <CurrencySwitcher size="sm" />}
             </Card.Header>
@@ -714,7 +633,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                 <Col sm={6} md={4} className="mb-3">
                   <div className="balance-widget">
                     <FaPiggyBank className="icon text-primary" />
-                    <span className="label">Principal</span>
+                    <span className="label">
+                      {t("profilePage.balancePrincipal")}
+                    </span>
                     <span className="value">
                       {principalBalanceDisplay.displayValue}
                     </span>
@@ -726,7 +647,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                 <Col sm={6} md={4} className="mb-3">
                   <div className="balance-widget">
                     <FaUniversity className="icon text-info" />
-                    <span className="label">Deposit</span>
+                    <span className="label">
+                      {t("profilePage.balanceDeposit")}
+                    </span>
                     <span className="value">
                       {depositBalanceDisplay.displayValue}
                     </span>
@@ -738,7 +661,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                 <Col sm={6} md={4} className="mb-3">
                   <div className="balance-widget">
                     <FaDollarSign className="icon text-danger" />
-                    <span className="label">Withdrawal</span>
+                    <span className="label">
+                      {t("profilePage.balanceWithdrawal")}
+                    </span>
                     <span className="value">
                       {withdrawalBalanceDisplay.displayValue}
                     </span>
@@ -753,7 +678,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                     <Col sm={6} md={6} className="mb-3 mb-md-0">
                       <div className="balance-widget">
                         <FaBalanceScale className="icon text-success" />
-                        <span className="label">Seller Available</span>
+                        <span className="label">
+                          {t("profilePage.balanceSellerAvailable")}
+                        </span>
                         <span className="value">
                           {sellerAvailableBalanceDisplay.displayValue}
                         </span>
@@ -765,7 +692,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                     <Col sm={6} md={6}>
                       <div className="balance-widget">
                         <FaHourglassHalf className="icon text-warning" />
-                        <span className="label">Seller On Hold</span>
+                        <span className="label">
+                          {t("profilePage.balanceSellerOnHold")}
+                        </span>
                         <span className="value">
                           {sellerPendingBalanceDisplay.displayValue}
                         </span>
@@ -782,7 +711,8 @@ const Profile = ({ profileForOtherUser = null }) => {
           <Card className="shadow-sm border-0 mb-4">
             <Card.Header className="bg-white p-3 border-0">
               <h5 className="mb-0 section-title-modern">
-                <BarChart2 className="me-2 text-primary" /> User Statistics
+                <BarChart2 className="me-2 text-primary" />{" "}
+                {t("profilePage.statsSectionTitle")}
               </h5>
             </Card.Header>
             <Card.Body className="p-4">
@@ -792,7 +722,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                     <FeatherTag size={20} className="me-2 text-info" />
                     <div>
                       <span className="stat-value">{activeListingsCount}</span>
-                      <span className="stat-label">Active Listings</span>
+                      <span className="stat-label">
+                        {t("profilePage.statsActiveListings")}
+                      </span>
                     </div>
                   </div>
                 </Col>
@@ -801,7 +733,9 @@ const Profile = ({ profileForOtherUser = null }) => {
                     <FeatherCheck size={20} className="me-2 text-success" />
                     <div>
                       <span className="stat-value">{soldProductsCount}</span>
-                      <span className="stat-label">Products Sold</span>
+                      <span className="stat-label">
+                        {t("profilePage.statsProductsSold")}
+                      </span>
                     </div>
                   </div>
                 </Col>
@@ -816,7 +750,7 @@ const Profile = ({ profileForOtherUser = null }) => {
       {isViewingOwnProfile && (
         <Modal show={showAvatarModal} onHide={handleCloseAvatarModal} centered>
           <Modal.Header closeButton>
-            <Modal.Title>Update Profile Picture</Modal.Title>
+            <Modal.Title>{t("profilePage.avatarModalTitle")}</Modal.Title>
           </Modal.Header>
           <Modal.Body className="text-center">
             {previewImage && (
@@ -828,15 +762,12 @@ const Profile = ({ profileForOtherUser = null }) => {
                 className="mb-3 d-block mx-auto"
                 alt="Avatar preview"
                 onError={(e) => {
-                  e.target.src =
-                    "https://bootdey.com/img/Content/avatar/avatar7.png";
+                  e.target.src = defaultAvatar;
                 }}
               />
             )}
             <Form.Group controlId="formFileModalProfile" className="mb-3">
-              <Form.Label>
-                Select new image (JPG, PNG, GIF, WEBP - Max 2MB)
-              </Form.Label>
+              <Form.Label>{t("profilePage.avatarModalLabel")}</Form.Label>
               <Form.Control
                 type="file"
                 accept="image/jpeg,image/png,image/gif,image/webp"
@@ -853,7 +784,7 @@ const Profile = ({ profileForOtherUser = null }) => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleCloseAvatarModal}>
-              Cancel
+              {t("profilePage.cancelButton")}
             </Button>
             <Button
               variant="primary"
@@ -869,7 +800,7 @@ const Profile = ({ profileForOtherUser = null }) => {
                   aria-hidden="true"
                 />
               ) : (
-                "Upload Picture"
+                t("profilePage.uploadButton")
               )}
             </Button>
           </Modal.Footer>
@@ -885,4 +816,5 @@ const Profile = ({ profileForOtherUser = null }) => {
     </Container>
   );
 };
+
 export default Profile;

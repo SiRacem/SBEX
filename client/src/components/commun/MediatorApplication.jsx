@@ -11,6 +11,7 @@ import {
   ListGroup,
   Badge,
 } from "react-bootstrap";
+import { useTranslation, Trans } from "react-i18next";
 import {
   applyForMediator,
   resetApplyMediatorStatus,
@@ -24,24 +25,15 @@ import {
   FaUserTimes,
   FaStar,
   FaMoneyBillWave,
-
 } from "react-icons/fa";
 
-const MEDIATOR_REQUIRED_LEVEL = 5; // المستوى المطلوب للوسيط
+const MEDIATOR_REQUIRED_LEVEL = 5;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.0;
-const TND_TO_USD_RATE = 3.0;
-const formatCurrency = (amount, currencyCode = "TND") => {
-  const options = {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  };
-  return new Intl.NumberFormat("en-US", options).format(amount);
-};
 
 const MediatorApplication = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+
   const {
     user,
     loadingApplyMediator,
@@ -51,15 +43,28 @@ const MediatorApplication = () => {
     errorUpdateMediatorStatus,
   } = useSelector((state) => state.userReducer);
 
-  // --- [!!!] نقل تعريفات useCallback إلى هنا (أعلى المكون) [!!!] ---
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const options = {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      };
+      const locale = currencyCode === "USD" ? "en-US" : i18n.language;
+      if (currencyCode === "USD") options.currencyDisplay = "symbol";
+      return new Intl.NumberFormat(locale, options).format(amount);
+    },
+    [i18n.language]
+  );
+
   const handleApply = useCallback(
     (type) => {
-      // الوصول لـ loadingApplyMediator من الـ closure
       if (loadingApplyMediator) return;
       dispatch(applyForMediator(type));
     },
     [dispatch, loadingApplyMediator]
-  ); // تعتمد على dispatch و loadingApplyMediator
+  );
 
   const handleCloseApplyAlert = useCallback(() => {
     dispatch(resetApplyMediatorStatus());
@@ -67,48 +72,39 @@ const MediatorApplication = () => {
 
   const handleStatusChange = useCallback(
     (newStatus) => {
-      // الوصول لـ loadingUpdateMediatorStatus و user?.mediatorStatus من الـ closure
       if (loadingUpdateMediatorStatus || user?.mediatorStatus === newStatus)
         return;
       dispatch(updateMediatorStatus(newStatus));
     },
     [dispatch, loadingUpdateMediatorStatus, user?.mediatorStatus]
-  ); // إضافة user?.mediatorStatus كاعتمادية
-  // ----------------------------------------------------------------
+  );
 
-  // --- State المحلي (يمكن أن يبقى هنا) ---
   const [selectedStatus, setSelectedStatus] = useState(
     user?.mediatorStatus || "Unavailable"
   );
-  // ------------------------------------
 
-  // تحديث الحالة المحلية عند تغير حالة المستخدم في Redux
   useEffect(() => {
     if (user?.mediatorStatus) {
       setSelectedStatus(user.mediatorStatus);
     }
   }, [user?.mediatorStatus]);
 
-  // --- [!!!] التحقق من المستخدم يتم الآن بعد تعريف الـ Hooks [!!!] ---
   if (!user) return null;
-  // -------------------------------------------------------------
 
-  // --- حساب الشروط والمتغيرات (يبقى كما هو) ---
   const canApplyByReputation = (user.level || 1) >= MEDIATOR_REQUIRED_LEVEL;
   const canApplyByGuarantee = (user.balance || 0) >= MEDIATOR_ESCROW_AMOUNT_TND;
   const currentAppStatus = user.mediatorApplicationStatus || "None";
   const isQualified = user.isMediatorQualified || false;
   const currentMediatorStatus = user.mediatorStatus || "Unavailable";
-  // ------------------------------------------
 
   return (
     <Card className="shadow-sm mb-4">
       {isQualified ? (
-        // --- واجهة إدارة حالة الوسيط ---
         <>
           <Card.Header className="bg-light d-flex justify-content-between align-items-center p-3 border-0">
             <h5 className="mb-0">
-              <FaUserCheck className="me-2 text-success" /> Mediator Status
+              <FaUserCheck className="me-2 text-success" />
+              {t("mediatorApplication.qualified.title")}
             </h5>
             <Badge
               pill
@@ -121,16 +117,20 @@ const MediatorApplication = () => {
               }
               className="status-badge-lg"
             >
-              {currentMediatorStatus}
+              {t(`mediatorApplication.statuses.${currentMediatorStatus}`, {
+                defaultValue: currentMediatorStatus,
+              })}
             </Badge>
           </Card.Header>
           <Card.Body className="p-4">
             <p className="text-muted small mb-3">
-              Set your availability to receive new mediation tasks.
+              {t("mediatorApplication.qualified.infoText")}
             </p>
             {errorUpdateMediatorStatus && (
               <Alert variant="danger">
-                Error updating status: {errorUpdateMediatorStatus}
+                {t("mediatorApplication.qualified.updateError", {
+                  error: errorUpdateMediatorStatus,
+                })}
               </Alert>
             )}
             <ButtonGroup className="d-flex mediator-status-buttons">
@@ -151,7 +151,7 @@ const MediatorApplication = () => {
                 ) : (
                   <FaUserCheck className="me-1" />
                 )}
-                Available
+                {t("mediatorApplication.qualified.statusAvailable")}
               </Button>
               <Button
                 variant={
@@ -172,24 +172,26 @@ const MediatorApplication = () => {
                 ) : (
                   <FaUserTimes className="me-1" />
                 )}
-                Unavailable
+                {t("mediatorApplication.qualified.statusUnavailable")}
               </Button>
             </ButtonGroup>
             {currentMediatorStatus === "Busy" && (
               <Alert variant="warning" className="mt-3 small text-center p-2">
-                <FaUserClock className="me-1" /> You are currently busy with a
-                mediation task.
+                <FaUserClock className="me-1" />
+                {t("mediatorApplication.qualified.busyAlert")}
               </Alert>
             )}
             <div className="mt-4 border-top pt-3 mediator-stats">
               <p className="small text-muted mb-1 d-flex justify-content-between">
-                <span>Successful Mediations:</span>
+                <span>
+                  {t("mediatorApplication.qualified.successfulMediations")}
+                </span>
                 <span className="fw-bold">
                   {user.successfulMediationsCount || 0}
                 </span>
               </p>
               <p className="small text-muted mb-0 d-flex justify-content-between">
-                <span>Guarantee Held:</span>
+                <span>{t("mediatorApplication.qualified.guaranteeHeld")}</span>
                 <span className="fw-bold">
                   {formatCurrency(user.mediatorEscrowGuarantee || 0, "TND")}
                 </span>
@@ -198,7 +200,7 @@ const MediatorApplication = () => {
                 user.mediatorEscrowGuarantee > 0 && (
                   <div className="text-center mt-3">
                     <Button size="sm" variant="outline-primary">
-                      Request Guarantee Withdrawal
+                      {t("mediatorApplication.qualified.withdrawButton")}
                     </Button>
                   </div>
                 )}
@@ -206,28 +208,30 @@ const MediatorApplication = () => {
           </Card.Body>
         </>
       ) : (
-        // --- واجهة طلب الانضمام ---
         <>
           <Card.Header className="bg-light p-3 border-0">
             <h5 className="mb-0 section-title-modern">
-              Become a Mediator
+              {t("mediatorApplication.application.title")}
             </h5>
           </Card.Header>
           <Card.Body className="p-4">
             {currentAppStatus === "Pending" && (
               <Alert variant="info" className="d-flex align-items-center">
-                <FaHourglassHalf className="me-2 flex-shrink-0" /> Your
-                application is pending review.
+                <FaHourglassHalf className="me-2 flex-shrink-0" />
+                {t("mediatorApplication.application.pendingAlert")}
               </Alert>
             )}
             {currentAppStatus === "Rejected" && (
               <Alert variant="danger" className="d-flex align-items-start">
                 <FaTimesCircle className="me-2 mt-1 flex-shrink-0" />
                 <div>
-                  Your previous application was rejected.
+                  {t("mediatorApplication.application.rejectedAlertTitle")}
                   {user.mediatorApplicationNotes && (
                     <small className="d-block mt-1">
-                      <strong>Reason:</strong> {user.mediatorApplicationNotes}
+                      <strong>
+                        {t("mediatorApplication.application.rejectionReason")}
+                      </strong>{" "}
+                      {user.mediatorApplicationNotes}
                     </small>
                   )}
                 </div>
@@ -236,22 +240,34 @@ const MediatorApplication = () => {
             {(currentAppStatus === "None" ||
               currentAppStatus === "Rejected") && (
               <>
-                <p className="text-muted mb-3">You can become a mediator if :</p>
+                <p className="text-muted mb-3">
+                  {t("mediatorApplication.application.requirementsTitle")}
+                </p>
                 <ListGroup variant="flush" className="mb-3 requirement-list">
                   <ListGroup.Item className="d-flex align-items-center ps-0 border-0">
                     <FaStar className="me-2 text-info requirement-icon" />
-                    <span>
-                      Reach Reputation Level <strong>{MEDIATOR_REQUIRED_LEVEL}</strong> (Your current
-                      level: {user.level || 1})
-                    </span>
+                    <Trans
+                      i18nKey="mediatorApplication.application.reputationRequirement"
+                      values={{
+                        requiredLevel: MEDIATOR_REQUIRED_LEVEL,
+                        currentLevel: user.level || 1,
+                      }}
+                      components={{ strong: <strong /> }}
+                    />
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex align-items-center ps-0 border-0">
                     <FaMoneyBillWave className="me-2 text-success requirement-icon" />
-                    <span>
-                      Deposit a guarantee of <strong>
-                        {formatCurrency(MEDIATOR_ESCROW_AMOUNT_TND, "TND")}
-                      </strong> (Your current balance:{formatCurrency(user.balance || 0, "TND")})
-                    </span>
+                    <Trans
+                      i18nKey="mediatorApplication.application.guaranteeRequirement"
+                      values={{
+                        amount: formatCurrency(
+                          MEDIATOR_ESCROW_AMOUNT_TND,
+                          "TND"
+                        ),
+                        balance: formatCurrency(user.balance || 0, "TND"),
+                      }}
+                      components={{ strong: <strong /> }}
+                    />
                   </ListGroup.Item>
                 </ListGroup>
                 {successApplyMediator && (
@@ -260,7 +276,7 @@ const MediatorApplication = () => {
                     onClose={handleCloseApplyAlert}
                     dismissible
                   >
-                    Application submitted successfully!
+                    {t("mediatorApplication.application.applySuccess")}
                   </Alert>
                 )}
                 {errorApplyMediator && (
@@ -269,7 +285,9 @@ const MediatorApplication = () => {
                     onClose={handleCloseApplyAlert}
                     dismissible
                   >
-                    Error: {errorApplyMediator}
+                    {t("mediatorApplication.application.applyError", {
+                      error: errorApplyMediator,
+                    })}
                   </Alert>
                 )}
                 <div className="d-grid gap-2 d-sm-flex justify-content-start apply-buttons">
@@ -279,14 +297,17 @@ const MediatorApplication = () => {
                     disabled={loadingApplyMediator || !canApplyByReputation}
                     title={
                       !canApplyByReputation
-                        ? `Requires Level ${MEDIATOR_REQUIRED_LEVEL}`
-                        : "Apply based on your reputation"
+                        ? t(
+                            "mediatorApplication.application.levelTooltipDisabled",
+                            { level: MEDIATOR_REQUIRED_LEVEL }
+                          )
+                        : t("mediatorApplication.application.levelTooltip")
                     }
                   >
                     {loadingApplyMediator ? (
                       <Spinner size="sm" />
                     ) : (
-                      "Apply (Level)"
+                      t("mediatorApplication.application.applyByLevelButton")
                     )}
                   </Button>
                   <Button
@@ -295,17 +316,24 @@ const MediatorApplication = () => {
                     disabled={loadingApplyMediator || !canApplyByGuarantee}
                     title={
                       !canApplyByGuarantee
-                        ? `Requires ${formatCurrency(
-                            MEDIATOR_ESCROW_AMOUNT_TND,
-                            "TND"
-                          )} balance`
-                        : "Apply with guarantee deposit"
+                        ? t(
+                            "mediatorApplication.application.guaranteeTooltipDisabled",
+                            {
+                              amount: formatCurrency(
+                                MEDIATOR_ESCROW_AMOUNT_TND,
+                                "TND"
+                              ),
+                            }
+                          )
+                        : t("mediatorApplication.application.guaranteeTooltip")
                     }
                   >
                     {loadingApplyMediator ? (
                       <Spinner size="sm" />
                     ) : (
-                      "Apply (Guarantee)"
+                      t(
+                        "mediatorApplication.application.applyByGuaranteeButton"
+                      )
                     )}
                   </Button>
                 </div>

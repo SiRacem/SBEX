@@ -1,4 +1,5 @@
 // src/pages/UserTicketsListPage.jsx
+
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,12 +15,20 @@ import {
   Badge,
   Pagination,
 } from "react-bootstrap";
-import { getUserTicketsAction } from "../redux/actions/ticketAction"; // تأكد من المسار الصحيح
+import { useTranslation } from "react-i18next";
+import { getUserTicketsAction } from "../redux/actions/ticketAction";
 import { FaTicketAlt, FaPlusCircle, FaEye } from "react-icons/fa";
 import moment from "moment";
-import "./tickets.css"; // ملف CSS مخصص لتنسيق الصفحة
+
+// استيراد اللغات لمكتبة moment
+import "moment/locale/ar";
+import "moment/locale/fr";
+// ملاحظة: اللهجة التونسية (tn) غير مدعومة رسميًا، ستستخدم 'ar' كبديل.
+
+import "./tickets.css";
 
 const UserTicketsListPage = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -29,17 +38,25 @@ const UserTicketsListPage = () => {
     errorUserTickets,
     userTicketsPagination,
   } = useSelector((state) => state.ticketReducer);
-  const { user, isAuth } = useSelector((state) => state.userReducer);
+  const { isAuth } = useSelector((state) => state.userReducer);
 
-  // حالة للصفحة الحالية (للت分页)
   const [currentPage, setCurrentPage] = useState(1);
-  const ticketsPerPage = 10; // يمكنك جعل هذا قابل للتعديل
+  const ticketsPerPage = 10;
+
+  useEffect(() => {
+    // تحديث لغة moment عند تغيير لغة i18next
+    const lang = i18n.language;
+    if (lang === "tn") {
+      moment.locale("ar"); // استخدم العربية كبديل للتونسية
+    } else {
+      moment.locale(lang);
+    }
+  }, [i18n.language]);
 
   useEffect(() => {
     if (!isAuth) {
       navigate("/login");
     } else {
-      // جلب التذاكر للصفحة الحالية
       dispatch(
         getUserTicketsAction({
           page: currentPage,
@@ -56,7 +73,6 @@ const UserTicketsListPage = () => {
   };
 
   const getStatusBadgeVariant = (status) => {
-    // ... (نفس دالة getStatusBadgeVariant من TicketDetailsPage)
     switch (status) {
       case "Open":
         return "primary";
@@ -77,8 +93,38 @@ const UserTicketsListPage = () => {
     }
   };
 
-  if (loadingUserTickets && userTickets.length === 0) {
-    // عرض التحميل فقط إذا لم تكن هناك تذاكر معروضة بالفعل
+  const getTranslatedCategory = (categoryFromDB) => {
+    if (!categoryFromDB) return "";
+
+    // خريطة تحويل من قيم قاعدة البيانات إلى مفاتيح الترجمة
+    // المفاتيح هنا هي القيم التي تأتي من الـ backend (بدون مسافات)
+    const categoryMap = {
+      GeneralInquiry: "General Inquiry",
+      TechnicalSupport: "Technical Support",
+      BillingIssue: "Billing Issue",
+      AccountIssue: "Account Issue",
+      MediationIssue: "Mediation Inquiry", // الربط بين القيمة من DB والمفتاح الصحيح
+      MediationInquiry: "Mediation Inquiry", // إضافة هذا للاحتياط إذا كان الـ DB يرسل هذه القيمة
+      BugReport: "Bug Report",
+      FeatureRequest: "Feature Request",
+      Other: "Other",
+    };
+
+    // إزالة المسافات من القيمة القادمة من قاعدة البيانات للمقارنة
+    const cleanCategoryKeyFromDB = categoryFromDB.replace(/\s/g, "");
+
+    // ابحث عن المفتاح الصحيح في الخريطة
+    const translationKey =
+      categoryMap[cleanCategoryKeyFromDB] || categoryFromDB;
+
+    // قم بالترجمة باستخدام المفتاح الصحيح (مع إزالة المسافات منه أيضًا ليتطابق مع ملف الترجمة)
+    return t(
+      `ticketsListPage.categories.${translationKey.replace(/\s/g, "")}`,
+      { defaultValue: categoryFromDB }
+    );
+  };
+
+  if (loadingUserTickets && (!userTickets || userTickets.length === 0)) {
     return (
       <Container className="py-5 text-center">
         <Spinner
@@ -86,7 +132,7 @@ const UserTicketsListPage = () => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <p className="mt-3 fs-5">Loading your tickets...</p>
+        <p className="mt-3 fs-5">{t("ticketsListPage.loading")}</p>
       </Container>
     );
   }
@@ -95,7 +141,7 @@ const UserTicketsListPage = () => {
     return (
       <Container className="py-5">
         <Alert variant="danger" className="text-center">
-          <h4>Error Loading Tickets</h4>
+          <h4>{t("ticketsListPage.errorTitle")}</h4>
           <p>{errorUserTickets}</p>
         </Alert>
       </Container>
@@ -107,7 +153,7 @@ const UserTicketsListPage = () => {
       <Row className="mb-4 align-items-center">
         <Col>
           <h2 className="page-title d-flex align-items-center">
-            <FaTicketAlt className="me-2" /> My Support Tickets
+            <FaTicketAlt className="me-2" /> {t("ticketsListPage.pageTitle")}
           </h2>
         </Col>
         <Col xs="auto">
@@ -116,7 +162,8 @@ const UserTicketsListPage = () => {
             to="/dashboard/support/create-ticket"
             variant="primary"
           >
-            <FaPlusCircle className="me-1" /> Create New Ticket
+            <FaPlusCircle className="me-1" />{" "}
+            {t("ticketsListPage.createButton")}
           </Button>
         </Col>
       </Row>
@@ -142,7 +189,7 @@ const UserTicketsListPage = () => {
                   <Col md={7} className="mb-2 mb-md-0">
                     <h5 className="mb-1 ticket-item-title">{ticket.title}</h5>
                     <small className="text-muted">
-                      Ticket ID: {ticket.ticketId}
+                      {t("ticketsListPage.ticketId")} {ticket.ticketId}
                     </small>
                   </Col>
                   <Col
@@ -156,21 +203,26 @@ const UserTicketsListPage = () => {
                       bg={getStatusBadgeVariant(ticket.status)}
                       className="px-2 py-1 ticket-status-badge"
                     >
-                      {ticket.status}
+                      {t(`ticketsListPage.statuses.${ticket.status}`, {
+                        defaultValue: ticket.status,
+                      })}
                     </Badge>
                   </Col>
                   <Col md={2} sm={6} xs={5} className="text-md-end text-end">
-                    <small className="text-muted d-block">Last Update:</small>
+                    <small className="text-muted d-block">
+                      {t("ticketsListPage.lastUpdate")}
+                    </small>
                     <small className="text-muted">
                       {moment(ticket.lastReplyAt || ticket.updatedAt).format(
-                        "MMM DD, YYYY"
+                        "ll"
                       )}
                     </small>
                   </Col>
                 </Row>
                 <div className="mt-2 d-flex justify-content-between align-items-center">
                   <small className="text-muted">
-                    Category: {ticket.category}
+                    {t("ticketsListPage.category")}{" "}
+                    {getTranslatedCategory(ticket.category)}
                   </small>
                   <Button
                     variant="outline-primary"
@@ -184,7 +236,7 @@ const UserTicketsListPage = () => {
                       );
                     }}
                   >
-                    <FaEye className="me-1" /> View
+                    <FaEye className="me-1" /> {t("ticketsListPage.viewButton")}
                   </Button>
                 </div>
               </ListGroup.Item>
@@ -237,20 +289,21 @@ const UserTicketsListPage = () => {
           )}
         </>
       ) : (
-        !loadingUserTickets && ( // عرض هذه الرسالة فقط إذا انتهى التحميل ولم تكن هناك تذاكر
+        !loadingUserTickets && (
           <Card className="text-center shadow-sm">
             <Card.Body className="p-5">
               <FaTicketAlt size={50} className="text-muted mb-3" />
-              <h4>No Support Tickets Found</h4>
+              <h4>{t("ticketsListPage.noTicketsTitle")}</h4>
               <p className="text-muted">
-                You haven't created any support tickets yet.
+                {t("ticketsListPage.noTicketsSubtitle")}
               </p>
               <Button
                 as={Link}
                 to="/dashboard/support/create-ticket"
                 variant="success"
               >
-                <FaPlusCircle className="me-1" /> Create Your First Ticket
+                <FaPlusCircle className="me-1" />{" "}
+                {t("ticketsListPage.createFirstButton")}
               </Button>
             </Card.Body>
           </Card>

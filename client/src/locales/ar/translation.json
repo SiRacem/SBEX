@@ -55,7 +55,35 @@
     "backToCategories": "العودة إلى جميع الفئات",
     "noResults": "لا توجد نتائج للبحث عن \"{{query}}\".",
     "noFaqs": "لا توجد أسئلة شائعة متاحة حالياً.",
-    "listUpdated": "تم تحديث القائمة."
+    "listUpdated": "تم تحديث القائمة.",
+    "article": "مقالة",
+    "articles": "مقالات"
+  },
+  "faqCategories": {
+    "Mediation & Disputes": {
+      "title": "الوساطة والنزاعات",
+      "description": "اعثر على إجابات تتعلق بالوساطة والنزاعات"
+    },
+    "General": {
+      "title": "عام",
+      "description": "اعثر على إجابات تتعلق بمواضيع عامة"
+    },
+    "Account & Profile": {
+      "title": "الحساب والملف الشخصي",
+      "description": "اعثر على إجابات تتعلق بحسابك وملفك الشخصي"
+    },
+    "Technical Issues": {
+      "title": "مشاكل تقنية",
+      "description": "اعثر على إجابات تتعلق بالمشاكل التقنية"
+    },
+    "Selling & Buying": {
+      "title": "البيع والشراء",
+      "description": "اعثر على إجابات تتعلق بالبيع والشراء"
+    },
+    "Payments & Billing": {
+      "title": "المدفوعات والفواتير",
+      "description": "اعثر على إجابات تتعلق بالمدفوعات والفواتير"
+    }
   },
   "transactionModal": {
     "title": "تفاصيل المعاملة",
@@ -228,7 +256,44 @@
     "cancel": "إلغاء",
     "close": "إغلاق",
     "processing": "جاري المعالجة...",
-    "confirmBid": "تأكيد المزايدة"
+    "confirmBid": "تأكيد المزايدة",
+    "level": "المستوى {{level}}"
+  },
+  "userProfilePage": {
+    "loading": "جاري تحميل الملف الشخصي...",
+    "errorTitle": "خطأ",
+    "goHome": "العودة للرئيسية",
+    "dataNotFound": "بيانات الملف الشخصي غير موجودة.",
+    "memberSince": "عضو منذ",
+    "userStats": "إحصائيات المستخدم",
+    "activeListings": "المنتجات النشطة",
+    "productsSold": "المنتجات المباعة",
+    "location": "الموقع",
+    "userRating": "تقييم المستخدم",
+    "positiveRating": "تقييم إيجابي",
+    "noRatings": "لا توجد تقييمات بعد.",
+    "reportTooltip": "الإبلاغ عن {{name}}",
+    "reportTooltipCooldown": "لقد أبلغت عن {{name}} مؤخراً. يمكنك الإبلاغ مرة أخرى بعد {{hours}} ساعة.",
+    "invalidId": "معرّف المستخدم غير صالح.",
+    "loadFail": "فشل تحميل الملف الشخصي للمستخدم."
+  },
+  "roles": {
+    "User": "مستخدم",
+    "Vendor": "بائع",
+    "Admin": "مسؤول",
+    "Mediator": "وسيط"
+  },
+  "reputationLevels": {
+    "Novice": "مبتدئ",
+    "Bronze": "برونزي",
+    "Silver": "فضي",
+    "Gold": "ذهبي",
+    "Platinum": "بلاتيني",
+    "Diamond": "ماسي",
+    "Master": "محترف",
+    "Grandmaster": "خبير",
+    "Legend": "أسطورة",
+    "Mythic": "خرافي"
   },
   "apiErrors": {
     "Invalid credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
@@ -240,5 +305,353 @@
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",
-  "pleaseLogin": "الرجاء تسجيل الدخول للمتابعة."
+  "pleaseLogin": "الرجاء تسجيل الدخول للمتابعة.",
+  "walletPage": {
+    "title": "محفظتي",
+    "loading": "جاري تحميل المحفظة...",
+    "error": "بيانات المستخدم غير متوفرة. الرجاء تسجيل الدخول.",
+    "deposit": "إيداع",
+    "withdraw": "سحب",
+    "send": "إرسال",
+    "receive": "استلام",
+    "recentActivity": "النشاط الأخير",
+    "showingItems": "عرض {{count}} عنصر",
+    "loadingActivity": "جاري تحميل النشاط...",
+    "errorActivity": "خطأ في جلب النشاط: {{error}}",
+    "noActivityTitle": "لا يوجد نشاط بعد",
+    "noActivitySubtitle": "سيظهر نشاط محفظتك هنا.",
+    "principalBalance": "الرصيد الأساسي",
+    "sellerAvailableBalance": "رصيد البائع المتاح",
+    "onHoldBalance": "الرصيد المعلّق",
+    "activityTypes": {
+      "DEPOSIT_REQUEST": "إيداع عبر {{methodName}}",
+      "WITHDRAWAL_REQUEST": "سحب عبر {{methodName}}",
+      "TRANSFER_SENT": "أُرسل إلى {{peerName}}",
+      "TRANSFER_RECEIVED": "تم الاستلام من {{peerName}}",
+      "UNKNOWN_ACTIVITY": "نشاط"
+    },
+    "statuses": {
+      "pending": "قيد الانتظار",
+      "approved": "موافق عليه",
+      "completed": "مكتمل",
+      "rejected": "مرفوض",
+      "failed": "فشل",
+      "processing": "قيد المعالجة"
+    },
+    "sendModal": {
+      "step1Title": "إرسال أموال - خطوة 1: المستلم",
+      "step2Title_source": "إرسال أموال - خطوة 2: تحديد المصدر",
+      "step3Title_amount": "إرسال أموال - خطوة {{step}}: المبلغ",
+      "step4Title_confirm": "إرسال أموال - خطوة {{step}}: تأكيد",
+      "recipientEmailLabel": "البريد الإلكتروني للمستلم",
+      "emailPlaceholder": "name@example.com",
+      "validEmailError": "الرجاء إدخال بريد إلكتروني صالح.",
+      "userNotFoundError": "لم يتم العثور على مستخدم بهذا البريد الإلكتروني.",
+      "authError": "خطأ في المصادقة.",
+      "checkEmailError": "خطأ في التحقق من البريد. حاول مرة أخرى.",
+      "sendToSelfError": "لا يمكنك إرسال الأموال لنفسك.",
+      "checking": "جاري التحقق...",
+      "checkEmailButton": "تحقق من البريد",
+      "sendingTo": "إرسال إلى: {{name}} ({{email}})",
+      "selectSource": "حدد مصدر الأموال:",
+      "principalSource": "الأساسي ({{balance}})",
+      "sellerSource": "البائع ({{balance}})",
+      "sendCurrencyLabel": "عملة الإرسال:",
+      "availableFrom": "متوفر من {{source}} ({{currency}})",
+      "amountToSendLabel": "المبلغ المراد إرساله ({{currency}})",
+      "maxButton": "الحد الأقصى",
+      "amountPositiveError": "يجب أن يكون المبلغ موجبًا.",
+      "minAmountError": "أقل مبلغ للإرسال هو {{amount}}",
+      "insufficientBalanceError": "الرصيد من المصدر المحدد غير كافٍ لتغطية المبلغ والرسوم.",
+      "approximateValue": "~{{value}}",
+      "confirmTitle": "تأكيد المعاملة:",
+      "toLabel": "إلى:",
+      "fromLabel": "من:",
+      "amountLabel": "المبلغ المرسل:",
+      "feeLabel": "رسوم التحويل ({{fee}}%):",
+      "totalDeductedLabel": "الإجمالي المخصوم (دينار تونسي):",
+      "backButton": "رجوع",
+      "closeButton": "إغلاق",
+      "nextButton": "التالي",
+      "confirmSendButton": "تأكيد وإرسال",
+      "sendingButton": "جاري الإرسال...",
+      "sendFailedError": "الرجاء تصحيح الأخطاء قبل الإرسال.",
+      "sendSuccess": "تم إرسال الأموال بنجاح!",
+      "sendGenericError": "فشل إرسال الأموال."
+    },
+    "receiveModal": {
+      "title": "استلام أموال",
+      "shareEmail": "شارك بريدك الإلكتروني مع المرسل:",
+      "yourEmailLabel": "بريدك الإلكتروني",
+      "copyTooltip": "نسخ البريد الإلكتروني",
+      "copiedTooltip": "تم النسخ!",
+      "copyFail": "فشل النسخ.",
+      "infoText": "يمكن للمستخدمين المسجلين إرسال الأموال إلى هذا البريد.",
+      "closeButton": "إغلاق"
+    }
+  },
+  "profilePage": {
+    "loading": "جاري تحميل الملف الشخصي...",
+    "error": "بيانات الملف الشخصي غير متوفرة.",
+    "loginPrompt": "الرجاء تسجيل الدخول لعرض ملفك الشخصي.",
+    "unavailable": "الملف الشخصي للمستخدم {{username}} غير متاح.",
+    "unableToDisplay": "غير قادر على تحديد الملف الشخصي المطلوب عرضه.",
+    "retry": "إعادة المحاولة",
+    "login": "تسجيل الدخول",
+    "avatarModalTitle": "تحديث صورة الملف الشخصي",
+    "avatarModalLabel": "اختر صورة جديدة (JPG, PNG, WEBP - الحجم الأقصى 2 ميجابايت)",
+    "uploadButton": "رفع الصورة",
+    "uploadingButton": "جاري الرفع...",
+    "cancelButton": "إلغاء",
+    "avatarUpdateError": "الحجم الأقصى 2 ميجابايت.",
+    "avatarUpdateTypeError": "فقط JPG, PNG, GIF, WEBP.",
+    "changeAvatarTooltip": "انقر لتغيير الصورة الرمزية",
+    "locationNotSet": "الموقع غير محدد",
+    "statusBlocked": "محظور",
+    "statusActive": "نشط",
+    "roleMediator": "وسيط",
+    "ratingSectionTitle": "تقييم المستخدم",
+    "noRatings": "لا توجد تقييمات بعد.",
+    "balancesSectionTitle": "أرصدة الحساب",
+    "balancePrincipal": "الرئيسي",
+    "balanceDeposit": "الإيداع",
+    "balanceWithdrawal": "السحب",
+    "balanceSellerAvailable": "البائع المتاح",
+    "balanceSellerOnHold": "البائع المعلّق",
+    "statsSectionTitle": "إحصائيات المستخدم",
+    "statsActiveListings": "المنتجات النشطة",
+    "statsProductsSold": "المنتجات المباعة",
+    "levelWidget": {
+      "level": "المستوى {{level}}",
+      "points": "{{points}} نقطة",
+      "progressLabel": "{{progress}} / {{needed}} نقطة للمستوى {{nextLevel}}",
+      "rewardLabel": "مكافأة الوصول للمستوى {{nextLevel}}",
+      "nextReward": "المكافأة التالية",
+      "maxLevel": "تم الوصول للمستوى الأقصى!",
+      "totalPointsTooltip": "إجمالي نقاط السمعة",
+      "viewAllTooltip": "انقر لعرض كل المستويات والمكافآت"
+    }
+  },
+  "mediatorApplication": {
+    "qualified": {
+      "title": "حالة الوسيط",
+      "statusLabel": "الحالة",
+      "infoText": "حدد مدى توفرك لتلقي مهام وساطة جديدة.",
+      "updateError": "خطأ في تحديث الحالة: {{error}}",
+      "statusAvailable": "متوفر",
+      "statusUnavailable": "غير متوفر",
+      "busyAlert": "أنت مشغول حاليًا بمهمة وساطة.",
+      "statsTitle": "إحصائيات الوسيط",
+      "successfulMediations": "الوساطات الناجحة:",
+      "guaranteeHeld": "الضمان المحتجز:",
+      "withdrawButton": "طلب سحب الضمان"
+    },
+    "application": {
+      "title": "كن وسيطًا",
+      "pendingAlert": "طلبك قيد المراجعة.",
+      "rejectedAlertTitle": "تم رفض طلبك السابق.",
+      "rejectionReason": "السبب:",
+      "requirementsTitle": "يمكنك أن تصبح وسيطًا إذا:",
+      "reputationRequirement": "وصلت إلى مستوى السمعة <strong>{{requiredLevel}}</strong> (مستواك الحالي: {{currentLevel}})",
+      "guaranteeRequirement": "أودعت ضمانًا قدره <strong>{{amount}}</strong> (رصيدك الحالي: {{balance}})",
+      "applySuccess": "تم تقديم الطلب بنجاح!",
+      "applyError": "خطأ: {{error}}",
+      "applyByLevelButton": "تقديم (بالمستوى)",
+      "applyByGuaranteeButton": "تقديم (بالضمان)",
+      "levelTooltip": "تقديم بناءً على سمعتك",
+      "levelTooltipDisabled": "يتطلب المستوى {{level}}",
+      "guaranteeTooltip": "تقديم مع إيداع ضمان",
+      "guaranteeTooltipDisabled": "يتطلب رصيدًا بقيمة {{amount}}"
+    },
+    "statuses": {
+      "Available": "متوفر",
+      "Unavailable": "غير متوفر",
+      "Busy": "مشغول"
+    }
+  },
+  "myProductsPage": {
+    "title": "منتجاتي ومزايداتي",
+    "addNewButton": "+ إضافة منتج جديد",
+    "loading": "جاري تحميل منتجاتك...",
+    "error": "خطأ:",
+    "genericError": "حدث خطأ ما",
+    "refreshing": "جاري التحديث...",
+    "tabs": {
+      "approved": "الموافق عليها",
+      "pending": "قيد الانتظار",
+      "mediation": "في الوساطة",
+      "disputed": "متنازع عليها",
+      "sold": "المباعة",
+      "rejected": "المرفوضة"
+    },
+    "noProducts": {
+      "approved": "لا توجد منتجات موافق عليها.",
+      "pending": "لا توجد منتجات قيد الموافقة.",
+      "mediation": "لا توجد منتجات في عملية الوساطة.",
+      "disputed": "لا توجد منتجات متنازع عليها حاليًا.",
+      "sold": "لا توجد منتجات مباعة أو مكتملة بعد.",
+      "rejected": "لا توجد منتجات مرفوضة."
+    },
+    "productCard": {
+      "listPrice": "سعر العرض:",
+      "agreedPrice": "السعر المتفق عليه:",
+      "status": {
+        "approved": "موافق عليه",
+        "pendingApproval": "في انتظار الموافقة",
+        "adminRejected": "رفضه المسؤول",
+        "selectMediator": "اختر وسيطًا",
+        "awaitingMediator": "في انتظار الوسيط",
+        "awaitingConfirmations": "في انتظار التأكيدات",
+        "buyerConfirmed": "أكد المشتري",
+        "partiesConfirmed": "تم تأكيد الطرفين",
+        "inProgress": "قيد التنفيذ",
+        "disputeOpened": "تم فتح نزاع",
+        "sold": "مباع",
+        "completed": "مكتمل"
+      },
+      "alerts": {
+        "selectMediator": "الرجاء اختيار وسيط",
+        "awaitingMediator": "في انتظار رد الوسيط.",
+        "sellerActionRequired": "<strong>إجراء مطلوب:</strong> قم بتأكيد جاهزيتك.",
+        "sellerActionInfo": "بعد تأكيدك، سيقوم المشتري بالتأكيد والدفع.",
+        "buyerActionInfo": "قام المشتري بالتأكيد والدفع.",
+        "sellerConfirmed": "لقد قمت بالتأكيد. <small class=\"text-muted\">في انتظار تأكيد المشتري والدفع.</small>",
+        "mediationInProgress": "الوساطة قيد التنفيذ.",
+        "disputeActive": "النزاع نشط.",
+        "communicate": "تواصل مع المشتري والوسيط."
+      },
+      "buttons": {
+        "confirmReadiness": "تأكيد جاهزيتي",
+        "openChat": "فتح المحادثة",
+        "openDisputeChat": "فتح محادثة النزاع",
+        "viewGallery": "{{count}}",
+        "viewDetails": "عرض التفاصيل",
+        "selectMediator": "اختر وسيط",
+        "requestReturnToSale": "طلب إعادة العرض للبيع"
+      },
+      "bids": {
+        "title": "المزايدات المستلمة ({{count}})",
+        "noBids": "لم يتم استلام أي مزايدات بعد.",
+        "moreBids": "...و {{count}} مزايدات أخرى."
+      },
+      "soldTo": "تم بيعه إلى <1>{{name}}</1> في {{date}}.",
+      "completedWith": "اكتملت المعاملة مع المشتري: <1>{{name}}</1> في {{date}}.",
+      "deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا المنتج؟",
+      "acceptConfirm": "هل تقبل مزايدة بقيمة {{amount}} من {{name}}؟ سينقل هذا المنتج إلى الوساطة."
+    },
+    "rejectModal": {
+      "title": "رفض المزايدة",
+      "reasonFor": "سبب رفض مزايدة <strong>{{name}}</strong> بمبلغ <strong>{{amount}}</strong>:",
+      "placeholder": "سبب الرفض (مطلوب لإعلام المستخدم)",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد الرفض",
+      "errorNoBidder": "لم يتم التعرف على هوية المزايد.",
+      "errorNoReason": "الرجاء تقديم سبب للرفض."
+    },
+    "imageModal": {
+      "title": "صورة المنتج {{index}}",
+      "unavailable": "الصورة غير متوفرة.",
+      "close": "إغلاق"
+    },
+    "mediatorModal": {
+      "errorIdMissing": "معرّف طلب الوساطة مفقود.",
+      "errorNotAuthenticated": "غير مصادق عليه.",
+      "errorLoadFailed": "تعذر تحميل الوسطاء.",
+      "successSuggestions": "تم تحميل اقتراحات جديدة!",
+      "infoNoMediators": "لم يتم العثور على وسطاء جدد."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "جاري تحميل تذاكرك...",
+    "errorTitle": "خطأ في تحميل التذاكر",
+    "pageTitle": "تذاكر الدعم الخاصة بي",
+    "createButton": "إنشاء تذكرة جديدة",
+    "ticketId": "معرّف التذكرة:",
+    "lastUpdate": "آخر تحديث:",
+    "category": "الفئة:",
+    "viewButton": "عرض",
+    "noTicketsTitle": "لم يتم العثور على تذاكر دعم",
+    "noTicketsSubtitle": "لم تقم بإنشاء أي تذاكر دعم بعد.",
+    "createFirstButton": "أنشئ تذكرتك الأولى",
+    "statuses": {
+      "Open": "مفتوحة",
+      "PendingSupportReply": "بانتظار رد الدعم",
+      "PendingUserInput": "بانتظار ردك",
+      "InProgress": "قيد التنفيذ",
+      "Resolved": "تم حلها",
+      "Closed": "مغلقة",
+      "OnHold": "معلّقة"
+    },
+    "categories": {
+      "GeneralInquiry": "استفسار عام",
+      "TechnicalSupport": "دعم فني",
+      "BillingIssue": "مشكلة في الفواتير",
+      "AccountIssue": "مشكلة في الحساب",
+      "MediationInquiry": "استفسار وساطة",
+      "BugReport": "تقرير خطأ",
+      "FeatureRequest": "طلب ميزة",
+      "Other": "أخرى"
+    }
+  },
+  "mediationRequestsPage": {
+    "loadingUser": "جاري تحميل الملف الشخصي...",
+    "loadingRequests": "جاري تحميل طلبات الوساطة الخاصة بك...",
+    "errorTitle": "خطأ في تحميل الطلبات:",
+    "unknownError": "حدث خطأ غير معروف.",
+    "title": "طلبات الوساطة الخاصة بي",
+    "subtitle": "لديك {{count}} طلب(ات) وساطة.",
+    "updatingList": "جاري تحديث القائمة...",
+    "noRequests": "ليس لديك طلبات وساطة نشطة في الوقت الحالي.",
+    "updateWarning": "تعذر تحديث جميع الطلبات: {{error}}",
+    "updateError": "خطأ في التحديث.",
+    "card": {
+      "productTitle": "المنتج: {{title}}",
+      "viewDetailsTooltip": "عرض تفاصيل الوساطة",
+      "galleryButton": "عرض ({{count}})",
+      "transactionId": "معرّف المعاملة:",
+      "seller": "البائع:",
+      "mediator": "الوسيط:",
+      "agreedPrice": "السعر المتفق عليه:",
+      "escrowTitle": "التكلفة المقدرة للضمان:",
+      "escrowPrice": "السعر المتفق عليه:",
+      "escrowFee": "حصتك من الرسوم:",
+      "escrowTotal": "الإجمالي للضمان:",
+      "status": "الحالة:",
+      "lastUpdated": "آخر تحديث:",
+      "actionRequiredAlert": "<strong>إجراء مطلوب:</strong> الوسيط <strong>{{name}}</strong> قبل الطلب. قم بالتأكيد وإيداع الأموال.",
+      "confirmButton": "تأكيد وإيداع",
+      "processingButton": "جاري المعالجة...",
+      "cancelButton": "إلغاء الوساطة",
+      "fundsEscrowedAlert": "تم إيداع الأموال. في انتظار تأكيد البائع.",
+      "partiesConfirmedAlert": "تم تأكيد الطرفين. المحادثة ستبدأ.",
+      "disputeActiveAlert": "النزاع نشط.",
+      "mediationInProgressAlert": "الوساطة قيد التنفيذ.",
+      "openChatButton": "فتح المحادثة",
+      "openDisputeChatButton": "فتح محادثة النزاع",
+      "completedAlert": "اكتملت الوساطة.",
+      "cancelledAlertTitle": "تم إلغاء الوساطة",
+      "cancelledReason": "السبب: {{reason}}",
+      "cancelledNoReason": "السبب: غير محدد."
+    },
+    "statuses": {
+      "PendingMediatorSelection": "بانتظار اختيار الوسيط",
+      "MediatorAssigned": "تم تعيين الوسيط",
+      "MediationOfferAccepted": "قبل الوسيط - بانتظار التأكيدات",
+      "EscrowFunded": "تم الإيداع - بانتظار البائع",
+      "Disputed": "تم فتح نزاع",
+      "UnderDispute": "تم فتح نزاع",
+      "PartiesConfirmed": "تم تأكيد الطرفين",
+      "InProgress": "الوساطة قيد التنفيذ",
+      "Completed": "مكتملة",
+      "Cancelled": "ملغاة"
+    },
+    "rejectModal": {
+      "noReason": "يرجى تقديم سبب للإلغاء."
+    },
+    "imageModal": {
+      "title": "صورة المنتج {{index}}",
+      "unavailable": "الصورة غير متوفرة.",
+      "close": "إغلاق"
+    }
+  }
 }

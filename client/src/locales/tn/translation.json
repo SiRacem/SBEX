@@ -51,7 +51,35 @@
     "backToCategories": "ارجع للتصنيفات الكل",
     "noResults": "ما لقينا شي على \"{{query}}\".",
     "noFaqs": "ما فماش أسئلة متداولة توّا.",
-    "listUpdated": "القائمة تحدثت."
+    "listUpdated": "القائمة تحدثت.",
+    "article": "مقالة",
+    "articles": "مقالات"
+  },
+  "faqCategories": {
+    "Mediation & Disputes": {
+      "title": "الوساطة والمشاكل",
+      "description": "القى جوابات على الوساطة والمشاكل"
+    },
+    "General": {
+      "title": "عام",
+      "description": "القى جوابات على مواضيع عامة"
+    },
+    "Account & Profile": {
+      "title": "الكونت والبروفيل",
+      "description": "القى جوابات على كونتيك وبروفيلك"
+    },
+    "Technical Issues": {
+      "title": "مشاكل تقنية",
+      "description": "القى جوابات على المشاكل التقنية"
+    },
+    "Selling & Buying": {
+      "title": "البيعان والشريان",
+      "description": "القى جوابات على البيعان والشريان"
+    },
+    "Payments & Billing": {
+      "title": "الخلاص والفواتير",
+      "description": "القى جوابات على الخلاص والفواتير"
+    }
   },
   "transactionModal": {
     "title": "تفاصيل المعاملة",
@@ -224,7 +252,8 @@
     "cancel": "أنّيلي",
     "close": "سكر",
     "processing": "تتخدم...",
-    "confirmBid": "أكد المزايدة"
+    "confirmBid": "أكد المزايدة",
+    "level": "مستوى {{level}}"
   },
   "userProfilePage": {
     "memberSince": "عضو منذ",
@@ -236,6 +265,42 @@
     "positiveRating": "تقييم باهي",
     "noRatings": "ما فماش تقييمات."
   },
+  "userProfilePage": {
+    "loading": "قاعدين نحملو في البروفيل...",
+    "errorTitle": "غلطة",
+    "goHome": "ارجع للرئيسية",
+    "dataNotFound": "ما لقيناش بيانات البروفيل.",
+    "memberSince": "عضو منذ",
+    "userStats": "إحصائيات",
+    "activeListings": "منتوجات موجودة",
+    "productsSold": "منتوجات تباعت",
+    "location": "البلاصة",
+    "userRating": "تقييم",
+    "positiveRating": "تقييم باهي",
+    "noRatings": "ما فماش تقييمات.",
+    "reportTooltip": "بلّغ على {{name}}",
+    "reportTooltipCooldown": "راك بلّغت على {{name}} قبل. تنجم تبلّغ مرة أخرى بعد {{hours}} سوايع.",
+    "invalidId": "معرّف المستخدم غالط.",
+    "loadFail": "فما مشكل في تحميل البروفيل."
+  },
+  "roles": {
+    "User": "مستخدم",
+    "Vendor": "بايع",
+    "Admin": "أدمن",
+    "Mediator": "وسيط"
+  },
+  "reputationLevels": {
+    "Novice": "مبتدي",
+    "Bronze": "برونزي",
+    "Silver": "فضّي",
+    "Gold": "ذهبي",
+    "Platinum": "بلاتيني",
+    "Diamond": "ماسي",
+    "Master": "محترف",
+    "Grandmaster": "خبير",
+    "Legend": "أسطورة",
+    "Mythic": "خرافي"
+  },
   "apiErrors": {
     "Invalid credentials": "الإيميل ولا كلمة السر غالطين.",
     "Email already exists": "الإيميل هذا موجود ديجا.",
@@ -246,5 +311,353 @@
   },
   "confirmLogout": "بالرسمي تحب تخرج؟",
   "forSellersOnly": "للبايعة أكهو.",
-  "pleaseLogin": "يرحم والديك، حل الكونت متاعك."
+  "pleaseLogin": "يرحم والديك، حل الكونت متاعك.",
+  "walletPage": {
+    "title": "البورطفاي متاعي",
+    "loading": "قاعدين نحملو في البورطفاي...",
+    "error": "معلومات المستخدم موش موجودة. يرحم والديك، حل الكونت.",
+    "deposit": "صبّان",
+    "withdraw": "جبدان",
+    "send": "ابعث",
+    "receive": "اقبل",
+    "recentActivity": "الأنشطة لخرانية",
+    "showingItems": "نعرضو في {{count}} نشاط",
+    "loadingActivity": "قاعدين نحملو في الأنشطة...",
+    "errorActivity": "صارت غلطة في تحميل الأنشطة: {{error}}",
+    "noActivityTitle": "ما فماش أنشطة",
+    "noActivitySubtitle": "الأنشطة متاع بورطفايك باش تظهر هوني.",
+    "principalBalance": "الرصيد الأساسي",
+    "sellerAvailableBalance": "رصيد البايع الموجود",
+    "onHoldBalance": "الرصيد المجمّد",
+    "activityTypes": {
+      "DEPOSIT_REQUEST": "صبّان بـ {{methodName}}",
+      "WITHDRAWAL_REQUEST": "جبدان بـ {{methodName}}",
+      "TRANSFER_SENT": "بعثت لـ {{peerName}}",
+      "TRANSFER_RECEIVED": "جاك من عند {{peerName}}",
+      "UNKNOWN_ACTIVITY": "نشاط"
+    },
+    "statuses": {
+      "pending": "يستنى",
+      "approved": "موافق عليه",
+      "completed": "كملت",
+      "rejected": "مرفوضة",
+      "failed": "فشلت",
+      "processing": "تتخدم"
+    },
+    "sendModal": {
+      "step1Title": "ابعث فلوس - خطوة 1: شكون باش تقبل",
+      "step2Title_source": "ابعث فلوس - خطوة 2: اختار منين",
+      "step3Title_amount": "ابعث فلوس - خطوة {{step}}: المبلغ",
+      "step4Title_confirm": "ابعث فلوس - خطوة {{step}}: أكد",
+      "recipientEmailLabel": "الإيميل متاع اللي باش تقبل",
+      "emailPlaceholder": "name@example.com",
+      "validEmailError": "يرحم والديك اكتب إيميل صحيح.",
+      "userNotFoundError": "ما لقيناش مستخدم بالإيميل هذا.",
+      "authError": "مشكلة في المصادقة.",
+      "checkEmailError": "غلطة في التثبت مالإيميل. عاود مرة أخرى.",
+      "sendToSelfError": "ما تنجمش تبعث فلوس لروحك.",
+      "checking": "قاعدين نثبتو...",
+      "checkEmailButton": "ثبت في الإيميل",
+      "sendingTo": "باش تبعث لـ: {{name}} ({{email}})",
+      "selectSource": "اختار مصدر الفلوس:",
+      "principalSource": "الأساسي ({{balance}})",
+      "sellerSource": "البايع ({{balance}})",
+      "sendCurrencyLabel": "العملة اللي باش تبعث بيها:",
+      "availableFrom": "موجود من {{source}} ({{currency}})",
+      "amountToSendLabel": "المبلغ اللي باش تبعثو ({{currency}})",
+      "maxButton": "الكل",
+      "amountPositiveError": "لازم المبلغ يكون أكثر من صفر.",
+      "minAmountError": "أقل مبلغ تنجم تبعثو هو {{amount}}",
+      "insufficientBalanceError": "الفلوس في المصدر اللي اخترتو ما تكفيش باش تغطي المبلغ والرسوم.",
+      "approximateValue": "تقريبًا {{value}}",
+      "confirmTitle": "أكد العملية:",
+      "toLabel": "لـِ:",
+      "fromLabel": "من:",
+      "amountLabel": "المبلغ المرسل:",
+      "feeLabel": "رسوم التحويل ({{fee}}%):",
+      "totalDeductedLabel": "الإجمالي اللي باش يتنحى (دينار):",
+      "backButton": "ارجع",
+      "closeButton": "سكر",
+      "nextButton": "التالي",
+      "confirmSendButton": "أكد و ابعث",
+      "sendingButton": "قاعدين نبعثو...",
+      "sendFailedError": "صلّح الغلطات قبل ما تبعث.",
+      "sendSuccess": "تبعثت الفلوس بالصحيح!",
+      "sendGenericError": "فشل إرسال الفلوس."
+    },
+    "receiveModal": {
+      "title": "اقبل فلوس",
+      "shareEmail": "أعطي الإيميل متاعك للي باش يبعثلك:",
+      "yourEmailLabel": "الإيميل متاعك",
+      "copyTooltip": "انسخ الإيميل",
+      "copiedTooltip": "تم النسخ!",
+      "copyFail": "فشل النسخ.",
+      "infoText": "المستخدمين المسجلين ينجمو يبعثولك فلوس على الإيميل هذا.",
+      "closeButton": "سكر"
+    }
+  },
+  "profilePage": {
+    "loading": "قاعدين نحملو في البروفيل...",
+    "error": "بيانات البروفيل موش موجودة.",
+    "loginPrompt": "يرحم والديك، حل الكونت باش تشوف بروفيلك.",
+    "unavailable": "البروفيل متاع {{username}} موش موجود.",
+    "unableToDisplay": "ما نجمناش نحددو شكونو البروفيل اللي تحب تشوفو.",
+    "retry": "عاود",
+    "login": "ادخل",
+    "avatarModalTitle": "بدّل تصويرة البروفيل",
+    "avatarModalLabel": "اختار تصويرة جديدة (JPG, PNG, WEBP - أقصى حجم 2 ميغا)",
+    "uploadButton": "حمّل التصويرة",
+    "uploadingButton": "قاعدين نحملو...",
+    "cancelButton": "أنّيلي",
+    "avatarUpdateError": "أقصى حجم 2 ميغا.",
+    "avatarUpdateTypeError": "كان JPG, PNG, GIF, WEBP.",
+    "changeAvatarTooltip": "انزل باش تبدل التصويرة",
+    "locationNotSet": "البلاصة موش محطوطة",
+    "statusBlocked": "مبلوكي",
+    "statusActive": "نشط",
+    "roleMediator": "وسيط",
+    "ratingSectionTitle": "تقييم المستخدم",
+    "noRatings": "ما فماش تقييمات.",
+    "balancesSectionTitle": "أرصدة الكونت",
+    "balancePrincipal": "الأساسي",
+    "balanceDeposit": "الصبّان",
+    "balanceWithdrawal": "الجبدان",
+    "balanceSellerAvailable": "فلوس البايع الموجودة",
+    "balanceSellerOnHold": "فلوس البايع المجمّدة",
+    "statsSectionTitle": "إحصائيات المستخدم",
+    "statsActiveListings": "منتوجات موجودة",
+    "statsProductsSold": "منتوجات تباعت",
+    "levelWidget": {
+      "level": "مستوى {{level}}",
+      "points": "{{points}} نقطة",
+      "progressLabel": "{{progress}} / {{needed}} نقطة للمستوى {{nextLevel}}",
+      "rewardLabel": "كادو كي توصل للمستوى {{nextLevel}}",
+      "nextReward": "الكادو الجاي",
+      "maxLevel": "وصلت لآخر مستوى!",
+      "totalPointsTooltip": "مجموع نقاط السمعة",
+      "viewAllTooltip": "انزل باش تشوف المستويات والكادوات الكل"
+    }
+  },
+  "mediatorApplication": {
+    "qualified": {
+      "title": "حالة الوسيط",
+      "statusLabel": "الحالة",
+      "infoText": "حط روحك فارغ ولا مشغول باش تجيك خدمات وساطة جديدة.",
+      "updateError": "غلطة في تبديل الحالة: {{error}}",
+      "statusAvailable": "فارغ",
+      "statusUnavailable": "مشغول",
+      "busyAlert": "راك مشغول توّا في خدمة وساطة.",
+      "statsTitle": "إحصائيات الوسيط",
+      "successfulMediations": "وساطات ناجحة:",
+      "guaranteeHeld": "الضمان المحطوط:",
+      "withdrawButton": "اطلب جبدان الضمان"
+    },
+    "application": {
+      "title": "ولي وسيط",
+      "pendingAlert": "الطلب متاعك يستنى في المراجعة.",
+      "rejectedAlertTitle": "الطلب متاعك اللي فات ترفض.",
+      "rejectionReason": "السبب:",
+      "requirementsTitle": "تنجم تولي وسيط كان:",
+      "reputationRequirement": "توصل لمستوى السمعة <strong>{{requiredLevel}}</strong> (مستواك توّا: {{currentLevel}})",
+      "guaranteeRequirement": "تحط ضمان متاع <strong>{{amount}}</strong> (فلوسك توّا: {{balance}})",
+      "applySuccess": "الطلب تبعث بالصحيح!",
+      "applyError": "غلطة: {{error}}",
+      "applyByLevelButton": "قدّم (بالمستوى)",
+      "applyByGuaranteeButton": "قدّم (بالضمان)",
+      "levelTooltip": "قدّم على أساس السمعة متاعك",
+      "levelTooltipDisabled": "لازمك مستوى {{level}}",
+      "guaranteeTooltip": "قدّم بضمان مالي",
+      "guaranteeTooltipDisabled": "لازمك رصيد متاع {{amount}}"
+    },
+    "statuses": {
+      "Available": "فارغ",
+      "Unavailable": "مشغول",
+      "Busy": "يخدم"
+    }
+  },
+  "myProductsPage": {
+    "title": "منتوجاتي ومزايداتي",
+    "addNewButton": "+ زيد منتوج جديد",
+    "loading": "قاعدين نحملو في منتوجاتك...",
+    "error": "غلطة:",
+    "genericError": "صارت غلطة",
+    "refreshing": "قيد التحديث...",
+    "tabs": {
+      "approved": "توافق عليها",
+      "pending": "تستنى",
+      "mediation": "في وساطة",
+      "disputed": "عليها مشكلة",
+      "sold": "تباعت",
+      "rejected": "مرفوضة"
+    },
+    "noProducts": {
+      "approved": "ما فماش منتوجات توافق عليها.",
+      "pending": "ما فماش منتوجات تستنى الموافقة.",
+      "mediation": "ما فماش منتوجات في وساطة.",
+      "disputed": "ما فماش منتوجات عليها مشاكل توّا.",
+      "sold": "ما فماش منتوجات تباعت ولا كملت.",
+      "rejected": "ما فماش منتوجات مرفوضة."
+    },
+    "productCard": {
+      "listPrice": "سوم العرض:",
+      "agreedPrice": "السوم المتفاهم عليه:",
+      "status": {
+        "approved": "توافق عليه",
+        "pendingApproval": "يستنى في الموافقة",
+        "adminRejected": "رفضو الأدمن",
+        "selectMediator": "اختار وسيط",
+        "awaitingMediator": "نستناو في الوسيط",
+        "awaitingConfirmations": "نستناو في التأكيدات",
+        "buyerConfirmed": "الشاري أكد",
+        "partiesConfirmed": "الطرفين أكدو",
+        "inProgress": "قيد التنفيذ",
+        "disputeOpened": "تحلت مشكلة",
+        "sold": "تباعت",
+        "completed": "كملت"
+      },
+      "alerts": {
+        "selectMediator": "يرحم والديك اختار وسيط",
+        "awaitingMediator": "نستناو في جواب الوسيط.",
+        "sellerActionRequired": "<strong>لازمك تعمل حاجة:</strong> أكد اللي إنت حاضر.",
+        "sellerActionInfo": "بعد ما تأكد إنت، الشاري باش يأكد ويخلص.",
+        "buyerActionInfo": "الشاري أكد وخلص.",
+        "sellerConfirmed": "إنت أكدت. <small class=\"text-muted\">نستناو في الشاري باش يأكد ويخلص.</small>",
+        "mediationInProgress": "الوساطة قاعدة تخدم.",
+        "disputeActive": "فما مشكلة قاعدة تصير.",
+        "communicate": "احكي مع الشاري والوسيط."
+      },
+      "buttons": {
+        "confirmReadiness": "نأكد اللي أنا حاضر",
+        "openChat": "حل المحادثة",
+        "openDisputeChat": "حل محادثة المشكلة",
+        "viewGallery": "{{count}}",
+        "viewDetails": "شوف التفاصيل",
+        "selectMediator": "اختار وسيط",
+        "requestReturnToSale": "اطلب ترجيعو للبيع"
+      },
+      "bids": {
+        "title": "المزايدات اللي جات ({{count}})",
+        "noBids": "ما جات حتى مزايدة.",
+        "moreBids": "...و {{count}} مزايدات أخرين."
+      },
+      "soldTo": "تباعت لـ <1>{{name}}</1> نهار {{date}}.",
+      "completedWith": "كملت العملية مع الشاري: <1>{{name}}</1> نهار {{date}}.",
+      "deleteConfirm": "بالرسمي تحب تفسخ المنتوج هذا؟",
+      "acceptConfirm": "تقبل مزايدة بسوم {{amount}} من عند {{name}}؟ هذا باش يهز المنتوج للوساطة."
+    },
+    "rejectModal": {
+      "title": "ارفض المزايدة",
+      "reasonFor": "علاش باش ترفض مزايدة <strong>{{name}}</strong> بسوم <strong>{{amount}}</strong>:",
+      "placeholder": "سبب الرفض (لازم باش تعلم المستخدم)",
+      "cancel": "أنّيلي",
+      "confirm": "أكد الرفض",
+      "errorNoBidder": "ما نجمناش نعرفو شكون المزايد.",
+      "errorNoReason": "يرحم والديك اكتب علاش رفضت."
+    },
+    "imageModal": {
+      "title": "تصويرة المنتوج {{index}}",
+      "unavailable": "التصويرة موش موجودة.",
+      "close": "سكر"
+    },
+    "mediatorModal": {
+      "errorIdMissing": "معرّف طلب الوساطة ناقص.",
+      "errorNotAuthenticated": "مانكش مسجل دخول.",
+      "errorLoadFailed": "ما نجمناش نجيبو الوسطاء.",
+      "successSuggestions": "تحملت اقتراحات جديدة!",
+      "infoNoMediators": "ما لقيناش وسطاء جدد."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "قاعدين نحملو في التذاكر متاعك...",
+    "errorTitle": "غلطة في تحميل التذاكر",
+    "pageTitle": "تذاكر الدعم متاعي",
+    "createButton": "اعمل تذكرة جديدة",
+    "ticketId": "رقم التذكرة:",
+    "lastUpdate": "آخر تحديث:",
+    "category": "الصنف:",
+    "viewButton": "شوف",
+    "noTicketsTitle": "ما لقينا حتى تذكرة دعم",
+    "noTicketsSubtitle": "مازلت ما عملت حتى تذكرة دعم.",
+    "createFirstButton": "اعمل تذكرتك لولة",
+    "statuses": {
+      "Open": "محلولة",
+      "PendingSupportReply": "نستناو في جواب الدعم",
+      "PendingUserInput": "نستناو في جوابك",
+      "InProgress": "تتخدم",
+      "Resolved": "تحلت",
+      "Closed": "تسكرت",
+      "OnHold": "تستنى"
+    },
+    "categories": {
+      "General Inquiry": "استفسار عام",
+      "Technical Support": "دعم فني",
+      "Billing Issue": "مشكلة في الخلاص",
+      "Account Issue": "مشكلة في الكونت",
+      "Mediation Inquiry": "استفسار على وساطة",
+      "Bug Report": "تبليغ على بق",
+      "Feature Request": "اقتراح ميزة",
+      "Other": "أخرى"
+    }
+  },
+  "mediationRequestsPage": {
+    "loadingUser": "قاعدين نحملو في البروفيل...",
+    "loadingRequests": "قاعدين نحملو في طلبات الوساطة متاعك...",
+    "errorTitle": "غلطة في تحميل الطلبات:",
+    "unknownError": "صارت غلطة موش معروفة.",
+    "title": "طلبات الوساطة متاعي",
+    "subtitle": "عندك {{count}} طلب(ات) وساطة.",
+    "updatingList": "قاعدين نحدثو في القايمة...",
+    "noRequests": "ما عندك حتى طلب وساطة يخدم توّا.",
+    "updateWarning": "ما نجمناش نحدثو الطلبات الكل: {{error}}",
+    "updateError": "غلطة في التحديث.",
+    "card": {
+      "productTitle": "المنتوج: {{title}}",
+      "viewDetailsTooltip": "شوف تفاصيل الوساطة",
+      "galleryButton": "شوف ({{count}})",
+      "transactionId": "رقم العملية:",
+      "seller": "البايع:",
+      "mediator": "الوسيط:",
+      "agreedPrice": "السوم المتفاهم عليه:",
+      "escrowTitle": "التكلفة التقديرية للضمان:",
+      "escrowPrice": "السوم المتفاهم عليه:",
+      "escrowFee": "حصتك من الرسوم:",
+      "escrowTotal": "الجملة للضمان:",
+      "status": "الحالة:",
+      "lastUpdated": "آخر تحديث:",
+      "actionRequiredAlert": "<strong>لازمك تعمل حاجة:</strong> الوسيط <strong>{{name}}</strong> قبل الطلب. أكد وحط الفلوس.",
+      "confirmButton": "أكد وحط الفلوس",
+      "processingButton": "تتخدم...",
+      "cancelButton": "أنّيلي الوساطة",
+      "fundsEscrowedAlert": "تحطت الفلوس. نستناو في البايع يأكد.",
+      "partiesConfirmedAlert": "الطرفين أكدو. المحادثة باش تبدا.",
+      "disputeActiveAlert": "المشكلة قاعدة تصير.",
+      "mediationInProgressAlert": "الوساطة قاعدة تخدم.",
+      "openChatButton": "حل المحادثة",
+      "openDisputeChatButton": "حل محادثة المشكلة",
+      "completedAlert": "كملت الوساطة.",
+      "cancelledAlertTitle": "تلغات الوساطة",
+      "cancelledReason": "السبب: {{reason}}",
+      "cancelledNoReason": "السبب: موش محدد."
+    },
+    "statuses": {
+      "PendingMediatorSelection": "نستناو في اختيار الوسيط",
+      "MediatorAssigned": "تعيّن الوسيط",
+      "MediationOfferAccepted": "الوسيط قبل - نستناو في التأكيدات",
+      "EscrowFunded": "الفلوس تحطت - نستناو في البايع",
+      "Disputed": "تحلت مشكلة",
+      "UnderDispute": "تحلت مشكلة",
+      "PartiesConfirmed": "الطرفين أكدو",
+      "InProgress": "الوساطة قاعدة تخدم",
+      "Completed": "كملت",
+      "Cancelled": "تلغات"
+    },
+    "rejectModal": {
+      "noReason": "يرحم والديك اكتب علاش باش تلغي."
+    },
+    "imageModal": {
+      "title": "تصويرة المنتوج {{index}}",
+      "unavailable": "التصويرة موش موجودة.",
+      "close": "سكر"
+    }
+  }
 }

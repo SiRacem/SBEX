@@ -54,11 +54,39 @@
   "faq": {
     "title": "Conseils et réponses de notre équipe",
     "subtitle": "Votre ressource pour l'aide et l'information.",
-    "searchPlaceholder": "Rechercher...",
-    "backToCategories": "Retour aux catégories",
-    "noResults": "Aucun résultat pour \"{{query}}\".",
-    "noFaqs": "Aucune FAQ disponible.",
-    "listUpdated": "La liste a été mise à jour."
+    "searchPlaceholder": "Rechercher des articles...",
+    "backToCategories": "Retour à toutes les catégories",
+    "noResults": "Aucun résultat trouvé pour \"{{query}}\".",
+    "noFaqs": "Aucune FAQ disponible pour le moment.",
+    "listUpdated": "La liste a été mise à jour.",
+    "article": "article",
+    "articles": "articles"
+  },
+  "faqCategories": {
+    "Mediation & Disputes": {
+      "title": "Médiation & Litiges",
+      "description": "Trouvez des réponses liées à la médiation et aux litiges"
+    },
+    "General": {
+      "title": "Général",
+      "description": "Trouvez des réponses sur des sujets généraux"
+    },
+    "Account & Profile": {
+      "title": "Compte & Profil",
+      "description": "Trouvez des réponses liées à votre compte et profil"
+    },
+    "Technical Issues": {
+      "title": "Problèmes Techniques",
+      "description": "Trouvez des réponses liées aux problèmes techniques"
+    },
+    "Selling & Buying": {
+      "title": "Vente & Achat",
+      "description": "Trouvez des réponses liées à la vente et à l'achat"
+    },
+    "Payments & Billing": {
+      "title": "Paiements & Facturation",
+      "description": "Trouvez des réponses liées aux paiements et à la facturation"
+    }
   },
   "transactionModal": {
     "title": "Détails de la Transaction",
@@ -231,17 +259,44 @@
     "cancel": "Annuler",
     "close": "Fermer",
     "processing": "En cours...",
-    "confirmBid": "Confirmer l'enchère"
+    "confirmBid": "Confirmer l'enchère",
+    "level": "Niveau {{level}}"
   },
   "userProfilePage": {
+    "loading": "Chargement du profil...",
+    "errorTitle": "Erreur",
+    "goHome": "Retour à l'accueil",
+    "dataNotFound": "Données du profil introuvables.",
     "memberSince": "Membre depuis",
     "userStats": "Statistiques",
-    "userRating": "Évaluation",
     "activeListings": "Annonces actives",
     "productsSold": "Produits vendus",
     "location": "Lieu",
+    "userRating": "Évaluation",
     "positiveRating": "Évaluation positive",
-    "noRatings": "Aucune évaluation pour le moment."
+    "noRatings": "Aucune évaluation pour le moment.",
+    "reportTooltip": "Signaler {{name}}",
+    "reportTooltipCooldown": "Vous avez récemment signalé {{name}}. Vous pourrez signaler à nouveau dans {{hours}} heures.",
+    "invalidId": "ID utilisateur invalide.",
+    "loadFail": "Échec du chargement du profil utilisateur."
+  },
+  "roles": {
+    "User": "Utilisateur",
+    "Vendor": "Vendeur",
+    "Admin": "Admin",
+    "Mediator": "Médiateur"
+  },
+  "reputationLevels": {
+    "Novice": "Novice",
+    "Bronze": "Bronze",
+    "Silver": "Argent",
+    "Gold": "Or",
+    "Platinum": "Platine",
+    "Diamond": "Diamant",
+    "Master": "Maître",
+    "Grandmaster": "Grand Maître",
+    "Legend": "Légende",
+    "Mythic": "Mythique"
   },
   "apiErrors": {
     "Invalid credentials": "L'e-mail ou le mot de passe est incorrect.",
@@ -253,5 +308,352 @@
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
-  "pleaseLogin": "Veuillez vous connecter pour continuer."
+  "pleaseLogin": "Veuillez vous connecter pour continuer.",
+  "walletPage": {
+    "title": "Mon Portefeuille",
+    "loading": "Chargement du portefeuille...",
+    "error": "Données utilisateur non disponibles. Veuillez vous connecter.",
+    "deposit": "Dépôt",
+    "withdraw": "Retrait",
+    "send": "Envoyer",
+    "receive": "Recevoir",
+    "recentActivity": "Activité Récente",
+    "showingItems": "Affichage de {{count}} éléments",
+    "loadingActivity": "Chargement de l'activité...",
+    "errorActivity": "Erreur de chargement de l'activité : {{error}}",
+    "noActivityTitle": "Aucune Activité",
+    "noActivitySubtitle": "L'activité de votre portefeuille apparaîtra ici.",
+    "principalBalance": "Solde Principal",
+    "sellerAvailableBalance": "Solde Vendeur Disponible",
+    "onHoldBalance": "Solde en Attente",
+    "activityTypes": {
+      "DEPOSIT_REQUEST": "Dépôt via {{methodName}}",
+      "WITHDRAWAL_REQUEST": "Retrait via {{methodName}}",
+      "TRANSFER_SENT": "Envoyé à {{peerName}}",
+      "TRANSFER_RECEIVED": "Reçu de {{peerName}}",
+      "UNKNOWN_ACTIVITY": "Activité"
+    },
+    "statuses": {
+      "pending": "En attente",
+      "approved": "Approuvé",
+      "completed": "Terminé",
+      "rejected": "Rejeté",
+      "failed": "Échoué",
+      "processing": "En cours"
+    },
+    "sendModal": {
+      "step1Title": "Envoyer - Étape 1 : Destinataire",
+      "step2Title_source": "Envoyer - Étape 2 : Sélectionner la Source",
+      "step3Title_amount": "Envoyer - Étape {{step}} : Montant",
+      "step4Title_confirm": "Envoyer - Étape {{step}} : Confirmer",
+      "recipientEmailLabel": "Adresse e-mail du destinataire",
+      "emailPlaceholder": "nom@exemple.com",
+      "validEmailError": "Veuillez entrer une adresse e-mail valide.",
+      "userNotFoundError": "Utilisateur avec cet e-mail introuvable.",
+      "authError": "Erreur d'autorisation.",
+      "checkEmailError": "Erreur lors de la vérification de l'e-mail. Veuillez réessayer.",
+      "sendToSelfError": "Vous ne pouvez pas vous envoyer des fonds.",
+      "checking": "Vérification...",
+      "checkEmailButton": "Vérifier l'E-mail",
+      "sendingTo": "Envoi à : {{name}} ({{email}})",
+      "selectSource": "Sélectionner la source des fonds :",
+      "principalSource": "Principal ({{balance}})",
+      "sellerSource": "Vendeur ({{balance}})",
+      "sendCurrencyLabel": "Devise d'envoi :",
+      "availableFrom": "Disponible de {{source}} ({{currency}})",
+      "amountToSendLabel": "Montant à envoyer ({{currency}})",
+      "maxButton": "MAX",
+      "amountPositiveError": "Le montant doit être positif.",
+      "minAmountError": "Le montant minimum d'envoi est de {{amount}}",
+      "insufficientBalanceError": "Solde insuffisant de la source sélectionnée pour couvrir le montant et les frais.",
+      "approximateValue": "~{{value}}",
+      "confirmTitle": "Confirmer la Transaction :",
+      "toLabel": "À :",
+      "fromLabel": "De :",
+      "amountLabel": "Montant à envoyer :",
+      "feeLabel": "Frais de transfert ({{fee}}%) :",
+      "totalDeductedLabel": "Total déduit (TND) :",
+      "backButton": "Retour",
+      "closeButton": "Fermer",
+      "nextButton": "Suivant",
+      "confirmSendButton": "Confirmer & Envoyer",
+      "sendingButton": "Envoi en cours...",
+      "sendFailedError": "Veuillez corriger les erreurs avant d'envoyer.",
+      "sendSuccess": "Fonds envoyés avec succès !",
+      "sendGenericError": "Échec de l'envoi des fonds."
+    },
+    "receiveModal": {
+      "title": "Recevoir des Fonds",
+      "shareEmail": "Partagez votre adresse e-mail avec l'expéditeur :",
+      "yourEmailLabel": "Votre adresse e-mail",
+      "copyTooltip": "Copier l'e-mail",
+      "copiedTooltip": "Copié !",
+      "copyFail": "La copie a échoué.",
+      "infoText": "Les utilisateurs enregistrés peuvent envoyer des fonds à cette adresse e-mail.",
+      "closeButton": "Fermer"
+    }
+  },
+  "profilePage": {
+    "loading": "Chargement du profil...",
+    "error": "Les données du profil ne sont pas disponibles.",
+    "loginPrompt": "Veuillez vous connecter pour voir votre profil.",
+    "unavailable": "Le profil de {{username}} n'est pas disponible.",
+    "unableToDisplay": "Impossible de déterminer quel profil afficher.",
+    "retry": "Réessayer",
+    "login": "Connexion",
+    "avatarModalTitle": "Mettre à jour la photo de profil",
+    "avatarModalLabel": "Sélectionner une nouvelle image (JPG, PNG, WEBP - Max 2Mo)",
+    "uploadButton": "Télécharger l'image",
+    "uploadingButton": "Téléchargement...",
+    "cancelButton": "Annuler",
+    "avatarUpdateError": "Max 2Mo.",
+    "avatarUpdateTypeError": "JPG, PNG, GIF, WEBP uniquement.",
+    "changeAvatarTooltip": "Cliquez pour changer d'avatar",
+    "locationNotSet": "Lieu non défini",
+    "statusBlocked": "Bloqué",
+    "statusActive": "Actif",
+    "roleMediator": "Médiateur",
+    "ratingSectionTitle": "Évaluation de l'utilisateur",
+    "noRatings": "Aucune évaluation pour le moment.",
+    "balancesSectionTitle": "Soldes du Compte",
+    "balancePrincipal": "Principal",
+    "balanceDeposit": "Dépôt",
+    "balanceWithdrawal": "Retrait",
+    "balanceSellerAvailable": "Vendeur Disponible",
+    "balanceSellerOnHold": "Vendeur en Attente",
+    "statsSectionTitle": "Statistiques de l'utilisateur",
+    "statsActiveListings": "Annonces Actives",
+    "statsProductsSold": "Produits Vendus",
+    "levelWidget": {
+      "level": "Niveau {{level}}",
+      "points": "{{points}} pts",
+      "progressLabel": "{{progress}} / {{needed}} pts pour Niveau {{nextLevel}}",
+      "rewardLabel": "Récompense pour le Niveau {{nextLevel}}",
+      "nextReward": "Prochaine Récompense",
+      "maxLevel": "Niveau maximum atteint !",
+      "totalPointsTooltip": "Total des points de réputation"
+    }
+  },
+  "mediatorApplication": {
+    "qualified": {
+      "title": "Statut de Médiateur",
+      "statusLabel": "Statut",
+      "infoText": "Définissez votre disponibilité pour recevoir de nouvelles tâches de médiation.",
+      "updateError": "Erreur lors de la mise à jour du statut : {{error}}",
+      "statusAvailable": "Disponible",
+      "statusUnavailable": "Indisponible",
+      "busyAlert": "Vous êtes actuellement occupé par une tâche de médiation.",
+      "statsTitle": "Statistiques du Médiateur",
+      "successfulMediations": "Médiations réussies :",
+      "guaranteeHeld": "Garantie détenue :",
+      "withdrawButton": "Demander le retrait de la garantie"
+    },
+    "application": {
+      "title": "Devenir un Médiateur",
+      "pendingAlert": "Votre candidature est en cours d'examen.",
+      "rejectedAlertTitle": "Votre précédente candidature a été rejetée.",
+      "rejectionReason": "Raison :",
+      "requirementsTitle": "Vous pouvez devenir médiateur si :",
+      "reputationRequirement": "Atteindre le Niveau de Réputation <strong>{{requiredLevel}}</strong> (Votre niveau actuel : {{currentLevel}})",
+      "guaranteeRequirement": "Déposer une garantie de <strong>{{amount}}</strong> (Votre solde actuel : {{balance}})",
+      "applySuccess": "Candidature soumise avec succès !",
+      "applyError": "Erreur : {{error}}",
+      "applyByLevelButton": "Postuler (Niveau)",
+      "applyByGuaranteeButton": "Postuler (Garantie)",
+      "levelTooltip": "Postuler sur la base de votre réputation",
+      "levelTooltipDisabled": "Niveau {{level}} requis",
+      "guaranteeTooltip": "Postuler avec un dépôt de garantie",
+      "guaranteeTooltipDisabled": "Solde de {{amount}} requis"
+    },
+    "statuses": {
+      "Available": "Disponible",
+      "Unavailable": "Indisponible",
+      "Busy": "Occupé"
+    }
+  },
+  "myProductsPage": {
+    "title": "Mes Produits & Enchères",
+    "addNewButton": "+ Ajouter un nouveau produit",
+    "loading": "Chargement de vos produits...",
+    "error": "Erreur :",
+    "genericError": "Une erreur est survenue",
+    "refreshing": "Actualisation...",
+    "tabs": {
+      "approved": "Approuvés",
+      "pending": "En attente",
+      "mediation": "En médiation",
+      "disputed": "En litige",
+      "sold": "Vendus",
+      "rejected": "Rejetés"
+    },
+    "noProducts": {
+      "approved": "Aucun produit approuvé.",
+      "pending": "Aucun produit en attente d'approbation.",
+      "mediation": "Aucun produit en processus de médiation.",
+      "disputed": "Aucun produit actuellement en litige.",
+      "sold": "Aucun produit vendu ou terminé pour le moment.",
+      "rejected": "Aucun produit rejeté."
+    },
+    "productCard": {
+      "listPrice": "Prix affiché :",
+      "agreedPrice": "Prix convenu :",
+      "status": {
+        "approved": "Approuvé",
+        "pendingApproval": "En attente d'approbation",
+        "adminRejected": "Rejeté par l'admin",
+        "selectMediator": "Sélectionner un médiateur",
+        "awaitingMediator": "En attente du médiateur",
+        "awaitingConfirmations": "En attente de confirmations",
+        "buyerConfirmed": "Acheteur a confirmé",
+        "partiesConfirmed": "Parties confirmées",
+        "inProgress": "En cours",
+        "disputeOpened": "Litige ouvert",
+        "sold": "Vendu",
+        "completed": "Terminé"
+      },
+      "alerts": {
+        "selectMediator": "Veuillez sélectionner un médiateur",
+        "awaitingMediator": "En attente de la réponse du médiateur.",
+        "sellerActionRequired": "<strong>Action requise :</strong> Confirmez que vous êtes prêt.",
+        "sellerActionInfo": "Après votre confirmation, l'acheteur confirmera et paiera.",
+        "buyerActionInfo": "L'acheteur a confirmé et payé.",
+        "sellerConfirmed": "Vous avez confirmé. <small class=\"text-muted\">En attente de la confirmation et du paiement de l'acheteur.</small>",
+        "mediationInProgress": "La médiation est en cours.",
+        "disputeActive": "Le litige est actif.",
+        "communicate": "Communiquez avec l'acheteur et le médiateur."
+      },
+      "buttons": {
+        "confirmReadiness": "Confirmer ma disponibilité",
+        "openChat": "Ouvrir le Chat",
+        "openDisputeChat": "Ouvrir le chat du litige",
+        "viewGallery": "{{count}}",
+        "viewDetails": "Voir les détails",
+        "selectMediator": "Sélectionner un médiateur",
+        "requestReturnToSale": "Demander la remise en vente"
+      },
+      "bids": {
+        "title": "Enchères reçues ({{count}})",
+        "noBids": "Aucune enchère reçue pour le moment.",
+        "moreBids": "...et {{count}} autres enchères."
+      },
+      "soldTo": "Vendu à <1>{{name}}</1> le {{date}}.",
+      "completedWith": "Transaction terminée avec l'acheteur : <1>{{name}}</1> le {{date}}.",
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce produit ?",
+      "acceptConfirm": "Accepter l'enchère de {{amount}} de {{name}} ? Cela déplacera le produit en médiation."
+    },
+    "rejectModal": {
+      "title": "Rejeter l'enchère",
+      "reasonFor": "Raison du rejet de l'enchère de <strong>{{name}}</strong> pour <strong>{{amount}}</strong> :",
+      "placeholder": "Raison du rejet (requise pour notifier l'utilisateur)",
+      "cancel": "Annuler",
+      "confirm": "Confirmer le Rejet",
+      "errorNoBidder": "Impossible d'identifier l'ID de l'enchérisseur.",
+      "errorNoReason": "Veuillez fournir une raison de rejet."
+    },
+    "imageModal": {
+      "title": "Image du produit {{index}}",
+      "unavailable": "Image non disponible.",
+      "close": "Fermer"
+    },
+    "mediatorModal": {
+      "errorIdMissing": "L'ID de la demande de médiation est manquant.",
+      "errorNotAuthenticated": "Non authentifié.",
+      "errorLoadFailed": "Impossible de charger les médiateurs.",
+      "successSuggestions": "Nouvelles suggestions chargées !",
+      "infoNoMediators": "Aucun nouveau médiateur trouvé."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "Chargement de vos tickets...",
+    "errorTitle": "Erreur de chargement des tickets",
+    "pageTitle": "Mes Tickets de Support",
+    "createButton": "Créer un nouveau ticket",
+    "ticketId": "ID du Ticket :",
+    "lastUpdate": "Dernière mise à jour :",
+    "category": "Catégorie :",
+    "viewButton": "Voir",
+    "noTicketsTitle": "Aucun Ticket de Support Trouvé",
+    "noTicketsSubtitle": "Vous n'avez encore créé aucun ticket de support.",
+    "createFirstButton": "Créez votre premier ticket",
+    "statuses": {
+      "Open": "Ouvert",
+      "PendingSupportReply": "En attente de réponse du support",
+      "PendingUserInput": "En attente de votre réponse",
+      "InProgress": "En cours",
+      "Resolved": "Résolu",
+      "Closed": "Fermé",
+      "OnHold": "En attente"
+    },
+    "categories": {
+      "GeneralInquiry": "Demande générale",
+      "TechnicalSupport": "Support technique",
+      "BillingIssue": "Problème de facturation",
+      "AccountIssue": "Problème de compte",
+      "MediationInquiry": "Demande de médiation",
+      "BugReport": "Rapport de bug",
+      "FeatureRequest": "Demande de fonctionnalité",
+      "Other": "Autre"
+    }
+  },
+  "mediationRequestsPage": {
+    "loadingUser": "Chargement du profil utilisateur...",
+    "loadingRequests": "Chargement de vos demandes de médiation...",
+    "errorTitle": "Erreur de chargement des demandes :",
+    "unknownError": "Une erreur inconnue est survenue.",
+    "title": "Mes Demandes de Médiation",
+    "subtitle": "Vous avez {{count}} demande(s) de médiation.",
+    "updatingList": "Mise à jour de la liste...",
+    "noRequests": "Vous n'avez aucune demande de médiation active pour le moment.",
+    "updateWarning": "Impossible de mettre à jour toutes les demandes : {{error}}",
+    "updateError": "Erreur de mise à jour.",
+    "card": {
+      "productTitle": "Produit : {{title}}",
+      "viewDetailsTooltip": "Voir les détails de la médiation",
+      "galleryButton": "Voir ({{count}})",
+      "transactionId": "ID de Transaction :",
+      "seller": "Vendeur :",
+      "mediator": "Médiateur :",
+      "agreedPrice": "Prix convenu :",
+      "escrowTitle": "Coût estimé de l'entiercement :",
+      "escrowPrice": "Prix convenu :",
+      "escrowFee": "Votre part des frais :",
+      "escrowTotal": "Total à entiercer :",
+      "status": "Statut :",
+      "lastUpdated": "Dernière mise à jour :",
+      "actionRequiredAlert": "<strong>Action requise :</strong> Le médiateur <strong>{{name}}</strong> a accepté. Confirmez & déposez les fonds.",
+      "confirmButton": "Confirmer & Déposer",
+      "processingButton": "Traitement...",
+      "cancelButton": "Annuler la Médiation",
+      "fundsEscrowedAlert": "Fonds entiercés. En attente de la confirmation du vendeur.",
+      "partiesConfirmedAlert": "Parties confirmées. Le chat démarre.",
+      "disputeActiveAlert": "Le litige est actif.",
+      "mediationInProgressAlert": "La médiation est en cours.",
+      "openChatButton": "Ouvrir le Chat",
+      "openDisputeChatButton": "Ouvrir le chat du litige",
+      "completedAlert": "Médiation terminée.",
+      "cancelledAlertTitle": "Médiation Annulée",
+      "cancelledReason": "Raison : {{reason}}",
+      "cancelledNoReason": "Raison : Non spécifiée."
+    },
+    "statuses": {
+      "PendingMediatorSelection": "En attente de sélection du médiateur",
+      "MediatorAssigned": "Médiateur assigné",
+      "MediationOfferAccepted": "Médiateur a accepté - En attente de confirmations",
+      "EscrowFunded": "Fonds entiercés - En attente du vendeur",
+      "Disputed": "Litige ouvert",
+      "UnderDispute": "Litige ouvert",
+      "PartiesConfirmed": "Parties confirmées",
+      "InProgress": "Médiation en cours",
+      "Completed": "Terminée",
+      "Cancelled": "Annulée"
+    },
+    "rejectModal": {
+      "noReason": "Veuillez fournir une raison pour l'annulation."
+    },
+    "imageModal": {
+      "title": "Image du produit {{index}}",
+      "unavailable": "Image non disponible.",
+      "close": "Fermer"
+    }
+  }
 }

@@ -1,3 +1,5 @@
+// src/pages/UserProfilePage.jsx
+
 import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -18,7 +20,6 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   FaCalendarAlt,
-  FaTag,
   FaBoxOpen,
   FaCheckCircle,
   FaMapMarkerAlt,
@@ -67,7 +68,6 @@ const checkIfRecentlyReported = (reportedUserId) => {
   const reportedUsers = getRecentlyReportedUsers();
   const reportTimestamp = reportedUsers[reportedUserId];
   if (!reportTimestamp) return false;
-
   const cooldownMilliseconds = REPORT_COOLDOWN_HOURS * 60 * 60 * 1000;
   return Date.now() - reportTimestamp < cooldownMilliseconds;
 };
@@ -90,7 +90,7 @@ const UserProfilePage = () => {
 
   const fetchProfile = useCallback(async () => {
     if (!viewedUserId || !/^[0-9a-fA-F]{24}$/.test(viewedUserId)) {
-      setError("Invalid User ID provided.");
+      setError(t("userProfilePage.invalidId"));
       setLoading(false);
       return;
     }
@@ -102,11 +102,11 @@ const UserProfilePage = () => {
       );
       setProfileData(data);
     } catch (err) {
-      setError(err.response?.data?.msg || "Failed to load user profile.");
+      setError(err.response?.data?.msg || t("userProfilePage.loadFail"));
     } finally {
       setLoading(false);
     }
-  }, [viewedUserId]);
+  }, [viewedUserId, t]);
 
   useEffect(() => {
     fetchProfile();
@@ -117,11 +117,9 @@ const UserProfilePage = () => {
 
   useEffect(() => {
     if (!socket) return;
-
     const handleProfileUpdate = (updatedUserData) => {
       if (updatedUserData && updatedUserData._id === viewedUserId) {
         setProfileData((prevData) => ({
-          // الدمج يضمن تحديث الحقول الجديدة مع الحفاظ على القديمة
           ...prevData,
           ...updatedUserData,
           user: {
@@ -131,9 +129,7 @@ const UserProfilePage = () => {
         }));
       }
     };
-
     socket.on("user_profile_updated", handleProfileUpdate);
-
     return () => {
       socket.off("user_profile_updated", handleProfileUpdate);
     };
@@ -151,15 +147,12 @@ const UserProfilePage = () => {
   };
 
   const getAvatarSrc = () => {
-    let avatarUrl = profileData?.avatarUrl;
-    if (!avatarUrl) {
-      avatarUrl = userDetails?.avatarUrl;
-    }
+    const avatarUrl = userDetails?.avatarUrl;
     if (avatarUrl) {
       if (avatarUrl.startsWith("http")) {
         return avatarUrl;
       }
-      return `${BACKEND_URL}/${avatarUrl}`;
+      return `${BACKEND_URL}/${avatarUrl.replace(/\\/g, "/")}`;
     }
     return defaultAvatar;
   };
@@ -168,17 +161,17 @@ const UserProfilePage = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">Loading Profile...</p>
+        <p className="mt-2 text-muted">{t("userProfilePage.loading")}</p>
       </Container>
     );
   if (error)
     return (
       <Container className="py-5">
         <Alert variant="danger" className="text-center">
-          <Alert.Heading>Error</Alert.Heading>
+          <Alert.Heading>{t("userProfilePage.errorTitle")}</Alert.Heading>
           <p>{error}</p>
           <Button as={Link} to="/" variant="outline-danger">
-            Go Home
+            {t("userProfilePage.goHome")}
           </Button>
         </Alert>
       </Container>
@@ -187,7 +180,7 @@ const UserProfilePage = () => {
     return (
       <Container className="py-5">
         <Alert variant="warning" className="text-center">
-          Profile data not found.
+          {t("userProfilePage.dataNotFound")}
         </Alert>
       </Container>
     );
@@ -200,10 +193,13 @@ const UserProfilePage = () => {
       : 0;
 
   const reportButtonTooltipText = isRecentlyReported
-    ? `You have recently reported ${
-        userDetails?.fullName || "this user"
-      }. You can report again after ${REPORT_COOLDOWN_HOURS} hours.`
-    : `Report ${userDetails?.fullName || "this user"}`;
+    ? t("userProfilePage.reportTooltipCooldown", {
+        name: userDetails?.fullName || "this user",
+        hours: REPORT_COOLDOWN_HOURS,
+      })
+    : t("userProfilePage.reportTooltip", {
+        name: userDetails?.fullName || "this user",
+      });
 
   return (
     <Container className="user-profile-page py-4 py-md-5">
@@ -212,7 +208,7 @@ const UserProfilePage = () => {
           <Card className="shadow-sm profile-card-main overflow-hidden position-relative">
             {canReportThisUser && (
               <OverlayTrigger
-                placement="left"
+                placement={i18n.dir() === "rtl" ? "right" : "left"}
                 overlay={
                   <Tooltip id={`tooltip-report-${userDetails._id}`}>
                     {reportButtonTooltipText}
@@ -220,10 +216,10 @@ const UserProfilePage = () => {
                 }
               >
                 <div
+                  className={`position-absolute top-0 m-3 ${
+                    i18n.dir() === "rtl" ? "start-0" : "end-0"
+                  }`}
                   style={{
-                    position: "absolute",
-                    top: "1rem",
-                    right: "1rem",
                     zIndex: 10,
                     cursor: reportButtonDisabled ? "not-allowed" : "pointer",
                   }}
@@ -233,9 +229,7 @@ const UserProfilePage = () => {
                     onClick={() =>
                       !reportButtonDisabled && setShowReportModal(true)
                     }
-                    className={`p-0 report-user-icon-button ${
-                      reportButtonDisabled ? "disabled-report-button" : ""
-                    }`}
+                    className="p-0 report-user-icon-button"
                     disabled={reportButtonDisabled}
                     aria-label={reportButtonTooltipText}
                   >
@@ -250,7 +244,6 @@ const UserProfilePage = () => {
                 </div>
               </OverlayTrigger>
             )}
-
             <Card.Header className="profile-header bg-light p-4 text-md-start text-center border-0">
               <Row className="align-items-center gy-3">
                 <Col xs={12} md={2} className="text-center">
@@ -274,11 +267,13 @@ const UserProfilePage = () => {
                       pill
                       bg="info"
                       text="dark"
-                      className="profile-role me-2"
+                      className="profile-role ms-md-2"
                     >
-                      {t(`roles.${userDetails.userRole}`, userDetails.userRole)}
+                      {t(`roles.${userDetails.userRole}`, {
+                        defaultValue: userDetails.userRole,
+                      })}
                     </Badge>
-                    <p className="text-muted small mb-0">
+                    <p className="text-muted small mb-0 ms-md-auto">
                       <FaCalendarAlt size={14} className="me-1 opacity-75" />
                       {t("userProfilePage.memberSince")}:{" "}
                       {new Date(
@@ -286,17 +281,21 @@ const UserProfilePage = () => {
                       ).toLocaleDateString(i18n.language)}
                     </p>
                   </div>
-                  {userDetails.reputationLevel && userDetails.level && (
-                    <div className="mt-2">
-                      <Badge bg="secondary" className="me-2">
-                        {userDetails.reputationLevel}
-                      </Badge>
-                      <Badge bg="primary">
-                        <FaStar size={12} className="me-1" /> Level{" "}
-                        {userDetails.level}
-                      </Badge>
-                    </div>
-                  )}
+                  {userDetails.reputationLevel &&
+                    (userDetails.level || userDetails.level === 0) && (
+                      <div className="mt-2">
+                        <Badge bg="secondary" className="me-2">
+                          {t(
+                            `reputationLevels.${userDetails.reputationLevel}`,
+                            { defaultValue: userDetails.reputationLevel }
+                          )}
+                        </Badge>
+                        <Badge bg="primary">
+                          <FaStar size={12} className="me-1" />
+                          {t("common.level", { level: userDetails.level })}
+                        </Badge>
+                      </div>
+                    )}
                 </Col>
               </Row>
             </Card.Header>
@@ -309,7 +308,7 @@ const UserProfilePage = () => {
                   <ListGroup variant="flush" className="stats-list">
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                       <span>
-                        <FaBoxOpen className="me-2 text-primary icon" />{" "}
+                        <FaBoxOpen className="me-2 text-primary icon" />
                         {t("userProfilePage.activeListings")}
                       </span>
                       <Badge bg="light" text="dark">
@@ -318,7 +317,7 @@ const UserProfilePage = () => {
                     </ListGroup.Item>
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                       <span>
-                        <FaCheckCircle className="me-2 text-success icon" />{" "}
+                        <FaCheckCircle className="me-2 text-success icon" />
                         {t("userProfilePage.productsSold")}
                       </span>
                       <Badge bg="light" text="dark">
@@ -328,7 +327,7 @@ const UserProfilePage = () => {
                     {userDetails.address && (
                       <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
                         <span>
-                          <FaMapMarkerAlt className="me-2 text-secondary icon" />{" "}
+                          <FaMapMarkerAlt className="me-2 text-secondary icon" />
                           {t("userProfilePage.location")}
                         </span>
                         <span className="text-muted small">
@@ -344,7 +343,7 @@ const UserProfilePage = () => {
                   </h5>
                   {totalRatings > 0 ? (
                     <div className="rating-box text-center p-3 bg-light rounded border">
-                      <div className={`rating-percentage ...`}>
+                      <div className="rating-percentage display-4 fw-bold text-success">
                         {positivePercentage}%
                       </div>
                       <div className="rating-text small text-muted mb-2">

@@ -482,7 +482,9 @@ const MainDashboard = () => {
               {transactionsLoading ? (
                 <div className="text-center p-5 flex-grow-1 d-flex justify-content-center align-items-center">
                   <Spinner animation="border" variant="primary" />
-                  <span className="ms-2">Loading Activities...</span>
+                  <span className="ms-2">
+                    {t("walletPage.loadingActivity")}
+                  </span>
                 </div>
               ) : transactionsError ? (
                 <div className="p-3">

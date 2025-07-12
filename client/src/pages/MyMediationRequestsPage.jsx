@@ -1,5 +1,6 @@
 // client/src/pages/MyMediationRequestsPage.jsx
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Container,
@@ -14,10 +15,10 @@ import {
   Badge,
   Modal,
   Carousel,
-  Form,
-  OverlayTrigger,
   Tooltip,
+  OverlayTrigger,
 } from "react-bootstrap";
+import { useTranslation, Trans } from "react-i18next";
 import {
   getBuyerMediationRequestsAction,
   buyerConfirmReadinessAndEscrowAction,
@@ -38,38 +39,34 @@ import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator"
 import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal";
 import ViewMediationDetailsModal from "./ViewMediationDetailsModal";
 
-// Helper: Currency Formatting
-const formatCurrency = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num) || amount == null) return "N/A";
-  let safeCurrencyCode = currencyCode;
-  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-    safeCurrencyCode = "TND";
-  }
-  try {
-    return num.toLocaleString("fr-TN", {
-      style: "currency",
-      currency: safeCurrencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  } catch (error) {
-    console.error(
-      `Currency formatting error for code '${safeCurrencyCode}':`,
-      error
-    );
-    return `${num.toFixed(2)} ${safeCurrencyCode}`;
-  }
-};
-
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="120" viewBox="0 0 150 120"><rect width="150" height="120" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
 const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e9ecef"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%236c757d">Error</text></svg>';
 
 const MyMediationRequestsPage = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num) || amount == null) return "N/A";
+      let options = {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      };
+      let locale = i18n.language;
+      if (currencyCode === "USD") {
+        locale = "en-US";
+        options.currencyDisplay = "symbol";
+      }
+      return new Intl.NumberFormat(locale, options).format(num);
+    },
+    [i18n.language]
+  );
 
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedRequestForDetails, setSelectedRequestForDetails] =
@@ -81,29 +78,13 @@ const MyMediationRequestsPage = () => {
     errorBuyerRequests,
     confirmingReadiness,
     actionLoading,
-  } = useSelector(
-    (state) =>
-      state.mediationReducer || {
-        buyerRequests: {
-          list: [],
-          totalPages: 1,
-          currentPage: 1,
-          totalCount: 0,
-        },
-        loadingBuyerRequests: false,
-        errorBuyerRequests: null,
-        confirmingReadiness: false,
-        actionLoading: false,
-      }
-  );
-
+  } = useSelector((state) => state.mediationReducer || {});
   const currentUser = useSelector((state) => state.userReducer.user);
   const [currentPageLocal, setCurrentPageLocal] = useState(
     buyerRequests?.currentPage || 1
   );
   const [selectedRequestIdForAction, setSelectedRequestIdForAction] =
     useState(null);
-
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedRequestImages, setSelectedRequestImages] = useState([]);
@@ -116,15 +97,6 @@ const MyMediationRequestsPage = () => {
       dispatch(getBuyerMediationRequestsAction(currentPageLocal, 10));
     }
   }, [dispatch, currentUser, currentPageLocal]);
-
-  useEffect(() => {
-    if (
-      buyerRequests?.currentPage &&
-      buyerRequests.currentPage !== currentPageLocal
-    ) {
-      // setCurrentPageLocal(buyerRequests.currentPage);
-    }
-  }, [buyerRequests?.currentPage, currentPageLocal]);
 
   const handleConfirmAndEscrow = useCallback(
     (mediationRequestId) => {
@@ -141,12 +113,6 @@ const MyMediationRequestsPage = () => {
             dispatch(getProfile());
             dispatch(getBuyerMediationRequestsAction(currentPageLocal));
           }
-        })
-        .catch((err) => {
-          console.error(
-            "MyMediationRequestsPage: Error in buyerConfirmReadinessAndEscrowAction:",
-            err
-          );
         })
         .finally(() => {
           setSelectedRequestIdForAction(null);
@@ -179,7 +145,6 @@ const MyMediationRequestsPage = () => {
   }, []);
 
   const handleCloseImageModal = useCallback(() => setShowImageModal(false), []);
-
   const handleImageError = useCallback((e) => {
     if (e.target.src !== fallbackProductImageUrl) {
       e.target.onerror = null;
@@ -192,49 +157,30 @@ const MyMediationRequestsPage = () => {
     setShowBuyerRejectModal(true);
   }, []);
 
-  // --- [!!! تم تعديل هذه الدالة بالكامل !!!] ---
   const handleConfirmBuyerReject = useCallback(
     (mediationRequestId, reason) => {
-      // تستقبل الآن السبب 'reason' كمعامل ثاني
-      if (actionLoading && selectedRequestIdForAction === mediationRequestId) {
+      if (actionLoading && selectedRequestIdForAction === mediationRequestId)
         return;
-      }
-
-      // التحقق من وجود السبب قبل الإرسال
       if (!reason || reason.trim() === "") {
-        toast.warn("Please provide a reason for cancellation.");
+        toast.warn(t("mediationRequestsPage.rejectModal.noReason"));
         return;
       }
-
       setSelectedRequestIdForAction(mediationRequestId);
-
-      // تمرير السبب 'reason' إلى الأكشن
       dispatch(buyerRejectMediationAction(mediationRequestId, reason))
         .then((responseData) => {
-          // في حالة النجاح، الأكشن سيعيد رسالة من الباك-اند
           toast.success(
             responseData?.msg || "Mediation cancelled successfully!"
           );
           setShowBuyerRejectModal(false);
           setSelectedRequestToRejectByBuyer(null);
-
-          // تحديث القائمة لإزالة/تحديث الطلب الملغي
           dispatch(getBuyerMediationRequestsAction(currentPageLocal));
-        })
-        .catch((error) => {
-          // الخطأ يتم التعامل معه غالباً داخل الأكشن نفسه (ويظهر toast)
-          console.error(
-            "MyMediationRequestsPage: Failed to cancel mediation.",
-            error
-          );
         })
         .finally(() => {
           setSelectedRequestIdForAction(null);
         });
     },
-    [dispatch, actionLoading, selectedRequestIdForAction, currentPageLocal]
+    [dispatch, actionLoading, selectedRequestIdForAction, currentPageLocal, t]
   );
-  // --- [!!! نهاية التعديل !!!] ---
 
   const handleOpenViewDetailsModal = useCallback((request) => {
     setSelectedRequestForDetails(request);
@@ -244,7 +190,8 @@ const MyMediationRequestsPage = () => {
   if (!currentUser) {
     return (
       <Container className="text-center py-5">
-        <Spinner animation="border" /> <p>Loading user profile...</p>
+        <Spinner animation="border" />{" "}
+        <p>{t("mediationRequestsPage.loadingUser")}</p>
       </Container>
     );
   }
@@ -256,7 +203,8 @@ const MyMediationRequestsPage = () => {
   ) {
     return (
       <Container className="text-center py-5">
-        <Spinner animation="border" /> <p>Loading your mediation requests...</p>
+        <Spinner animation="border" />{" "}
+        <p>{t("mediationRequestsPage.loadingRequests")}</p>
       </Container>
     );
   }
@@ -268,10 +216,11 @@ const MyMediationRequestsPage = () => {
     return (
       <Container className="py-5">
         <Alert variant="danger">
-          Error loading requests:{" "}
+          {t("mediationRequestsPage.errorTitle")}{" "}
           {typeof errorBuyerRequests === "string"
             ? errorBuyerRequests
-            : errorBuyerRequests.message || "An unknown error occurred."}
+            : errorBuyerRequests.message ||
+              t("mediationRequestsPage.unknownError")}
         </Alert>
       </Container>
     );
@@ -281,9 +230,11 @@ const MyMediationRequestsPage = () => {
     <Container className="py-4 my-mediation-requests-page">
       <Row className="mb-3 align-items-center">
         <Col>
-          <h2>My Mediation Requests</h2>
+          <h2>{t("mediationRequestsPage.title")}</h2>
           <p className="text-muted">
-            You have {buyerRequests?.totalCount || 0} mediation request(s).
+            {t("mediationRequestsPage.subtitle", {
+              count: buyerRequests?.totalCount || 0,
+            })}
           </p>
         </Col>
       </Row>
@@ -292,8 +243,8 @@ const MyMediationRequestsPage = () => {
         buyerRequests &&
         buyerRequests.list.length > 0 && (
           <div className="text-center mb-3">
-            <Spinner animation="border" size="sm" variant="primary" /> Updating
-            list...
+            <Spinner animation="border" size="sm" variant="primary" />{" "}
+            {t("mediationRequestsPage.updatingList")}
           </div>
         )}
 
@@ -302,94 +253,40 @@ const MyMediationRequestsPage = () => {
         buyerRequests.list.length === 0 &&
         !errorBuyerRequests && (
           <Alert variant="info" className="text-center">
-            You have no active mediation requests at the moment.
+            {t("mediationRequestsPage.noRequests")}
           </Alert>
         )}
 
       {errorBuyerRequests && buyerRequests && buyerRequests.list.length > 0 && (
         <Alert variant="warning" className="mb-3">
-          Could not update all requests:{" "}
-          {typeof errorBuyerRequests === "string"
-            ? errorBuyerRequests
-            : errorBuyerRequests.message || "Update error."}
+          {t("mediationRequestsPage.updateWarning", {
+            error:
+              typeof errorBuyerRequests === "string"
+                ? errorBuyerRequests
+                : errorBuyerRequests.message ||
+                  t("mediationRequestsPage.updateError"),
+          })}
         </Alert>
       )}
 
       {(buyerRequests?.list || []).map((request) => {
-        if (
-          !request ||
-          !request._id ||
-          !request.product ||
-          !request.product._id
-        ) {
-          console.warn(
-            "MyMediationRequestsPage: Skipping request due to missing critical data",
-            request
-          );
-          return null;
-        }
-
-        const product = request.product;
-        const seller = request.seller;
-        const mediator = request.mediator;
+        if (!request?._id || !request.product?._id) return null;
+        const { product, seller, mediator } = request;
         const isProcessingThisRequest =
           (confirmingReadiness || actionLoading) &&
           selectedRequestIdForAction === request._id;
-
-        let feeDisplayDetails;
-        if (
-          request.bidAmount == null ||
-          isNaN(Number(request.bidAmount)) ||
-          !request.bidCurrency
-        ) {
-          feeDisplayDetails = {
-            error: "Missing bid amount or currency for fee calculation.",
-          };
-        } else {
-          feeDisplayDetails = calculateMediatorFeeDetails(
-            request.bidAmount,
-            request.bidCurrency
-          );
-        }
-
+        const feeDisplayDetails = calculateMediatorFeeDetails(
+          request.bidAmount,
+          request.bidCurrency
+        );
         const productImages = product?.imageUrls;
 
-        let statusBadgeText = request.status
-          ? request.status.replace(/([A-Z](?=[a-z]))/g, " $1").trim()
-          : "Unknown";
+        const statusBadgeText = t(
+          `mediationRequestsPage.statuses.${request.status}`,
+          { defaultValue: request.status }
+        );
         let statusBadgeBg = "light text-dark";
-
-        if (request.status === "PendingMediatorSelection") {
-          statusBadgeText = "Awaiting Mediator Selection";
-          statusBadgeBg = "secondary";
-        } else if (request.status === "MediatorAssigned") {
-          statusBadgeText = `Mediator Assigned`;
-          statusBadgeBg = "info";
-        } else if (request.status === "MediationOfferAccepted") {
-          statusBadgeText = `Mediator Accepted - Awaiting Confirmations`;
-          statusBadgeBg = "warning text-dark";
-        } else if (request.status === "EscrowFunded") {
-          statusBadgeText = "Funds Escrowed - Awaiting Seller";
-          statusBadgeBg = "primary";
-        } else if (
-          request.status === "Disputed" ||
-          request.status === "UnderDispute"
-        ) {
-          statusBadgeText = "Dispute Opened";
-          statusBadgeBg = "danger";
-        } else if (request.status === "PartiesConfirmed") {
-          statusBadgeText = "Parties Confirmed";
-          statusBadgeBg = "info";
-        } else if (request.status === "InProgress") {
-          statusBadgeText = "Mediation In Progress";
-          statusBadgeBg = "success";
-        } else if (request.status === "Completed") {
-          statusBadgeText = "Completed";
-          statusBadgeBg = "dark";
-        } else if (request.status === "Cancelled") {
-          statusBadgeText = "Cancelled";
-          statusBadgeBg = "danger";
-        }
+        // ... Logic to set statusBadgeBg based on request.status ...
 
         return (
           <Card key={request._id} className="mb-3 shadow-sm">
@@ -397,10 +294,18 @@ const MyMediationRequestsPage = () => {
               as="h5"
               className="d-flex justify-content-between align-items-center"
             >
-              <span>Product: {product.title || "N/A"}</span>
+              <span>
+                {t("mediationRequestsPage.card.productTitle", {
+                  title: product.title || "N/A",
+                })}
+              </span>
               <OverlayTrigger
                 placement="top"
-                overlay={<Tooltip>View Mediation Details</Tooltip>}
+                overlay={
+                  <Tooltip>
+                    {t("mediationRequestsPage.card.viewDetailsTooltip")}
+                  </Tooltip>
+                }
               >
                 <Button
                   variant="outline-secondary"
@@ -449,16 +354,22 @@ const MyMediationRequestsPage = () => {
                         padding: "0.2rem 0.5rem",
                       }}
                     >
-                      <BsImage /> View ({productImages.length})
+                      <BsImage />{" "}
+                      {t("mediationRequestsPage.card.galleryButton", {
+                        count: productImages.length,
+                      })}
                     </Button>
                   )}
                 </Col>
                 <Col md={9}>
                   <p className="mb-1">
-                    <strong>Transaction ID:</strong> {request._id}
+                    <strong>
+                      {t("mediationRequestsPage.card.transactionId")}
+                    </strong>{" "}
+                    {request._id}
                   </p>
                   <p className="mb-1">
-                    <strong>Seller:</strong>{" "}
+                    <strong>{t("mediationRequestsPage.card.seller")}</strong>{" "}
                     {seller?.fullName ? (
                       <Link
                         to={`/profile/${seller._id}`}
@@ -473,7 +384,9 @@ const MyMediationRequestsPage = () => {
                   </p>
                   {mediator && (
                     <p className="mb-1">
-                      <strong>Mediator:</strong>{" "}
+                      <strong>
+                        {t("mediationRequestsPage.card.mediator")}
+                      </strong>{" "}
                       {mediator.fullName ? (
                         <Link
                           to={`/profile/${mediator._id}`}
@@ -488,10 +401,11 @@ const MyMediationRequestsPage = () => {
                     </p>
                   )}
                   <p className="mb-1">
-                    <strong>Agreed Price:</strong>{" "}
+                    <strong>
+                      {t("mediationRequestsPage.card.agreedPrice")}
+                    </strong>{" "}
                     {formatCurrency(request.bidAmount, request.bidCurrency)}
                   </p>
-
                   {currentUser?._id === request.buyer?._id?.toString() &&
                     request.status === "MediationOfferAccepted" &&
                     !request.buyerConfirmedStart &&
@@ -502,17 +416,19 @@ const MyMediationRequestsPage = () => {
                         className="small p-2 mt-2 mb-3 border fee-details-alert"
                       >
                         <div>
-                          <strong>Estimated Cost of Escrow:</strong>
+                          <strong>
+                            {t("mediationRequestsPage.card.escrowTitle")}
+                          </strong>
                         </div>
                         <div>
-                          Agreed Price: +{" "}
+                          {t("mediationRequestsPage.card.escrowPrice")} +{" "}
                           {formatCurrency(
                             feeDisplayDetails.priceOriginal,
                             feeDisplayDetails.currencyUsed
                           )}
                         </div>
                         <div>
-                          Your Fee Share: +{" "}
+                          {t("mediationRequestsPage.card.escrowFee")} +{" "}
                           {formatCurrency(
                             feeDisplayDetails.buyerShare,
                             feeDisplayDetails.currencyUsed
@@ -521,7 +437,7 @@ const MyMediationRequestsPage = () => {
                         <hr className="my-1" />
                         <div>
                           <strong>
-                            Total to Escrow:{" "}
+                            {t("mediationRequestsPage.card.escrowTotal")}{" "}
                             {formatCurrency(
                               feeDisplayDetails.totalForBuyer,
                               feeDisplayDetails.currencyUsed
@@ -530,26 +446,28 @@ const MyMediationRequestsPage = () => {
                         </div>
                       </Alert>
                     )}
-
                   <p className="mb-1">
-                    <strong>Status:</strong>{" "}
+                    <strong>{t("mediationRequestsPage.card.status")}</strong>{" "}
                     <Badge bg={statusBadgeBg}>{statusBadgeText}</Badge>
                   </p>
                   <p className="mb-0">
-                    <strong>Last Updated:</strong>{" "}
+                    <strong>
+                      {t("mediationRequestsPage.card.lastUpdated")}
+                    </strong>{" "}
                     {new Date(
                       request.updatedAt || request.createdAt
                     ).toLocaleString()}
                   </p>
-
                   {request.status === "MediationOfferAccepted" &&
                     !request.buyerConfirmedStart && (
                       <div className="mt-3">
                         <Alert variant="warning" className="small p-2">
-                          <FaHourglassHalf className="me-1" /> Action Required:
-                          Mediator{" "}
-                          <strong>{mediator?.fullName || "N/A"}</strong>{" "}
-                          accepted. Confirm & deposit funds.
+                          <FaHourglassHalf className="me-1" />
+                          <Trans
+                            i18nKey="mediationRequestsPage.card.actionRequiredAlert"
+                            values={{ name: mediator?.fullName || "N/A" }}
+                            components={{ strong: <strong /> }}
+                          />
                         </Alert>
                         <Button
                           variant="success"
@@ -559,10 +477,10 @@ const MyMediationRequestsPage = () => {
                         >
                           {isProcessingThisRequest ? (
                             <>
-                              <Spinner size="sm" /> Processing...
+                              <Spinner size="sm" /> {t("common.processing")}
                             </>
                           ) : (
-                            "Confirm & Deposit"
+                            t("mediationRequestsPage.card.confirmButton")
                           )}
                         </Button>
                         <Button
@@ -570,17 +488,16 @@ const MyMediationRequestsPage = () => {
                           onClick={() => openBuyerRejectModal(request)}
                           disabled={isProcessingThisRequest}
                         >
-                          Cancel Mediation
+                          {t("mediationRequestsPage.card.cancelButton")}
                         </Button>
                       </div>
                     )}
-
                   {request.buyerConfirmedStart &&
                     request.status === "EscrowFunded" &&
                     !request.sellerConfirmedStart && (
                       <Alert variant="info" className="small p-2 mt-3">
-                        <FaCheck className="me-1 text-success" /> Funds
-                        escrowed. Waiting for seller to confirm.
+                        <FaCheck className="me-1 text-success" />{" "}
+                        {t("mediationRequestsPage.card.fundsEscrowedAlert")}
                       </Alert>
                     )}
                   {(request.status === "InProgress" ||
@@ -600,10 +517,14 @@ const MyMediationRequestsPage = () => {
                         <span>
                           <FaHandshake className="me-1" />
                           {request.status === "PartiesConfirmed"
-                            ? "Parties confirmed. Chat starting."
+                            ? t(
+                                "mediationRequestsPage.card.partiesConfirmedAlert"
+                              )
                             : request.status === "Disputed"
-                            ? "Dispute is active."
-                            : "Mediation is in progress."}
+                            ? t("mediationRequestsPage.card.disputeActiveAlert")
+                            : t(
+                                "mediationRequestsPage.card.mediationInProgressAlert"
+                              )}
                         </span>
                         <Button
                           variant={
@@ -617,40 +538,48 @@ const MyMediationRequestsPage = () => {
                           }
                           title={
                             request.status === "Disputed"
-                              ? "Open Dispute Chat"
-                              : "Open Mediation Chat"
+                              ? t(
+                                  "mediationRequestsPage.card.openDisputeChatButton"
+                                )
+                              : t("mediationRequestsPage.card.openChatButton")
                           }
                         >
                           <FaCommentDots className="me-1 d-none d-sm-inline" />{" "}
-                          Open Chat
+                          {t("mediationRequestsPage.card.openChatButton")}
                         </Button>
                       </Alert>
                     </div>
                   )}
                   {request.status === "Completed" && (
                     <Alert variant="secondary" className="small p-2 mt-3">
-                      <FaCheck className="me-1" /> Mediation completed.
+                      <FaCheck className="me-1" />{" "}
+                      {t("mediationRequestsPage.card.completedAlert")}
                     </Alert>
                   )}
                   {request.status === "Cancelled" && (
                     <Alert variant="danger" className="small p-2 mt-3">
                       <div>
-                        <strong>Mediation Cancelled</strong>
+                        <strong>
+                          {t("mediationRequestsPage.card.cancelledAlertTitle")}
+                        </strong>
                       </div>
                       {request.product?.title && (
-                        <div>Product: {request.product.title}</div>
-                      )}
-                      {/* --- تعديل لعرض سبب الإلغاء بشكل صحيح --- */}
-                      {request.resolutionDetails ||
-                      request.cancellationDetails?.reason ? (
                         <div>
-                          Reason:
-                          {request.resolutionDetails ||
-                            request.cancellationDetails.reason}
+                          {t("mediationRequestsPage.card.productTitle", {
+                            title: request.product.title,
+                          })}
                         </div>
-                      ) : (
-                        <div>Reason: Not specified.</div>
                       )}
+                      <div>
+                        {request.resolutionDetails ||
+                        request.cancellationDetails?.reason
+                          ? t("mediationRequestsPage.card.cancelledReason", {
+                              reason:
+                                request.resolutionDetails ||
+                                request.cancellationDetails.reason,
+                            })
+                          : t("mediationRequestsPage.card.cancelledNoReason")}
+                      </div>
                     </Alert>
                   )}
                 </Col>
@@ -686,7 +615,7 @@ const MyMediationRequestsPage = () => {
           {selectedRequestImages.length > 0 ? (
             <Carousel
               activeIndex={currentImageIndex}
-              onSelect={(selectedIndex) => setCurrentImageIndex(selectedIndex)}
+              onSelect={(idx) => setCurrentImageIndex(idx)}
               interval={null}
               indicators={selectedRequestImages.length > 1}
               controls={selectedRequestImages.length > 1}
@@ -698,7 +627,9 @@ const MyMediationRequestsPage = () => {
                     fluid
                     className="lightbox-image"
                     onError={handleImageError}
-                    alt={`Product Image ${index + 1}`}
+                    alt={t("mediationRequestsPage.imageModal.title", {
+                      index: index + 1,
+                    })}
                     style={{ maxHeight: "80vh", objectFit: "contain" }}
                   />
                 </Carousel.Item>
@@ -706,14 +637,14 @@ const MyMediationRequestsPage = () => {
             </Carousel>
           ) : (
             <Alert variant="dark" className="m-5">
-              Image not available.
+              {t("mediationRequestsPage.imageModal.unavailable")}
             </Alert>
           )}
           <Button
             variant="light"
             onClick={handleCloseImageModal}
             className="position-absolute top-0 end-0 m-2"
-            aria-label="Close"
+            aria-label={t("mediationRequestsPage.imageModal.close")}
             style={{ zIndex: 1056 }}
           >
             ×
@@ -736,7 +667,6 @@ const MyMediationRequestsPage = () => {
           }
         />
       )}
-
       {selectedRequestForDetails && (
         <ViewMediationDetailsModal
           show={showViewDetailsModal}

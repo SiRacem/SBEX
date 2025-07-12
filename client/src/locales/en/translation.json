@@ -51,7 +51,35 @@
     "backToCategories": "Back to All Categories",
     "noResults": "No results found for \"{{query}}\".",
     "noFaqs": "No FAQs available at the moment.",
-    "listUpdated": "The list has been updated."
+    "listUpdated": "The list has been updated.",
+    "article": "article",
+    "articles": "articles"
+  },
+  "faqCategories": {
+    "Mediation & Disputes": {
+      "title": "Mediation & Disputes",
+      "description": "Find answers related to mediation & disputes"
+    },
+    "General": {
+      "title": "General",
+      "description": "Find answers related to general topics"
+    },
+    "Account & Profile": {
+      "title": "Account & Profile",
+      "description": "Find answers related to your account & profile"
+    },
+    "Technical Issues": {
+      "title": "Technical Issues",
+      "description": "Find answers related to technical issues"
+    },
+    "Selling & Buying": {
+      "title": "Selling & Buying",
+      "description": "Find answers related to selling & buying"
+    },
+    "Payments & Billing": {
+      "title": "Payments & Billing",
+      "description": "Find answers related to payments & billing"
+    }
   },
   "transactionModal": {
     "title": "Transaction Details",
@@ -224,17 +252,44 @@
     "cancel": "Cancel",
     "close": "Close",
     "processing": "Processing...",
-    "confirmBid": "Confirm Bid"
+    "confirmBid": "Confirm Bid",
+    "level": "Level {{level}}"
   },
   "userProfilePage": {
+    "loading": "Loading Profile...",
+    "errorTitle": "Error",
+    "goHome": "Go Home",
+    "dataNotFound": "Profile data not found.",
     "memberSince": "Member since",
     "userStats": "User Statistics",
-    "userRating": "User Rating",
     "activeListings": "Active Listings",
     "productsSold": "Products Sold",
     "location": "Location",
+    "userRating": "User Rating",
     "positiveRating": "Positive Rating",
-    "noRatings": "No ratings available yet."
+    "noRatings": "No ratings yet.",
+    "reportTooltip": "Report {{name}}",
+    "reportTooltipCooldown": "You have recently reported {{name}}. You can report again after {{hours}} hours.",
+    "invalidId": "Invalid User ID provided.",
+    "loadFail": "Failed to load user profile."
+  },
+  "roles": {
+    "User": "User",
+    "Vendor": "Vendor",
+    "Admin": "Admin",
+    "Mediator": "Mediator"
+  },
+  "reputationLevels": {
+    "Novice": "Novice",
+    "Bronze": "Bronze",
+    "Silver": "Silver",
+    "Gold": "Gold",
+    "Platinum": "Platinum",
+    "Diamond": "Diamond",
+    "Master": "Master",
+    "Grandmaster": "Grandmaster",
+    "Legend": "Legend",
+    "Mythic": "Mythic"
   },
   "apiErrors": {
     "Invalid credentials": "The email or password you entered is incorrect.",
@@ -246,5 +301,352 @@
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
-  "pleaseLogin": "Please login to continue."
+  "pleaseLogin": "Please login to continue.",
+  "walletPage": {
+    "title": "My Wallet",
+    "loading": "Loading Wallet...",
+    "error": "User data not available. Please login.",
+    "deposit": "Deposit",
+    "withdraw": "Withdraw",
+    "send": "Send",
+    "receive": "Receive",
+    "recentActivity": "Recent Activity",
+    "showingItems": "Showing {{count}} items",
+    "loadingActivity": "Loading activity...",
+    "errorActivity": "Error fetching activity: {{error}}",
+    "noActivityTitle": "No Activity Yet",
+    "noActivitySubtitle": "Your wallet activity will appear here.",
+    "principalBalance": "Principal Balance",
+    "sellerAvailableBalance": "Seller Available",
+    "onHoldBalance": "On Hold",
+    "activityTypes": {
+      "DEPOSIT_REQUEST": "Deposit via {{methodName}}",
+      "WITHDRAWAL_REQUEST": "Withdrawal via {{methodName}}",
+      "TRANSFER_SENT": "Sent to {{peerName}}",
+      "TRANSFER_RECEIVED": "Received from {{peerName}}",
+      "UNKNOWN_ACTIVITY": "Activity"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "completed": "Completed",
+      "rejected": "Rejected",
+      "failed": "Failed",
+      "processing": "Processing"
+    },
+    "sendModal": {
+      "step1Title": "Send Funds - Step 1: Recipient",
+      "step2Title_source": "Send Funds - Step 2: Select Source",
+      "step3Title_amount": "Send Funds - Step {{step}}: Amount",
+      "step4Title_confirm": "Send Funds - Step {{step}}: Confirm",
+      "recipientEmailLabel": "Recipient's Email Address",
+      "emailPlaceholder": "name@example.com",
+      "validEmailError": "Please enter a valid email.",
+      "userNotFoundError": "User with this email not found.",
+      "authError": "Authorization error.",
+      "checkEmailError": "Error checking email. Please try again.",
+      "sendToSelfError": "Cannot send funds to yourself.",
+      "checking": "Checking...",
+      "checkEmailButton": "Check Email",
+      "sendingTo": "Sending to: {{name}} ({{email}})",
+      "selectSource": "Select Fund Source:",
+      "principalSource": "Principal ({{balance}})",
+      "sellerSource": "Seller ({{balance}})",
+      "sendCurrencyLabel": "Send Currency:",
+      "availableFrom": "Available from {{source}} ({{currency}})",
+      "amountToSendLabel": "Amount to Send ({{currency}})",
+      "maxButton": "MAX",
+      "amountPositiveError": "Amount must be positive.",
+      "minAmountError": "Minimum send amount is {{amount}}",
+      "insufficientBalanceError": "Insufficient balance from selected source to cover amount and fee.",
+      "approximateValue": "~{{value}}",
+      "confirmTitle": "Confirm Transaction:",
+      "toLabel": "To:",
+      "fromLabel": "From:",
+      "amountLabel": "Amount to Send:",
+      "feeLabel": "Transfer Fee ({{fee}}%):",
+      "totalDeductedLabel": "Total Deducted (TND):",
+      "backButton": "Back",
+      "closeButton": "Close",
+      "nextButton": "Next",
+      "confirmSendButton": "Confirm & Send",
+      "sendingButton": "Sending...",
+      "sendFailedError": "Please correct errors before sending.",
+      "sendSuccess": "Funds sent successfully!",
+      "sendGenericError": "Failed to send funds."
+    },
+    "receiveModal": {
+      "title": "Receive Funds",
+      "shareEmail": "Share your email address with the sender:",
+      "yourEmailLabel": "Your email address",
+      "copyTooltip": "Copy Email",
+      "copiedTooltip": "Copied!",
+      "copyFail": "Failed to copy.",
+      "infoText": "Registered users can send funds to this email.",
+      "closeButton": "Close"
+    }
+  },
+  "profilePage": {
+    "loading": "Loading profile...",
+    "error": "Profile data is unavailable.",
+    "loginPrompt": "Please login to view your profile.",
+    "unavailable": "Profile for {{username}} is unavailable.",
+    "unableToDisplay": "Unable to determine which profile to display.",
+    "retry": "Retry",
+    "login": "Login",
+    "avatarModalTitle": "Update Profile Picture",
+    "avatarModalLabel": "Select new image (JPG, PNG, WEBP - Max 2MB)",
+    "uploadButton": "Upload Picture",
+    "uploadingButton": "Uploading...",
+    "cancelButton": "Cancel",
+    "avatarUpdateError": "Max 2MB.",
+    "avatarUpdateTypeError": "JPG, PNG, GIF, WEBP only.",
+    "changeAvatarTooltip": "Click to change avatar",
+    "locationNotSet": "Location not set",
+    "statusBlocked": "Blocked",
+    "statusActive": "Active",
+    "roleMediator": "Mediator",
+    "ratingSectionTitle": "User Rating",
+    "noRatings": "No ratings yet.",
+    "balancesSectionTitle": "Account Balances",
+    "balancePrincipal": "Principal",
+    "balanceDeposit": "Deposit",
+    "balanceWithdrawal": "Withdrawal",
+    "balanceSellerAvailable": "Seller Available",
+    "balanceSellerOnHold": "Seller On Hold",
+    "statsSectionTitle": "User Statistics",
+    "statsActiveListings": "Active Listings",
+    "statsProductsSold": "Products Sold",
+    "levelWidget": {
+      "level": "Level {{level}}",
+      "points": "{{points}} pts",
+      "progressLabel": "{{progress}} / {{needed}} pts to Level {{nextLevel}}",
+      "rewardLabel": "Reward for reaching Level {{nextLevel}}",
+      "nextReward": "Next Reward",
+      "maxLevel": "Max Level Reached!",
+      "totalPointsTooltip": "Total Reputation Points"
+    }
+  },
+  "mediatorApplication": {
+    "qualified": {
+      "title": "Mediator Status",
+      "statusLabel": "Status",
+      "infoText": "Set your availability to receive new mediation tasks.",
+      "updateError": "Error updating status: {{error}}",
+      "statusAvailable": "Available",
+      "statusUnavailable": "Unavailable",
+      "busyAlert": "You are currently busy with a mediation task.",
+      "statsTitle": "Mediator Stats",
+      "successfulMediations": "Successful Mediations:",
+      "guaranteeHeld": "Guarantee Held:",
+      "withdrawButton": "Request Guarantee Withdrawal"
+    },
+    "application": {
+      "title": "Become a Mediator",
+      "pendingAlert": "Your application is pending review.",
+      "rejectedAlertTitle": "Your previous application was rejected.",
+      "rejectionReason": "Reason:",
+      "requirementsTitle": "You can become a mediator if:",
+      "reputationRequirement": "Reach Reputation Level <strong>{{requiredLevel}}</strong> (Your current level: {{currentLevel}})",
+      "guaranteeRequirement": "Deposit a guarantee of <strong>{{amount}}</strong> (Your current balance: {{balance}})",
+      "applySuccess": "Application submitted successfully!",
+      "applyError": "Error: {{error}}",
+      "applyByLevelButton": "Apply (Level)",
+      "applyByGuaranteeButton": "Apply (Guarantee)",
+      "levelTooltip": "Apply based on your reputation",
+      "levelTooltipDisabled": "Requires Level {{level}}",
+      "guaranteeTooltip": "Apply with guarantee deposit",
+      "guaranteeTooltipDisabled": "Requires {{amount}} balance"
+    },
+    "statuses": {
+      "Available": "Available",
+      "Unavailable": "Unavailable",
+      "Busy": "Busy"
+    }
+  },
+  "myProductsPage": {
+    "title": "My Products & Bids",
+    "addNewButton": "+ Add New Product",
+    "loading": "Loading your products...",
+    "error": "Error:",
+    "genericError": "An error occurred",
+    "refreshing": "Refreshing...",
+    "tabs": {
+      "approved": "Approved",
+      "pending": "Pending",
+      "mediation": "In Mediation",
+      "disputed": "Disputed",
+      "sold": "Sold",
+      "rejected": "Rejected"
+    },
+    "noProducts": {
+      "approved": "No approved products.",
+      "pending": "No products pending approval.",
+      "mediation": "No products in mediation process.",
+      "disputed": "No products currently in dispute.",
+      "sold": "No sold or completed products yet.",
+      "rejected": "No rejected products."
+    },
+    "productCard": {
+      "listPrice": "List Price:",
+      "agreedPrice": "Agreed:",
+      "status": {
+        "approved": "Approved",
+        "pendingApproval": "Pending Approval",
+        "adminRejected": "Admin Rejected",
+        "selectMediator": "Select Mediator",
+        "awaitingMediator": "Awaiting Mediator",
+        "awaitingConfirmations": "Awaiting Confirmations",
+        "buyerConfirmed": "Buyer Confirmed",
+        "partiesConfirmed": "Parties Confirmed",
+        "inProgress": "In Progress",
+        "disputeOpened": "Dispute Opened",
+        "sold": "Sold",
+        "completed": "Completed"
+      },
+      "alerts": {
+        "selectMediator": "Please Select a Mediator",
+        "awaitingMediator": "Awaiting Mediator's Response.",
+        "sellerActionRequired": "<strong>Action Required:</strong> Confirm your readiness.",
+        "sellerActionInfo": "After you confirm, buyer will confirm & pay.",
+        "buyerActionInfo": "Buyer confirmed & paid.",
+        "sellerConfirmed": "You confirmed. <small class=\"text-muted\">Waiting for buyer to confirm & pay.</small>",
+        "mediationInProgress": "Mediation is in progress.",
+        "disputeActive": "Dispute is active.",
+        "communicate": "Communicate with buyer and mediator."
+      },
+      "buttons": {
+        "confirmReadiness": "Confirm My Readiness",
+        "openChat": "Open Chat",
+        "openDisputeChat": "Open Dispute Chat",
+        "viewGallery": "{{count}}",
+        "viewDetails": "View Details",
+        "selectMediator": "Select Mediator",
+        "requestReturnToSale": "Request Return to Sale"
+      },
+      "bids": {
+        "title": "Received Bids ({{count}})",
+        "noBids": "No bids received yet.",
+        "moreBids": "...and {{count}} more bids."
+      },
+      "soldTo": "Sold to <1>{{name}}</1> on {{date}}.",
+      "completedWith": "Transaction Completed with Buyer: <1>{{name}}</1> on {{date}}.",
+      "deleteConfirm": "Are you sure you want to delete this product?",
+      "acceptConfirm": "Accept bid of {{amount}} from {{name}}? This will move the product to mediation."
+    },
+    "rejectModal": {
+      "title": "Reject Bid",
+      "reasonFor": "Reason for rejecting bid from <strong>{{name}}</strong> for <strong>{{amount}}</strong>:",
+      "placeholder": "Rejection reason (required to notify user)",
+      "cancel": "Cancel",
+      "confirm": "Confirm Rejection",
+      "errorNoBidder": "Could not identify bidder ID.",
+      "errorNoReason": "Please provide a rejection reason."
+    },
+    "imageModal": {
+      "title": "Product Image {{index}}",
+      "unavailable": "Image not available.",
+      "close": "Close"
+    },
+    "mediatorModal": {
+      "errorIdMissing": "Mediation request ID is missing.",
+      "errorNotAuthenticated": "Not authenticated.",
+      "errorLoadFailed": "Could not load mediators.",
+      "successSuggestions": "New suggestions loaded!",
+      "infoNoMediators": "No new mediators found."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "Loading your tickets...",
+    "errorTitle": "Error Loading Tickets",
+    "pageTitle": "My Support Tickets",
+    "createButton": "Create New Ticket",
+    "ticketId": "Ticket ID:",
+    "lastUpdate": "Last Update:",
+    "category": "Category:",
+    "viewButton": "View",
+    "noTicketsTitle": "No Support Tickets Found",
+    "noTicketsSubtitle": "You haven't created any support tickets yet.",
+    "createFirstButton": "Create Your First Ticket",
+    "statuses": {
+      "Open": "Open",
+      "PendingSupportReply": "Pending Support Reply",
+      "PendingUserInput": "Pending Your Reply",
+      "InProgress": "In Progress",
+      "Resolved": "Resolved",
+      "Closed": "Closed",
+      "OnHold": "On Hold"
+    },
+    "categories": {
+      "GeneralInquiry": "General Inquiry",
+      "TechnicalSupport": "Technical Support",
+      "BillingIssue": "Billing Issue",
+      "AccountIssue": "Account Issue",
+      "MediationInquiry": "Mediation Inquiry",
+      "BugReport": "Bug Report",
+      "FeatureRequest": "Feature Request",
+      "Other": "Other"
+    }
+  },
+  "mediationRequestsPage": {
+    "loadingUser": "Loading user profile...",
+    "loadingRequests": "Loading your mediation requests...",
+    "errorTitle": "Error loading requests:",
+    "unknownError": "An unknown error occurred.",
+    "title": "My Mediation Requests",
+    "subtitle": "You have {{count}} mediation request(s).",
+    "updatingList": "Updating list...",
+    "noRequests": "You have no active mediation requests at the moment.",
+    "updateWarning": "Could not update all requests: {{error}}",
+    "updateError": "Update error.",
+    "card": {
+      "productTitle": "Product: {{title}}",
+      "viewDetailsTooltip": "View Mediation Details",
+      "galleryButton": "View ({{count}})",
+      "transactionId": "Transaction ID:",
+      "seller": "Seller:",
+      "mediator": "Mediator:",
+      "agreedPrice": "Agreed Price:",
+      "escrowTitle": "Estimated Cost of Escrow:",
+      "escrowPrice": "Agreed Price:",
+      "escrowFee": "Your Fee Share:",
+      "escrowTotal": "Total to Escrow:",
+      "status": "Status:",
+      "lastUpdated": "Last Updated:",
+      "actionRequiredAlert": "<strong>Action Required:</strong> Mediator <strong>{{name}}</strong> accepted. Confirm & deposit funds.",
+      "confirmButton": "Confirm & Deposit",
+      "processingButton": "Processing...",
+      "cancelButton": "Cancel Mediation",
+      "fundsEscrowedAlert": "Funds escrowed. Waiting for seller to confirm.",
+      "partiesConfirmedAlert": "Parties confirmed. Chat starting.",
+      "disputeActiveAlert": "Dispute is active.",
+      "mediationInProgressAlert": "Mediation is in progress.",
+      "openChatButton": "Open Chat",
+      "openDisputeChatButton": "Open Dispute Chat",
+      "completedAlert": "Mediation completed.",
+      "cancelledAlertTitle": "Mediation Cancelled",
+      "cancelledReason": "Reason: {{reason}}",
+      "cancelledNoReason": "Reason: Not specified."
+    },
+    "statuses": {
+      "PendingMediatorSelection": "Awaiting Mediator Selection",
+      "MediatorAssigned": "Mediator Assigned",
+      "MediationOfferAccepted": "Mediator Accepted - Awaiting Confirmations",
+      "EscrowFunded": "Funds Escrowed - Awaiting Seller",
+      "Disputed": "Dispute Opened",
+      "UnderDispute": "Dispute Opened",
+      "PartiesConfirmed": "Parties Confirmed",
+      "InProgress": "Mediation In Progress",
+      "Completed": "Completed",
+      "Cancelled": "Cancelled"
+    },
+    "rejectModal": {
+      "noReason": "Please provide a reason for cancellation."
+    },
+    "imageModal": {
+      "title": "Product Image {{index}}",
+      "unavailable": "Image not available.",
+      "close": "Close"
+    }
+  }
 }
