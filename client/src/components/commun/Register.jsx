@@ -23,6 +23,10 @@ import { FaUser, FaStore } from "react-icons/fa";
 
 const Register = () => {
   const { t, i18n } = useTranslation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // States for form fields
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,10 +34,9 @@ const Register = () => {
   const [userRole, setUserRole] = useState("User");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
 
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  // ***** [!!!] حالة جديدة لتخزين أخطاء التحقق [!!!] *****
+  const [formErrors, setFormErrors] = useState({});
 
   const loading = useSelector((state) => state.userReducer?.loading ?? false);
   const registrationStatus = useSelector(
@@ -51,19 +54,83 @@ const Register = () => {
     }
   }, [registrationStatus, dispatch, navigate]);
 
+  // ***** [!!!] دالة التحقق من صحة البيانات [!!!] *****
+  const validateForm = () => {
+    const newErrors = {};
+
+    // 1. التحقق من الاسم الكامل
+    if (!fullName.trim()) {
+      newErrors.fullName = t(
+        "auth.validation.fullNameRequired",
+        "Full name is required."
+      );
+    }
+
+    // 2. التحقق من البريد الإلكتروني
+    if (!email.trim()) {
+      newErrors.email = t(
+        "auth.validation.emailRequired",
+        "Email is required."
+      );
+    } else if (!/^\S+@\S+\.\S+$/.test(email)) {
+      newErrors.email = t(
+        "auth.validation.emailInvalid",
+        "Email address is invalid."
+      );
+    }
+
+    // 3. التحقق من كلمة المرور
+    if (!password) {
+      newErrors.password = t(
+        "auth.validation.passwordRequired",
+        "Password is required."
+      );
+    } else if (password.length < 6) {
+      newErrors.password = t(
+        "auth.validation.passwordLength",
+        "Password must be at least 6 characters."
+      );
+    }
+
+    // 4. التحقق من تطابق كلمتي المرور
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = t(
+        "auth.validation.passwordsDoNotMatch",
+        "Passwords do not match!"
+      );
+    }
+
+    setFormErrors(newErrors);
+    // إذا لم تكن هناك أخطاء، سيعود `true`
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    setPasswordError("");
-    if (password !== confirmPassword) {
-      const errorMsg = t("auth.passwordsDoNotMatch");
-      setPasswordError(errorMsg);
-      toast.warn(errorMsg);
-      return;
+    dispatch(clearUserErrors()); // امسح أخطاء الخادم القديمة
+
+    // قم بالتحقق من البيانات قبل الإرسال
+    if (validateForm()) {
+      // إذا كانت البيانات صالحة، قم بإرسالها
+      console.log("Form is valid, dispatching registerUser...");
+      dispatch(
+        registerUser({ fullName, email, phone, address, userRole, password })
+      );
+    } else {
+      // إذا كانت هناك أخطاء، اعرض رسالة toast
+      console.log("Form validation failed.");
+      toast.warn(
+        t("auth.validation.fixErrors", "Please fix the errors in the form.")
+      );
     }
-    dispatch(clearUserErrors());
-    dispatch(
-      registerUser({ fullName, email, phone, address, userRole, password })
-    );
+  };
+
+  // دالة لمسح الخطأ عند تغيير المدخلات
+  const handleInputChange = (setter, fieldName) => (e) => {
+    setter(e.target.value);
+    if (formErrors[fieldName]) {
+      setFormErrors((prevErrors) => ({ ...prevErrors, [fieldName]: null }));
+    }
   };
 
   return (
@@ -79,9 +146,7 @@ const Register = () => {
               <h2 className="text-center mb-4 fw-bold text-primary">
                 {t("auth.createAccount")}
               </h2>
-              {passwordError && (
-                <Alert variant="warning">{passwordError}</Alert>
-              )}
+
               <Form onSubmit={handleSubmit} noValidate>
                 <Row>
                   <Col md={6}>
@@ -91,9 +156,13 @@ const Register = () => {
                         type="text"
                         placeholder={t("auth.fullNamePlaceholder")}
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
+                        onChange={handleInputChange(setFullName, "fullName")}
                         required
+                        isInvalid={!!formErrors.fullName} // <-- إظهار الخطأ
                       />
+                      <Form.Control.Feedback type="invalid">
+                        {formErrors.fullName}
+                      </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -103,9 +172,13 @@ const Register = () => {
                         type="email"
                         placeholder={t("auth.emailPlaceholder")}
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={handleInputChange(setEmail, "email")}
                         required
+                        isInvalid={!!formErrors.email} // <-- إظهار الخطأ
                       />
+                      <Form.Control.Feedback type="invalid">
+                        {formErrors.email}
+                      </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -168,11 +241,14 @@ const Register = () => {
                         type="password"
                         placeholder={t("auth.passwordMinChars")}
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={handleInputChange(setPassword, "password")}
                         required
                         minLength={6}
-                        isInvalid={!!passwordError}
+                        isInvalid={!!formErrors.password} // <-- إظهار الخطأ
                       />
+                      <Form.Control.Feedback type="invalid">
+                        {formErrors.password}
+                      </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -182,10 +258,16 @@ const Register = () => {
                         type="password"
                         placeholder={t("auth.confirmPasswordPlaceholder")}
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={handleInputChange(
+                          setConfirmPassword,
+                          "confirmPassword"
+                        )}
                         required
-                        isInvalid={!!passwordError}
+                        isInvalid={!!formErrors.confirmPassword} // <-- إظهار الخطأ
                       />
+                      <Form.Control.Feedback type="invalid">
+                        {formErrors.confirmPassword}
+                      </Form.Control.Feedback>
                     </Form.Group>
                   </Col>
                 </Row>
@@ -218,4 +300,5 @@ const Register = () => {
     </Container>
   );
 };
+
 export default Register;

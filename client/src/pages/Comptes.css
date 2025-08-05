@@ -1,4 +1,5 @@
 /* src/pages/Comptes.css */
+
 .comptes-page .page-title {
     color: #343a40;
 }
@@ -11,7 +12,7 @@
     background-color: #ffffff;
 }
 
-/* Section Titles */
+/* --- [!!!] كود جديد ومحسّن لعناوين الأقسام [!!!] --- */
 .account-section .section-title {
     padding: 0.75rem 1.25rem;
     margin-bottom: 1.5rem;
@@ -19,30 +20,26 @@
     color: white;
     font-size: 1.1rem;
     font-weight: 500;
+    position: relative;
+    overflow: hidden;
+    /* ضروري لإخفاء الأجزاء الزائدة من التدرج */
 }
 
+/* LTR Styles (Default) */
 .pending-title {
-    background-color: #fd7e14;
-    border-left: 5px solid #d16a0f;
-    color: white;
+    background: linear-gradient(to right, #d16a0f 8px, #fd7e14 8px);
 }
 
 .approved-title {
-    background-color: #198754;
-    border-left: 5px solid #146c43;
+    background: linear-gradient(to right, #146c43 8px, #198754 8px);
 }
 
 .rejected-title {
-    background-color: #dc3545;
-    border-left: 5px solid #b02a37;
+    background: linear-gradient(to right, #b02a37 8px, #dc3545 8px);
 }
 
-/* Status Icons/Borders */
-.text-warning {
-    color: #fd7e14 !important;
-}
 
-/* Override bootstrap warning if needed */
+/* Status Borders on Cards */
 .status-pending {
     border-top: 3px solid #fd7e14;
 }
@@ -99,49 +96,40 @@
     background-color: #000;
 }
 
-/* --- Image Preview Container (Large Previews) --- */
+/* --- Image Preview Container Styles --- */
 .image-preview-container.large-preview {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    /* Increased gap */
     background-color: #f8f9fa;
-    /* Light background for the area */
     padding: 1rem;
     border-radius: 0.375rem;
     border: 1px solid #dee2e6;
     min-height: 140px;
-    /* Minimum height */
 }
 
 .preview-item {
     position: relative;
-    /* --- Correction: Use max-width/max-height or aspect-ratio for better control --- */
     width: 120px;
-    /* Target width */
     height: 120px;
-    /* Target height */
     flex-shrink: 0;
-    /* Prevent shrinking */
     overflow: hidden;
-    /* Hide parts of image if needed with object-fit */
     border-radius: 8px;
-    /* Apply border-radius here */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    /* Add shadow */
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.preview-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .preview-image-lg {
     display: block;
-    /* Important */
     width: 100%;
-    /* Fill the container */
     height: 100%;
-    /* Fill the container */
     object-fit: cover;
-    /* Cover the area without distortion */
-    /* border-radius applied to parent (.preview-item) */
-    /* border removed, applied to parent */
 }
 
 .remove-preview-btn {
@@ -157,12 +145,14 @@
     padding: 0;
     font-size: 13px;
     line-height: 1;
-    opacity: 0.7;
+    opacity: 0;
     transition: all 0.2s ease;
     z-index: 10;
-    /* Ensure button is clickable */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    /* Add shadow to button */
+}
+
+.preview-item:hover .remove-preview-btn {
+    opacity: 0.9;
 }
 
 .remove-preview-btn:hover {
@@ -182,69 +172,131 @@
     z-index: 5;
 }
 
-/* Alert styling inside modal/form */
-.add-form-card .alert,
-.modal-body .alert {
-    margin-bottom: 1rem;
+/* --- New Styles for Link Type Cards --- */
+.link-type-card {
+    position: relative;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    padding: 0.75rem;
+    height: 100%;
+    background-color: #fff;
 }
 
-.image-preview-container.large-preview {
-    /* ... (الأنماط السابقة: display, gap, background, padding, etc.) ... */
-    display: flex; flex-wrap: wrap; gap: 1rem;
-    background-color: #f8f9fa; padding: 1rem; border-radius: 0.375rem;
-    border: 1px solid #dee2e6; min-height: 140px;
+.link-type-card:hover {
+    border-color: #adb5bd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
-.preview-item {
-    position: relative; width: 120px; height: 120px; flex-shrink: 0;
-    overflow: hidden; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    cursor: pointer; /* جعل العنصر كله قابل للنقر للمعاينه */
-}
-/* تغميق الصورة قليلاً لإظهار الأيقونات بشكل أفضل */
-.preview-item img { filter: brightness(95%); transition: filter 0.2s ease;}
-.preview-item:hover img { filter: brightness(75%); }
-
-
-.preview-image-lg {
-    display: block; width: 100%; height: 100%; object-fit: cover;
+.link-type-card.selected {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    background-color: #f0f7ff;
 }
 
-/* --- أزرار التحكم في المعاينة (العين والحذف) --- */
-.preview-item .btn { /* نمط عام للأزرار */
+.link-type-card .card-body {
+    padding: 0;
+}
+
+.selected-check {
     position: absolute;
-    border-radius: 50%; width: 30px; height: 30px; display: flex;
-    align-items: center; justify-content: center; padding: 0; font-size: 14px;
-    line-height: 1; opacity: 0; /* إخفاؤها مبدئيًا */
-    transition: all 0.2s ease; z-index: 10;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    border: none; /* إزالة حدود bootstrap */
-}
-.preview-item:hover .btn {
-    opacity: 0.9; /* إظهارها عند مرور الماوس على العنصر الأب */
-}
-.preview-item .btn:hover {
-     opacity: 1; transform: scale(1.1);
+    top: 8px;
+    right: 8px;
+    color: #0d6efd;
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
 }
 
-/* زر المعاينة (العين) */
-.view-preview-btn {
-    /* وضعه في المنتصف */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.5) !important; /* خلفية أغمق */
-    color: white !important;
+.link-type-card.selected .selected-check {
+    transform: scale(1.1);
 }
 
-/* زر الحذف */
-.remove-preview-btn {
-    top: 6px;
-    right: 6px;
-    /* يستخدم ألوان bootstrap الافتراضية (danger) */
+.link-type-content {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #495057;
 }
 
-/* (اختياري) تمييز الصور الموجودة */
-.existing-badge {
-    position: absolute; bottom: 5px; left: 5px; background-color: rgba(0, 0, 0, 0.7);
-    color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; z-index: 5;
+.link-type-content span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+/* --- RTL (Right-to-Left) Specific Styles --- */
+[dir="rtl"] .form-floating>label {
+    right: 0;
+    left: auto;
+    transform-origin: 100% 0;
+    text-align: right;
+}
+
+[dir="rtl"] .form-floating>.form-control:not(:placeholder-shown)~label {
+    transform: scale(.85) translateY(-.5rem) translateX(0.15rem);
+}
+
+[dir="rtl"] .form-floating>.form-control::placeholder {
+    color: transparent;
+}
+
+[dir="rtl"] .form-floating>.form-select {
+    padding-right: 1.75rem;
+    padding-left: 0.75rem;
+    background-position: left 0.75rem center;
+}
+
+[dir="rtl"] .add-account-btn .me-1 {
+    margin-right: 0 !important;
+    margin-left: 0.25rem !important;
+}
+
+/* --- [!!!] كود RTL الجديد لعناوين الأقسام [!!!] --- */
+[dir="rtl"] .pending-title {
+    background: linear-gradient(to left, #d16a0f 8px, #fd7e14 8px);
+}
+
+[dir="rtl"] .approved-title {
+    background: linear-gradient(to left, #146c43 8px, #198754 8px);
+}
+
+[dir="rtl"] .rejected-title {
+    background: linear-gradient(to left, #b02a37 8px, #dc3545 8px);
+}
+
+/* --- نهاية الكود الجديد --- */
+
+
+[dir="rtl"] .card-footer.d-flex.justify-content-end {
+    justify-content: flex-start !important;
+}
+
+[dir="rtl"] .card-footer .me-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+}
+
+[dir="rtl"] .form-control[type="file"] {
+    text-align: right;
+}
+
+[dir="rtl"] .selected-check {
+    right: auto;
+    left: 8px;
+}
+
+[dir="rtl"] .modal-header .btn-close {
+    margin: -0.5rem -0.5rem -0.5rem auto;
+}
+
+[dir="rtl"] .modal-body .d-flex.justify-content-end {
+    justify-content: flex-start !important;
+}
+
+[dir="rtl"] .modal-body .me-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
 }

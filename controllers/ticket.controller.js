@@ -47,9 +47,16 @@ exports.createTicket = async (req, res) => {
         const admins = await User.find({ userRole: { $in: ['Admin', 'Support'] } }).select('_id').lean().session(session);
         if (admins.length > 0) {
             const notifications = admins.map(admin => ({
-                user: admin._id, type: 'NEW_TICKET_CREATED',
-                title: `New Ticket: #${newTicket.ticketId}`,
-                message: `Ticket "${newTicket.title.substring(0, 30)}..." submitted by ${req.user.fullName || 'a user'}.`,
+                user: admin._id,
+                type: 'NEW_TICKET_CREATED',
+                title: 'notification_titles.NEW_TICKET_CREATED', // <-- استخدام مفتاح الترجمة
+                message: 'notification_messages.NEW_TICKET_CREATED', // <-- استخدام مفتاح الترجمة
+                // إضافة متغيرات الرسالة
+                messageParams: {
+                    ticketId: newTicket.ticketId,
+                    title: newTicket.title.substring(0, 30),
+                    userName: req.user.fullName || 'a user'
+                },
                 relatedEntity: { id: newTicket._id, modelName: 'Ticket' }
             }));
             await Notification.create(notifications, { session });
@@ -174,7 +181,21 @@ exports.addReplyToTicket = async (req, res) => {
         } else if (!isAdminOrSupport && !ticket.assignedTo) {
             const adminsToNotify = await User.find({ _id: { $ne: userId }, userRole: { $in: ['Admin', 'Support'] } }).select('_id').lean().session(session);
             if (adminsToNotify.length > 0) {
-                const adminNotifications = adminsToNotify.map(admin => ({ user: admin._id, type: 'TICKET_REPLY_UNASSIGNED', title: `Reply on Unassigned: #${ticket.ticketId}`, message: `${senderName} replied to unassigned ticket "${ticketTitleShort}".`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }));
+                // ----- التعديل هنا -----
+                const adminNotifications = adminsToNotify.map(admin => ({
+                    user: admin._id,
+                    type: 'TICKET_REPLY_UNASSIGNED',
+                    title: 'notification_titles.TICKET_REPLY_UNASSIGNED', // <-- استخدام مفتاح الترجمة
+                    message: 'notification_messages.TICKET_REPLY_UNASSIGNED', // <-- استخدام مفتاح الترجمة
+                    // إضافة متغيرات الرسالة
+                    messageParams: {
+                        ticketId: ticket.ticketId,
+                        senderName: senderName,
+                        ticketTitleShort: ticketTitleShort
+                    },
+                    relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+                }));
+                // ----- نهاية التعديل -----
                 await Notification.create(adminNotifications, { session });
             }
         }

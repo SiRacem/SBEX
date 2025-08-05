@@ -1,4 +1,3 @@
-// src/pages/FAQPage.jsx
 import React, { useEffect, useContext, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -11,7 +10,6 @@ import {
   Form,
   InputGroup,
   Button,
-  Accordion,
 } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { getActiveFAQs } from "../redux/actions/faqAction";
@@ -21,7 +19,6 @@ import {
   FaBook,
   FaUser,
   FaShieldAlt,
-  FaDollarSign,
   FaCreditCard,
   FaChevronRight,
 } from "react-icons/fa";
@@ -53,10 +50,9 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
       lowerCaseCategory.includes("selling") ||
       lowerCaseCategory.includes("buying")
     )
-      return <FaDollarSign size={28} />;
-    if (lowerCaseCategory.includes("general"))
-      return <FaQuestionCircle size={28} />;
-    return <FaBook size={28} />;
+      return <FaQuestionCircle size={28} />; // Changed icon for variety
+    if (lowerCaseCategory.includes("general")) return <FaBook size={28} />; // Changed icon for variety
+    return <FaQuestionCircle size={28} />;
   };
 
   const articleCountText =
@@ -72,7 +68,6 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
           <div className="icon-container mb-3">
             {getCategoryIcon(categoryName)}
           </div>
-          {/* استخدام الترجمة لعنوان ووصف الفئة */}
           <Card.Title as="h4" className="mb-2">
             {t(`faqCategories.${categoryName}.title`, {
               defaultValue: categoryName,
@@ -111,21 +106,13 @@ const FAQPage = () => {
   useEffect(() => {
     if (socket) {
       const handleFaqUpdate = () => {
-        console.log("SOCKET: Re-fetching FAQs due to 'faqs_updated' event.");
         toast.info(t("faq.listUpdated"), { autoClose: 2000 });
         dispatch(getActiveFAQs());
       };
       socket.on("faqs_updated", handleFaqUpdate);
-      return () => {
-        socket.off("faqs_updated", handleFaqUpdate);
-      };
+      return () => socket.off("faqs_updated", handleFaqUpdate);
     }
   }, [socket, dispatch, t]);
-
-  useEffect(() => {
-    document.documentElement.lang = i18n.language;
-    document.documentElement.dir = i18n.dir(i18n.language);
-  }, [i18n, i18n.language]);
 
   const filteredFAQs = useMemo(() => {
     if (!searchQuery) return groupedFAQs;
@@ -137,9 +124,7 @@ const FAQPage = () => {
           faq.question.toLowerCase().includes(lowercasedQuery) ||
           faq.answer.toLowerCase().includes(lowercasedQuery)
       );
-      if (filtered.length > 0) {
-        result[category] = filtered;
-      }
+      if (filtered.length > 0) result[category] = filtered;
     }
     return result;
   }, [searchQuery, groupedFAQs]);
@@ -150,13 +135,9 @@ const FAQPage = () => {
     window.scrollTo({ top: 250, behavior: "smooth" });
   };
 
-  const handleBackToCategories = () => {
-    setSelectedCategory(null);
-  };
-
-  const toggleQuestion = (faqId) => {
+  const handleBackToCategories = () => setSelectedCategory(null);
+  const toggleQuestion = (faqId) =>
     setExpandedQuestionId((prevId) => (prevId === faqId ? null : faqId));
-  };
 
   if (loading && Object.keys(groupedFAQs).length === 0) {
     return (
@@ -170,16 +151,6 @@ const FAQPage = () => {
           style={{ width: "4rem", height: "4rem" }}
         />
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="py-5">
-        <Alert variant="danger" className="text-center">
-          {error}
-        </Alert>
-      </Container>
     );
   }
 
@@ -211,6 +182,13 @@ const FAQPage = () => {
       </header>
 
       <Container className="py-5 faq-content-area">
+        {error && (
+          <Alert variant="danger" className="text-center">
+            {/* [!!!] التعديل هنا [!!!] */}
+            {t("faq.loadError", { error: error })}
+          </Alert>
+        )}
+
         {selectedCategory ? (
           <div className="category-questions-list">
             <Button
@@ -225,7 +203,6 @@ const FAQPage = () => {
                 defaultValue: selectedCategory,
               })}
             </h2>
-
             {(filteredFAQs[selectedCategory] || []).map((faq) => (
               <div key={faq._id} className="question-item-wrapper">
                 <div

@@ -92,8 +92,14 @@ exports.submitUserReport = async (req, res) => {
                 return Notification.create({
                     user: admin._id,
                     type: 'NEW_USER_REPORT',
-                    title: 'New User Report Submitted',
-                    message: `A new report has been submitted by ${reporter?.fullName || 'a user'} against user ID ${reportedUserId}. Reason: ${reasonCategory}.`,
+                    title: 'notification_titles.NEW_USER_REPORT', // <-- استخدام مفتاح الترجمة
+                    message: 'notification_messages.NEW_USER_REPORT', // <-- استخدام مفتاح الترجمة
+                    // إضافة متغيرات الرسالة
+                    messageParams: {
+                        reporterName: reporter?.fullName || 'a user',
+                        reportedUserName: reportedUserExists.fullName || 'a user', // ستحتاج لجلب اسم المستخدم المبلغ عنه
+                        reason: reasonCategory
+                    },
                     relatedEntity: { id: newReport._id, modelName: 'Report' }
                 });
             });

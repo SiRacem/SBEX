@@ -1,5 +1,4 @@
 // src/pages/Wallet.jsx
-
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -62,14 +61,6 @@ const TND_TO_USD_RATE = 3.0;
 const MIN_SEND_AMOUNT_USD = MIN_SEND_AMOUNT_TND / TND_TO_USD_RATE;
 const TRANSFER_FEE_PERCENT = 2;
 
-const getTokenConfig = () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.error("Token not found.");
-    return null;
-  }
-  return { headers: { Authorization: `Bearer ${token}` } };
-};
 const getTokenJsonConfig = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -97,7 +88,7 @@ const Wallet = () => {
         currency: currencyCode,
         minimumFractionDigits: 2,
       };
-      let locale = i18n.language;
+      let locale = i18n.language === "tn" ? "ar-TN" : i18n.language;
       if (currencyCode === "USD") {
         locale = "en-US";
         options.currencyDisplay = "symbol";
@@ -107,11 +98,9 @@ const Wallet = () => {
     [i18n.language]
   );
 
-  const userId = useSelector((state) => state.userReducer?.user?._id);
   const user = useSelector((state) => state.userReducer?.user);
-  const userBalanceTND = useSelector(
-    (state) => state.userReducer?.user?.balance ?? 0
-  );
+  const userId = user?._id;
+  const userBalanceTND = user?.balance ?? 0;
   const userBalanceUSD = useMemo(
     () => userBalanceTND / TND_TO_USD_RATE,
     [userBalanceTND]
@@ -264,8 +253,6 @@ const Wallet = () => {
       });
     else {
       fee = (amountNum * TRANSFER_FEE_PERCENT) / 100;
-      let amountInTND =
-        sendCurrency === "USD" ? amountNum * TND_TO_USD_RATE : amountNum;
       totalDeducted =
         sendCurrency === "USD"
           ? (amountNum + fee) * TND_TO_USD_RATE
@@ -287,16 +274,16 @@ const Wallet = () => {
   ]);
 
   const handleSetMaxAmount = useCallback(() => {
-    let maxPossibleToSend = 0;
     const balanceTND =
       sendFromSource === "seller"
         ? user?.sellerAvailableBalance || 0
         : userBalanceTND;
     let effectiveBalance =
       sendCurrency === "USD" ? balanceTND / TND_TO_USD_RATE : balanceTND;
-    maxPossibleToSend = effectiveBalance / (1 + TRANSFER_FEE_PERCENT / 100);
-    maxPossibleToSend = Math.max(0, Math.floor(maxPossibleToSend * 100) / 100);
-    setSendAmount(maxPossibleToSend.toFixed(2));
+    let maxPossibleToSend = effectiveBalance / (1 + TRANSFER_FEE_PERCENT / 100);
+    setSendAmount(
+      Math.max(0, Math.floor(maxPossibleToSend * 100) / 100).toFixed(2)
+    );
     setAmountError(null);
   }, [
     sendCurrency,
@@ -397,7 +384,6 @@ const Wallet = () => {
     () => setShowReceiveModal(false),
     []
   );
-
   const copyToClipboard = useCallback(
     (textToCopy = user?.email) => {
       if (!textToCopy || isCopied) return;
@@ -408,9 +394,7 @@ const Wallet = () => {
           setIsCopied(true);
           setTimeout(() => setIsCopied(false), 1500);
         })
-        .catch((err) => {
-          toast.error(t("walletPage.receiveModal.copyFail"));
-        });
+        .catch(() => toast.error(t("walletPage.receiveModal.copyFail")));
     },
     [isCopied, user?.email, t]
   );
@@ -620,12 +604,13 @@ const Wallet = () => {
             </div>
           </div>
           <div className={`transaction-amount fw-bold fs-6 ${iconColorClass}`}>
+            
             {prefix} {amountStr} {statusBadge}
           </div>
         </ListGroup.Item>
       );
     },
-    [handleShowActivityDetails, userId, t, formatCurrency]
+    [handleShowActivityDetails, t, formatCurrency]
   );
 
   if (userLoading && !user)
@@ -661,7 +646,7 @@ const Wallet = () => {
       return t("walletPage.sendModal.step4Title_confirm", {
         step: hasSellerBalance ? 4 : 3,
       });
-    return "Send Funds";
+    return t("walletPage.send");
   };
 
   return (
@@ -829,6 +814,8 @@ const Wallet = () => {
           </Row>
         </Col>
       </Row>
+
+      {/* Send Modal */}
       <Modal
         show={showSendModal}
         onHide={handleCloseSendModal}
@@ -882,7 +869,9 @@ const Wallet = () => {
                   ) : recipientUser ? (
                     <>
                       <FaCheckCircle className="me-1" />
-                      {recipientUser.fullName}
+                      {t("walletPage.sendModal.userFound", {
+                        name: recipientUser.fullName,
+                      })}
                     </>
                   ) : (
                     <>​</>
@@ -899,7 +888,7 @@ const Wallet = () => {
                   t("walletPage.sendModal.checking")
                 ) : (
                   <>
-                    <FaSearch className="me-1" />{" "}
+                    <FaSearch className="me-1" />
                     {t("walletPage.sendModal.checkEmailButton")}
                   </>
                 )}
@@ -1003,8 +992,11 @@ const Wallet = () => {
               <Form.Group className="mb-3">
                 <Form.Label>
                   {t("walletPage.sendModal.availableFrom", {
-                    source:
-                      sendFromSource === "seller" ? "Seller" : "Principal",
+                    source: t(
+                      sendFromSource === "seller"
+                        ? "walletPage.sendModal.sellerBalanceLabel"
+                        : "walletPage.sendModal.principalBalanceLabel"
+                    ),
                     currency: sendCurrency,
                   })}
                 </Form.Label>
@@ -1091,9 +1083,11 @@ const Wallet = () => {
                 <ListGroup.Item className="d-flex justify-content-between">
                   <span>{t("walletPage.sendModal.fromLabel")}</span>
                   <strong>
-                    {sendFromSource === "seller"
-                      ? "Seller Available Balance"
-                      : "Principal Balance"}
+                    {t(
+                      sendFromSource === "seller"
+                        ? "walletPage.sendModal.sellerBalanceLabel"
+                        : "walletPage.sendModal.principalBalanceLabel"
+                    )}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between">
@@ -1129,7 +1123,7 @@ const Wallet = () => {
               onClick={goToPrevStep}
               disabled={isSending}
             >
-              <FaArrowLeft className="me-1" />{" "}
+              <FaArrowLeft className="me-1" />
               {t("walletPage.sendModal.backButton")}
             </Button>
           )}
@@ -1148,13 +1142,13 @@ const Wallet = () => {
               onClick={goToNextStep}
               disabled={!recipientUser || isCheckingEmail}
             >
-              {t("walletPage.sendModal.nextButton")}{" "}
+              {t("walletPage.sendModal.nextButton")}
               <FaArrowRight className="ms-1" />
             </Button>
           )}
           {modalStep === 2 && user?.sellerAvailableBalance > 0 && (
             <Button variant="primary" onClick={goToNextStep}>
-              {t("walletPage.sendModal.nextButton")}{" "}
+              {t("walletPage.sendModal.nextButton")}
               <FaArrowRight className="ms-1" />
             </Button>
           )}
@@ -1169,7 +1163,7 @@ const Wallet = () => {
                 isNaN(parseFloat(sendAmount))
               }
             >
-              {t("walletPage.sendModal.nextButton")}{" "}
+              {t("walletPage.sendModal.nextButton")}
               <FaArrowRight className="ms-1" />
             </Button>
           )}
@@ -1181,7 +1175,7 @@ const Wallet = () => {
             >
               {isSending ? (
                 <>
-                  <Spinner size="sm" animation="border" />{" "}
+                  <Spinner size="sm" animation="border" />
                   {t("walletPage.sendModal.sendingButton")}
                 </>
               ) : (
@@ -1191,6 +1185,8 @@ const Wallet = () => {
           )}
         </Modal.Footer>
       </Modal>
+
+      {/* Receive Modal */}
       <Modal show={showReceiveModal} onHide={handleCloseReceiveModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -1240,6 +1236,7 @@ const Wallet = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
       <ActivityDetailsModal
         show={showActivityModal}
         onHide={handleCloseActivityDetails}

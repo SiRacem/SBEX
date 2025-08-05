@@ -1,8 +1,5 @@
 // src/pages/Comptes.jsx
-// *** النسخة النهائية الكاملة المصححة والمحدثة ***
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useSelector, useDispatch } from "react-redux";
 import {
   Button,
   Row,
@@ -16,6 +13,7 @@ import {
   Carousel,
   Image,
 } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
   FaPlus,
   FaTrash,
@@ -24,20 +22,20 @@ import {
   FaHourglassHalf,
   FaEdit,
   FaRegTrashAlt,
-  FaEye,
 } from "react-icons/fa";
-import axios from "axios"; // <-- استيراد axios لرفع الصور
+import axios from "axios";
+import { useSelector, useDispatch } from "react-redux";
 import {
   getProducts,
   addProduct,
   deleteProduct,
   updateProduct,
-} from "../redux/actions/productAction"; // تأكد من المسار الصحيح
-import "./Comptes.css"; // تأكد من المسار الصحيح وأنماط المعاينة موجودة
+} from "../redux/actions/productAction";
+import "./Comptes.css";
 
-// --- مكون بطاقة الحساب (محسن ومعالج خطأ الصور) ---
+// --- مكون بطاقة الحساب (يبقى كما هو) ---
 const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
-  // تعريف الصور البديلة مباشرة هنا أو تمريرها كـ props إذا أردت
+  const { t } = useTranslation();
   const fallbackImageUrl = useMemo(
     () =>
       'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>',
@@ -48,63 +46,53 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
       'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>',
     []
   );
-
-  // دالة تنسيق العملة (بدون useCallback هنا)
   const formatCurrency = (amount, currencyCode = "TND") => {
     const numericAmount = Number(amount);
-    if (isNaN(numericAmount)) {
-      return "N/A";
-    }
+    if (isNaN(numericAmount)) return "N/A";
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
     }).format(numericAmount);
   };
-
-  // معالج خطأ تحميل الصورة (بدون useCallback هنا)
   const handleImageError = (e) => {
     if (e.target.src !== fallbackImageUrl) {
-      console.warn(
-        `Image failed: ${e.target.currentSrc || e.target.src}. Using fallback.`
-      );
-      e.target.onerror = null; // مهم لمنع الحلقة
+      e.target.onerror = null;
       e.target.src = fallbackImageUrl;
     }
   };
-
-  // الدوال الممررة من الأب
   const triggerEdit = () => onEdit(product);
   const triggerDelete = () => onDelete(product?._id);
-
-  if (!product || !product._id) {
-    return null;
-  } // حماية
-
+  if (!product || !product._id) return null;
   const images = Array.isArray(product.imageUrls) ? product.imageUrls : [];
-
   return (
     <Col md={6} lg={4} className="mb-4">
       <Card className={`shadow-sm h-100 status-${product.status || "unknown"}`}>
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0 card-title-truncate">
-            {product.title || "Untitled"}
+            {product.title || t("comptes.untitled")}
           </h5>
           <span>
-            {" "}
-            {/* Status Icons */}
             {product.status === "approved" && (
-              <FaCheckCircle className="text-success" title="Approved" />
+              <FaCheckCircle
+                className="text-success"
+                title={t("comptes.status.approved")}
+              />
             )}
             {product.status === "pending" && (
-              <FaHourglassHalf className="text-warning" title="Pending" />
+              <FaHourglassHalf
+                className="text-warning"
+                title={t("comptes.status.pending")}
+              />
             )}
             {product.status === "rejected" && (
-              <FaTimesCircle className="text-danger" title="Rejected" />
+              <FaTimesCircle
+                className="text-danger"
+                title={t("comptes.status.rejected")}
+              />
             )}
           </span>
         </Card.Header>
-        {/* Carousel */}
         {images.length > 0 ? (
           <Carousel
             interval={null}
@@ -116,9 +104,11 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
               <Carousel.Item key={`${product._id}-img-${index}`}>
                 <img
                   className="d-block w-100 account-card-img"
-                  src={url || noImageUrl} // استخدام البديل المحلي
-                  alt={`${product.title || "Account"} - Slide ${index + 1}`}
-                  onError={handleImageError} // <-- استخدام المعالج المحلي
+                  src={url || noImageUrl}
+                  alt={`${product.title || t("comptes.account")} - Slide ${
+                    index + 1
+                  }`}
+                  onError={handleImageError}
                 />
               </Carousel.Item>
             ))}
@@ -129,14 +119,13 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
             src={noImageUrl}
             className="account-card-img"
           />
-        )}{" "}
-        {/* استخدام البديل المحلي */}
+        )}
         <Card.Body className="d-flex flex-column">
           <Card.Text className="text-muted small flex-grow-1 mb-2">
-            {product.description || "No description"}
+            {product.description || t("comptes.noDescription")}
           </Card.Text>
           <p className="small mb-1">
-            <strong>Link:</strong> {product.linkType || "N/A"}
+            <strong>{t("comptes.link")}:</strong> {product.linkType || "N/A"}
           </p>
           <p className="fw-bold mb-0">
             {formatCurrency(product.price, product.currency)}
@@ -149,7 +138,7 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
               size="sm"
               className="me-2 action-btn"
               onClick={triggerEdit}
-              title="Edit Account"
+              title={t("comptes.editAccount")}
             >
               <FaEdit />
             </Button>
@@ -159,7 +148,7 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
             size="sm"
             className="action-btn"
             onClick={triggerDelete}
-            title="Delete Account"
+            title={t("comptes.deleteAccount")}
           >
             <FaTrash />
           </Button>
@@ -167,17 +156,16 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
       </Card>
     </Col>
   );
-}); // نهاية AccountCard
+});
 
-// --- المكون الرئيسي للصفحة ---
 const Comptes = () => {
-  // --- State ---
+  const { t } = useTranslation();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [editFormData, setEditFormData] = useState({});
-  const [editImageFiles, setEditImageFiles] = useState([]); // ملفات جديدة للتعديل
-  const [editImagePreviews, setEditImagePreviews] = useState([]); // كل المعاينات للتعديل (جديدة وقديمة)
+  const [editImageFiles, setEditImageFiles] = useState([]);
+  const [editImagePreviews, setEditImagePreviews] = useState([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -186,8 +174,8 @@ const Comptes = () => {
     currency: "TND",
     quantity: 1,
   });
-  const [imageFiles, setImageFiles] = useState([]); // ملفات الإضافة
-  const [imagePreviews, setImagePreviews] = useState([]); // معاينات الإضافة
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [formError, setFormError] = useState(null);
   const [formSuccess, setFormSuccess] = useState(null);
   const [isSubmittingAdd, setIsSubmittingAdd] = useState(false);
@@ -195,20 +183,69 @@ const Comptes = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageToShow, setImageToShow] = useState("");
 
-  const CLOUD_NAME = "draghygoj"; // <-- !! تم التحديث من الصورة !!
-  const UPLOAD_PRESET = "react_upload_images"; // <-- !! تم التحديث من الصورة !!
+  const CLOUD_NAME = "draghygoj";
+  const UPLOAD_PRESET = "react_upload_images";
   const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
-  // --- *** --------------------------------------------- *** ---
-
-  // --- الصور البديلة على مستوى المكون الرئيسي ---
   const fallbackImageUrl = useMemo(
     () =>
       'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>',
     []
   );
-  // -----------------------------------------------------
 
-  // --- Redux ---
+  const linkOptions = useMemo(
+    () => [
+      {
+        value: "Konami ID ✅ Gmail ❌ Mail ✅",
+        parts: [
+          { text: "Konami ID", icon: "✅" },
+          { text: "Gmail", icon: "❌" },
+          { text: "Mail", icon: "✅" },
+        ],
+      },
+      {
+        value: "Konami ID ✅ Gmail ❌ Mail ❌",
+        parts: [
+          { text: "Konami ID", icon: "✅" },
+          { text: "Gmail", icon: "❌" },
+          { text: "Mail", icon: "❌" },
+        ],
+      },
+      {
+        value: "Konami ID ✅ Gmail ✅ Mail ✅",
+        parts: [
+          { text: "Konami ID", icon: "✅" },
+          { text: "Gmail", icon: "✅" },
+          { text: "Mail", icon: "✅" },
+        ],
+      },
+      {
+        value: "Konami ID ✅ Gmail ✅ Mail ❌",
+        parts: [
+          { text: "Konami ID", icon: "✅" },
+          { text: "Gmail", icon: "✅" },
+          { text: "Mail", icon: "❌" },
+        ],
+      },
+      {
+        value: "Konami ID ❌ Gmail ✅ Mail ✅",
+        parts: [
+          { text: "Konami ID", icon: "❌" },
+          { text: "Gmail", icon: "✅" },
+          { text: "Mail", icon: "✅" },
+        ],
+      },
+      {
+        value: "Konami ID ❌ Gmail ✅ Mail ❌",
+        parts: [
+          { text: "Konami ID", icon: "❌" },
+          { text: "Gmail", icon: "✅" },
+          { text: "Mail", icon: "❌" },
+        ],
+      },
+    ],
+    []
+  );
+
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.userReducer);
   const {
@@ -230,89 +267,65 @@ const Comptes = () => {
     };
   });
 
-  // --- Effects ---
   useEffect(() => {
-    if (user?._id) {
-      dispatch(getProducts());
-    }
+    if (user?._id) dispatch(getProducts());
   }, [dispatch, user?._id]);
+
   useEffect(() => {
-    // Cleanup object URLs
     const urlsToRevoke = [...imagePreviews, ...editImagePreviews]
       .map((p) => p.url)
       .filter((url) => typeof url === "string" && url.startsWith("blob:"));
-    // eslint-disable-next-line no-return-assign
-    return () => {
-      urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
-    };
+    return () => urlsToRevoke.forEach((url) => URL.revokeObjectURL(url));
   }, [imagePreviews, editImagePreviews]);
 
-  // --- Filtering Products ---
   const userProducts = useMemo(
     () => Products.filter((p) => p?.user?._id === user?._id),
     [Products, user?._id]
   );
-
   const pendingProducts = useMemo(
     () => userProducts.filter((p) => p?.status === "pending"),
     [userProducts]
   );
-
   const approvedProducts = useMemo(
     () => userProducts.filter((p) => p?.status === "approved"),
     [userProducts]
   );
-
   const rejectedProducts = useMemo(
     () => userProducts.filter((p) => p?.status === "rejected"),
     [userProducts]
   );
 
-  // --- *** دالة رفع الصور (مشتركة للإضافة والتعديل) *** ---
   const uploadImages = useCallback(
     async (filesToUpload) => {
       if (!filesToUpload || filesToUpload.length === 0) return [];
-      console.log(`Uploading ${filesToUpload.length} images to Cloudinary...`);
-      // استخدام map لإنشاء مصفوفة من الـ Promises
       const uploadPromises = filesToUpload.map((file) => {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", UPLOAD_PRESET);
-        // إرجاع الـ Promise الخاص بطلب axios
         return axios
           .post(CLOUDINARY_URL, formData)
-          .then((response) => {
-            console.log(`Uploaded ${file.name}: ${response.data.secure_url}`);
-            return response.data.secure_url; // إرجاع الرابط الآمن عند النجاح
-          })
+          .then((response) => response.data.secure_url)
           .catch((uploadError) => {
-            console.error(
-              `Error uploading ${file.name}:`,
-              uploadError.response?.data || uploadError.message
-            );
             setFormError(
-              `Failed to upload ${file.name}. ${
-                uploadError.response?.data?.error?.message || ""
-              }`
+              t("comptes.errors.uploadError", {
+                fileName: file.name,
+                error: uploadError.response?.data?.error?.message || "",
+              })
             );
-            return null; // إرجاع null عند الفشل
+            return null;
           });
       });
-      // انتظار جميع الـ Promises
       const results = await Promise.all(uploadPromises);
-      // فلترة الـ nulls (الصور التي فشل رفعها)
-      const successfulUrls = results.filter((url) => url !== null);
-      console.log("Successfully uploaded URLs:", successfulUrls);
-      return successfulUrls;
+      return results.filter((url) => url !== null);
     },
-    [CLOUDINARY_URL, UPLOAD_PRESET]
-  ); // الاعتماديات
-  // --- *** نهاية دالة الرفع *** ---
+    [CLOUDINARY_URL, UPLOAD_PRESET, t]
+  );
 
-  // --- Add Form Handlers ---
-  const handleInputChange = useCallback((e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }, []);
+  const handleInputChange = useCallback(
+    (e) =>
+      setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value })),
+    []
+  );
   const handleImageChange = useCallback(
     (e) => {
       const files = Array.from(e.target.files);
@@ -321,7 +334,7 @@ const Comptes = () => {
           !imageFiles.some((f) => f.name === file.name && f.size === file.size)
       );
       if (uniqueNewFiles.length === 0 && files.length > 0) {
-        alert("One or more selected files are already added.");
+        alert(t("comptes.alerts.imageAlreadyAdded"));
         e.target.value = null;
         return;
       }
@@ -333,76 +346,57 @@ const Comptes = () => {
       setImagePreviews((prev) => [...prev, ...newPreviews]);
       e.target.value = null;
     },
-    [imageFiles]
+    [imageFiles, t]
   );
+
   const handleRemoveImagePreview = useCallback(
     (indexToRemove) => {
-      if (window.confirm("Remove this image preview?")) {
+      if (window.confirm(t("comptes.alerts.removeImageConfirm"))) {
         const removed = imagePreviews[indexToRemove];
         if (removed.url.startsWith("blob:")) URL.revokeObjectURL(removed.url);
         setImagePreviews((prev) => prev.filter((_, i) => i !== indexToRemove));
         setImageFiles((prev) => prev.filter((_, i) => i !== indexToRemove));
       }
     },
-    [imagePreviews]
-  ); // تم تحديث الاعتمادية
+    [imagePreviews, t]
+  );
 
   const handleAddSubmit = useCallback(
     async (e) => {
       e.preventDefault();
       if (imageFiles.length === 0) {
-        setFormError("Please select at least one image.");
+        setFormError(t("comptes.errors.atLeastOneImage"));
         return;
       }
       setFormError(null);
       setFormSuccess(null);
       setIsSubmittingAdd(true);
-
       try {
-        // --- *** 1. رفع الصور المختارة (imageFiles) *** ---
         const uploadedImageUrls = await uploadImages(imageFiles);
-        // ---------------------------------------------
-
-        if (uploadedImageUrls.length === 0) {
-          // التحقق إذا فشل رفع كل الصور
-          throw new Error(
-            "Image upload failed completely. Please check console/network tab for details."
-          );
-        }
-        if (uploadedImageUrls.length < imageFiles.length) {
-          setFormError(
-            "Some images failed to upload. Only successfully uploaded images will be saved."
-          );
-          // استمر بالصور التي نجحت
-        }
-
-        // 2. تجهيز بيانات المنتج بالروابط الصحيحة
+        if (uploadedImageUrls.length === 0)
+          throw new Error(t("comptes.errors.uploadFailed"));
+        if (uploadedImageUrls.length < imageFiles.length)
+          setFormError(t("comptes.errors.someUploadsFailed"));
         const productData = {
           ...formData,
           imageUrls: uploadedImageUrls,
           price: parseFloat(formData.price),
-          quantity: parseInt(formData.quantity, 10) || 1,
+          quantity: 1,
         };
-
-        // 3. التحقق وإرسال للواجهة الخلفية
         if (
           !productData.title ||
           !productData.description ||
           !productData.linkType ||
           isNaN(productData.price) ||
           !productData.currency
-        ) {
-          throw new Error("Please fill all required fields correctly.");
-        }
-        console.log("Submitting Add Data:", productData);
+        )
+          throw new Error(t("comptes.errors.fillAllFields"));
         await dispatch(addProduct(productData));
-
-        // 4. إعادة التعيين والنجاح
-        setFormSuccess("Account submitted successfully! Pending approval.");
+        setFormSuccess(t("comptes.alerts.addSuccess"));
         setFormData({
           title: "",
           description: "",
-          linkType: "Konami ID ✅ Gmail ❌ Mail ❌",
+          linkType: linkOptions[0].value,
           price: "",
           currency: "TND",
           quantity: 1,
@@ -411,24 +405,26 @@ const Comptes = () => {
         setImagePreviews([]);
         setShowAddForm(false);
       } catch (error) {
-        console.error("Error during Add submission:", error);
-        // عرض الخطأ القادم من رفع الصور أو من Redux action
         setFormError(
-          error?.message || productErrors || "Error submitting account."
+          error?.message || productErrors || t("comptes.errors.addError")
         );
       } finally {
         setIsSubmittingAdd(false);
       }
     },
-    [dispatch, formData, imageFiles, productErrors, uploadImages]
-  ); // إضافة uploadImages وتحديث الاعتماديات
+    [
+      dispatch,
+      formData,
+      imageFiles,
+      productErrors,
+      uploadImages,
+      t,
+      linkOptions,
+    ]
+  );
 
-  // --- Edit Modal Handlers ---
   const handleEditClick = useCallback((product) => {
-    if (!product || !product._id) {
-      console.error("Invalid product data for edit");
-      return;
-    }
+    if (!product || !product._id) return;
     setEditingProduct(product);
     setEditFormData({
       _id: product._id,
@@ -447,15 +443,19 @@ const Comptes = () => {
     setFormError(null);
     setShowEditModal(true);
   }, []);
+
   const handleEditModalClose = useCallback(() => {
     setShowEditModal(false);
     setEditingProduct(null);
     setEditImagePreviews([]);
     setEditImageFiles([]);
   }, []);
-  const handleEditInputChange = useCallback((e) => {
-    setEditFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }, []);
+  const handleEditInputChange = useCallback(
+    (e) =>
+      setEditFormData((prev) => ({ ...prev, [e.target.name]: e.target.value })),
+    []
+  );
+
   const handleEditImageChange = useCallback(
     (e) => {
       const files = Array.from(e.target.files);
@@ -471,7 +471,7 @@ const Comptes = () => {
           )
       );
       if (uniqueNewFiles.length === 0 && files.length > 0) {
-        alert("One or more selected files are already in the list.");
+        alert(t("comptes.alerts.imageAlreadyAdded"));
         e.target.value = null;
         return;
       }
@@ -484,73 +484,49 @@ const Comptes = () => {
       setEditImagePreviews((prev) => [
         ...prev.filter((p) => p.isExisting),
         ...newPreviews,
-      ]); // عرض الموجود + الجديد
+      ]);
       e.target.value = null;
     },
-    [editImageFiles, editImagePreviews]
+    [editImageFiles, editImagePreviews, t]
   );
+
   const handleRemoveEditImagePreview = useCallback(
     (indexToRemove) => {
-      if (window.confirm("Remove this image?")) {
-        const previews = [...editImagePreviews];
-        const removedPreview = previews.splice(indexToRemove, 1)[0];
-        setEditImagePreviews(previews);
-        if (removedPreview.isNew && removedPreview.url.startsWith("blob:")) {
-          URL.revokeObjectURL(removedPreview.url);
-        }
-        if (removedPreview.isNew) {
+      if (window.confirm(t("comptes.alerts.removeImageConfirm"))) {
+        const newPreviews = [...editImagePreviews];
+        const removed = newPreviews.splice(indexToRemove, 1)[0];
+        setEditImagePreviews(newPreviews);
+        if (removed.isNew) {
+          if (removed.url.startsWith("blob:")) URL.revokeObjectURL(removed.url);
           setEditImageFiles((prev) =>
-            prev.filter((file) => file !== removedPreview.fileObject)
+            prev.filter((file) => file !== removed.fileObject)
           );
         }
       }
     },
-    [editImagePreviews]
-  ); // تم تحديث الاعتمادية
+    [editImagePreviews, t]
+  );
+
   const handleEditSubmit = useCallback(
     async (e) => {
       e.preventDefault();
       setFormError(null);
       setIsSubmittingEdit(true);
-
       try {
-        // 1. الصور الموجودة المتبقية
         const keptExistingUrls = editImagePreviews
           .filter((p) => p.isExisting)
           .map((p) => p.url);
-
-        // 2. رفع الصور الجديدة فقط (editImageFiles)
         let newlyUploadedUrls = [];
         if (editImageFiles.length > 0) {
-          // --- *** رفع الصور الجديدة باستخدام دالة الرفع *** ---
           newlyUploadedUrls = await uploadImages(editImageFiles);
-          if (newlyUploadedUrls.length !== editImageFiles.length) {
-            console.warn("Some new images failed to upload during edit.");
-            // يمكنك اختيار إيقاف العملية أو المتابعة
-            if (
-              newlyUploadedUrls.length === 0 &&
-              keptExistingUrls.length === 0
-            ) {
-              throw new Error(
-                "Image upload failed and no existing images kept."
-              );
-            }
-            setFormError("Warning: Some new images failed to upload."); // عرض تحذير
-          }
-          // -----------------------------------------------
+          if (newlyUploadedUrls.length !== editImageFiles.length)
+            setFormError(t("comptes.errors.someUploadsFailed"));
         }
-
-        // 3. دمج الروابط النهائية
         const finalImageUrls = [...keptExistingUrls, ...newlyUploadedUrls];
-        if (finalImageUrls.length === 0) {
-          throw new Error("Product must have at least one image.");
-        }
-
-        // 4. تجهيز بيانات التحديث وإرسالها
+        if (finalImageUrls.length === 0)
+          throw new Error(t("comptes.errors.atLeastOneImage"));
         const price = parseFloat(editFormData.price);
-        if (isNaN(price)) {
-          throw new Error("Price must be a valid number.");
-        }
+        if (isNaN(price)) throw new Error(t("comptes.errors.invalidPrice"));
         const updateData = {
           ...editFormData,
           imageUrls: finalImageUrls,
@@ -563,16 +539,13 @@ const Comptes = () => {
           !dataToSend.description ||
           !dataToSend.linkType ||
           !dataToSend.currency
-        ) {
-          throw new Error("Please fill all required fields for update.");
-        }
-        console.log("Submitting Update Data:", dataToSend);
+        )
+          throw new Error(t("comptes.errors.fillAllFields"));
         await dispatch(updateProduct(_id, dataToSend));
         handleEditModalClose();
       } catch (error) {
-        console.error("Error during Update submission:", error);
         setFormError(
-          error?.message || productErrors || "Failed to update account."
+          error?.message || productErrors || t("comptes.errors.updateError")
         );
       } finally {
         setIsSubmittingEdit(false);
@@ -580,45 +553,38 @@ const Comptes = () => {
     },
     [
       dispatch,
-      editingProduct,
       editFormData,
       editImageFiles,
       editImagePreviews,
       handleEditModalClose,
       productErrors,
       uploadImages,
+      t,
     ]
-  ); // إضافة uploadImages وتحديث الاعتماديات
+  );
 
-  // --- Delete Handler ---
   const handleDelete = useCallback(
     (productId) => {
       if (!productId) return;
-      if (window.confirm("Delete this account permanently?")) {
+      if (window.confirm(t("comptes.alerts.deleteConfirm")))
         dispatch(deleteProduct(productId));
-      }
     },
-    [dispatch]
+    [dispatch, t]
   );
-
-  // --- Image Modal Handlers ---
   const handleShowImageModal = useCallback((imageUrl) => {
     setImageToShow(imageUrl);
     setShowImageModal(true);
   }, []);
   const handleCloseImageModal = useCallback(() => setShowImageModal(false), []);
-
-  // --- Toggle Add Form ---
   const toggleAddForm = useCallback(() => {
-    const isOpening = !showAddForm;
-    setShowAddForm(isOpening);
-    setFormError(null);
-    setFormSuccess(null);
-    if (isOpening) {
+    setShowAddForm((prev) => !prev);
+    if (!showAddForm) {
+      setFormError(null);
+      setFormSuccess(null);
       setFormData({
         title: "",
         description: "",
-        linkType: "Konami ID ✅ Gmail ❌ Mail ❌",
+        linkType: linkOptions[0].value,
         price: "",
         currency: "TND",
         quantity: 1,
@@ -626,29 +592,28 @@ const Comptes = () => {
       setImageFiles([]);
       setImagePreviews([]);
     }
-  }, [showAddForm]);
+  }, [showAddForm, linkOptions]);
 
-  // --- JSX ---
   return (
     <div className="comptes-page container-fluid py-4">
-      {/* Header and Add Button */}
       <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-        <h2 className="page-title mb-0">My Accounts ({userProducts.length})</h2>
+        <h2 className="page-title mb-0">
+          {t("comptes.title")} ({userProducts.length})
+        </h2>
         <Button
           variant="primary"
           onClick={toggleAddForm}
           className="add-account-btn shadow-sm"
         >
           <FaPlus className="me-1" />{" "}
-          {showAddForm ? "Cancel Add" : "Add Account"}
+          {showAddForm ? t("comptes.cancelAdd") : t("comptes.addAccount")}
         </Button>
       </div>
 
-      {/* Add Form */}
       {showAddForm && (
         <Card className="shadow-sm mb-4 add-form-card">
           <Card.Body>
-            <h4 className="mb-3 text-center">Add New Account Details</h4>
+            <h4 className="mb-3 text-center">{t("comptes.addForm.title")}</h4>
             {formError && (
               <Alert
                 variant="danger"
@@ -661,15 +626,12 @@ const Comptes = () => {
             {formSuccess && <Alert variant="success">{formSuccess}</Alert>}
             <Form onSubmit={handleAddSubmit}>
               <Row>
-                {/* Title */}
-                <Col md={6}>
-                  {" "}
+                <Col md={12}>
                   <FloatingLabel
                     controlId="titleInput"
-                    label="Account Title"
+                    label={t("comptes.addForm.accountTitle")}
                     className="mb-3"
                   >
-                    {" "}
                     <Form.Control
                       type="text"
                       placeholder="."
@@ -677,71 +639,59 @@ const Comptes = () => {
                       value={formData.title}
                       onChange={handleInputChange}
                       required
-                    />{" "}
-                  </FloatingLabel>{" "}
+                    />
+                  </FloatingLabel>
                 </Col>
-                {/* Images */}
-                <Col md={6}>
-                  {" "}
+                <Col md={12}>
                   <Form.Group controlId="imageInput" className="mb-3">
-                    {" "}
-                    <Form.Label>Images</Form.Label>{" "}
+                    <Form.Label>{t("comptes.addForm.images")}</Form.Label>
                     <Form.Control
                       type="file"
                       multiple
                       onChange={handleImageChange}
                       accept="image/*"
-                    />{" "}
+                    />
                     <div className="image-preview-container large-preview mt-2">
-                      {" "}
                       {imagePreviews.map((preview, index) => (
                         <div
                           key={`add-preview-${index}`}
                           className="preview-item"
+                          onClick={() => handleShowImageModal(preview.url)}
+                          title={t("comptes.viewImage")}
                         >
-                          {" "}
                           <img
                             src={preview.url}
                             alt={`Preview ${index + 1}`}
                             className="preview-image-lg"
-                          />{" "}
-                          <Button
-                            variant="outline-light"
-                            size="sm"
-                            className="view-preview-btn"
-                            title="View Image"
-                            onClick={() => handleShowImageModal(preview.url)}
-                          >
-                            <FaEye />
-                          </Button>{" "}
+                          />
                           <Button
                             variant="danger"
                             size="sm"
                             className="remove-preview-btn"
-                            title="Remove Image"
-                            onClick={() => handleRemoveImagePreview(index)}
+                            title={t("comptes.removeImage")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveImagePreview(index);
+                            }}
                           >
                             <FaRegTrashAlt />
-                          </Button>{" "}
+                          </Button>
                         </div>
-                      ))}{" "}
+                      ))}
                       {imagePreviews.length === 0 && (
                         <div className="text-muted p-3 fst-italic small">
-                          Select one or more images.
+                          {t("comptes.addForm.selectImages")}
                         </div>
-                      )}{" "}
-                    </div>{" "}
-                  </Form.Group>{" "}
+                      )}
+                    </div>
+                  </Form.Group>
                 </Col>
-                {/* Description */}
                 <Col md={12}>
-                  {" "}
                   <FloatingLabel
                     controlId="descriptionInput"
-                    label="Account Description"
+                    label={t("comptes.addForm.description")}
                     className="mb-3"
                   >
-                    {" "}
                     <Form.Control
                       as="textarea"
                       placeholder="."
@@ -750,46 +700,47 @@ const Comptes = () => {
                       value={formData.description}
                       onChange={handleInputChange}
                       required
-                    />{" "}
-                  </FloatingLabel>{" "}
+                    />
+                  </FloatingLabel>
                 </Col>
-                {/* Link Type */}
-                <Col md={12}>
-                  {" "}
-                  <Form.Group className="mb-3">
-                    {" "}
-                    <Form.Label>Account Link Type</Form.Label>{" "}
-                    {[
-                      "Konami ID ✅ Gmail ❌ Mail ✅",
-                      "Konami ID ✅ Gmail ❌ Mail ❌",
-                      "Konami ID ✅ Gmail ✅ Mail ✅",
-                      "Konami ID ✅ Gmail ✅ Mail ❌",
-                      "Konami ID ❌ Gmail ✅ Mail ✅",
-                      "Konami ID ❌ Gmail ✅ Mail ❌",
-                    ].map((linkValue, idx) => (
-                      <Form.Check
-                        key={`add-link-${idx}`}
-                        type="radio"
-                        id={`link${idx + 1}`}
-                        name="linkType"
-                        label={linkValue}
-                        value={linkValue}
-                        checked={formData.linkType === linkValue}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    ))}{" "}
-                  </Form.Group>{" "}
+                <Col md={12} className="mb-3">
+                  <Form.Label>{t("comptes.addForm.linkType")}</Form.Label>
+                  <Row xs={1} md={2} className="g-2">
+                    {linkOptions.map((option) => (
+                      <Col key={option.value}>
+                        <Card
+                          className={`link-type-card ${
+                            formData.linkType === option.value ? "selected" : ""
+                          }`}
+                          onClick={() =>
+                            handleInputChange({
+                              target: { name: "linkType", value: option.value },
+                            })
+                          }
+                        >
+                          <Card.Body>
+                            {formData.linkType === option.value && (
+                              <FaCheckCircle className="selected-check" />
+                            )}
+                            <div className="link-type-content">
+                              {option.parts.map((part, idx) => (
+                                <span key={idx}>
+                                  {part.icon} {part.text}
+                                </span>
+                              ))}
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
                 </Col>
-                {/* Price & Currency */}
                 <Col md={6}>
-                  {" "}
                   <FloatingLabel
                     controlId="priceInput"
-                    label="Price"
+                    label={t("comptes.addForm.price")}
                     className="mb-3"
                   >
-                    {" "}
                     <Form.Control
                       type="number"
                       placeholder="."
@@ -799,28 +750,25 @@ const Comptes = () => {
                       required
                       min="0"
                       step="0.01"
-                    />{" "}
-                  </FloatingLabel>{" "}
+                    />
+                  </FloatingLabel>
                 </Col>
                 <Col md={6}>
-                  {" "}
                   <FloatingLabel
                     controlId="currencyInput"
-                    label="Currency"
+                    label={t("comptes.addForm.currency")}
                     className="mb-3"
                   >
-                    {" "}
                     <Form.Select
                       name="currency"
                       value={formData.currency}
                       onChange={handleInputChange}
                       required
                     >
-                      {" "}
                       <option value="TND">TND</option>
-                      <option value="USD">USD</option>{" "}
-                    </Form.Select>{" "}
-                  </FloatingLabel>{" "}
+                      <option value="USD">USD</option>
+                    </Form.Select>
+                  </FloatingLabel>
                 </Col>
               </Row>
               <Button
@@ -829,25 +777,24 @@ const Comptes = () => {
                 className="w-100 mt-2"
                 disabled={isSubmittingAdd}
               >
-                {" "}
                 {isSubmittingAdd ? (
                   <>
                     <Spinner as="span" animation="border" size="sm" />{" "}
-                    Submitting...
+                    {t("comptes.submitting")}
                   </>
                 ) : (
-                  "Submit Account"
-                )}{" "}
+                  t("comptes.submitAccount")
+                )}
               </Button>
             </Form>
           </Card.Body>
         </Card>
       )}
 
-      {/* Product Lists */}
       {productsLoading && (
         <div className="text-center my-4">
-          <Spinner animation="border" variant="primary" /> Loading accounts...
+          <Spinner animation="border" variant="primary" />{" "}
+          {t("comptes.loading")}
         </div>
       )}
       {!productsLoading && productErrors && (
@@ -855,12 +802,12 @@ const Comptes = () => {
           {productErrors}
         </Alert>
       )}
+
       {!productsLoading && !productErrors && (
         <>
-          {/* Pending */}
           <div className="account-section mb-4">
             <h4 className="section-title pending-title">
-              Pending Approval ({pendingProducts.length})
+              {t("comptes.pendingTitle")} ({pendingProducts.length})
             </h4>
             <Row className="g-4">
               {pendingProducts.length > 0 ? (
@@ -875,16 +822,15 @@ const Comptes = () => {
               ) : (
                 <Col>
                   <Alert variant="info" className="text-center py-2">
-                    No accounts pending.
+                    {t("comptes.noPending")}
                   </Alert>
                 </Col>
               )}
             </Row>
           </div>
-          {/* Approved */}
           <div className="account-section mb-4">
             <h4 className="section-title approved-title">
-              Approved Accounts ({approvedProducts.length})
+              {t("comptes.approvedTitle")} ({approvedProducts.length})
             </h4>
             <Row className="g-4">
               {approvedProducts.length > 0 ? (
@@ -899,16 +845,15 @@ const Comptes = () => {
               ) : (
                 <Col>
                   <Alert variant="secondary" className="text-center py-2">
-                    No approved accounts.
+                    {t("comptes.noApproved")}
                   </Alert>
                 </Col>
               )}
             </Row>
           </div>
-          {/* Rejected */}
           <div className="account-section">
             <h4 className="section-title rejected-title">
-              Rejected Accounts ({rejectedProducts.length})
+              {t("comptes.rejectedTitle")} ({rejectedProducts.length})
             </h4>
             <Row className="g-4">
               {rejectedProducts.length > 0 ? (
@@ -926,7 +871,7 @@ const Comptes = () => {
                     variant="light"
                     className="text-center text-muted py-2"
                   >
-                    No rejected accounts.
+                    {t("comptes.noRejected")}
                   </Alert>
                 </Col>
               )}
@@ -935,7 +880,6 @@ const Comptes = () => {
         </>
       )}
 
-      {/* Edit Modal */}
       <Modal
         show={showEditModal}
         onHide={handleEditModalClose}
@@ -944,7 +888,9 @@ const Comptes = () => {
         backdrop="static"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Edit Account: {editingProduct?.title}</Modal.Title>
+          <Modal.Title>
+            {t("comptes.editModal.title")}: {editingProduct?.title}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {formError && (
@@ -958,15 +904,12 @@ const Comptes = () => {
           )}
           <Form onSubmit={handleEditSubmit}>
             <Row>
-              {/* Edit Title */}
-              <Col md={6}>
-                {" "}
+              <Col md={12}>
                 <FloatingLabel
                   controlId="editTitleInput"
-                  label="Account Title"
+                  label={t("comptes.addForm.accountTitle")}
                   className="mb-3"
                 >
-                  {" "}
                   <Form.Control
                     type="text"
                     placeholder="."
@@ -974,23 +917,19 @@ const Comptes = () => {
                     value={editFormData.title || ""}
                     onChange={handleEditInputChange}
                     required
-                  />{" "}
-                </FloatingLabel>{" "}
+                  />
+                </FloatingLabel>
               </Col>
-              {/* Edit Images */}
-              <Col md={6}>
-                {" "}
+              <Col md={12}>
                 <Form.Group controlId="editImageInput" className="mb-3">
-                  {" "}
-                  <Form.Label>Images (Add new or remove)</Form.Label>{" "}
+                  <Form.Label>{t("comptes.editModal.images")}</Form.Label>
                   <Form.Control
                     type="file"
                     multiple
                     onChange={handleEditImageChange}
                     accept="image/*"
-                  />{" "}
+                  />
                   <div className="image-preview-container large-preview mt-2">
-                    {" "}
                     {editImagePreviews.map((preview, index) => (
                       <div
                         key={
@@ -999,54 +938,48 @@ const Comptes = () => {
                             : `new-${index}`
                         }
                         className="preview-item"
+                        onClick={() => handleShowImageModal(preview.url)}
+                        title={t("comptes.viewImage")}
                       >
-                        {" "}
                         <img
                           src={preview.url}
                           alt={`Preview ${index + 1}`}
                           className="preview-image-lg"
                           onError={(e) => (e.target.src = fallbackImageUrl)}
-                        />{" "}
-                        <Button
-                          variant="outline-light"
-                          size="sm"
-                          className="view-preview-btn"
-                          title="View Image"
-                          onClick={() => handleShowImageModal(preview.url)}
-                        >
-                          <FaEye />
-                        </Button>{" "}
+                        />
                         <Button
                           variant="danger"
                           size="sm"
                           className="remove-preview-btn"
-                          title="Remove Image"
-                          onClick={() => handleRemoveEditImagePreview(index)}
+                          title={t("comptes.removeImage")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveEditImagePreview(index);
+                          }}
                         >
                           <FaRegTrashAlt />
-                        </Button>{" "}
+                        </Button>
                         {preview.isExisting && (
-                          <span className="existing-badge">Current</span>
-                        )}{" "}
+                          <span className="existing-badge">
+                            {t("comptes.editModal.current")}
+                          </span>
+                        )}
                       </div>
-                    ))}{" "}
+                    ))}
                     {editImagePreviews.length === 0 && (
                       <div className="text-muted p-3 fst-italic small">
-                        No images. Add at least one.
+                        {t("comptes.editModal.noImages")}
                       </div>
-                    )}{" "}
-                  </div>{" "}
-                </Form.Group>{" "}
+                    )}
+                  </div>
+                </Form.Group>
               </Col>
-              {/* Edit Description */}
               <Col md={12}>
-                {" "}
                 <FloatingLabel
                   controlId="editDescriptionInput"
-                  label="Account Description"
+                  label={t("comptes.addForm.description")}
                   className="mb-3"
                 >
-                  {" "}
                   <Form.Control
                     as="textarea"
                     placeholder="."
@@ -1055,46 +988,49 @@ const Comptes = () => {
                     value={editFormData.description || ""}
                     onChange={handleEditInputChange}
                     required
-                  />{" "}
-                </FloatingLabel>{" "}
+                  />
+                </FloatingLabel>
               </Col>
-              {/* Edit Link Type */}
-              <Col md={12}>
-                {" "}
-                <Form.Group className="mb-3">
-                  {" "}
-                  <Form.Label>Account Link Type</Form.Label>{" "}
-                  {[
-                    "Konami ID ✅ Gmail ❌ Mail ✅",
-                    "Konami ID ✅ Gmail ❌ Mail ❌",
-                    "Konami ID ✅ Gmail ✅ Mail ✅",
-                    "Konami ID ✅ Gmail ✅ Mail ❌",
-                    "Konami ID ❌ Gmail ✅ Mail ✅",
-                    "Konami ID ❌ Gmail ✅ Mail ❌",
-                  ].map((linkValue, idx) => (
-                    <Form.Check
-                      key={`edit-link-${idx}`}
-                      type="radio"
-                      id={`editLink${idx + 1}`}
-                      name="linkType"
-                      label={linkValue}
-                      value={linkValue}
-                      checked={editFormData.linkType === linkValue}
-                      onChange={handleEditInputChange}
-                      required
-                    />
-                  ))}{" "}
-                </Form.Group>{" "}
+              <Col md={12} className="mb-3">
+                <Form.Label>{t("comptes.addForm.linkType")}</Form.Label>
+                <Row xs={1} md={2} className="g-2">
+                  {linkOptions.map((option) => (
+                    <Col key={option.value}>
+                      <Card
+                        className={`link-type-card ${
+                          editFormData.linkType === option.value
+                            ? "selected"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          handleEditInputChange({
+                            target: { name: "linkType", value: option.value },
+                          })
+                        }
+                      >
+                        <Card.Body>
+                          {editFormData.linkType === option.value && (
+                            <FaCheckCircle className="selected-check" />
+                          )}
+                          <div className="link-type-content">
+                            {option.parts.map((part, idx) => (
+                              <span key={idx}>
+                                {part.icon} {part.text}
+                              </span>
+                            ))}
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
               </Col>
-              {/* Edit Price & Currency */}
               <Col md={6}>
-                {" "}
                 <FloatingLabel
                   controlId="editPriceInput"
-                  label="Price"
+                  label={t("comptes.addForm.price")}
                   className="mb-3"
                 >
-                  {" "}
                   <Form.Control
                     type="number"
                     placeholder="."
@@ -1104,28 +1040,25 @@ const Comptes = () => {
                     required
                     min="0"
                     step="0.01"
-                  />{" "}
-                </FloatingLabel>{" "}
+                  />
+                </FloatingLabel>
               </Col>
               <Col md={6}>
-                {" "}
                 <FloatingLabel
                   controlId="editCurrencyInput"
-                  label="Currency"
+                  label={t("comptes.addForm.currency")}
                   className="mb-3"
                 >
-                  {" "}
                   <Form.Select
                     name="currency"
                     value={editFormData.currency || "TND"}
                     onChange={handleEditInputChange}
                     required
                   >
-                    {" "}
                     <option value="TND">TND</option>
-                    <option value="USD">USD</option>{" "}
-                  </Form.Select>{" "}
-                </FloatingLabel>{" "}
+                    <option value="USD">USD</option>
+                  </Form.Select>
+                </FloatingLabel>
               </Col>
             </Row>
             <div className="d-flex justify-content-end mt-3 border-top pt-3">
@@ -1135,28 +1068,27 @@ const Comptes = () => {
                 className="me-2"
                 disabled={isSubmittingEdit}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
                 variant="primary"
                 disabled={isSubmittingEdit}
               >
-                {" "}
                 {isSubmittingEdit ? (
                   <>
-                    <Spinner as="span" animation="border" size="sm" /> Saving...
+                    <Spinner as="span" animation="border" size="sm" />{" "}
+                    {t("comptes.saving")}
                   </>
                 ) : (
-                  "Save Changes"
-                )}{" "}
+                  t("comptes.saveChanges")
+                )}
               </Button>
             </div>
           </Form>
         </Modal.Body>
       </Modal>
 
-      {/* Image Preview Modal */}
       <Modal
         show={showImageModal}
         onHide={handleCloseImageModal}
@@ -1164,7 +1096,7 @@ const Comptes = () => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Image Preview</Modal.Title>
+          <Modal.Title>{t("comptes.imagePreview")}</Modal.Title>
         </Modal.Header>
         <Modal.Body className="text-center">
           <Image
@@ -1175,7 +1107,7 @@ const Comptes = () => {
           />
         </Modal.Body>
       </Modal>
-    </div> // End comptes-page
+    </div>
   );
 };
 

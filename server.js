@@ -566,21 +566,29 @@ io.on('connection', (socket) => {
     });
 });
 
-cron.schedule('*/5 * * * *', async () => {
+// ***** [!!!] أضف هذا الجزء قبل app.use(cors) أو في نهاية الملف [!!!] *****
+cron.schedule('*/5 * * * *', async () => { // يعمل كل 5 دقائق
     console.log(`[CRON MASTER] Triggering 'releaseDuePendingFunds' job at ${new Date().toISOString()}`);
     try {
+        // تمرير io و onlineUsers للخدمة لتتمكن من إرسال تحديثات فورية
         const result = await releaseDuePendingFunds(io, onlineUsers);
-        console.log(`[CRON MASTER] Job "releaseDuePendingFunds" completed. Released: ${result.fundsReleasedCount}, Errors: ${result.errorsEncountered}.`);
+        console.log(`[CRON MASTER] Job "releaseDuePendingFunds" completed. Released: ${result.fundsReleasedCount}, Errors: ${result.errorsCount}.`);
     } catch (error) {
         console.error('[CRON MASTER] Critical error during scheduled "releaseDuePendingFunds" job:', error);
     }
 });
+// ***** نهاية الإضافة *****
 app.use(helmet());
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // نافذة زمنية مدتها 15 دقيقة
     max: 100, // الحد الأقصى: 100 طلب لكل IP خلال الـ 15 دقيقة
-    message: { msg: "Too many requests from this IP, please try again after 15 minutes" },
+    // ***** [!!!] التعديل الجديد [!!!] *****
+    message: {
+        // أرسل مفتاح الترجمة بدلاً من النص
+        translationKey: "apiErrors.tooManyRequests"
+    },
+    // ***** نهاية التعديل *****
     standardHeaders: true, // يضيف Headers قياسية للمتصفح لإعلامه بالحد
     legacyHeaders: false, // لا يضيف Headers القديمة (X-RateLimit-*)
 });
@@ -618,7 +626,7 @@ app.use('/reports', reportRoute);
 app.use('/support', ticketRoute);
 app.use('/faq', faqRoute);
 
-app.get('/', (req, res) => res.json({ message: 'Welcome to SBEX API!' }));
+app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 
 app.use((err, req, res, next) => {
     console.error("!!! UNHANDLED EXPRESS ERROR !!!:", err.stack || err);

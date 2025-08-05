@@ -74,13 +74,20 @@ exports.addProduct = async (req, res) => {
         if (savedProduct.status === 'pending' && userRole === 'Vendor') {
             const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
             if (admins.length > 0) {
+                // ***** [!!!] هذا هو التعديل الأهم هنا [!!!] *****
                 const notificationDocs = admins.map(admin => ({
                     user: admin._id,
                     type: 'NEW_PRODUCT_PENDING',
-                    title: 'notification_titles.NEW_PRODUCT_PENDING',
-                    message: 'notification_messages.NEW_PRODUCT_PENDING',
-                    messageParams: { vendorName: req.user.fullName || 'Unknown', productName: savedProduct.title || 'Untitled' }
+                    title: 'notification_titles.NEW_PRODUCT_PENDING', // <-- استخدام مفتاح الترجمة
+                    message: 'notification_messages.NEW_PRODUCT_PENDING', // <-- استخدام مفتاح الترجمة
+                    messageParams: { // <-- إضافة المتغيرات
+                        vendorName: req.user.fullName || 'Unknown',
+                        productName: savedProduct.title || 'Untitled'
+                    },
+                    relatedEntity: { id: savedProduct._id, modelName: 'Product' }
                 }));
+                // ***** نهاية التعديل *****
+
                 const createdNotifications = await Notification.insertMany(notificationDocs);
 
                 if (req.io && req.onlineUsers) {
@@ -650,9 +657,17 @@ exports.placeBidOnProduct = async (req, res) => {
         }
         // التحقق من أن رصيد المزايد كافٍ للمشاركة (حد أدنى عام)
         if (bidder.balance < MINIMUM_BALANCE_TO_PARTICIPATE) {
-            const requiredCurrencyForParticipation = bidder.currency || 'TND'; // استخدام عملة المستخدم أو الافتراضية
+            const requiredCurrencyForParticipation = bidder.currency || 'TND';
             console.warn(`   Validation Error: Bidder balance (${bidder.balance} TND) is less than MINIMUM_BALANCE_TO_PARTICIPATE (${MINIMUM_BALANCE_TO_PARTICIPATE}).`);
-            throw new Error(`You need at least ${formatCurrency(MINIMUM_BALANCE_TO_PARTICIPATE, requiredCurrencyForParticipation)} in your balance to place any bid.`);
+
+            // [!!!] التعديل هنا [!!!]
+            // نلقي بخطأ يحتوي على مفتاح ترجمة ومتغيرات
+            const error = new Error("Insufficient balance for participation.");
+            error.translationKey = "home.bidModal.minBalanceRequired";
+            error.translationParams = {
+                amount: formatCurrency(MINIMUM_BALANCE_TO_PARTICIPATE, requiredCurrencyForParticipation)
+            };
+            throw error;
         }
 
         // 5. التحقق من أن رصيد المزايد يغطي مبلغ المزايدة (بعد تحويل العملة إذا لزم الأمر)
@@ -667,9 +682,17 @@ exports.placeBidOnProduct = async (req, res) => {
 
         if (bidder.balance < bidAmountInTND) {
             console.warn(`   Validation Error: Insufficient balance. Bidder needs ${bidAmountInTND} TND, but has ${bidder.balance} TND.`);
-            throw new Error(`Insufficient balance. You need ${formatCurrency(bidAmountInTND, 'TND')} (approx. ${formatCurrency(numericAmount, bidCurrency)}) to cover this bid, but you only have ${formatCurrency(bidder.balance, 'TND')}.`);
+
+            // [!!!] التعديل هنا [!!!]
+            const error = new Error("Insufficient balance for this bid.");
+            error.translationKey = "home.bidModal.insufficientBalanceError";
+            error.translationParams = {
+                requiredTND: formatCurrency(bidAmountInTND, 'TND'),
+                requiredOriginal: formatCurrency(numericAmount, bidCurrency),
+                available: formatCurrency(bidder.balance, 'TND')
+            };
+            throw error;
         }
-        console.log(`   Balance check passed. Bidder balance: ${bidder.balance} TND, Bid in TND: ${bidAmountInTND} TND.`);
 
         // 6. التحقق مما إذا كان المستخدم قد قدم مزايدة سابقة على هذا المنتج
         const existingBidIndex = product.bids.findIndex(bid => bid.user.equals(bidderId));

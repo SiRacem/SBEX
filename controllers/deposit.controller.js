@@ -1,5 +1,4 @@
 // server/controllers/deposit.controller.js
-// *** نسخة نهائية كاملة ومفصلة ***
 
 const DepositRequest = require('../models/DepositRequest');
 const PaymentMethod = require('../models/PaymentMethod');

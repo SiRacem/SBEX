@@ -2,19 +2,20 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Dropdown, Badge, ListGroup, Spinner } from "react-bootstrap";
-import { FaBell } from "react-icons/fa";
+import { FaBell, FaInfoCircle } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   getNotifications,
   markNotificationsRead,
-} from "../../redux/actions/notificationAction"; // تأكد من المسار
-import "./NotificationsPanel.css"; // تأكد من المسار
+} from "../../redux/actions/notificationAction";
+import { getNotificationIcon } from "../../utils/notificationUtils"; // تأكد من أن المسار صحيح
+import "./NotificationsPanel.css";
 
 const NotificationsPanel = () => {
   const dispatch = useDispatch();
+  const { t, i18n } = useTranslation();
 
-  // --- Selectors ---
-  // الوصول الآمن للحالة مع تضمين loadingMarkRead
   const { notifications, unreadCount, loading, loadingMarkRead } = useSelector(
     (state) => {
       const notifState = state.notificationReducer || {
@@ -22,7 +23,7 @@ const NotificationsPanel = () => {
         unreadCount: 0,
         loading: false,
         error: null,
-        loadingMarkRead: false, // حالة تحميل تمييز القراءة
+        loadingMarkRead: false,
       };
       return {
         notifications: Array.isArray(notifState.notifications)
@@ -30,100 +31,53 @@ const NotificationsPanel = () => {
           : [],
         unreadCount: notifState.unreadCount ?? 0,
         loading: notifState.loading ?? false,
-        error: notifState.error ?? null, // يمكنك استخدامه لعرض خطأ إذا لزم الأمر
         loadingMarkRead: notifState.loadingMarkRead ?? false,
       };
     }
   );
 
-  // --- State ---
   const [isOpen, setIsOpen] = useState(false);
 
-  // --- Effects ---
-  // جلب الإشعارات عند تحميل المكون
   useEffect(() => {
     dispatch(getNotifications());
   }, [dispatch]);
 
-  // --- Handlers ---
-  // دالة لتبديل فتح/إغلاق القائمة المنسدلة
-  const toggleDropdown = (nextOpenState, event, metadata) => {
-    // منع الإغلاق عند النقر داخل القائمة نفسها
-    if (metadata.source === "select" || metadata.source === "click") {
-      // تحقق مما إذا كان النقر داخل القائمة المفتوحة
-      if (isOpen && event?.target?.closest(".dropdown-menu")) {
-        setIsOpen(true); // أبقِ القائمة مفتوحة
-        return;
-      }
-      // تمييز الإشعارات كمقروءة عند *فتح* القائمة (فقط غير المقروءة)
-      if (
-        nextOpenState && // فقط عند الفتح (وليس الإغلاق)
-        unreadCount > 0 && // فقط إذا كان هناك إشعارات غير مقروءة
-        !loadingMarkRead // فقط إذا لم تكن عملية التمييز قيد التنفيذ بالفعل
-      ) {
-        const unreadIds = notifications
-          .filter((n) => !n.isRead)
-          .map((n) => n._id);
-        if (unreadIds.length > 0) {
-          dispatch(markNotificationsRead(unreadIds));
-        }
+  const handleToggle = (nextOpenState) => {
+    setIsOpen(nextOpenState);
+    if (nextOpenState && unreadCount > 0 && !loadingMarkRead) {
+      const unreadIds = notifications
+        .filter((n) => !n.isRead)
+        .map((n) => n._id);
+      if (unreadIds.length > 0) {
+        dispatch(markNotificationsRead(unreadIds));
       }
     }
-    // تحديث حالة الفتح/الإغلاق
-    setIsOpen(nextOpenState);
   };
 
-  // --- [مُحدّث] دالة مساعدة لتحديد الرابط المناسب للإشعار ---
-  const getNotificationLink = (notif) => {
-    // --- [!] التأكد من توجيه إشعار الأدمن للمسار الصحيح ---
-    if (notif.type === 'DEPOSIT_REQUEST' && notif.relatedEntity?.id) {
-      // *** استخدم نفس المسار الموجود في App.js ***
-      return "/dashboard/admin/deposit-requests";
-    }
+  const handleItemClick = () => {
+    setIsOpen(false);
+  };
 
-    // 2. توجيه إشعارات موافقة/رفض الإيداع للمستخدم إلى المحفظة (أو صفحة تفاصيل الطلب إن وجدت)
-    if (
-      (notif.type === "DEPOSIT_APPROVED" ||
-        notif.type === "DEPOSIT_REJECTED" ||
-        notif.type === "DEPOSIT_PENDING") && // <-- إضافة Pending هنا أيضاً
-      notif.relatedEntity?.id
-    ) {
-      // يمكنك التوجيه للمحفظة أو لصفحة تفاصيل إذا أنشأتها لاحقاً
-      return "/dashboard/wallet";
-      // أو لصفحة تفاصيل الطلب: `/dashboard/deposit-details/${notif.relatedEntity.id}` (تحتاج مسار جديد)
-    }
-
-    // 3. منطق عام للكيانات الأخرى (مثل المنتجات) - قد تحتاج لتعديله حسب مساراتك
-    if (notif.relatedEntity?.id && notif.relatedEntity?.modelName) {
-      // تحويل اسم الموديل إلى مسار (مثال بسيط، قد يحتاج تحسين)
-      const modelPath = notif.relatedEntity.modelName
-        .toLowerCase()
-        .replace("request", "-requests"); // مثال: 'Product' -> 'product', 'DepositRequest' -> 'deposit-requests'
-      // *** تأكد من أن هذه المسارات موجودة فعلاً في App.js ***
-      return `/dashboard/${modelPath}/${notif.relatedEntity.id}`;
-    }
-
-    // 4. الحالة الافتراضية: توجيه إلى صفحة الإشعارات العامة
+  // دالة لتحديد الرابط المناسب (يمكنك توسيعها لاحقاً إذا أردت)
+  const getNotificationLink = (notification) => {
+    // حالياً، كل الإشعارات في القائمة المنسدلة ستوجه للصفحة الرئيسية للإشعارات
+    // هذا هو السلوك الأكثر شيوعًا، حيث أن القائمة المنسدلة هي مجرد نظرة سريعة
     return "/dashboard/notifications";
   };
-  // -------------------------------------------------------------
 
-  // --- Render ---
   return (
     <Dropdown
-      show={isOpen} // التحكم بفتح/إغلاق القائمة من خلال الحالة
-      onToggle={toggleDropdown} // استخدام المعالج المخصص للتحكم بالفتح/الإغلاق وتمييز القراءة
-      align="end" // محاذاة القائمة لليمين
-      className="notifications-dropdown me-2" // كلاسات مخصصة للتنسيق
+      show={isOpen}
+      onToggle={handleToggle}
+      align="end"
+      className="notifications-dropdown me-2"
     >
-      {/* زر الجرس */}
       <Dropdown.Toggle
-        variant="link" // بدون خلفية أو حدود إضافية
+        variant="link"
         id="dropdown-notifications"
-        className="p-0 border-0 position-relative bell-icon" // تنسيقات الأيقونة
+        className="p-0 border-0 position-relative bell-icon"
       >
-        <FaBell size={20} /> {/* أيقونة الجرس */}
-        {/* شارة عدد الإشعارات غير المقروءة */}
+        <FaBell size={20} />
         {unreadCount > 0 && (
           <Badge
             pill
@@ -133,78 +87,83 @@ const NotificationsPanel = () => {
             {unreadCount > 9 ? "9+" : unreadCount}
             {/* عرض العدد أو +9 إذا تجاوز */}
             <span className="visually-hidden">unread notifications</span>
-            {/* للنص المخفي لقارئات الشاشة */}
           </Badge>
         )}
       </Dropdown.Toggle>
 
-      {/* قائمة الإشعارات المنسدلة */}
       <Dropdown.Menu
-        className="notifications-menu shadow-lg" // تنسيقات القائمة
-        style={{ minWidth: "300px", maxHeight: "400px", overflowY: "auto" }} // تحديد الحجم والسماح بالتمرير
+        className="notifications-menu shadow-lg"
+        style={{ minWidth: "320px", maxHeight: "400px", overflowY: "auto" }}
       >
-        {/* رأس القائمة */}
         <Dropdown.Header className="d-flex justify-content-between align-items-center">
-          <span>Notifications</span>
-          {/* مؤشر تحميل عند تمييز الإشعارات كمقروءة */}
+          <span>{t("notificationsPage.title")}</span>
           {loadingMarkRead && (
             <Spinner animation="border" size="sm" variant="primary" />
           )}
         </Dropdown.Header>
-        {/* جسم القائمة (قائمة الإشعارات) */}
+
         <ListGroup variant="flush">
-          {/* حالة التحميل */}
           {loading ? (
             <ListGroup.Item className="text-center py-3">
               <Spinner animation="border" size="sm" />
-              <span className="ms-2 small">Loading...</span>
+              <span className="ms-2 small">
+                {t("notificationsPage.loading")}
+              </span>
             </ListGroup.Item>
-          ) : // حالة وجود إشعارات
-          notifications.length > 0 ? (
-            // عرض أحدث 5 إشعارات كمثال
+          ) : notifications.length > 0 ? (
             notifications.slice(0, 5).map((notif) => (
               <ListGroup.Item
-                key={notif._id} // مفتاح فريد لكل عنصر
-                as={Link} // استخدام Link من react-router-dom للانتقال
-                to={getNotificationLink(notif)} // *** استخدام الدالة المساعدة لتحديد الرابط ***
-                className={`notification-item ${!notif.isRead ? "unread" : ""}`} // تمييز غير المقروء
-                onClick={() => setIsOpen(false)} // إغلاق القائمة عند النقر على إشعار
+                key={notif._id}
+                as={Link}
+                to={getNotificationLink(notif)}
+                className={`notification-item ${!notif.isRead ? "unread" : ""}`}
+                onClick={handleItemClick}
               >
-                {/* عنوان الإشعار */}
-                <div className="fw-bold small text-truncate">
-                  {notif.title || "Notification"}
-                </div>
-                {/* رسالة الإشعار */}
-                <div className="text-muted small mb-1 text-truncate">
-                  {notif.message}
-                </div>
-                {/* وقت الإشعار */}
-                <div className="text-muted extra-small">
-                  {notif.createdAt
-                    ? new Date(notif.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "-"}
+                <div className="d-flex align-items-center">
+                  <div className="notification-icon-panel me-3">
+                    {getNotificationIcon(notif.type, notif.isRead)}
+                  </div>
+                  <div className="notification-content-panel flex-grow-1">
+                    <div className="fw-bold small text-truncate">
+                      {t(notif.title, {
+                        ...notif.messageParams,
+                        defaultValue: notif.title,
+                      })}
+                    </div>
+                    <div className="text-muted small mb-1 text-truncate">
+                      {t(notif.message, {
+                        ...notif.messageParams,
+                        defaultValue: notif.message,
+                      })}
+                    </div>
+                    <div className="text-muted extra-small">
+                      {notif.createdAt
+                        ? new Date(notif.createdAt).toLocaleString(
+                            i18n.language,
+                            { hour: "2-digit", minute: "2-digit" }
+                          )
+                        : "-"}
+                    </div>
+                  </div>
                 </div>
               </ListGroup.Item>
             ))
           ) : (
-            // حالة عدم وجود إشعارات
             <ListGroup.Item className="text-center text-muted small py-4">
-              No new notifications.
+              <FaInfoCircle className="d-block mx-auto mb-2" size={24} />
+              {t("notificationsPage.noNotifications")}
             </ListGroup.Item>
           )}
         </ListGroup>
-        {/* فاصل ورابط لعرض كل الإشعارات */}
+
         <Dropdown.Divider />
         <Dropdown.Item
           as={Link}
-          to="/dashboard/notifications" // رابط لصفحة الإشعارات الكاملة
+          to="/dashboard/notifications"
           className="text-center small view-all-link"
-          onClick={() => setIsOpen(false)} // أغلق القائمة عند النقر
+          onClick={handleItemClick}
         >
-          View All Notifications
+          {t("notificationsPage.viewAll")}
         </Dropdown.Item>
       </Dropdown.Menu>
     </Dropdown>

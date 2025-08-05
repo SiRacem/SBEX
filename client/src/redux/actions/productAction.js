@@ -1,5 +1,3 @@
-// src/redux/actions/productAction.js
-// import { getProfile } from './userAction'; // <--- تم التعليق عليه مؤقتًا
 import axios from 'axios';
 import {
     GET_PRODUCTS_REQUEST, GET_PRODUCTS_SUCCESS, GET_PRODUCTS_FAIL,
@@ -14,20 +12,33 @@ import {
     CLEAR_PRODUCT_ERROR, ACCEPT_BID_REQUEST, ACCEPT_BID_SUCCESS, ACCEPT_BID_FAIL,
     REJECT_BID_REQUEST, REJECT_BID_SUCCESS, REJECT_BID_FAIL,
 } from '../actionTypes/productActionType';
-import { toast } from 'react-toastify';
+
+const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
+    // [!!!] تعديل للتعامل مع translationKey و translationParams [!!!]
+    if (error.response?.data?.translationKey) {
+        return {
+            key: error.response.data.translationKey,
+            params: error.response.data.translationParams || {}
+        };
+    }
+    // باقي المنطق يبقى كما هو
+    if (error.response) {
+        if (error.response.data.msg) {
+            const fallback = error.response.data.msg;
+            const key = `apiErrors.${fallback.replace(/\s+/g, '_').replace(/[!'.]/g, '')}`;
+            return { key, fallback };
+        }
+        return { key: 'apiErrors.requestFailedWithCode', params: { code: error.response.status } };
+    } else if (error.request) {
+        return { key: 'apiErrors.networkError' };
+    }
+    return { key: defaultKey, params: { message: error.message } };
+};
 
 const getTokenConfig = () => {
     const token = localStorage.getItem('token');
-    if (!token || token === 'null' || token === 'undefined') {
-        console.error("Auth token is missing or invalid for product action.");
-        return null;
-    }
-    return {
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        }
-    };
+    if (!token) return null;
+    return { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } };
 };
 
 export const getProducts = () => async (dispatch) => {
@@ -36,22 +47,8 @@ export const getProducts = () => async (dispatch) => {
         const { data } = await axios.get('/product/get_products');
         dispatch({ type: GET_PRODUCTS_SUCCESS, payload: data });
     } catch (error) {
-        // [!!!] هذا هو التعديل الحاسم هنا [!!!]
-        let errorPayload;
-        if (error.response) {
-            // خطأ من الخادم (مثل 404, 500)
-            errorPayload = {
-                key: 'apiErrors.requestFailedWithCode',
-                params: { code: error.response.status }
-            };
-        } else if (error.request) {
-            // الطلب تم إرساله ولكن لم يتم تلقي أي رد (مشكلة شبكة)
-            errorPayload = { key: 'apiErrors.networkError' };
-        } else {
-            // خطأ آخر حدث أثناء إعداد الطلب
-            errorPayload = { key: 'apiErrors.unknownError', params: { message: error.message } };
-        }
-        dispatch({ type: GET_PRODUCTS_FAIL, payload: errorPayload });
+        const { key, fallback, params } = handleError(error, 'products.loadFailError');
+        dispatch({ type: GET_PRODUCTS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -59,18 +56,14 @@ export const addProduct = (newProductData) => async (dispatch) => {
     dispatch({ type: ADD_PRODUCT_REQUEST });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: ADD_PRODUCT_FAIL, payload: "Not authorized." });
-        toast.error("Authorization required to add product.");
-        return;
+        return dispatch({ type: ADD_PRODUCT_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
     }
     try {
         const { data } = await axios.post('/product/add_product', newProductData, config);
-        dispatch({ type: ADD_PRODUCT_SUCCESS, payload: data });
-        toast.success("Product submitted for approval!");
+        dispatch({ type: ADD_PRODUCT_SUCCESS, payload: { ...data, successMessage: 'products.addSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.errors?.[0]?.msg || error.response?.data?.msg || error.message || 'Failed to add product';
-        dispatch({ type: ADD_PRODUCT_FAIL, payload: message });
-        toast.error(`Failed to add product: ${message}`);
+        const { key, fallback, params } = handleError(error, 'products.addFail');
+        dispatch({ type: ADD_PRODUCT_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -78,18 +71,14 @@ export const updateProduct = (productId, updatedData) => async (dispatch) => {
     dispatch({ type: UPDATE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: UPDATE_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
-        toast.error("Authorization required to update product.");
-        return;
+        return dispatch({ type: UPDATE_PRODUCT_FAIL, payload: { productId, errorMessage: { key: 'apiErrors.notAuthorized' } } });
     }
     try {
         const { data } = await axios.put(`/product/update_products/${productId}`, updatedData, config);
-        dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: data });
-        toast.success("Product updated successfully!");
+        dispatch({ type: UPDATE_PRODUCT_SUCCESS, payload: { ...data, successMessage: 'products.updateSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.msg || error.response?.data?.errors || error.message || 'Failed to update product.';
-        dispatch({ type: UPDATE_PRODUCT_FAIL, payload: { productId, error: message } });
-        toast.error(`Update failed: ${typeof message === 'string' ? message : JSON.stringify(message)}`);
+        const { key, fallback, params } = handleError(error, 'products.updateFail');
+        dispatch({ type: UPDATE_PRODUCT_FAIL, payload: { productId, errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -97,24 +86,14 @@ export const deleteProduct = (productId) => async (dispatch) => {
     dispatch({ type: DELETE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: DELETE_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
-        toast.error("Authorization required to delete product.");
-        return;
+        return dispatch({ type: DELETE_PRODUCT_FAIL, payload: { productId, errorMessage: { key: 'apiErrors.notAuthorized' } } });
     }
-
-    if (!window.confirm("Are you sure you want to delete this product permanently?")) {
-        dispatch({ type: DELETE_PRODUCT_FAIL, payload: { productId, error: "Deletion cancelled by user." } });
-        return; // لا ترسل شيئًا إذا ألغى المستخدم
-    }
-
     try {
         await axios.delete(`/product/delete_products/${productId}`, config);
-        dispatch({ type: DELETE_PRODUCT_SUCCESS, payload: { productId } });
-        toast.success("Product deleted successfully!");
+        dispatch({ type: DELETE_PRODUCT_SUCCESS, payload: { productId, successMessage: 'products.deleteSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to delete product.';
-        dispatch({ type: DELETE_PRODUCT_FAIL, payload: { productId, error: message } });
-        toast.error(`Deletion failed: ${message}`);
+        const { key, fallback, params } = handleError(error, 'products.deleteFail');
+        dispatch({ type: DELETE_PRODUCT_FAIL, payload: { productId, errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -122,16 +101,14 @@ export const getPendingProducts = () => async (dispatch) => {
     dispatch({ type: GET_PENDING_PRODUCTS_REQUEST });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: GET_PENDING_PRODUCTS_FAIL, payload: 'Token required for pending products.' });
-        // لا تحتاج لـ toast هنا بالضرورة، لأن الخطأ سيعرض في الواجهة
-        return;
+        return dispatch({ type: GET_PENDING_PRODUCTS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
     }
     try {
         const { data } = await axios.get('/product/pending', config);
         dispatch({ type: GET_PENDING_PRODUCTS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch pending products';
-        dispatch({ type: GET_PENDING_PRODUCTS_FAIL, payload: message });
+        const { key, fallback, params } = handleError(error, 'admin.products.loadPendingFail');
+        dispatch({ type: GET_PENDING_PRODUCTS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -139,20 +116,14 @@ export const approveProduct = (productId) => async (dispatch) => {
     dispatch({ type: APPROVE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
-        toast.error("Authorization required to approve product.");
-        return;
+        return dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
     }
     try {
-        await axios.put(`/product/approve/${productId}`, {}, config); // لا يوجد body مطلوب للموافقة عادةً
-        dispatch({ type: APPROVE_PRODUCT_SUCCESS, payload: { productId } });
-        toast.success("Product approved successfully!");
-        // تم التعليق على استدعاء getProfile مؤقتًا لتشخيص مشكلة تسجيل الخروج
-        // dispatch(getProfile()); 
+        await axios.put(`/product/approve/${productId}`, {}, config);
+        dispatch({ type: APPROVE_PRODUCT_SUCCESS, payload: { productId, successMessage: 'admin.products.approveSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to approve product.';
-        dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, error: message } });
-        toast.error(`Approval failed: ${message}`);
+        const { key, fallback, params } = handleError(error, 'admin.products.approveFail');
+        dispatch({ type: APPROVE_PRODUCT_FAIL, payload: { productId, errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -160,84 +131,72 @@ export const rejectProduct = (productId, reason) => async (dispatch) => {
     dispatch({ type: REJECT_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: REJECT_PRODUCT_FAIL, payload: { productId, error: "Not authorized." } });
-        toast.error("Authorization required to reject product.");
-        return;
+        return dispatch({ type: REJECT_PRODUCT_FAIL, payload: { productId, errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
     }
     try {
         await axios.put(`/product/reject/${productId}`, { reason }, config);
-        dispatch({ type: REJECT_PRODUCT_SUCCESS, payload: { productId } });
-        toast.success("Product rejected successfully!");
+        dispatch({ type: REJECT_PRODUCT_SUCCESS, payload: { productId, successMessage: 'admin.products.rejectSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to reject product.';
-        dispatch({ type: REJECT_PRODUCT_FAIL, payload: { productId, error: message } });
-        toast.error(`Rejection failed: ${message}`);
+        const { key, fallback, params } = handleError(error, 'admin.products.rejectFail');
+        dispatch({ type: REJECT_PRODUCT_FAIL, payload: { productId, errorMessage: { key, fallback, params } } });
     }
 };
 
 export const toggleLikeProduct = (productId) => async (dispatch, getState) => {
     const userId = getState().userReducer?.user?._id;
     if (!userId) {
-        const errorMsg = "Toggle Like Error: User ID not found in state.";
-        console.error(errorMsg);
-        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, error: errorMsg } });
-        return Promise.reject(new Error(errorMsg));
+        const errorMessage = { key: "home.pleaseLoginToLike" };
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
 
     dispatch({ type: TOGGLE_LIKE_PRODUCT_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, error: "Not authorized to like product." };
-        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: errorPayload });
-        toast.error(errorPayload.error);
-        return Promise.reject(new Error(errorPayload.error));
+        const errorMessage = { key: 'apiErrors.notAuthorized' };
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
 
     try {
         const { data } = await axios.put(`/product/${productId}/like`, {}, config);
-        dispatch({
-            type: TOGGLE_LIKE_PRODUCT_SUCCESS,
-            payload: {
-                productId: productId,
-                likesCount: data.likesCount,
-                userLiked: data.userLiked,
-                userId: userId
-            }
-        });
-        return Promise.resolve(data); // أرجع البيانات للاستخدام في المكون إذا لزم الأمر
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_SUCCESS, payload: { productId, likesCount: data.likesCount, userLiked: data.userLiked, userId } });
+        return Promise.resolve(data);
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to update like status.';
-        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, error: message } });
-        toast.error(`Like/Unlike failed: ${message}`);
-        return Promise.reject(error);
+        const { key, fallback, params } = handleError(error, 'home.likeUpdateFailed');
+        dispatch({ type: TOGGLE_LIKE_PRODUCT_FAIL, payload: { productId, errorMessage: { key, fallback, params } } });
+        return Promise.reject({ error: { key, fallback, params } });
     }
 };
 
-export const placeBid = (productId, amount) => async (dispatch) => {
+export const placeBid = (productId, amount, isUpdate = false) => async (dispatch) => {
     dispatch({ type: PLACE_BID_REQUEST, payload: { productId } });
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, error: "Not authorized to place bid." };
-        dispatch({ type: PLACE_BID_FAIL, payload: errorPayload });
-        toast.error(errorPayload.error);
-        return Promise.reject(new Error(errorPayload.error));
+        const errorMessage = { key: 'home.pleaseLoginToBid' };
+        dispatch({ type: PLACE_BID_FAIL, payload: { productId, errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
 
     try {
         const { data } = await axios.post(`/product/${productId}/bids`, { amount }, config);
-        dispatch({
-            type: PLACE_BID_SUCCESS,
-            payload: {
-                productId: productId,
-                bids: data.bids
-            }
+        const successMessage = isUpdate ? 'home.bidUpdatedSuccess' : 'home.bidPlacedSuccess';
+
+        dispatch({ 
+            type: PLACE_BID_SUCCESS, 
+            payload: { 
+                productId, 
+                bids: data.bids,
+                updatedProduct: data.updatedProduct, // تأكد من أن الخادم يرجع المنتج المحدث
+                successMessage 
+            } 
         });
         return Promise.resolve(data);
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to place bid.';
-        dispatch({ type: PLACE_BID_FAIL, payload: { productId, error: message } });
-        toast.error(`Bid failed: ${message}`);
-        return Promise.reject(new Error(message));
+        // handleError سيتعامل مع المفاتيح الجديدة تلقائياً
+        const { key, params } = handleError(error);
+        dispatch({ type: PLACE_BID_FAIL, payload: { productId, errorMessage: { key, params } } });
+        return Promise.reject({ error: { key, params } });
     }
 };
 
@@ -245,32 +204,23 @@ export const acceptBid = (productId, bidUserId, bidAmount) => async (dispatch) =
     dispatch({ type: ACCEPT_BID_REQUEST, payload: { productId, bidUserId } });
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, bidUserId, error: "Not authorized to accept bid." };
-        dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
-        toast.error(errorPayload.error);
-        return Promise.reject(new Error(errorPayload.error));
+        const errorMessage = { key: 'apiErrors.notAuthorized' };
+        dispatch({ type: ACCEPT_BID_FAIL, payload: { productId, bidUserId, errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
 
     try {
         const { data } = await axios.put(`/product/${productId}/accept-bid`, { bidUserId, bidAmount }, config);
         if (data && data.updatedProduct) {
-            dispatch({
-                type: ACCEPT_BID_SUCCESS,
-                payload: { updatedProduct: data.updatedProduct }
-            });
-            toast.success(data.msg || "Bid accepted! Mediation process initiated.");
+            dispatch({ type: ACCEPT_BID_SUCCESS, payload: { updatedProduct: data.updatedProduct, successMessage: 'myProductsPage.acceptBidSuccess' } });
             return Promise.resolve(data.updatedProduct);
         } else {
-            const errMsg = "API response for acceptBid missing updatedProduct.";
-            console.error(errMsg, data);
-            throw new Error(errMsg);
+            throw new Error("API response for acceptBid missing updatedProduct.");
         }
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to accept bid.';
-        const errorPayload = { productId, bidUserId, error: message };
-        dispatch({ type: ACCEPT_BID_FAIL, payload: errorPayload });
-        toast.error(`Accept bid failed: ${message}`);
-        return Promise.reject(new Error(message));
+        const { key, fallback, params } = handleError(error, 'myProductsPage.acceptBidFail');
+        dispatch({ type: ACCEPT_BID_FAIL, payload: { productId, bidUserId, errorMessage: { key, fallback, params } } });
+        return Promise.reject({ error: { key, fallback, params } });
     }
 };
 
@@ -278,36 +228,24 @@ export const rejectBid = (productId, bidUserId, reason) => async (dispatch) => {
     dispatch({ type: REJECT_BID_REQUEST, payload: { productId, bidUserId } });
     const config = getTokenConfig();
     if (!config) {
-        const errorPayload = { productId, bidUserId, error: "Not authorized to reject bid." };
-        dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
-        toast.error(errorPayload.error);
-        return Promise.reject(new Error(errorPayload.error));
+        const errorMessage = { key: 'apiErrors.notAuthorized' };
+        dispatch({ type: REJECT_BID_FAIL, payload: { productId, bidUserId, errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
 
     try {
         const { data } = await axios.put(`/product/${productId}/reject-bid`, { bidUserId, reason }, config);
         if (data && data.updatedProduct) {
-            dispatch({
-                type: REJECT_BID_SUCCESS,
-                payload: { updatedProduct: data.updatedProduct, rejectedBidUserId: bidUserId }
-            });
-            toast.info(data.msg || "Bid rejected successfully.");
+            dispatch({ type: REJECT_BID_SUCCESS, payload: { updatedProduct: data.updatedProduct, rejectedBidUserId: bidUserId, successMessage: 'myProductsPage.rejectBidSuccess' } });
             return Promise.resolve(data.updatedProduct);
         } else {
-             // إذا لم يرجع الخادم المنتج المحدث، يمكنك إرسال البيانات الأساسية للتحديث المحلي
-            dispatch({
-                type: REJECT_BID_SUCCESS,
-                payload: { productId, rejectedBidUserId: bidUserId, msg: data.msg || "Bid rejected (local update)." }
-            });
-            toast.info(data.msg || "Bid rejected successfully (local update).");
-            return Promise.resolve(); // أو resolve(data) إذا كان data.msg مفيدًا
+            dispatch({ type: REJECT_BID_SUCCESS, payload: { productId, rejectedBidUserId: bidUserId, msg: data.msg || "Bid rejected.", successMessage: 'myProductsPage.rejectBidSuccess' } });
+            return Promise.resolve();
         }
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to reject bid.';
-        const errorPayload = { productId, bidUserId, error: message };
-        dispatch({ type: REJECT_BID_FAIL, payload: errorPayload });
-        toast.error(`Reject bid failed: ${message}`);
-        return Promise.reject(new Error(message));
+        const { key, fallback, params } = handleError(error, 'myProductsPage.rejectBidFail');
+        dispatch({ type: REJECT_BID_FAIL, payload: { productId, bidUserId, errorMessage: { key, fallback, params } } });
+        return Promise.reject({ error: { key, fallback, params } });
     }
 };
 

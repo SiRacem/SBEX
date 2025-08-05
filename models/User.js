@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const UserSchema = new Schema({
-    fullName: { type: String, trim: true },
-    email: { type: String, unique: true, lowercase: true, trim: true },
+    fullName: { type: String, trim: true, required: true },
+    email: { type: String, unique: true, lowercase: true, trim: true, match: [/\S+@\S+\.\S+/, 'auth.validation.emailInvalid'] },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
     password: { type: String, required: true },

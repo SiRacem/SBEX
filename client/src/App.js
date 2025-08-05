@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { getProfile, setOnlineUsers, logoutUser } from './redux/actions/userAction';
 import { Alert, Spinner, Button } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
+import i18n from './i18n';
+
 import NotFound from './pages/NotFound';
 import UserListAd from './components/admin/UserListAd';
 import ProductListAdmin from './components/admin/ProductListAdmin';
@@ -39,7 +41,7 @@ import UserTicketsListPage from './pages/UserTicketsListPage';
 import AdminTicketsDashboardPage from './components/admin/AdminTicketsDashboardPage';
 import { getUserWithdrawalRequests } from './redux/actions/withdrawalRequestAction';
 import { getUserDepositRequests } from './redux/actions/depositAction';
-import { getBuyerMediationRequestsAction, updateUnreadCountFromSocket, handleNewAdminSubChatMessageSocket, adminGetDisputedMediationsAction } from './redux/actions/mediationAction';
+import { getBuyerMediationRequestsAction, updateUnreadCountFromSocket, handleNewAdminSubChatMessageSocket, adminGetDisputedMediationsAction, updateMediationDetailsFromSocket } from './redux/actions/mediationAction';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
@@ -52,6 +54,7 @@ export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
 
 const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { isAuth, user, loading: userLoading, authChecked } = useSelector(state => state.userReducer);
 
@@ -59,17 +62,13 @@ const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => 
     return (
       <div className="vh-100 d-flex justify-content-center align-items-center bg-light">
         <Spinner animation="border" variant="primary" role="status">
-          <span className="visually-hidden">Loading session...</span>
+          <span className="visually-hidden">{t('app.loadingSession', 'Loading session...')}</span>
         </Spinner>
       </div>
     );
   }
 
-  if (!isAuth) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (!user) {
+  if (!isAuth || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -78,23 +77,24 @@ const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => 
     if (allowedBlockedPaths.includes(location.pathname)) {
       return children;
     }
-    toast.warn("Your account is blocked. Access is restricted.", { autoClose: 5000 });
+    toast.warn(t('auth.toast.accountBlocked'));
     return <Navigate to="/dashboard/profile" replace />;
   }
 
   if (requiredRole && user.userRole !== requiredRole) {
-    toast.error("You do not have permission to access this page.");
+    toast.error(t('app.noPermission'));
     return <Navigate to="/dashboard" replace />;
   }
 
   if (isMediatorRoute && !user.isMediatorQualified) {
-    toast.error("You are not qualified as a mediator to access this page.");
+    toast.error(t('app.notQualifiedMediator'));
     return <Navigate to="/dashboard/profile" replace />;
   }
   return children;
 };
 
 const BlockedWarning = ({ isAuth, user }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const handleLogoutClick = (e) => {
     e.preventDefault();
@@ -105,18 +105,15 @@ const BlockedWarning = ({ isAuth, user }) => {
 
   return (
     <Alert variant="danger" className="blocked-warning-banner m-3">
-      <Alert.Heading>Account Suspended</Alert.Heading>
-      Your account is currently blocked. Some features may be unavailable.
-      If you believe this is an error, please{' '}
-      <Alert.Link as={Link} to="/dashboard/support">contact support</Alert.Link>
+      <Alert.Heading>{t('app.blockedWarning.title')}</Alert.Heading>
+      {t('app.blockedWarning.body')}
+      <Alert.Link as={Link} to="/dashboard/support">{t('app.blockedWarning.contactSupport')}</Alert.Link>
       {' OR '}
-      <Alert.Link href="#" onClick={handleLogoutClick} style={{ cursor: 'pointer', fontWeight: 'bold' }}>Logout</Alert.Link>
+      <Alert.Link href="#" onClick={handleLogoutClick} style={{ cursor: 'pointer', fontWeight: 'bold' }}>{t('app.blockedWarning.logout')}</Alert.Link>
     </Alert>
   );
 };
 
-// هذا هو المكون الوحيد الذي يجب أن يكون لحاوية الإشعارات
-// وهو يدعم RTL بشكل صحيح
 const CustomToastContainer = () => {
   const { i18n } = useTranslation();
   return <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={i18n.dir() === 'rtl'} pauseOnFocusLoss draggable pauseOnHover theme="colored" />;
@@ -126,58 +123,49 @@ function App() {
   const { t, i18n } = useTranslation();
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
-  // استدعاء كل الحالات الضرورية بما في ذلك errorMessageParams
+
   const {
     errors,
     successMessage,
     registrationStatus,
     successMessageParams,
-    errorMessage,
-    errorMessageParams, // <-- تمت إضافته هنا
-    isAuth,
-    user,
-    authChecked,
-    userLoading,
-    userError
-  } = useSelector(state => state.userReducer);
+    errorFromAPI
+  } = useSelector(state => ({
+    errors: state.userReducer.errors,
+    successMessage: state.userReducer.successMessage,
+    registrationStatus: state.userReducer.registrationStatus,
+    successMessageParams: state.userReducer.successMessageParams,
+    errorFromAPI: state.userReducer.errorMessage,
+  }));
 
+  const { isAuth, user, authChecked, userLoading, userError } = useSelector(state => state.userReducer);
   const currentUserId = user?._id;
   const socketRef = useRef(null);
 
-  // useEffect مركزي ومُحسّن لعرض الإشعارات (هنا التعديل الرئيسي)
   useEffect(() => {
-    // 1. التعامل مع رسائل النجاح
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
-    }
-    // 2. التعامل مع رسائل الخطأ (المنطق الجديد والمحسّن)
-    else if (errorMessage) {
-      // نجهز متغيرات الترجمة
-      const params = { ...errorMessageParams };
-
-      // خطوة اختيارية لكنها ممتازة: حاول ترجمة رسالة الخطأ الداخلية نفسها
-      // مثال: إذا كانت params.error هي "Invalid credentials"
-      // سيبحث عن ترجمتها في "apiErrors.Invalid credentials"
-      if (params && params.error && typeof params.error === 'string') {
-        const innerErrorTranslation = t(`apiErrors.${params.error}`, { defaultValue: params.error });
-        params.error = innerErrorTranslation;
+    } else if (errorFromAPI) {
+      let finalErrorMessage;
+      if (typeof errorFromAPI.key === 'string' && i18n.exists(errorFromAPI.key)) {
+        finalErrorMessage = t(errorFromAPI.key, errorFromAPI.params);
+      } else if (typeof errorFromAPI.fallback === 'string') {
+        finalErrorMessage = errorFromAPI.fallback;
+      } else if (typeof errorFromAPI === 'string') {
+        finalErrorMessage = errorFromAPI;
       }
-
-      // الآن نترجم الرسالة الرئيسية ونمرر لها المتغيرات (التي قد تكون مترجمة أيضًا)
-      // مثال: t('auth.toast.loginError', { error: 'الإيميل ولا كلمة السر غالطين.' })
-      toast.error(t(errorMessage, params));
+      else {
+        finalErrorMessage = t("apiErrors.unknownError", "An unknown error occurred.");
+      }
+      toast.error(finalErrorMessage);
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
-    }
-    // 3. التعامل مع الأخطاء القديمة (كإجراء احتياطي)
-    else if (errors) {
+    } else if (errors) {
       const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
       toast.error(errorMessageText);
       dispatch({ type: 'CLEAR_USER_ERRORS' });
     }
-
-    // إضافة errorMessageParams إلى مصفوفة الاعتماديات
-  }, [successMessage, errorMessage, errors, registrationStatus, dispatch, t, successMessageParams, errorMessageParams]);
+  }, [successMessage, errorFromAPI, errors, registrationStatus, dispatch, t, i18n, successMessageParams]);
 
   useEffect(() => {
     const localToken = localStorage.getItem('token');
@@ -193,12 +181,9 @@ function App() {
     }
   }, [dispatch, authChecked, user, userLoading]);
 
-  // منطق الاتصال بـ Socket.IO
   useEffect(() => {
     if (isAuth && currentUserId) {
       if (!socketRef.current) {
-        console.log(`[App.js Socket Effect] Auth is TRUE. Setting up NEW Socket.IO connection for user: ${currentUserId}`);
-
         const newSocket = io(SOCKET_SERVER_URL, {
           reconnectionAttempts: 5,
           reconnectionDelay: 1000,
@@ -206,7 +191,7 @@ function App() {
         });
 
         newSocket.on("connect", () => {
-          console.log(`%c[App.js Socket] CONNECTED! Socket ID: ${newSocket.id}`, "color: green; font-weight: bold;");
+          console.log(`%c[Socket] CONNECTED! Socket ID: ${newSocket.id}`, "color: green; font-weight: bold;");
           newSocket.emit("addUser", currentUserId);
         });
 
@@ -216,9 +201,8 @@ function App() {
 
         newSocket.on('user_balances_updated', (updatedBalanceData) => {
           if (updatedBalanceData && updatedBalanceData._id === currentUserId) {
-            console.log("[Socket] Received 'user_balances_updated'. Dispatching to reducer:", updatedBalanceData);
             dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: updatedBalanceData });
-            toast.info("Your account balance has been updated.", { autoClose: 2500 });
+            toast.info(t('app.balanceUpdated'), { autoClose: 2500 });
           }
         });
 
@@ -231,23 +215,22 @@ function App() {
 
         newSocket.on('user_profile_updated', (updatedUserData) => {
           if (updatedUserData && updatedUserData._id === currentUserId) {
-            console.log(`[Socket] Received 'user_profile_updated' for self. Refetching profile...`);
             dispatch(getProfile());
-            toast.info("Your profile information has been updated.", { autoClose: 2500 });
+            toast.info(t('app.profileUpdated'), { autoClose: 2500 });
           }
         });
 
         newSocket.on('new_pending_mediator_application', (newApplicationData) => {
           if (user && user.userRole === 'Admin' && newApplicationData?._id) {
             dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: newApplicationData });
-            toast.info(`🔔 New mediator application from ${newApplicationData.fullName || 'a user'} is pending review.`);
+            toast.info(t('app.newMediatorApp', { name: newApplicationData.fullName || 'a user' }));
           }
         });
 
         newSocket.on('refresh_mediator_applications_list', () => {
           if (user && user.userRole === 'Admin') {
             dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' });
-            toast.info("Mediator applications list might have been updated.");
+            toast.info(t('app.mediatorListUpdated'));
           }
         });
 
@@ -260,20 +243,18 @@ function App() {
         newSocket.on('new_mediation_request_for_buyer', (data) => {
           if (isAuth && user && user.userRole !== 'Admin') {
             dispatch(getBuyerMediationRequestsAction(1, 10));
-            toast.info(data.message || "You have a new mediation request to review!");
+            toast.info(data.message || t('app.newMediationRequest'));
           }
         });
 
         newSocket.on('mediation_request_updated', (data) => {
-          console.log("%c[App.js Socket] Received 'mediation_request_updated'. DATA:", "color: blue; font-weight: bold;", data);
           if (data && data.updatedMediationRequestData?._id) {
-            dispatch({ type: 'UPDATE_MEDIATION_DETAILS_FROM_SOCKET', payload: data.updatedMediationRequestData });
-            toast.info(`Mediation request for product "${data.updatedMediationRequestData.product?.title || 'N/A'}" has been updated.`);
+            dispatch(updateMediationDetailsFromSocket(data.updatedMediationRequestData));
+            toast.info(t('app.mediationUpdated', { title: data.updatedMediationRequestData.product?.title || 'N/A' }));
           }
         });
 
         newSocket.on('product_updated', (updatedProductData) => {
-          console.log("%c[App.js Socket] Received 'product_updated'. DATA:", "color: green; font-weight: bold;", updatedProductData);
           if (updatedProductData && updatedProductData._id) {
             dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProductData });
           }
@@ -281,19 +262,17 @@ function App() {
 
         newSocket.on('new_assignment_for_mediator', (data) => {
           if (data && data.newAssignmentData) {
-            console.log('[Socket] Received new assignment for mediator.');
             dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData });
           }
         });
 
         newSocket.on('new_notification', (notification) => {
-          toast.info(`🔔 ${notification.title || 'New Notification!'}`, { position: "top-right", autoClose: 3000 });
+          toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right", autoClose: 3000 });
           dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
         });
 
         newSocket.on('dispute_opened_for_admin', () => {
           if (user && user.userRole === 'Admin') {
-            console.log('[Socket] Admin received "dispute_opened_for_admin", refetching disputed cases count.');
             dispatch(adminGetDisputedMediationsAction(1, 1));
           }
         });
@@ -303,9 +282,9 @@ function App() {
             toast.info(
               <div>
                 <FaComments className="me-2" />
-                New message in chat: <strong>{data.productTitle || data.mediationId}</strong>
+                {t('app.newChatMessage', { title: data.productTitle || data.mediationId })}
                 {data.otherPartyForRecipient?.fullName && (
-                  <div className="small text-muted">From: {data.otherPartyForRecipient.fullName}</div>
+                  <div className="small text-muted">{t('app.from')}: {data.otherPartyForRecipient.fullName}</div>
                 )}
               </div>,
               { position: "bottom-right", autoClose: 4000 }
@@ -315,20 +294,18 @@ function App() {
         });
 
         newSocket.on('new_admin_sub_chat_message', (data) => {
-          console.log('[App.js Socket] Received "new_admin_sub_chat_message" globally:', data);
           if (data && data.message) {
             dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId));
           }
         });
 
         newSocket.on('new_ticket_created_for_admin', (newTicket) => {
-          console.log("[Socket] Received 'new_ticket_created_for_admin'. Dispatching to reducer:", newTicket);
           if (user && (user.userRole === 'Admin' || user.userRole === 'Support')) {
             toast.info(
               <div>
                 <FaTicketAlt className="me-2" />
-                New Support Ticket Created!
-                <div className="small text-muted">Title: {newTicket.title}</div>
+                {t('app.newTicketCreated')}
+                <div className="small text-muted">{t('app.ticketTitle')}: {newTicket.title}</div>
               </div>,
               { position: "top-right", autoClose: 5000 }
             );
@@ -337,43 +314,47 @@ function App() {
         });
 
         newSocket.on('ticket_updated', (data) => {
-          console.log("[Socket] Received 'ticket_updated'. Dispatching to reducer:", data.updatedTicket);
-          toast.info(`Ticket #${data.updatedTicket.ticketId} has been updated.`, { autoClose: 3500 });
+          toast.info(t('app.ticketUpdated', { ticketId: data.updatedTicket.ticketId }), { autoClose: 3500 });
           dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
         });
 
         newSocket.on('disconnect', (reason) => {
-          console.warn('[App.js Socket] Disconnected:', reason);
+          console.warn('[Socket] Disconnected:', reason);
         });
 
         newSocket.on('connect_error', (err) => {
-          console.error('[App.js Socket] Connection Error:', err.message);
           if (err.message.includes('unauthorized') || err.message === 'Invalid token') {
             dispatch(logoutUser());
           }
         });
 
         newSocket.on('server_error', (data) => {
-          toast.error(data.message || 'An unexpected error occurred.');
+          toast.error(data.message || t('apiErrors.unknownError'));
         });
 
         socketRef.current = newSocket;
       }
     } else {
       if (socketRef.current) {
-        console.log("[App.js Socket Effect] Auth is FALSE. Disconnecting Socket.IO.");
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     }
-  }, [isAuth, currentUserId, dispatch, user]);
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [isAuth, currentUserId, dispatch, user, t]);
 
   const localTokenExistsForLoadingCheck = !!localStorage.getItem('token');
   if (!authChecked && (userLoading || (localTokenExistsForLoadingCheck && !user && !userError))) {
     return (
       <div className="vh-100 d-flex justify-content-center align-items-center bg-light">
         <Spinner animation="border" variant="primary" role="status" />
-        <span className="ms-3 text-muted">Loading session...</span>
+        <span className="ms-3 text-muted">{t('app.loadingSession', 'Loading session...')}</span>
       </div>
     );
   }
@@ -381,12 +362,8 @@ function App() {
   if (authChecked && !isAuth && userError && localTokenExistsForLoadingCheck) {
     return (
       <div className="vh-100 d-flex justify-content-center align-items-center bg-light flex-column p-3">
-        <Alert variant="danger" className="text-center">
-          {userError === "Session expired or invalid. Please login again." ? userError : "Your session may have expired. Please log in again."}
-        </Alert>
-        <Button as={Link} to="/login" variant="primary" onClick={() => dispatch(logoutUser())}>
-          Go to Login
-        </Button>
+        <Alert variant="danger" className="text-center">{t('app.sessionError')}</Alert>
+        <Button as={Link} to="/login" variant="primary" onClick={() => dispatch(logoutUser())}>{t('app.goToLogin')}</Button>
       </div>
     );
   }
@@ -396,10 +373,7 @@ function App() {
   return (
     <SocketContext.Provider value={socketRef.current}>
       <div className={`app-container ${isAuth && user ? 'layout-authenticated' : 'layout-public'}`}>
-
-        {/* الحل الصحيح: استخدام الحاوية المخصصة مرة واحدة فقط */}
         <CustomToastContainer />
-
         {isAuth && user && <Sidebar onSearchChange={handleSearchChange} />}
         <main className={`main-content-area flex-grow-1 ${isAuth && user ? 'content-authenticated' : 'content-public'}`}>
           {isAuth && user && <BlockedWarning isAuth={isAuth} user={user} />}

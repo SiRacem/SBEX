@@ -1,32 +1,16 @@
 // src/pages/NotificationsPage.jsx
+
 import React, { useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Container, ListGroup, Spinner, Alert, Button } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
-import {
-  FaCheckDouble,
-  FaRegEnvelope,
-  FaRegEnvelopeOpen,
-  FaInfoCircle,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaHourglassHalf,
-  FaHandshake,
-  FaBullhorn,
-  FaUserShield,
-  FaDollarSign,
-  FaMoneyBillWave,
-  FaUsersCog,
-  FaMedal,
-  FaGavel,
-  FaCommentDots,
-} from "react-icons/fa";
-import { FiTrendingUp, FiTrendingDown, FiAlertTriangle } from "react-icons/fi";
+import { FaCheckDouble, FaInfoCircle } from "react-icons/fa";
 import {
   getNotifications,
   markNotificationsRead,
 } from "../redux/actions/notificationAction";
 import { useNavigate } from "react-router-dom";
+import { getNotificationIcon } from "../utils/notificationUtils"; // استيراد الدالة من الملف المساعد
 import "./NotificationsPage.css";
 
 const NotificationsPage = () => {
@@ -61,216 +45,135 @@ const NotificationsPage = () => {
 
   const handleNotificationClick = useCallback(
     (notification) => {
+      // أولاً، قم بتمييز الإشعار كمقروء إذا لم يكن كذلك
       if (!notification.isRead && !loadingMarkRead) {
         dispatch(markNotificationsRead([notification._id]));
       }
 
+      // ثانياً، حدد المسار المناسب للانتقال إليه
       let path = null;
       const entityId = notification.relatedEntity?.id;
       const modelName = notification.relatedEntity?.modelName;
       const notificationType = notification.type;
       const currentUserRole = user?.userRole;
-      const currentUserId = user?._id;
-      const isMediatorQualified = user?.isMediatorQualified;
 
-      console.log("Notification Clicked:", {
-        notificationType,
-        modelName,
-        entityId,
-        currentUserRole,
-        currentUserId,
-        isMediatorQualified,
-      });
-
-      // --- Product Related Notifications ---
-      if (modelName === "Product" && entityId) {
-        switch (notificationType) {
-          case "NEW_BID":
-          case "BID_UPDATED":
-          case "BID_ACCEPTED_SELLER":
-          case "BID_REJECTED_BY_YOU":
-            if (currentUserRole === "Vendor" || currentUserRole === "Admin") {
-              path = "/dashboard/comptes_bids";
-            }
-            break;
-          case "BID_ACCEPTED_BUYER":
-          case "BID_REJECTED":
-            path = "/dashboard/my-orders";
-            break;
-          case "PRODUCT_APPROVED":
-          case "PRODUCT_REJECTED":
-          case "PRODUCT_DELETED":
-            if (currentUserRole === "Vendor" || currentUserRole === "Admin") {
-              path = "/dashboard/comptes";
-            }
-            break;
-          case "NEW_PRODUCT_PENDING":
-          case "PRODUCT_UPDATE_PENDING":
-            if (currentUserRole === "Admin") {
-              path = "/dashboard/admin/products";
-            }
-            break;
-          default:
-            console.warn(
-              `Unhandled Product notification type: ${notificationType}. Navigating to product page or dashboard.`
-            );
+      switch (modelName) {
+        case "Product":
+          if (currentUserRole === "Admin") {
+            // الأدمن دائماً يذهب إلى صفحة إدارة المنتجات للموافقة/الرفض
+            path = "/dashboard/admin/products";
+          } else if (currentUserRole === "Vendor") {
+            // البائع يذهب إلى صفحة "حساباتي" الخاصة به
             path = "/dashboard/comptes_bids";
-            break;
-        }
-      }
-      // --- MediationRequest Related Notifications ---
-      else if (modelName === "MediationRequest" && entityId) {
-        // --- [!!!] بداية التعديل: التعامل مع إشعارات رسائل الشات [!!!] ---
-        // توجيه مباشر إلى صفحة الشات عند وجود رسالة جديدة
-        if (
-          notificationType === "NEW_CHAT_MESSAGE" ||
-          notificationType === "NEW_ADMIN_SUBCHAT_MESSAGE"
-        ) {
-          path = `/dashboard/mediation-chat/${entityId}`;
-        }
-        // --- [!!!] نهاية التعديل ---
-        else {
-          // التعامل مع بقية إشعارات الوساطة كما كان
-          switch (notificationType) {
-            case "MEDIATOR_SELECTED_BY_SELLER":
-            case "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW":
-            case "BUYER_CONFIRMED_AWAITING_YOUR_ACTION":
-              if (currentUserRole === "Vendor") {
-                path = "/dashboard/mediations";
-              } else {
-                path = `/dashboard/mediation-chat/${entityId}`;
-              }
-              break;
-
-            case "BID_ACCEPTED_PENDING_MEDIATOR":
-            case "SELLER_CONFIRMED_AWAITING_YOUR_ACTION":
-              path = "/my-mediation-requests";
-              break;
-
-            case "MEDIATION_ASSIGNED":
-            case "MEDIATION_TASK_ACCEPTED_SELF":
-            case "MEDIATION_TASK_REJECTED_SELF":
-              if (isMediatorQualified) {
-                path = "/dashboard/mediator/assignments";
-              }
-              break;
-
-            case "MEDIATION_ACCEPTED_BY_MEDIATOR":
-            case "PARTY_CONFIRMED_READINESS":
-            case "MEDIATION_STARTED":
-            case "MEDIATION_COMPLETED":
-            case "MEDIATION_CANCELLED":
-            case "MEDIATION_DISPUTED":
-            case "MEDIATION_CANCELLATION_CONFIRMED":
-            case "MEDIATION_REJECTED_BY_BUYER":
-              // For these general types, a direct link to the chat page is usually best for all parties.
-              path = `/dashboard/mediation-chat/${entityId}`;
-              break;
-
-            default:
-              console.warn(
-                `Unhandled MediationRequest type: ${notificationType} for role ${currentUserRole}`
-              );
-              // توجيه افتراضي إلى صفحة الشات كحل آمن
-              path = `/dashboard/mediation-chat/${entityId}`;
-              break;
+          } else {
+            // المستخدم العادي يمكن توجيهه لصفحة المنتج الرئيسية (إذا كان لديك مسار لها)
+            // حالياً نوجهه إلى الصفحة الرئيسية كحل بديل
+            path = "/";
           }
-        }
-      }
-      // --- User Related Notifications (Applications, Admin Actions) ---
-      else if (modelName === "User" && entityId) {
-        switch (notificationType) {
-          case "NEW_MEDIATOR_APPLICATION":
-            if (currentUserRole === "Admin") {
-              path = "/dashboard/admin/mediator-review";
+          break;
+
+        case "MediationRequest":
+          // التعامل مع الحالات بناءً على دور المستخدم
+          if (currentUserRole === "Admin") {
+            path = `/dashboard/admin/disputes`;
+          } else if (user?.isMediatorQualified) {
+            path = "/dashboard/mediator/assignments";
+          } else {
+            // التحقق إذا كان المستخدم هو البائع أم المشتري
+            const isSellerNotification = [
+              "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW",
+              "BUYER_CONFIRMED_AWAITING_YOUR_ACTION",
+            ].includes(notificationType);
+
+            if (isSellerNotification) {
+              path = "/dashboard/comptes_bids"; // البائع
+            } else {
+              path = "/my-mediation-requests"; // المشتري
             }
-            break;
-          case "MEDIATOR_APP_APPROVED":
-          case "MEDIATOR_APP_REJECTED":
-          case "MEDIATOR_APP_PENDING":
+          }
+          // حالة خاصة للمحادثات، تتجاوز ما سبق
+          if (notificationType.includes("CHAT")) {
+            path = `/dashboard/mediation-chat/${entityId}`;
+          }
+          break;
+
+        case "User":
+          if (
+            notificationType === "NEW_MEDIATOR_APPLICATION" &&
+            currentUserRole === "Admin"
+          ) {
+            path = "/dashboard/admin/mediator-review";
+          } else {
             path = "/dashboard/profile";
-            break;
-          case "ADMIN_BALANCE_ADJUSTMENT":
+          }
+          break;
+
+        case "DepositRequest":
+          if (currentUserRole === "Admin") {
+            path = "/dashboard/admin/deposits";
+          } else {
             path = "/dashboard/wallet";
-            break;
-          case "USER_BALANCE_ADJUSTED":
-            if (currentUserRole === "Admin") {
-              path = `/dashboard/admin/users`;
+          }
+          break;
+
+        case "WithdrawalRequest":
+          if (currentUserRole === "Admin") {
+            path = "/dashboard/admin/withdrawals";
+          } else {
+            path = "/dashboard/wallet";
+          }
+          break;
+
+        case "Ticket":
+          if (entityId) {
+            if (currentUserRole === "Admin" || currentUserRole === "Support") {
+              path = `/dashboard/admin/ticket-view/${entityId}`;
+            } else {
+              path = `/dashboard/support/tickets/${entityId}`;
             }
-            break;
-          default:
+          } else {
             path =
-              entityId === currentUserId
-                ? "/dashboard/profile"
-                : `/profile/${entityId}`;
-            break;
-        }
-      }
-      // --- Deposit & Withdrawal Notifications ---
-      else if (modelName === "DepositRequest" && entityId) {
-        switch (notificationType) {
-          case "NEW_DEPOSIT_REQUEST":
-            if (currentUserRole === "Admin") path = "/dashboard/admin/deposits";
-            break;
-          case "DEPOSIT_APPROVED":
-          case "DEPOSIT_REJECTED":
-          case "DEPOSIT_PENDING":
+              currentUserRole === "Admin" || currentUserRole === "Support"
+                ? "/dashboard/admin/tickets"
+                : "/dashboard/tickets";
+          }
+          break;
+
+        case "Report":
+          if (currentUserRole === "Admin") {
+            path = "/dashboard/admin/reports";
+          }
+          break;
+
+        // حالات عامة لا تعتمد على كيان محدد
+        case "Transaction":
+        default:
+          if (
+            notificationType.startsWith("FUNDS_") ||
+            notificationType.startsWith("ADMIN_BALANCE_")
+          ) {
             path = "/dashboard/wallet";
-            break;
-          default:
-            path = "/dashboard/wallet";
-            break;
-        }
-      } else if (modelName === "WithdrawalRequest" && entityId) {
-        switch (notificationType) {
-          case "NEW_WITHDRAWAL_REQUEST":
-            if (currentUserRole === "Admin")
-              path = "/dashboard/admin/withdrawals"; // Corrected path
-            break;
-          case "WITHDRAWAL_APPROVED":
-          case "WITHDRAWAL_PROCESSING":
-          case "WITHDRAWAL_COMPLETED":
-          case "WITHDRAWAL_REJECTED":
-            path = "/dashboard/wallet";
-            break;
-          default:
-            path = "/dashboard/wallet";
-            break;
-        }
-      }
-      // --- General Wallet Notifications (without specific entityId/modelName) ---
-      else if (
-        notificationType === "FUNDS_RECEIVED" ||
-        notificationType === "FUNDS_SENT"
-      ) {
-        path = "/dashboard/wallet";
-      }
-      // --- Welcome Notification ---
-      else if (notificationType === "WELCOME") {
-        path = "/dashboard/profile";
-      } else {
-        console.warn(
-          `Notification type '${notificationType}' with modelName '${modelName}' not specifically handled for navigation.`
-        );
+          } else {
+            // مسار افتراضي إذا لم يتم تحديد أي مسار آخر
+            path = "/dashboard";
+          }
+          break;
       }
 
+      // أخيراً، قم بالتوجيه إذا تم تحديد مسار
       if (path) {
-        console.log("Navigating to resolved path:", path);
+        console.log(
+          `Navigating to: ${path} for notification type: ${notificationType}`
+        );
         navigate(path);
       } else {
-        console.log(
-          "No specific path determined for this notification, staying on page."
+        console.warn(
+          "Could not determine navigation path for notification:",
+          notification
         );
       }
     },
-    [
-      dispatch,
-      loadingMarkRead,
-      navigate,
-      user?.userRole,
-      user?._id,
-      user?.isMediatorQualified,
-    ]
+    [dispatch, loadingMarkRead, navigate, user]
   );
 
   const handleMarkAllRead = useCallback(() => {
@@ -279,102 +182,6 @@ const NotificationsPage = () => {
       dispatch(markNotificationsRead(unreadIds));
     }
   }, [dispatch, notifications, loadingMarkRead]);
-
-  const getNotificationIcon = (type, isRead) => {
-    const iconColor = !isRead ? "primary" : "secondary";
-    // Chat Messages
-    if (type === "NEW_CHAT_MESSAGE" || type === "NEW_ADMIN_SUBCHAT_MESSAGE") {
-      return <FaCommentDots size={20} className={`text-${iconColor}`} />;
-    }
-    // Product & Bidding
-    if (
-      type.startsWith("PRODUCT_") ||
-      type.startsWith("NEW_PRODUCT_") ||
-      type.startsWith("BID_")
-    ) {
-      if (type.includes("APPROVED") || type.includes("ACCEPTED"))
-        return <FaCheckCircle size={20} className="text-success" />;
-      if (type.includes("REJECTED") || type.includes("DELETED"))
-        return <FaTimesCircle size={20} className="text-danger" />;
-      if (type.includes("PENDING"))
-        return <FaHourglassHalf size={20} className="text-warning" />;
-      if (type.startsWith("NEW_BID") || type.startsWith("BID_UPDATED"))
-        return <FaBullhorn size={20} className={`text-${iconColor}`} />;
-    }
-    // Mediation
-    if (
-      type.startsWith("MEDIATION_") ||
-      type.startsWith("MEDIATOR_") ||
-      type.startsWith("PARTY_") ||
-      type.includes("_MEDIATOR") ||
-      type.includes("CONFIRMED_")
-    ) {
-      if (type.includes("ASSIGNED") || type.includes("SELECTED"))
-        return <FaUserShield size={20} className={`text-${iconColor}`} />;
-      if (
-        type.includes("ACCEPTED") ||
-        type.includes("CONFIRMED_READINESS") ||
-        type.includes("APPROVED") ||
-        type === "MEDIATOR_APP_APPROVED" ||
-        type === "MEDIATION_TASK_ACCEPTED_SELF"
-      )
-        return <FaCheckCircle size={20} className="text-success" />;
-      if (
-        type.includes("REJECTED") ||
-        type.includes("CANCELLED") ||
-        type === "MEDIATOR_APP_REJECTED" ||
-        type === "MEDIATION_TASK_REJECTED_SELF"
-      )
-        return <FaTimesCircle size={20} className="text-danger" />;
-      if (type === "MEDIATION_STARTED")
-        return <FaGavel size={20} className="text-info" />;
-      if (type === "MEDIATION_COMPLETED")
-        return <FaMedal size={20} className="text-warning" />;
-      if (type === "MEDIATION_DISPUTED")
-        return <FiAlertTriangle size={20} className="text-danger" />;
-      if (
-        type === "NEW_MEDIATOR_APPLICATION" ||
-        type === "MEDIATOR_APP_PENDING"
-      )
-        return <FaUsersCog size={20} className={`text-${iconColor}`} />;
-      if (type === "PARTIES_CONFIRMED_AWAITING_CHAT")
-        return <FaHandshake size={20} className={`text-${iconColor}`} />;
-    }
-    // Financial
-    if (
-      type.startsWith("FUNDS_") ||
-      type.includes("BALANCE_") ||
-      type.startsWith("DEPOSIT_") ||
-      type.startsWith("WITHDRAWAL_")
-    ) {
-      if (
-        type === "FUNDS_RECEIVED" ||
-        type === "DEPOSIT_APPROVED" ||
-        type === "WITHDRAWAL_COMPLETED" ||
-        type === "ADMIN_BALANCE_ADJUSTMENT"
-      )
-        return <FaDollarSign size={20} className="text-success" />;
-      if (type === "FUNDS_SENT" || type === "USER_BALANCE_ADJUSTED")
-        return <FaMoneyBillWave size={20} className={`text-${iconColor}`} />;
-      if (type === "NEW_DEPOSIT_REQUEST" || type === "DEPOSIT_PENDING")
-        return <FiTrendingUp size={20} className="text-info" />;
-      if (type === "DEPOSIT_REJECTED")
-        return <FiTrendingUp size={20} className="text-danger" />;
-      if (type === "NEW_WITHDRAWAL_REQUEST" || type === "WITHDRAWAL_PROCESSING")
-        return <FiTrendingDown size={20} className="text-info" />;
-      if (type === "WITHDRAWAL_REJECTED")
-        return <FiTrendingDown size={20} className="text-danger" />;
-    }
-    // Welcome
-    if (type === "WELCOME")
-      return <FaHandshake size={20} className="text-primary" />;
-    // Default
-    return !isRead ? (
-      <FaRegEnvelope size={20} className={`text-${iconColor}`} />
-    ) : (
-      <FaRegEnvelopeOpen size={20} className={`text-${iconColor}`} />
-    );
-  };
 
   return (
     <Container fluid className="notifications-page py-4">
@@ -430,7 +237,11 @@ const NotificationsPage = () => {
                       !notif.isRead ? "fw-bold" : ""
                     }`}
                   >
-                    {t(notif.title, { defaultValue: notif.title })}
+                    {t(notif.title, {
+                      ...notif.messageParams,
+                      defaultValue:
+                        notif.title || t("notificationsPage.defaultTitle"),
+                    })}
                   </p>
                   <p
                     className={`mb-1 notification-message small ${

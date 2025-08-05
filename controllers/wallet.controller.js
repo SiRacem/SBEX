@@ -156,8 +156,12 @@ exports.sendFundsController = async (req, res) => {
             _id: new mongoose.Types.ObjectId(),
             user: senderId,
             type: 'FUNDS_SENT',
-            title: 'Funds Sent',
-            message: senderMsg,
+            title: 'notification_titles.FUNDS_SENT', // <-- مفتاح
+            message: 'notification_messages.FUNDS_SENT', // <-- مفتاح
+            messageParams: { // <-- متغيرات
+                amount: formatCurrency(numericAmount, currency.toUpperCase()),
+                recipientName: recipient.fullName || recipient.email
+            },
             relatedEntity: { id: newTransaction._id, modelName: 'Transaction' },
             isRead: false,
             createdAt: new Date()
@@ -166,12 +170,17 @@ exports.sendFundsController = async (req, res) => {
             _id: new mongoose.Types.ObjectId(),
             user: recipientId,
             type: 'FUNDS_RECEIVED',
-            title: 'Funds Received',
-            message: recipientMsg,
+            title: 'notification_titles.FUNDS_RECEIVED', // <-- مفتاح
+            message: 'notification_messages.FUNDS_RECEIVED', // <-- مفتاح
+            messageParams: { // <-- متغيرات
+                amount: formatCurrency(numericAmount, currency.toUpperCase()),
+                senderName: sender.fullName || sender.email
+            },
             relatedEntity: { id: newTransaction._id, modelName: 'Transaction' },
             isRead: false,
             createdAt: new Date()
         };
+        // ***** نهاية التعديل *****
 
         await Notification.insertMany([senderNotificationForSocket, recipientNotificationForSocket], { session });
         console.log("[WalletCtrl Send V3] Notifications created in DB.");

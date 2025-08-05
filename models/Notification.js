@@ -100,6 +100,7 @@ const NotificationSchema = new Schema({
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
+    messageParams: { type: Schema.Types.Mixed, default: {} },
     relatedEntity: {
         id: { type: Schema.Types.ObjectId },
         // --- [!] إضافة MediationRequest هنا [!] ---

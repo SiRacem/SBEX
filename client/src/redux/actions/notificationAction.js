@@ -3,49 +3,63 @@ import {
     GET_NOTIFICATIONS_REQUEST, GET_NOTIFICATIONS_SUCCESS, GET_NOTIFICATIONS_FAIL,
     MARK_READ_REQUEST, MARK_READ_SUCCESS, MARK_READ_FAIL, CLEAR_NOTIFICATIONS
 } from '../actionTypes/notificationActionType';
-// Helper (يمكن نقله لملف مشترك utils/auth)
+
+const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
+    if (error.response) {
+        if (error.response.data.translationKey) return { key: error.response.data.translationKey };
+        if (error.response.data.msg) {
+            const fallback = error.response.data.msg;
+            const key = `apiErrors.${fallback.replace(/\s+/g, '_').replace(/[!'.]/g, '')}`;
+            return { key, fallback };
+        }
+        return { key: 'apiErrors.requestFailedWithCode', params: { code: error.response.status } };
+    } else if (error.request) {
+        return { key: 'apiErrors.networkError' };
+    }
+    return { key: defaultKey, params: { message: error.message } };
+};
+
 const getTokenConfig = (isJson = true) => {
     const token = localStorage.getItem('token');
-    if (!token || token === 'null' || token === 'undefined') return null;
+    if (!token) return null;
     const headers = { 'Authorization': `Bearer ${token}` };
     if (isJson) headers['Content-Type'] = 'application/json';
     return { headers };
 };
 
-// Get user notifications
 export const getNotifications = () => async (dispatch) => {
     dispatch({ type: GET_NOTIFICATIONS_REQUEST });
-    const config = getTokenConfig(false); // لا نحتاج Content-Type لـ GET
-    if (!config) return dispatch({ type: GET_NOTIFICATIONS_FAIL, payload: 'Token required.' });
-
+    const config = getTokenConfig(false);
+    if (!config) {
+        const { key, fallback, params } = handleError({}, 'notifications.authFail');
+        return dispatch({ type: GET_NOTIFICATIONS_FAIL, payload: { errorMessage: { key, fallback, params } } });
+    }
     try {
         const { data } = await axios.get('/notifications', config);
-        console.log("[getNotifications Action] Received:", data); // Log
         dispatch({ type: GET_NOTIFICATIONS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch notifications';
-        console.error("[getNotifications Action] Error:", message, error.response); // Log error
-        dispatch({ type: GET_NOTIFICATIONS_FAIL, payload: message });
+        const { key, fallback, params } = handleError(error, 'notifications.loadFail');
+        dispatch({ type: GET_NOTIFICATIONS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-// Mark notifications as read
 export const markNotificationsRead = (notificationIds) => async (dispatch) => {
     dispatch({ type: MARK_READ_REQUEST });
-    const config = getTokenConfig(); // يحتاج Content-Type لـ PUT مع body
-    if (!config) return dispatch({ type: MARK_READ_FAIL, payload: 'Token required.' });
-    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
-        return dispatch({ type: MARK_READ_FAIL, payload: 'Notification IDs array needed.' });
+    const config = getTokenConfig();
+    if (!config) {
+        const { key, fallback, params } = handleError({}, 'notifications.authFail');
+        return dispatch({ type: MARK_READ_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
-
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+        const errorMessage = { key: 'notifications.noIds' };
+        return dispatch({ type: MARK_READ_FAIL, payload: { errorMessage } });
+    }
     try {
         await axios.put('/notifications/read', { notificationIds }, config);
-        console.log("[markNotificationsRead Action] Marked as read:", notificationIds); // Log
-        dispatch({ type: MARK_READ_SUCCESS, payload: notificationIds }); // إرسال IDs للـ reducer
+        dispatch({ type: MARK_READ_SUCCESS, payload: notificationIds });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to mark notifications';
-        console.error("[markNotificationsRead Action] Error:", message, error.response); // Log error
-        dispatch({ type: MARK_READ_FAIL, payload: message });
+        const { key, fallback, params } = handleError(error, 'notifications.markReadFail');
+        dispatch({ type: MARK_READ_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 

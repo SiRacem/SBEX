@@ -197,12 +197,11 @@ const productReducer = (state = initialState, { type, payload }) => {
         case PLACE_BID_SUCCESS:
             return {
                 ...state,
-                productLoading: { ...state.productLoading, [payload.productId]: false },
-                Products: state.Products.map(product =>
-                    product._id === payload.productId
-                        ? { ...product, bids: Array.isArray(payload.bids) ? payload.bids : [] } // استبدال بالمزايدات الجديدة
-                        : product
-                )
+                loading: false, // أو productLoading
+                Products: state.Products.map(p => 
+                    p._id === updatedProduct._id ? updatedProduct : p
+                ),
+                productErrors: { ...state.productErrors, [payload.productId]: null }
             };
         case PLACE_BID_FAIL:
             return { ...state, productLoading: { ...state.productLoading, [payload.productId]: false }, productErrors: { ...state.productErrors, [payload.productId]: payload.error } };

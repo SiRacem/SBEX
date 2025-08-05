@@ -1,5 +1,4 @@
 // src/components/commun/DepositModal.jsx
-
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -15,9 +14,9 @@ import {
   Image,
   InputGroup,
   Badge,
-  ButtonGroup,
   OverlayTrigger,
   Tooltip,
+  ButtonGroup,
 } from "react-bootstrap";
 import {
   FaArrowRight,
@@ -28,26 +27,29 @@ import {
   FaCopy,
   FaCheck,
 } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
-import axios from "axios"; // ضروري للرفع
+import axios from "axios";
 import { getActivePaymentMethods } from "../../redux/actions/paymentMethodAction";
 import "./DepositModal.css";
 import {
   createDepositRequest,
   resetCreateDeposit,
-} from "../../redux/actions/depositAction"; // استيراد reset
+} from "../../redux/actions/depositAction";
 
-// --- الدوال والمتغيرات المساعدة ---
-const TND_TO_USD_RATE = 3.0; // تأكد من تحديث هذا إذا لزم الأمر
+const TND_TO_USD_RATE = 3.0;
 const noImageUrlPlaceholder =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
-// دالة تنسيق العملة
-const formatCurrencyLocal = (amount, currencyCode = "TND") => {
+const formatCurrencyLocal = (
+  amount,
+  currencyCode = "TND",
+  locale = "en-US"
+) => {
   const num = Number(amount);
   if (isNaN(num) || !currencyCode) return "N/A";
   try {
-    return num.toLocaleString(undefined, {
+    return num.toLocaleString(locale, {
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -58,7 +60,6 @@ const formatCurrencyLocal = (amount, currencyCode = "TND") => {
   }
 };
 
-// دالة إعدادات axios لطلبات JSON العادية
 const getTokenJsonConfig = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -72,8 +73,6 @@ const getTokenJsonConfig = () => {
     },
   };
 };
-
-// دالة إعدادات axios لرفع الملفات (بدون Content-Type)
 const getUploadTokenConfig = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -82,85 +81,47 @@ const getUploadTokenConfig = () => {
   }
   return { headers: { Authorization: `Bearer ${token}` } };
 };
-
-// دالة حساب العمولة محلياً (للعرض فقط)
-const calculateCommissionLocal = (method, amount, currency = "TND") => {
+const calculateCommissionLocal = (method, amount, currency = "TND", t) => {
   if (!method || isNaN(amount) || amount <= 0)
-    return { error: "Invalid input." };
+    return { error: t("walletPage.depositModal.errors.invalidInput") };
   const percent = method.depositCommissionPercent ?? 0;
-  const fixedTND = method.commissionFixedTND ?? 0;
-  const fixedUSD = method.commissionFixedUSD ?? 0;
-  const minFeeTND = method.minFeeTND ?? 0;
-  const minFeeUSD = method.minFeeUSD ?? 0;
-  const maxFeeTND = method.maxFeeTND ?? Infinity;
-  const maxFeeUSD = method.maxFeeUSD ?? Infinity;
   const minDeposit =
     currency === "USD" ? method.minDepositUSD ?? 0 : method.minDepositTND ?? 0;
-
-  if (amount < minDeposit) {
+  if (amount < minDeposit)
     return {
-      error: `Minimum deposit is ${formatCurrencyLocal(minDeposit, currency)}.`,
+      error: t("walletPage.depositModal.errors.minDeposit", {
+        amount: formatCurrencyLocal(minDeposit, currency),
+      }),
     };
-  }
-
   let fee = (amount * percent) / 100;
-  if (currency === "TND") {
-    fee += fixedTND;
-    if (fixedUSD > 0) fee += fixedUSD * TND_TO_USD_RATE;
-    fee = Math.max(fee, minFeeTND);
-    if (minFeeUSD > 0) fee = Math.max(fee, minFeeUSD * TND_TO_USD_RATE);
-    if (maxFeeTND < Infinity) fee = Math.min(fee, maxFeeTND);
-    if (maxFeeUSD < Infinity) fee = Math.min(fee, maxFeeUSD * TND_TO_USD_RATE);
-  } else {
-    // USD
-    fee += fixedUSD;
-    if (fixedTND > 0) fee += fixedTND / TND_TO_USD_RATE;
-    fee = Math.max(fee, minFeeUSD);
-    if (minFeeTND > 0) fee = Math.max(fee, minFeeTND / TND_TO_USD_RATE);
-    if (maxFeeUSD < Infinity) fee = Math.min(fee, maxFeeUSD);
-    if (maxFeeTND < Infinity) fee = Math.min(fee, maxFeeTND / TND_TO_USD_RATE);
-  }
-  fee = Math.max(0, fee);
   const netAmount = amount - fee;
-  if (netAmount < 0 && amount > 0) {
+  if (netAmount <= 0 && amount > 0)
     return {
-      error: `Fee (${formatCurrencyLocal(
-        fee,
-        currency
-      )}) exceeds deposit amount.`,
+      error: t("walletPage.depositModal.errors.feeExceedsAmount", {
+        fee: formatCurrencyLocal(fee, currency),
+      }),
     };
-  }
   return {
     fee: Number(fee.toFixed(2)),
     netAmount: Number(netAmount.toFixed(2)),
-    totalAmount: Number(amount.toFixed(2)),
     error: null,
   };
 };
-// -------------------------------------------------------------
 
 const PRESET_AMOUNTS_TND = [5, 10, 20, 30, 40];
 const PRESET_AMOUNTS_USD = [2, 5, 10, 15, 20];
 
-// --- المكون الرئيسي ---
 const DepositModal = ({ show, onHide }) => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
-
-  // --- Selectors ---
-  const depositState = useSelector(
-    (state) => state.depositRequestReducer || {}
-  );
   const { loadingCreate, errorCreate, successCreate } = useSelector(
     (state) => state.depositRequestReducer || {}
   );
-  const paymentMethodState = useSelector(
-    (state) => state.paymentMethodReducer || {}
-  );
   const {
     activeMethods: depositMethodsRaw = [],
-    loadingActive: loadingMethods = false,
-    error: errorMethods = null,
-  } = paymentMethodState;
+    loadingActive: loadingMethods,
+    error: errorMethods,
+  } = useSelector((state) => state.paymentMethodReducer || {});
   const depositMethods = useMemo(
     () =>
       depositMethodsRaw.filter(
@@ -168,12 +129,9 @@ const DepositModal = ({ show, onHide }) => {
       ),
     [depositMethodsRaw]
   );
-
-  // --- State ---
   const [step, setStep] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
-  const [isCustomAmount, setIsCustomAmount] = useState(true);
   const [amountError, setAmountError] = useState(null);
   const [commissionInfo, setCommissionInfo] = useState({
     fee: 0,
@@ -182,53 +140,51 @@ const DepositModal = ({ show, onHide }) => {
   const [transactionId, setTransactionId] = useState("");
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [senderInfo, setSenderInfo] = useState("");
-  const [isUploading, setIsUploading] = useState(false); // حالة الرفع
-  const [submitError, setSubmitError] = useState(null); // خطأ الإرسال العام
+  const [isUploading, setIsUploading] = useState(false);
   const [inputCurrency, setInputCurrency] = useState("TND");
   const [isCopied, setIsCopied] = useState(false);
 
-  // --- useEffect: إعادة التعيين عند فتح المودال ---
   useEffect(() => {
     if (show) {
       dispatch(getActivePaymentMethods("deposit"));
-      dispatch(resetCreateDeposit()); // مسح حالة الإنشاء السابقة
+      dispatch(resetCreateDeposit());
       setStep(1);
       setSelectedMethod(null);
       setDepositAmount("");
-      setIsCustomAmount(true);
       setAmountError(null);
       setCommissionInfo({ fee: 0, netAmount: 0 });
       setTransactionId("");
       setScreenshotFile(null);
       setSenderInfo("");
       setIsUploading(false);
-      setSubmitError(null);
       setInputCurrency("TND");
       setIsCopied(false);
     }
   }, [show, dispatch]);
 
-  // --- useEffect: تحديد العملة الافتراضية عند اختيار طريقة ---
   useEffect(() => {
-    let nextCurrency = "TND";
+    if (successCreate) {
+      onHide();
+    }
+  }, [successCreate, onHide]);
+
+  useEffect(() => {
     if (selectedMethod) {
       const minUSD = selectedMethod.minDepositUSD;
       const minTND = selectedMethod.minDepositTND;
-      if (minUSD != null && minUSD > 0 && (minTND == null || minTND <= 0)) {
-        nextCurrency = "USD";
+      const nextCurrency =
+        minUSD != null && minUSD > 0 && (minTND == null || minTND <= 0)
+          ? "USD"
+          : "TND";
+      if (nextCurrency !== inputCurrency) {
+        setInputCurrency(nextCurrency);
+        setDepositAmount("");
+        setAmountError(null);
+        setCommissionInfo({ fee: 0, netAmount: 0 });
       }
     }
-    if (nextCurrency !== inputCurrency) {
-      setInputCurrency(nextCurrency);
-      setDepositAmount("");
-      setAmountError(null);
-      setCommissionInfo({ fee: 0, netAmount: 0 });
-      setIsCustomAmount(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMethod]);
+  }, [selectedMethod, inputCurrency]);
 
-  // --- useEffect: حساب العمولة محلياً للعرض ---
   useEffect(() => {
     if (selectedMethod && depositAmount) {
       const amountNum = parseFloat(depositAmount);
@@ -236,15 +192,13 @@ const DepositModal = ({ show, onHide }) => {
         const calc = calculateCommissionLocal(
           selectedMethod,
           amountNum,
-          inputCurrency
+          inputCurrency,
+          t
         );
-        if (calc.error) {
-          setAmountError(calc.error);
-          setCommissionInfo({ fee: 0, netAmount: 0 });
-        } else {
-          setAmountError(null);
+        setAmountError(calc.error);
+        if (!calc.error)
           setCommissionInfo({ fee: calc.fee, netAmount: calc.netAmount });
-        }
+        else setCommissionInfo({ fee: 0, netAmount: 0 });
       } else {
         setAmountError(null);
         setCommissionInfo({ fee: 0, netAmount: 0 });
@@ -253,262 +207,184 @@ const DepositModal = ({ show, onHide }) => {
       setAmountError(null);
       setCommissionInfo({ fee: 0, netAmount: 0 });
     }
-  }, [depositAmount, selectedMethod, inputCurrency]);
+  }, [depositAmount, selectedMethod, inputCurrency, t]);
 
-  // --- useEffect: التعامل مع الإغلاق بعد نجاح الإنشاء ---
-  // useEffect(() => {
-  //   let timer;
-  //   if (successCreate) {
-  //     toast.success("Deposit request submitted successfully!");
-  //     timer = setTimeout(() => {
-  //       onHide(); // أغلق المودال بعد فترة
-  //       // --- [!] أعد تعيين الحالة بعد الإغلاق (أو قبله بقليل) ---
-  //       // ننتظر قليلاً بعد الإغلاق لضمان عدم حدوث إعادة عرض غير متوقعة
-  //       setTimeout(() => {
-  //         dispatch(resetCreateDeposit());
-  //       }, 100); // تأخير بسيط جداً
-  //       // ----------------------------------------------------
-  //     }, 1500); // مدة عرض رسالة النجاح قبل الإغلاق
-  //   }
-  //   // تنظيف المؤقت إذا تم إلغاء المكون أو تغيرت successCreate قبل انتهاء المؤقت
-  //   return () => clearTimeout(timer);
-  // }, [successCreate, onHide, dispatch]);
-
-  // --- Handlers ---
-  const handleSelectMethod = (method) => {
-    setSelectedMethod(method);
-  };
+  const handleSelectMethod = (method) => setSelectedMethod(method);
   const handleAmountInputChange = (e) => {
     const value = e.target.value;
-    if (/^\d*\.?\d{0,2}$/.test(value) || value === "") {
-      setDepositAmount(value);
-      setIsCustomAmount(true);
-    }
+    if (/^\d*\.?\d{0,2}$/.test(value) || value === "") setDepositAmount(value);
   };
-  const handlePresetAmountClick = (amount) => {
+  const handlePresetAmountClick = (amount) =>
     setDepositAmount(amount.toString());
-    setIsCustomAmount(false);
-  };
   const handleScreenshotChange = (e) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    if (file && file.type.startsWith("image/")) {
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
-        toast.warn("Max file size is 5MB.");
-        setScreenshotFile(null);
-        if (e.target) e.target.value = ""; // Reset file input
-      } else {
-        setScreenshotFile(file);
-      }
-    } else if (file) {
-      toast.warn("Invalid file type. Please select an image.");
+    const file = e.target.files?.[0];
+    if (!file) {
       setScreenshotFile(null);
-      if (e.target) e.target.value = "";
-    } else {
-      setScreenshotFile(null);
+      return;
     }
+    if (!file.type.startsWith("image/")) {
+      toast.warn(t("walletPage.depositModal.errors.invalidFileType"));
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.warn(t("walletPage.depositModal.errors.fileTooLarge"));
+      e.target.value = "";
+      return;
+    }
+    setScreenshotFile(file);
   };
+
   const goToStep = (nextStep) => {
     if (nextStep === 2 && !selectedMethod) {
-      toast.warn("Select a method first.");
+      toast.warn(t("walletPage.depositModal.errors.selectMethod"));
       return;
     }
     if (nextStep === 3) {
       const amountNum = parseFloat(depositAmount);
-      if (
-        !depositAmount ||
-        isNaN(amountNum) ||
-        amountNum <= 0 ||
-        !!amountError
-      ) {
-        setAmountError(amountError || "Enter a valid amount.");
-        toast.warn(amountError || "Enter a valid amount.");
-        return;
-      }
       const calc = calculateCommissionLocal(
         selectedMethod,
         amountNum,
-        inputCurrency
+        inputCurrency,
+        t
       );
-      if (calc.error || (calc.netAmount <= 0 && amountNum > 0)) {
-        setAmountError(calc.error || "Fee exceeds amount.");
-        toast.warn(calc.error || "Fee exceeds amount.");
+      if (!depositAmount || isNaN(amountNum) || amountNum <= 0 || calc.error) {
+        setAmountError(
+          calc.error || t("walletPage.depositModal.errors.validAmount")
+        );
+        toast.warn(calc.error || t("walletPage.depositModal.errors.validAmount"));
         return;
       }
     }
     setStep(nextStep);
   };
+
   const copyToClipboard = useCallback(
-    (textToCopy, successMessage = "Copied!") => {
+    (textToCopy) => {
       if (!textToCopy || isCopied) return;
       navigator.clipboard
         .writeText(textToCopy)
         .then(() => {
-          toast.success(successMessage);
+          toast.success(t("walletPage.receiveModal.copiedTooltip"));
           setIsCopied(true);
           setTimeout(() => setIsCopied(false), 2500);
         })
-        .catch((err) => {
-          toast.error("Failed to copy.");
-          console.error("Clipboard copy failed:", err);
-        });
+        .catch(() => toast.error(t("walletPage.receiveModal.copyFail")));
     },
-    [isCopied]
+    [isCopied, t]
   );
 
-  // --- [!] معالج الإرسال النهائي مع رفع الملفات ---
-  const handleSubmitDeposit = async (e) => {
-    if (e) e.preventDefault();
-
-    // ... (التحققات الأولية من المبلغ والطريقة والعمولة) ...
-    if (
-      !selectedMethod ||
-      !depositAmount ||
-      amountError ||
-      loadingCreate ||
-      isUploading
-    ) {
-      toast.error(
-        "Please correct errors, wait for processes, or complete selections."
+  const handleSubmitDeposit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      const amountNum = parseFloat(depositAmount);
+      const calc = calculateCommissionLocal(
+        selectedMethod,
+        amountNum,
+        inputCurrency,
+        t
       );
-      return;
-    }
-    const amountNum = parseFloat(depositAmount);
-    const localCalc = calculateCommissionLocal(
-      selectedMethod,
-      amountNum,
-      inputCurrency
-    );
-    if (localCalc.error || (localCalc.netAmount <= 0 && amountNum > 0)) {
-      setAmountError(localCalc.error || "Fee exceeds amount.");
-      toast.error(localCalc.error || "Fee exceeds amount.");
-      return;
-    }
-    const methodNameLower = selectedMethod.name?.toLowerCase();
-    if (methodNameLower === "cartes ooredoo" && !senderInfo.trim()) {
-      toast.warn("Please enter Ooredoo code(s).");
-      return;
-    }
-    const isTxnRequired = methodNameLower === "binance pay"; // Example
-    if (isTxnRequired && !transactionId.trim()) {
-      toast.warn("Please enter Transaction ID.");
-      return;
-    }
-
-    // --- [!!! إضافة تعريف المتغير هنا !!!] ---
-    let uploadedScreenshotUrl = null; // <-- عرف المتغير هنا بقيمة أولية null
-
-    // --- رفع الملف ---
-    if (screenshotFile) {
-      setIsUploading(true);
-      setSubmitError(null);
-      const formData = new FormData();
-      formData.append("proofImage", screenshotFile);
-      const uploadConfig = getUploadTokenConfig(); // استخدم الإعدادات بدون Content-Type
-      if (!uploadConfig) {
-        toast.error("Authorization error.");
-        setIsUploading(false);
+      if (
+        !selectedMethod ||
+        !depositAmount ||
+        amountError ||
+        loadingCreate ||
+        isUploading ||
+        calc.error
+      ) {
+        toast.error(t("walletPage.depositModal.errors.correctErrors"));
         return;
       }
-      try {
-        // toast.info("Uploading screenshot...");
-        const uploadRes = await axios.post(
-          "/uploads/proof",
-          formData,
-          uploadConfig
-        );
-        uploadedScreenshotUrl = uploadRes.data.filePath; // <-- الآن المتغير معرف ويمكن تعيين قيمة له
-        // toast.success("Screenshot uploaded.");
-        console.log("Uploaded screenshot path:", uploadedScreenshotUrl);
-      } catch (uploadError) {
-        const errorMsg =
-          uploadError.response?.data?.msg ||
-          uploadError.message ||
-          "File upload failed.";
-        console.error("Upload failed:", uploadError.response || uploadError);
-        toast.error(`Upload failed: ${errorMsg}. Submitting without proof.`);
-        // لا نوقف الإرسال، uploadedScreenshotUrl ستبقى null
-      } finally {
-        setIsUploading(false);
+      const methodNameLower = selectedMethod.name?.toLowerCase();
+      if (methodNameLower === "cartes ooredoo" && !senderInfo.trim()) {
+        toast.warn(t("walletPage.depositModal.errors.ooredooCodeRequired"));
+        return;
       }
-    }
-    // --- نهاية الرفع ---
+      if (methodNameLower === "binance pay" && !transactionId.trim()) {
+        toast.warn(t("walletPage.depositModal.errors.txnIdRequired"));
+        return;
+      }
 
-    // --- بناء بيانات الطلب ---
-    const depositData = {
-      amount: amountNum,
-      currency: inputCurrency,
-      methodName: selectedMethod.name,
-      transactionId:
-        methodNameLower !== "cartes ooredoo" && transactionId
-          ? transactionId.trim()
-          : undefined,
-      senderInfo:
-        methodNameLower === "cartes ooredoo" && senderInfo
-          ? senderInfo.trim()
-          : undefined,
-      screenshotUrl: uploadedScreenshotUrl, // <-- الآن المتغير معرف ويحمل المسار أو null
-    };
-    // ---------------------
+      let uploadedScreenshotUrl = null;
+      if (screenshotFile) {
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("proofImage", screenshotFile);
+        const uploadConfig = getUploadTokenConfig();
+        try {
+          const uploadRes = await axios.post(
+            "/uploads/proof",
+            formData,
+            uploadConfig
+          );
+          uploadedScreenshotUrl = uploadRes.data.filePath;
+        } catch (uploadError) {
+          toast.error(
+            t("walletPage.depositModal.errors.uploadFailedShort") +
+              `: ${uploadError.response?.data?.msg || uploadError.message}`
+          );
+        } finally {
+          setIsUploading(false);
+        }
+      }
 
-    console.log("Dispatching createDepositRequest:", depositData);
-    setSubmitError(null);
-    
-    // --- [!!!] START: MODIFICATION [!!!] ---
-    try {
-      await dispatch(createDepositRequest(depositData));
-      // If the dispatch does not throw an error, close the modal.
-      // The success toast is already handled in the action.
-      onHide(); 
-  } catch (error) {
-      // The action already shows a toast on failure, so we just log it here.
-      console.error("Error during deposit request dispatch:", error);
-  }
-  // --- [!!!] END: MODIFICATION [!!!] ---
-  };
-  // -------------------------------------------------------
+      const depositData = {
+        amount: amountNum,
+        currency: inputCurrency,
+        methodName: selectedMethod.name,
+        transactionId: transactionId.trim() || undefined,
+        senderInfo: senderInfo.trim() || undefined,
+        screenshotUrl: uploadedScreenshotUrl,
+      };
+      dispatch(createDepositRequest(depositData));
+    },
+    [
+      dispatch,
+      selectedMethod,
+      depositAmount,
+      amountError,
+      loadingCreate,
+      isUploading,
+      inputCurrency,
+      t,
+      screenshotFile,
+      transactionId,
+      senderInfo,
+    ]
+  );
 
-  // --- دالة عرض تفاصيل العمولة والحدود في الخطوة 1 ---
   const renderFeeDetails = (method) => {
     if (!method) return null;
     let feeStrings = [];
-    let limitStrings = [];
     if (method.depositCommissionPercent > 0)
       feeStrings.push(`${method.depositCommissionPercent}%`);
-    if (method.commissionFixedTND > 0)
-      feeStrings.push(
-        `${formatCurrencyLocal(method.commissionFixedTND, "TND")}`
-      );
-    if (method.commissionFixedUSD > 0)
-      feeStrings.push(
-        `${formatCurrencyLocal(method.commissionFixedUSD, "USD")}`
-      );
     const feeText =
       feeStrings.length > 0 ? (
-        `Fee: ${feeStrings.join(" + ")}`
+        `${t("walletPage.depositModal.feeLabel")}: ${feeStrings.join(" + ")}`
       ) : (
-        <span className="text-success">No Fee</span>
+        <span className="text-success">
+          {t("walletPage.depositModal.noFeeLabel")}
+        </span>
       );
-    if (
-      method.minDepositTND >= 0 &&
-      (method.minDepositTND > 0 ||
-        !method.minDepositUSD ||
-        method.minDepositUSD <= 0)
-    )
+
+    let limitStrings = [];
+    if (method.minDepositTND > 0)
       limitStrings.push(
-        `Min: ${formatCurrencyLocal(method.minDepositTND, "TND")}`
+        `${t("walletPage.depositModal.minLabel")}: ${formatCurrencyLocal(
+          method.minDepositTND,
+          "TND"
+        )}`
       );
-    if (
-      method.minDepositUSD >= 0 &&
-      (method.minDepositUSD > 0 ||
-        !method.minDepositTND ||
-        method.minDepositTND <= 0)
-    )
+    if (method.minDepositUSD > 0)
       limitStrings.push(
-        `Min: ${formatCurrencyLocal(method.minDepositUSD, "USD")}`
+        `${t("walletPage.depositModal.minLabel")}: ${formatCurrencyLocal(
+          method.minDepositUSD,
+          "USD"
+        )}`
       );
     const limitString =
       limitStrings.length > 0 ? limitStrings.join(" / ") : null;
+
     return (
       <>
         <Badge pill bg="light" text="dark" className="detail-badge">
@@ -523,7 +399,6 @@ const DepositModal = ({ show, onHide }) => {
     );
   };
 
-  // --- العرض (JSX) ---
   return (
     <Modal
       show={show}
@@ -531,46 +406,45 @@ const DepositModal = ({ show, onHide }) => {
       size="lg"
       backdrop="static"
       centered
-      className="deposit-modal professional"
+      className="deposit-modal"
     >
-      <Modal.Header closeButton className="border-0 pb-0 pt-3 px-4">
-        <Modal.Title as="h5">Deposit Funds</Modal.Title>
+      <Modal.Header closeButton>
+        <Modal.Title as="h5">{t("walletPage.depositModal.title")}</Modal.Title>
       </Modal.Header>
       <Modal.Body className="p-4">
-        {/* مؤشر الخطوات */}
         <div className="mb-4 text-center step-indicator">
           <span className={`step ${step >= 1 ? "active" : ""}`}>
-            <span className="step-number">1</span> Method
+            <span className="step-number">1</span>{" "}
+            {t("walletPage.depositModal.step1")}
           </span>
           <span className="connector"></span>
           <span className={`step ${step >= 2 ? "active" : ""}`}>
-            <span className="step-number">2</span> Amount
+            <span className="step-number">2</span>{" "}
+            {t("walletPage.depositModal.step2")}
           </span>
           <span className="connector"></span>
           <span className={`step ${step >= 3 ? "active" : ""}`}>
-            <span className="step-number">3</span> Details
+            <span className="step-number">3</span>{" "}
+            {t("walletPage.depositModal.step3")}
           </span>
         </div>
-        {/* عرض الأخطاء */}
-        {(errorCreate || submitError) && (
+        {errorCreate && (
           <Alert
             variant="danger"
-            className="mt-2 mb-3"
-            onClose={() => {
-              dispatch(resetCreateDeposit());
-              setSubmitError(null);
-            }}
+            onClose={() => dispatch(resetCreateDeposit())}
             dismissible
           >
-            {errorCreate || submitError || "An error occurred."}
+            {t(errorCreate.key, {
+              ...errorCreate.params,
+              defaultValue: errorCreate.fallback,
+            })}
           </Alert>
         )}
 
-        {/* --- Step 1: Select Method --- */}
         {step === 1 && (
           <div className="step-content">
             <p className="mb-3 text-center text-muted small">
-              Select your preferred deposit method.
+              {t("walletPage.depositModal.selectMethod")}
             </p>
             {loadingMethods && (
               <div className="text-center p-5">
@@ -579,7 +453,7 @@ const DepositModal = ({ show, onHide }) => {
             )}
             {errorMethods && (
               <Alert variant="warning" className="text-center">
-                Could not load methods: {errorMethods}
+                {t("walletPage.depositModal.loadMethodsError")}: {errorMethods}
               </Alert>
             )}
             {!loadingMethods && !errorMethods && (
@@ -594,33 +468,14 @@ const DepositModal = ({ show, onHide }) => {
                         onClick={() => handleSelectMethod(method)}
                       >
                         <Card.Body className="text-center d-flex flex-column align-items-center p-3">
-                          {method.logoUrl ? (
-                            <Image
-                              src={method.logoUrl}
-                              className="method-logo-v2 mb-2"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                e.target.nextSibling.style.display = "block";
-                              }}
-                            />
-                          ) : (
-                            <FaRegCreditCard
-                              size={30}
-                              className="text-muted mb-2"
-                            />
-                          )}
-                          <span
-                            style={
-                              method.logoUrl
-                                ? { display: "none" }
-                                : { display: "block" }
-                            }
-                          >
-                            <FaRegCreditCard
-                              size={30}
-                              className="text-muted mb-2"
-                            />
-                          </span>
+                          <Image
+                            src={method.logoUrl}
+                            className="method-logo-v2 mb-2"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = noImageUrlPlaceholder;
+                            }}
+                          />
                           <Card.Title className="method-name-v2 mt-auto mb-1">
                             {method.displayName || method.name}
                           </Card.Title>
@@ -639,7 +494,7 @@ const DepositModal = ({ show, onHide }) => {
                 ) : (
                   <Col>
                     <Alert variant="light" className="text-center">
-                      No deposit methods available.
+                      {t("walletPage.depositModal.noMethods")}
                     </Alert>
                   </Col>
                 )}
@@ -651,13 +506,12 @@ const DepositModal = ({ show, onHide }) => {
                 onClick={() => goToStep(2)}
                 disabled={!selectedMethod}
               >
-                Next Step <FaArrowRight className="ms-1" />
+                {t("walletPage.sendModal.nextButton")}{" "}
+                <FaArrowRight className="ms-1" />
               </Button>
             </div>
           </div>
         )}
-
-        {/* --- Step 2: Enter Amount --- */}
         {step === 2 && selectedMethod && (
           <div className="step-content">
             <Button
@@ -666,17 +520,23 @@ const DepositModal = ({ show, onHide }) => {
               onClick={() => setStep(1)}
               className="mb-3 p-0 btn-back-v2"
             >
-              <FaArrowLeft className="me-1" /> Change Method
+              <FaArrowLeft className="me-1" />{" "}
+              {t("walletPage.depositModal.changeMethod")}
             </Button>
-            <h4 className="mb-1 text-center fw-light">Enter Amount</h4>
+            <h4 className="mb-1 text-center fw-light">
+              {t("walletPage.depositModal.enterAmount")}
+            </h4>
             <p className="text-center text-muted mb-4 small">
-              Using{" "}
-              <span className="fw-medium">{selectedMethod.displayName}</span>
+              {t("walletPage.depositModal.using", {
+                methodName: selectedMethod.displayName,
+              })}
             </p>
-            {/* Preset Amounts */}
             <Form.Group className="mb-3 text-center quick-amount-group">
               <Form.Label className="d-block mb-2 small text-muted">
-                Select Amount ({inputCurrency}):
+                {t("walletPage.depositModal.selectAmount", {
+                  currency: inputCurrency,
+                })}
+                :
               </Form.Label>
               <ButtonGroup
                 size="sm"
@@ -685,35 +545,33 @@ const DepositModal = ({ show, onHide }) => {
                 {(inputCurrency === "TND"
                   ? PRESET_AMOUNTS_TND
                   : PRESET_AMOUNTS_USD
-                ).map((amount) => {
-                  const minDeposit =
-                    inputCurrency === "USD"
-                      ? selectedMethod.minDepositUSD ?? 0
-                      : selectedMethod.minDepositTND ?? 0;
-                  const isDisabled = minDeposit != null && amount < minDeposit;
-                  return (
-                    <Button
-                      key={amount}
-                      variant={
-                        depositAmount === amount.toString() && !isCustomAmount
-                          ? "primary"
-                          : "outline-secondary"
-                      }
-                      onClick={() => handlePresetAmountClick(amount)}
-                      className="m-1 preset-btn"
-                      disabled={isDisabled}
-                    >
-                      {amount} <small>{inputCurrency}</small>
-                    </Button>
-                  );
-                })}
+                ).map((amount) => (
+                  <Button
+                    key={amount}
+                    variant={
+                      depositAmount === amount.toString()
+                        ? "primary"
+                        : "outline-secondary"
+                    }
+                    onClick={() => handlePresetAmountClick(amount)}
+                    className="m-1 preset-btn"
+                    disabled={
+                      (inputCurrency === "USD"
+                        ? selectedMethod.minDepositUSD ?? 0
+                        : selectedMethod.minDepositTND ?? 0) > amount
+                    }
+                  >
+                    {amount} <small>{inputCurrency}</small>
+                  </Button>
+                ))}
               </ButtonGroup>
             </Form.Group>
-            {/* Custom Amount Input */}
             <Form>
               <FloatingLabel
                 controlId="depositAmountCustom"
-                label={`Or Enter Custom Amount (${inputCurrency})`}
+                label={t("walletPage.depositModal.customAmountLabel", {
+                  currency: inputCurrency,
+                })}
                 className="mb-3 custom-amount-label"
               >
                 <InputGroup>
@@ -730,7 +588,6 @@ const DepositModal = ({ show, onHide }) => {
                     }
                     step="0.01"
                     isInvalid={!!amountError}
-                    onClick={() => setIsCustomAmount(true)}
                     size="lg"
                   />
                   <InputGroup.Text>{inputCurrency}</InputGroup.Text>
@@ -741,20 +598,19 @@ const DepositModal = ({ show, onHide }) => {
                   </small>
                 )}
               </FloatingLabel>
-              {/* Commission Details */}
               {parseFloat(depositAmount) > 0 && !amountError && (
                 <Card
                   body
                   className="commission-details-v2 text-muted small mb-3 bg-light border-0"
                 >
                   <Row>
-                    <Col>Estimated Fee:</Col>
+                    <Col>{t("walletPage.depositModal.estimatedFee")}:</Col>
                     <Col xs="auto" className="text-end text-danger fw-medium">
                       {formatCurrencyLocal(commissionInfo.fee, inputCurrency)}
                     </Col>
                   </Row>
                   <Row className="mt-1">
-                    <Col>Net Amount Credited:</Col>
+                    <Col>{t("walletPage.depositModal.netAmount")}:</Col>
                     <Col xs="auto" className="text-end text-success fw-bold">
                       {formatCurrencyLocal(
                         commissionInfo.netAmount,
@@ -762,10 +618,9 @@ const DepositModal = ({ show, onHide }) => {
                       )}
                     </Col>
                   </Row>
-                  {/* Approx value in other currency */}
                   {inputCurrency === "USD" && commissionInfo.netAmount > 0 && (
                     <Row className="mt-1 border-top pt-1">
-                      <Col>Approx. TND Credited:</Col>
+                      <Col>{t("walletPage.depositModal.approxTND")}:</Col>
                       <Col xs="auto" className="text-end">
                         {formatCurrencyLocal(
                           commissionInfo.netAmount * TND_TO_USD_RATE,
@@ -776,7 +631,7 @@ const DepositModal = ({ show, onHide }) => {
                   )}
                   {inputCurrency === "TND" && commissionInfo.netAmount > 0 && (
                     <Row className="mt-1 border-top pt-1">
-                      <Col>Approx. USD Credited:</Col>
+                      <Col>{t("walletPage.depositModal.approxUSD")}:</Col>
                       <Col xs="auto" className="text-end">
                         {formatCurrencyLocal(
                           commissionInfo.netAmount / TND_TO_USD_RATE,
@@ -787,7 +642,6 @@ const DepositModal = ({ show, onHide }) => {
                   )}
                 </Card>
               )}
-              {/* Next Button */}
               <div className="d-grid mt-4">
                 <Button
                   variant="primary"
@@ -798,14 +652,13 @@ const DepositModal = ({ show, onHide }) => {
                     !!amountError
                   }
                 >
-                  Next Step <FaArrowRight className="ms-1" />
+                  {t("walletPage.sendModal.nextButton")}{" "}
+                  <FaArrowRight className="ms-1" />
                 </Button>
               </div>
             </Form>
           </div>
         )}
-
-        {/* --- Step 3: Confirm & Details --- */}
         {step === 3 && selectedMethod && (
           <div className="step-content">
             <Button
@@ -814,68 +667,73 @@ const DepositModal = ({ show, onHide }) => {
               onClick={() => goToStep(2)}
               className="mb-2 p-0 btn-back-v2"
             >
-              <FaArrowLeft className="me-1" /> Change Amount
+              <FaArrowLeft className="me-1" />{" "}
+              {t("walletPage.depositModal.changeAmount")}
             </Button>
             <h4 className="mb-3 text-center fw-light">
-              Confirm & Payment Details
+              {t("walletPage.depositModal.confirmTitle")}
             </h4>
-            {/* Deposit Summary */}
             <Alert variant="light" className="p-3 mb-3 shadow-sm alert-summary">
               <Row>
-                <Col>Method:</Col>
+                <Col>{t("walletPage.depositModal.summary.method")}:</Col>
                 <Col xs="auto" className="fw-bold">
                   {selectedMethod.displayName}
                 </Col>
               </Row>
               <Row>
-                <Col>Deposit Amount:</Col>
+                <Col>{t("walletPage.depositModal.summary.amount")}:</Col>
                 <Col xs="auto" className="fw-bold">
                   {formatCurrencyLocal(depositAmount, inputCurrency)}
                 </Col>
               </Row>
               <Row>
-                <Col>Est. Fee:</Col>
+                <Col>{t("walletPage.depositModal.summary.fee")}:</Col>
                 <Col xs="auto" className="fw-bold text-danger">
                   - {formatCurrencyLocal(commissionInfo.fee, inputCurrency)}
                 </Col>
               </Row>
               <hr className="my-2" />
               <Row className="fs-6">
-                <Col>Est. Net Amount:</Col>
+                <Col>{t("walletPage.depositModal.summary.net")}:</Col>
                 <Col xs="auto" className="fw-bold text-success">
                   {formatCurrencyLocal(commissionInfo.netAmount, inputCurrency)}
                 </Col>
               </Row>
             </Alert>
-            {/* Payment Instructions */}
             <Card className="mb-3 bg-light border payment-instructions">
               <Card.Body>
                 <Card.Title className="fs-6 mb-2 d-flex align-items-center">
-                  <FaInfoCircle className="me-2 text-primary" /> Payment
-                  Instructions
+                  <FaInfoCircle className="me-2 text-primary" />{" "}
+                  {t("walletPage.depositModal.instructionsTitle")}
                 </Card.Title>
                 <p className="text-muted small mb-2">
-                  Please transfer exactly{" "}
-                  <strong className="text-primary">
-                    {formatCurrencyLocal(depositAmount, inputCurrency)}
-                  </strong>{" "}
-                  using the details below and provide proof.
+                  {t("walletPage.depositModal.instructionsBody", {
+                    amount: formatCurrencyLocal(depositAmount, inputCurrency),
+                  })}
                 </p>
                 <div className="instruction-details small">
-                  {/* Dynamic Payment Info */}
                   {selectedMethod.name?.toLowerCase() === "cartes ooredoo" ? (
-                    <p>Enter code below.</p>
+                    <p>{t("walletPage.depositModal.instructionsOoredoo")}</p>
                   ) : selectedMethod.depositTargetInfo ? (
                     <>
-                      <p>Send to ({selectedMethod.displayName}):</p>
-                      <InputGroup size="sm" className="mb-2">
+                      <p>
+                        {t("walletPage.depositModal.instructionsSendTo", {
+                          methodName: selectedMethod.displayName,
+                        })}
+                        :
+                      </p>
+                      <InputGroup size="sm" className="mb-2 copy-target-group">
                         <Form.Control
                           value={selectedMethod.depositTargetInfo}
                           readOnly
                         />
                         <OverlayTrigger
                           overlay={
-                            <Tooltip>{isCopied ? "Copied!" : "Copy"}</Tooltip>
+                            <Tooltip>
+                              {isCopied
+                                ? t("walletPage.receiveModal.copiedTooltip")
+                                : t("walletPage.receiveModal.copyTooltip")}
+                            </Tooltip>
                           }
                         >
                           <Button
@@ -890,28 +748,27 @@ const DepositModal = ({ show, onHide }) => {
                         </OverlayTrigger>
                       </InputGroup>
                       <p>
-                        Enter Txn ID below{" "}
-                        {selectedMethod.name?.toLowerCase() === "binance pay"
-                          ? "(Required)."
-                          : "(Optional)."}
+                        {t(
+                          selectedMethod.name?.toLowerCase() === "binance pay"
+                            ? "walletPage.depositModal.instructionsTxnRequired"
+                            : "walletPage.depositModal.instructionsTxnOptional"
+                        )}
                       </p>
                     </>
                   ) : (
                     <p>
                       {selectedMethod.description ||
-                        `Follow standard procedure.`}
+                        t("walletPage.depositModal.instructionsDefault")}
                     </p>
                   )}
                 </div>
               </Card.Body>
             </Card>
-            {/* Form for Additional Info */}
             <Form onSubmit={handleSubmitDeposit}>
-              {/* Ooredoo Input or Transaction ID Input */}
               {selectedMethod.name?.toLowerCase() === "cartes ooredoo" ? (
                 <FloatingLabel
                   controlId="ooredooCode"
-                  label="Ooredoo Code(s) (Required)"
+                  label={t("walletPage.depositModal.ooredooLabel")}
                   className="mb-3"
                 >
                   <Form.Control
@@ -925,11 +782,11 @@ const DepositModal = ({ show, onHide }) => {
               ) : (
                 <FloatingLabel
                   controlId="transactionId"
-                  label={`Transaction ID / Reference ${
+                  label={t(
                     selectedMethod.name?.toLowerCase() === "binance pay"
-                      ? "(Required)"
-                      : "(Optional)"
-                  }`}
+                      ? "walletPage.depositModal.txnLabelRequired"
+                      : "walletPage.depositModal.txnLabelOptional"
+                  )}
                   className="mb-3"
                 >
                   <Form.Control
@@ -942,9 +799,10 @@ const DepositModal = ({ show, onHide }) => {
                   />
                 </FloatingLabel>
               )}
-              {/* Screenshot Upload */}
               <Form.Group controlId="screenshotFile" className="mb-3">
-                <Form.Label>Payment Screenshot (Optional)</Form.Label>
+                <Form.Label>
+                  {t("walletPage.depositModal.screenshotLabel")}
+                </Form.Label>
                 <Form.Control
                   type="file"
                   accept="image/*"
@@ -959,11 +817,11 @@ const DepositModal = ({ show, onHide }) => {
                 )}
                 {isUploading && (
                   <small className="text-muted d-block mt-1">
-                    <Spinner size="sm" /> Uploading...
+                    <Spinner size="sm" />{" "}
+                    {t("walletPage.depositModal.uploading")}
                   </small>
                 )}
               </Form.Group>
-              {/* Submit Button */}
               <div className="d-grid mt-4">
                 <Button
                   variant="success"
@@ -980,10 +838,14 @@ const DepositModal = ({ show, onHide }) => {
                   {loadingCreate || isUploading ? (
                     <>
                       <Spinner size="sm" />{" "}
-                      {isUploading ? "Uploading..." : "Submitting..."}
+                      {t(
+                        isUploading
+                          ? "walletPage.depositModal.uploading"
+                          : "walletPage.depositModal.submitting"
+                      )}
                     </>
                   ) : (
-                    "Submit Deposit Request"
+                    t("walletPage.depositModal.submitButton")
                   )}
                 </Button>
               </div>

@@ -1,4 +1,5 @@
 // controllers/mediation.controller.js
+
 const MediationRequest = require('../models/MediationRequest');
 const User = require('../models/User');
 const Product = require('../models/Product');
@@ -1879,9 +1880,39 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         // 9. إنشاء إشعارات
         const productTitleForNotif = product.title || 'the transaction';
         const notifications = [
-            { user: seller._id, type: 'SALE_FUNDS_PENDING', title: 'Funds On Hold!', message: `${buyerFullNameForNotification} confirmed receipt for "${productTitleForNotif}". Funds of ${formatCurrency(netAmountForSellerInOriginalCurrency, originalEscrowCurrency)} are now on hold (approx. 48 hours).`, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } },
-            { user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', title: 'Mediator Fee Paid!', message: `You received ${formatCurrency(mediatorFeeInOriginalCurrency, feeCurrency)} as a fee for mediating '${productTitleForNotif}'.`, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } },
-            { user: buyerId, type: 'PRODUCT_RECEIPT_CONFIRMED', title: 'Receipt Confirmed!', message: `You've confirmed receipt for '${productTitleForNotif}'. The transaction is complete. You may now rate the other parties.`, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } }
+            {
+                user: seller._id,
+                type: 'SALE_FUNDS_PENDING',
+                title: 'notification_titles.SALE_FUNDS_PENDING', // <-- مفتاح
+                message: 'notification_messages.SALE_FUNDS_PENDING', // <-- مفتاح
+                messageParams: { // <-- متغيرات
+                    buyerName: buyerFullNameForNotification,
+                    productName: productTitleForNotif,
+                    amount: formatCurrency(netAmountForSellerInOriginalCurrency, originalEscrowCurrency)
+                },
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            },
+            {
+                user: mediator._id,
+                type: 'MEDIATION_FEE_RECEIVED',
+                title: 'notification_titles.MEDIATION_FEE_RECEIVED', // <-- مفتاح
+                message: 'notification_messages.MEDIATION_FEE_RECEIVED', // <-- مفتاح
+                messageParams: { // <-- متغيرات
+                    amount: formatCurrency(mediatorFeeInOriginalCurrency, feeCurrency),
+                    productName: productTitleForNotif
+                },
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            },
+            {
+                user: buyerId,
+                type: 'PRODUCT_RECEIPT_CONFIRMED',
+                title: 'notification_titles.PRODUCT_RECEIPT_CONFIRMED', // <-- مفتاح
+                message: 'notification_messages.PRODUCT_RECEIPT_CONFIRMED', // <-- مفتاح
+                messageParams: { // <-- متغيرات
+                    productName: productTitleForNotif
+                },
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            }
         ];
         await Notification.insertMany(notifications, { session });
         console.log("   Notifications sent for receipt confirmation.");
@@ -2093,11 +2124,19 @@ exports.openDisputeController = async (req, res) => {
         const productTitle = updatedMediationRequestGlobal.product?.title || 'the transaction';
         const notificationMessage = `A dispute has been opened by ${disputingUserFullName} for the transaction regarding "${productTitle}". Please review the details.`;
 
+        // ***** [!!!] هذا هو التعديل الأهم هنا [!!!] *****
         const notifications = uniqueNotificationRecipients.map(userIdToNotify => ({
-            user: userIdToNotify, type: 'MEDIATION_DISPUTED', title: 'Dispute Opened for Mediation',
-            message: notificationMessage + (reason ? ` Reason: ${reason}` : ''),
+            user: userIdToNotify,
+            type: 'MEDIATION_DISPUTED',
+            title: 'notification_titles.MEDIATION_DISPUTED', // <-- استخدام مفتاح الترجمة
+            message: 'notification_messages.MEDIATION_DISPUTED', // <-- استخدام مفتاح الترجمة
+            messageParams: { // <-- إضافة المتغيرات
+                userName: disputingUserFullName,
+                productName: productTitle
+            },
             relatedEntity: { id: updatedMediationRequestGlobal._id, modelName: 'MediationRequest' }
         }));
+        // ***** نهاية التعديل *****
 
         if (notifications.length > 0) {
             try {

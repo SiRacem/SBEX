@@ -346,12 +346,6 @@
 /* --- أنماط Ooredoo Textarea --- */
 #ooredooCode textarea {
     font-family: monospace; /* خط مناسب للأرقام */
-    height: 1
-    
-    
-    
-    
-    
-    00px;
+    height: 100px;
 }
 /* ----------------------------- */

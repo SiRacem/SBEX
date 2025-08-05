@@ -17,9 +17,25 @@ import {
     SET_ONLINE_USERS,
     UPDATE_USER_BALANCES_SOCKET,
 } from "../actionTypes/userActionType";
-import { toast } from 'react-toastify';
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
+
+// دالة مساعدة جديدة لمعالجة الأخطاء وإرجاع مفتاح ترجمة
+const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
+    if (error.response) {
+        if (error.response.data.translationKey) {
+            return { key: error.response.data.translationKey };
+        }
+        if (error.response.data.msg) {
+            return { key: `apiErrors.${error.response.data.msg.replace(/\s+/g, '_')}`, fallback: error.response.data.msg };
+        }
+        return { key: 'apiErrors.requestFailedWithCode', params: { code: error.response.status } };
+    } else if (error.request) {
+        return { key: 'apiErrors.networkError' };
+    }
+    return { key: defaultKey, params: { message: error.message } };
+};
+
 
 const getTokenConfig = (isFormData = false) => {
     const token = localStorage.getItem("token");
@@ -37,14 +53,11 @@ const getTokenConfig = (isFormData = false) => {
 export const registerUser = (newUser) => async (dispatch) => {
     dispatch({ type: REGISTER_REQUEST });
     try {
-        const { data } = await axios.post("/user/register", newUser);
-        dispatch({ type: REGISTER_SUCCESS });
-
+        await axios.post("/user/register", newUser);
+        dispatch({ type: REGISTER_SUCCESS, payload: { successMessage: 'auth.toast.registerSuccess' } });
     } catch (error) {
-        // --- [!!!] التعديل هنا [!!!] ---
-        // بدلاً من نص إنجليزي، نمرر مفتاحًا يمكن ترجمته
-        const message = error.response?.data?.msg || 'unknownRegistrationError';
-        dispatch({ type: REGISTER_FAIL, payload: message });
+        const { key, fallback } = handleError(error, 'auth.toast.registerFail');
+        dispatch({ type: REGISTER_FAIL, payload: { errorMessage: { key, fallback, params: { error: fallback } } } });
     }
 };
 
@@ -62,7 +75,7 @@ export const loginUser = (loggedUser) => async (dispatch) => {
         localStorage.setItem("userId", data.user._id);
 
         if (data.user.blocked) {
-            data.errorMessage = "auth.toast.accountBlocked";
+            data.errorMessage = { key: "auth.toast.accountBlocked" };
         } else {
             data.successMessage = "auth.toast.welcomeBack";
             data.successMessageParams = { name: data.user.fullName || 'User' };
@@ -70,8 +83,8 @@ export const loginUser = (loggedUser) => async (dispatch) => {
         dispatch({ type: LOGIN_SUCCESS, payload: data });
 
     } catch (error) {
-        const message = error.response?.data?.msg || 'Login failed. Please check credentials.';
-        dispatch({ type: LOGIN_FAIL, payload: message });
+        const { key, fallback } = handleError(error, 'auth.toast.loginError');
+        dispatch({ type: LOGIN_FAIL, payload: { errorMessage: { key, fallback, params: { error: fallback } } } });
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
     }
@@ -79,48 +92,33 @@ export const loginUser = (loggedUser) => async (dispatch) => {
 
 export const getProfile = () => async (dispatch, getState) => {
     if (getState().userReducer.loading) {
-        console.log("getProfile: Another profile fetch is already in progress. Skipping.");
         return;
     }
     dispatch({ type: GET_PROFILE_REQUEST });
     const config = getTokenConfig();
 
     if (!config) {
-        console.warn("getProfile: No token config. Dispatching GET_PROFILE_FAIL and LOGOUT.");
-        dispatch({ type: GET_PROFILE_FAIL, payload: "Not authorized. Token not found." });
+        dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
-        dispatch({ type: LOGOUT }); // Ensure full state cleanup
+        dispatch({ type: LOGOUT });
         return;
     }
 
     try {
         const response = await axios.get("/user/auth", config);
-        // --- Log التفصيلي للاستجابة ---
-        console.log("getProfile raw response from /user/auth:", JSON.stringify(response, null, 2));
-        // ---------------------------------
-
         if (response && response.data && response.data.user) {
             dispatch({ type: GET_PROFILE_SUCCESS, payload: response.data });
         } else {
-            const errorMessage = "Profile data malformed or user object missing in response from /user/auth. Raw response logged.";
-            console.error("getProfile Error (Malformed Response):", errorMessage, "Status:", response?.status);
-            // لا تقم بإلقاء خطأ هنا، بل أرسل فشلًا مع رسالة واضحة
-            dispatch({ type: GET_PROFILE_FAIL, payload: errorMessage });
-            // لا تقم بتسجيل الخروج تلقائيًا هنا إذا لم يكن خطأ 401/403
-            // دع reducer يقرر بناءً على نوع الخطأ (كما تم تعديله سابقًا)
+            throw new Error("Profile data malformed or user object missing.");
         }
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch profile';
-        console.error("Get Profile Catch Error:", message, "Status:", error.response?.status, "Response Data:", error.response?.data);
-
+        const { key, fallback, params } = handleError(error, 'apiErrors.getProfileFail');
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            dispatch({ type: GET_PROFILE_FAIL, payload: "Session expired or invalid. Please login again." });
-            dispatch(logoutUser()); // تسجيل الخروج مبرر هنا
+            dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key: 'apiErrors.sessionExpired' } } });
+            dispatch(logoutUser());
         } else {
-            // لأخطاء أخرى (مثل خطأ الشبكة، خطأ 500، أو الخطأ من الشرط أعلاه)
-            dispatch({ type: GET_PROFILE_FAIL, payload: message });
-            // لا تقم بتسجيل الخروج تلقائيًا هنا
+            dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key, fallback, params } } });
         }
     }
 };
@@ -128,7 +126,7 @@ export const getProfile = () => async (dispatch, getState) => {
 export const logoutUser = () => (dispatch) => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
-    dispatch({ type: LOGOUT });
+    dispatch({ type: LOGOUT, payload: { successMessage: 'auth.toast.loggedOut' } });
     dispatch(clearNotifications());
     dispatch(clearWalletTransactions());
 };
@@ -137,16 +135,15 @@ export const adminGetAvailableMediators = () => async (dispatch) => {
     dispatch({ type: ADMIN_GET_MEDIATORS_REQUEST });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: 'Auth Error: Token not found' });
+        dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
         return;
     }
     try {
         const { data } = await axios.get('/user/admin/mediators', config);
         dispatch({ type: ADMIN_GET_MEDIATORS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch mediators.';
-        dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: message });
-        toast.error(`Error fetching mediators: ${message}`);
+        const { key, fallback, params } = handleError(error, 'mediatorApplication.loadMediatorsFail');
+        dispatch({ type: ADMIN_GET_MEDIATORS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -154,21 +151,22 @@ export const applyForMediator = (applicationType) => async (dispatch) => {
     dispatch({ type: APPLY_MEDIATOR_REQUEST });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: APPLY_MEDIATOR_FAIL, payload: 'Authorization Error' });
-        toast.error('Authorization Error: Please login.');
+        dispatch({ type: APPLY_MEDIATOR_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
         return;
     }
     try {
         const { data } = await axios.post('/user/apply-mediator', { applicationType }, config);
         dispatch({
             type: APPLY_MEDIATOR_SUCCESS,
-            payload: { msg: data.msg, newStatus: data.newStatus || 'Pending' }
+            payload: {
+                msg: data.msg,
+                newStatus: data.newStatus || 'Pending',
+                successMessage: 'mediatorApplication.application.applySuccess'
+            }
         });
-        toast.success(data.msg || "Application submitted successfully!");
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to submit application.';
-        dispatch({ type: APPLY_MEDIATOR_FAIL, payload: message });
-        toast.error(`Application failed: ${message}`);
+        const { key, fallback, params } = handleError(error, 'mediatorApplication.application.applyError');
+        dispatch({ type: APPLY_MEDIATOR_FAIL, payload: { errorMessage: { key, fallback, params: { error: fallback } } } });
     }
 };
 
@@ -178,17 +176,15 @@ export const adminGetPendingMediatorApplications = (params = {}) => async (dispa
     dispatch({ type: ADMIN_GET_MEDIATOR_APPS_REQUEST });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: 'Auth Error: Token not found' });
-        toast.error('Auth Error: Cannot fetch applications.');
+        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
         return;
     }
     try {
         const { data } = await axios.get('/user/admin/mediator-applications', { ...config, params });
         dispatch({ type: ADMIN_GET_MEDIATOR_APPS_SUCCESS, payload: data });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to fetch applications.';
-        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: message });
-        toast.error(`Error fetching applications: ${message}`);
+        const { key, fallback, params } = handleError(error, 'admin.mediatorApps.loadFail');
+        dispatch({ type: ADMIN_GET_MEDIATOR_APPS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -196,8 +192,7 @@ export const adminProcessMediatorApplication = (userId, action, reason = null) =
     dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_REQUEST, payload: { userId, action } });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, error: 'Auth Error: Token not found' } });
-        toast.error('Auth Error: Cannot process application.');
+        dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, errorMessage: { key: 'apiErrors.notAuthorized' } } });
         return;
     }
     const url = `/user/admin/mediator-application/${userId}/${action}`;
@@ -206,13 +201,11 @@ export const adminProcessMediatorApplication = (userId, action, reason = null) =
         const { data } = await axios.put(url, body, config);
         dispatch({
             type: ADMIN_PROCESS_MEDIATOR_APP_SUCCESS,
-            payload: { userId, action, updatedUser: data.user, msg: data.msg }
+            payload: { userId, action, updatedUser: data.user, msg: data.msg, successMessage: `admin.mediatorApps.${action}Success` }
         });
-        toast.success(data.msg || `Application ${action}ed successfully!`);
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || `Failed to ${action} application.`;
-        dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, error: message } });
-        toast.error(`Failed to ${action} application: ${message}`);
+        const { key, fallback, params } = handleError(error, 'admin.mediatorApps.processFail');
+        dispatch({ type: ADMIN_PROCESS_MEDIATOR_APP_FAIL, payload: { userId, action, errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -222,18 +215,15 @@ export const updateMediatorStatus = (newStatus) => async (dispatch) => {
     dispatch({ type: 'UPDATE_MEDIATOR_STATUS_REQUEST' });
     const config = getTokenConfig();
     if (!config) {
-        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: 'Auth Error: Token not found' });
-        toast.error('Auth Error: Cannot update status.');
+        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
         return;
     }
     try {
         const { data } = await axios.put('/user/mediator/status', { status: newStatus }, config);
-        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_SUCCESS', payload: { newStatus: data.newStatus } });
-        toast.success(`Your status is now set to ${data.newStatus}.`);
+        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_SUCCESS', payload: { newStatus: data.newStatus, successMessage: 'mediatorApplication.qualified.statusUpdateSuccess' } });
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to update status.';
-        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: message });
-        toast.error(`Status update failed: ${message}`);
+        const { key, fallback, params } = handleError(error, 'mediatorApplication.qualified.statusUpdateFail');
+        dispatch({ type: 'UPDATE_MEDIATOR_STATUS_FAIL', payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
@@ -241,21 +231,18 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
     dispatch({ type: UPDATE_AVATAR_REQUEST });
     const config = getTokenConfig(true);
     if (!config) {
-        const errorMsg = "Authorization Error: Please login.";
-        dispatch({ type: UPDATE_AVATAR_FAIL, payload: errorMsg });
-        toast.error(errorMsg);
-        return Promise.reject({ error: errorMsg });
+        const errorMessage = { key: "apiErrors.notAuthorized" };
+        dispatch({ type: UPDATE_AVATAR_FAIL, payload: { errorMessage } });
+        return Promise.reject({ error: errorMessage });
     }
     try {
         const { data } = await axios.put("/user/profile/avatar", formData, config);
-        dispatch({ type: UPDATE_AVATAR_SUCCESS, payload: data });
-        toast.success(data.msg || "Profile picture updated successfully!");
+        dispatch({ type: UPDATE_AVATAR_SUCCESS, payload: { ...data, successMessage: 'profilePage.avatarUpdateSuccess' } });
         return Promise.resolve(data);
     } catch (error) {
-        const message = error.response?.data?.msg || error.message || 'Failed to update profile picture.';
-        dispatch({ type: UPDATE_AVATAR_FAIL, payload: message });
-        toast.error(`Update failed: ${message}`);
-        return Promise.reject({ error: message });
+        const { key, fallback, params } = handleError(error, 'profilePage.avatarUpdateFail');
+        dispatch({ type: UPDATE_AVATAR_FAIL, payload: { errorMessage: { key, fallback, params } } });
+        return Promise.reject({ error: { key, fallback, params } });
     }
 };
 
@@ -267,8 +254,8 @@ export const setOnlineUsers = (onlineUserIds) => ({
 });
 
 export const updateUserBalances = (balanceData) => (dispatch) => {
-  dispatch({
-    type: UPDATE_USER_BALANCES_SOCKET,
-    payload: balanceData
-  });
+    dispatch({
+        type: UPDATE_USER_BALANCES_SOCKET,
+        payload: balanceData
+    });
 };

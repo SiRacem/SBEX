@@ -183,7 +183,7 @@ const OfflineProdCard = ({ el: product }) => {
     setBidAmountError(null);
 
     try {
-      await dispatch(placeBid(product._id, amount));
+      await dispatch(placeBid(product._id, amount, isEditingBid));
       dispatch(getProfile());
       toast.success(
         t(isEditingBid ? "home.bidUpdatedSuccess" : "home.bidPlacedSuccess")

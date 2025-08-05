@@ -8,7 +8,7 @@ const config = require('config');
 
 const PLATFORM_BASE_CURRENCY = config.get('PLATFORM_BASE_CURRENCY') || 'TND';
 
-// دالة مساعدة لتنسيق العملة (يمكن استيرادها من ملف utils مشترك)
+// دالة مساعدة لتنسيق العملة
 const formatCurrency = (amount, currencyCode = "TND") => {
     const num = Number(amount);
     if (isNaN(num) || amount == null) return "N/A";
@@ -19,7 +19,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     } catch (error) { return `${num.toFixed(2)} ${safeCurrencyCode}`; }
 };
 
-const releaseDuePendingFunds = async (io, onlineUsers) => { // <<< استقبال io و onlineUsers
+const releaseDuePendingFunds = async (io, onlineUsers) => {
     console.log(`[CRON_JOB_RELEASE_FUNDS] Starting job at ${new Date().toISOString()}`);
     const now = new Date();
     let fundsReleasedCount = 0;
@@ -28,7 +28,7 @@ const releaseDuePendingFunds = async (io, onlineUsers) => { // <<< استقبا�
     const duePendingFunds = await PendingFund.find({
         isReleased: false,
         releaseAt: { $lte: now }
-    }).populate('seller', '_id fullName sellerPendingBalance sellerAvailableBalance balance depositBalance withdrawalBalance level reputationPoints reputationLevel claimedLevelRewards productsSoldCount positiveRatings negativeRatings')
+    }).populate('seller', '_id fullName sellerPendingBalance sellerAvailableBalance balance')
         .populate('product', 'title');
 
     if (duePendingFunds.length === 0) {
@@ -53,101 +53,80 @@ const releaseDuePendingFunds = async (io, onlineUsers) => { // <<< استقبا�
                 continue;
             }
 
-            if (typeof seller.sellerPendingBalance !== 'number') {
-                seller.sellerPendingBalance = 0;
-                console.warn(`   [CRON_JOB_RELEASE_FUNDS] Seller ${seller._id} sellerPendingBalance was not a number, defaulted to 0.`);
-            }
             if (typeof pendingFund.amountInPlatformCurrency !== 'number' || isNaN(pendingFund.amountInPlatformCurrency)) {
-                console.error(`   [CRON_JOB_RELEASE_FUNDS] PendingFund ${pendingFund._id} amountInPlatformCurrency is not a number or NaN: ${pendingFund.amountInPlatformCurrency}. Skipping.`);
+                console.error(`   [CRON_JOB_RELEASE_FUNDS] PendingFund ${pendingFund._id} amountInPlatformCurrency is invalid. Skipping.`);
                 await session.abortTransaction();
                 errorsCount++;
                 continue;
             }
 
+            // [تحسين] التحقق من تطابق الأرصدة
+            if (pendingFund.amountInPlatformCurrency > (seller.sellerPendingBalance || 0)) {
+                console.warn(`   [CRON WARNING] Pending fund amount (${pendingFund.amountInPlatformCurrency}) for seller ${seller._id} is greater than their current pending balance (${seller.sellerPendingBalance || 0}). This may indicate a data inconsistency. Proceeding with the smaller amount.`);
+            }
             const amountToReleaseFromPending = Math.min(seller.sellerPendingBalance, pendingFund.amountInPlatformCurrency);
-            if (amountToReleaseFromPending <= 0 && pendingFund.amountInPlatformCurrency > 0) {
-                console.warn(`   [CRON_JOB_RELEASE_FUNDS] Amount to release from pending for seller ${seller._id} is zero or negative (${amountToReleaseFromPending}), but pending fund amount is positive (${pendingFund.amountInPlatformCurrency}). PendingFund ID: ${pendingFund._id}. Skipping.`);
-                await session.abortTransaction();
-                errorsCount++;
-                continue;
-            }
 
+            // تحديث أرصدة البائع
             seller.sellerPendingBalance = parseFloat(((seller.sellerPendingBalance || 0) - amountToReleaseFromPending).toFixed(2));
             if (seller.sellerPendingBalance < 0) seller.sellerPendingBalance = 0;
-
-            if (typeof seller.sellerAvailableBalance !== 'number') seller.sellerAvailableBalance = 0;
             seller.sellerAvailableBalance = parseFloat(((seller.sellerAvailableBalance || 0) + amountToReleaseFromPending).toFixed(2));
-
             await seller.save({ session });
-            console.log(`      [CRON_JOB_RELEASE_FUNDS] Seller ${seller._id} balances updated: Pending: ${seller.sellerPendingBalance}, Available: ${seller.sellerAvailableBalance}`);
 
+            // تحديث سجل PendingFund
             pendingFund.isReleased = true;
             pendingFund.releasedToAvailableAt = new Date();
 
+            // إنشاء سجل Transaction للإفراج
             const releaseTransaction = new Transaction({
                 user: seller._id,
                 type: 'PRODUCT_SALE_FUNDS_RELEASED',
                 amount: pendingFund.amount,
                 currency: pendingFund.currency,
-                amountInPlatformCurrency: pendingFund.amountInPlatformCurrency,
-                platformCurrency: PLATFORM_BASE_CURRENCY,
                 status: 'COMPLETED',
-                description: `Funds from sale of '${pendingFund.product?.title || 'product'}' (Mediation: ${pendingFund.mediationRequest.toString().slice(-6)}) now available.`,
+                description: `Funds from sale of '${pendingFund.product?.title || 'product'}' now available.`,
                 relatedProduct: pendingFund.product?._id,
                 relatedMediationRequest: pendingFund.mediationRequest,
-                relatedPendingFund: pendingFund._id
             });
             await releaseTransaction.save({ session });
-            console.log(`      [CRON_JOB_RELEASE_FUNDS] Transaction (PRODUCT_SALE_FUNDS_RELEASED) created: ${releaseTransaction._id}`);
-
             pendingFund.transactionReleasedId = releaseTransaction._id;
             await pendingFund.save({ session });
-            console.log(`      [CRON_JOB_RELEASE_FUNDS] PendingFund record ID: ${pendingFund._id} marked as released.`);
-
+            
+            // إنشاء الإشعار بمفاتيح الترجمة
             const productTitle = pendingFund.product?.title || 'a previous sale';
-            await Notification.create([{
+            const notification = await Notification.create([{
                 user: seller._id,
                 type: 'FUNDS_NOW_AVAILABLE',
-                title: 'Funds Released!',
-                message: `Funds amounting to ${formatCurrency(pendingFund.amount, pendingFund.currency)} from the sale of '${productTitle}' are now available in your account.`,
-                relatedEntity: { id: pendingFund.mediationRequest, modelName: 'MediationRequest' }
+                title: 'notification_titles.FUNDS_NOW_AVAILABLE',
+                message: 'notification_messages.FUNDS_NOW_AVAILABLE',
+                messageParams: {
+                    amount: formatCurrency(pendingFund.amount, pendingFund.currency),
+                    productName: productTitle
+                },
+                relatedEntity: { id: pendingFund.product?._id, modelName: 'Product' }
             }], { session });
-            console.log(`      [CRON_JOB_RELEASE_FUNDS] Notification sent to seller ${seller._id} for funds release.`);
 
             await session.commitTransaction();
-            console.log(`   [CRON_JOB_RELEASE_FUNDS] Successfully released PendingFund ID: ${pendingFund._id} for seller ${seller._id}`);
             fundsReleasedCount++;
 
+            // إرسال تحديثات Socket.IO للمستخدم المتصل
             if (io && onlineUsers && onlineUsers[seller._id.toString()]) {
                 const sellerSocketId = onlineUsers[seller._id.toString()];
-
-                const freshSellerBalances = await User.findById(seller._id)
-                    .select('balance sellerPendingBalance sellerAvailableBalance')
-                    .lean();
-
-                if (freshSellerBalances) {
-                    const balancesPayload = {
-                        _id: seller._id.toString(),
-                        balance: freshSellerBalances.balance,
-                        sellerPendingBalance: freshSellerBalances.sellerPendingBalance,
-                        sellerAvailableBalance: freshSellerBalances.sellerAvailableBalance,
-                    };
-                    io.to(sellerSocketId).emit('user_balances_updated', balancesPayload); // <<< إرسال الحدث
-                    console.log(`      [CRON_JOB_RELEASE_FUNDS] Emitted 'user_balances_updated' to seller ${seller._id} with payload:`, balancesPayload);
-                } else {
-                    console.warn(`      [CRON_JOB_RELEASE_FUNDS] Could not fetch fresh seller balances for socket update (ID: ${seller._id})`);
-                }
-
+                
+                // [تحسين] إرسال تحديث كامل للأرصدة
+                io.to(sellerSocketId).emit('user_balances_updated', {
+                    _id: seller._id.toString(),
+                    balance: seller.balance,
+                    sellerPendingBalance: seller.sellerPendingBalance,
+                    sellerAvailableBalance: seller.sellerAvailableBalance,
+                });
+                
+                // [تحسين] إرسال إشعار فوري وتحديث قائمة المعاملات
+                io.to(sellerSocketId).emit('new_notification', notification[0].toObject());
                 io.to(sellerSocketId).emit('dashboard_transactions_updated');
-                console.log(`      [CRON_JOB_RELEASE_FUNDS] Emitted 'dashboard_transactions_updated' to seller ${seller._id} via socket ${sellerSocketId}`);
-            } else {
-                console.log(`      [CRON_JOB_RELEASE_FUNDS] Seller ${seller._id} is not online or io/onlineUsers not available. Skipping socket emit for balances.`);
             }
 
         } catch (error) {
-            if (session.inTransaction()) {
-                await session.abortTransaction();
-            }
+            if (session.inTransaction()) await session.abortTransaction();
             console.error(`   [CRON_JOB_RELEASE_FUNDS] Error processing PendingFund ID: ${pendingFund._id}. Error: ${error.message}`, error.stack);
             errorsCount++;
         } finally {
