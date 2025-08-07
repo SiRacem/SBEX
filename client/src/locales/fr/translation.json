@@ -418,7 +418,8 @@
       "bidAmountLabel_new": "Nouveau montant d'enchère ({{currency}})",
       "currentBalance": "Votre solde actuel",
       "minBalanceRequired": "Min. {{amount}} requis pour participer aux enchères.",
-      "insufficientBalanceError": "Solde insuffisant. Vous avez besoin de {{requiredTND}} (environ {{requiredOriginal}}) pour couvrir cette enchère, mais vous n'avez que {{available}}."
+      "insufficientBalanceError": "Solde insuffisant. Vous avez besoin de {{requiredTND}} (environ {{requiredOriginal}}) pour couvrir cette enchère, mais vous n'avez que {{available}}.",
+      "balanceTooLowError": "Votre solde est trop bas pour participer aux enchères."
     }
   },
   "common": {

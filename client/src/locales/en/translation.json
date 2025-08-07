@@ -411,7 +411,8 @@
       "bidAmountLabel_new": "New Bid Amount ({{currency}})",
       "currentBalance": "Your current balance",
       "minBalanceRequired": "Min. {{amount}} required to participate in bids.",
-      "insufficientBalanceError": "Insufficient balance. You need {{requiredTND}} (approx. {{requiredOriginal}}) to cover this bid, but you only have {{available}}."
+      "insufficientBalanceError": "Insufficient balance. You need {{requiredTND}} (approx. {{requiredOriginal}}) to cover this bid, but you only have {{available}}.",
+      "balanceTooLowError": "Your balance is too low to participate in bids."
     }
   },
   "common": {

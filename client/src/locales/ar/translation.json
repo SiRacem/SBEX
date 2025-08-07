@@ -415,7 +415,8 @@
       "bidAmountLabel_new": "مبلغ المزايدة الجديد ({{currency}})",
       "currentBalance": "رصيدك الحالي",
       "minBalanceRequired": "مطلوب {{amount}} على الأقل للمشاركة في المزايدات.",
-      "insufficientBalanceError": "رصيد غير كافٍ. تحتاج إلى {{requiredTND}} (حوالي {{requiredOriginal}}) لتغطية هذه المزايدة، لكن لديك فقط {{available}}."
+      "insufficientBalanceError": "رصيد غير كافٍ. تحتاج إلى {{requiredTND}} (حوالي {{requiredOriginal}}) لتغطية هذه المزايدة، لكن لديك فقط {{available}}.",
+      "balanceTooLowError": "رصيدك منخفض جدًا للمشاركة في المزايدات."
     }
   },
   "common": {

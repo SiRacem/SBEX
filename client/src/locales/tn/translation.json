@@ -411,7 +411,8 @@
       "bidAmountLabel_new": "السوم الجديد ({{currency}})",
       "currentBalance": "فلوسك الموجودة",
       "minBalanceRequired": "لازمك أقل شي {{amount}} باش تنجم تزايد.",
-      "insufficientBalanceError": "فلوسك ما تكفيش. لازمك {{requiredTND}} (تقريبًا {{requiredOriginal}}) باش تحط السوم هذا، أما إنت عندك كهو {{available}}."
+      "insufficientBalanceError": "فلوسك ما تكفيش. لازمك {{requiredTND}} (تقريبًا {{requiredOriginal}}) باش تحط السوم هذا، أما إنت عندك كهو {{available}}.",
+      "balanceTooLowError": "رصيدك ما يكفيش باش تشارك في المزايدات."
     }
   },
   "common": {
