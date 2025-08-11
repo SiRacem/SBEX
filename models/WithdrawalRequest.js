@@ -1,6 +1,7 @@
 // models/WithdrawalRequest.js
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const WithdrawalRequestSchema = new Schema({
     user: { // المستخدم الذي طلب السحب
@@ -86,5 +87,7 @@ const WithdrawalRequestSchema = new Schema({
 
 // Index مركب لتحسين البحث عن طلبات مستخدم معين بحالة معينة
 WithdrawalRequestSchema.index({ user: 1, status: 1 });
+
+WithdrawalRequestSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model("WithdrawalRequest", WithdrawalRequestSchema);

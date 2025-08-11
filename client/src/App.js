@@ -1,7 +1,7 @@
 // src/App.js
 
 import React, { useState, useEffect, useRef, createContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,8 @@ import { getProfile, setOnlineUsers, logoutUser } from './redux/actions/userActi
 import { Alert, Spinner, Button } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import i18n from './i18n';
+
+import RateLimitExceededPage from './pages/RateLimitExceededPage';
 
 import NotFound from './pages/NotFound';
 import UserListAd from './components/admin/UserListAd';
@@ -53,6 +55,14 @@ import AdminFAQManagement from './components/admin/AdminFAQManagement';
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
 
+// AppWrapper needed to use useNavigate inside App component
+const AppWrapper = () => (
+  <Router>
+    <App />
+  </Router>
+);
+
+// --- No changes in ProtectedRoute, BlockedWarning, CustomToastContainer ---
 const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -118,9 +128,11 @@ const CustomToastContainer = () => {
   const { i18n } = useTranslation();
   return <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={i18n.dir() === 'rtl'} pauseOnFocusLoss draggable pauseOnHover theme="colored" />;
 };
+// --- End of unchanged components ---
 
 function App() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
 
@@ -129,34 +141,42 @@ function App() {
     successMessage,
     registrationStatus,
     successMessageParams,
-    errorFromAPI
+    errorFromAPI // This is the old name, the state now holds `errorMessage` from Redux
   } = useSelector(state => ({
     errors: state.userReducer.errors,
     successMessage: state.userReducer.successMessage,
     registrationStatus: state.userReducer.registrationStatus,
     successMessageParams: state.userReducer.successMessageParams,
-    errorFromAPI: state.userReducer.errorMessage,
+    errorFromAPI: state.userReducer.errorMessage, // Keep mapping to the new state property
   }));
 
   const { isAuth, user, authChecked, userLoading, userError } = useSelector(state => state.userReducer);
   const currentUserId = user?._id;
   const socketRef = useRef(null);
 
+  // [!!!] START OF THE FIX [!!!]
   useEffect(() => {
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
     } else if (errorFromAPI) {
-      let finalErrorMessage;
-      if (typeof errorFromAPI.key === 'string' && i18n.exists(errorFromAPI.key)) {
-        finalErrorMessage = t(errorFromAPI.key, errorFromAPI.params);
-      } else if (typeof errorFromAPI.fallback === 'string') {
-        finalErrorMessage = errorFromAPI.fallback;
-      } else if (typeof errorFromAPI === 'string') {
-        finalErrorMessage = errorFromAPI;
+      // [!!!] START: التعديل الرئيسي هنا
+      // التحقق من وجود الخطأ الخاص بـ rate limit
+      if (typeof errorFromAPI === 'object' && errorFromAPI?.key === 'apiErrors.tooManyRequests') {
+        const resetTimeFromServer = errorFromAPI.rateLimit?.resetTime;
+        navigate('/rate-limit-exceeded', { state: { resetTime: resetTimeFromServer } });
+        dispatch({ type: 'CLEAR_USER_MESSAGES' });
+        return; // إيقاف التنفيذ لتجنب عرض Toast
       }
-      else {
-        finalErrorMessage = t("apiErrors.unknownError", "An unknown error occurred.");
+      // [!!!] END: التعديل الرئيسي هنا
+
+      let finalErrorMessage;
+      if (typeof errorFromAPI === 'object' && errorFromAPI !== null && 'key' in errorFromAPI) {
+        finalErrorMessage = t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: errorFromAPI.fallback || t("apiErrors.unknownError") });
+      } else if (typeof errorFromAPI === 'string') {
+        finalErrorMessage = t(`apiErrors.${errorFromAPI}`, { defaultValue: errorFromAPI });
+      } else {
+        finalErrorMessage = t("apiErrors.unknownError");
       }
       toast.error(finalErrorMessage);
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
@@ -165,7 +185,8 @@ function App() {
       toast.error(errorMessageText);
       dispatch({ type: 'CLEAR_USER_ERRORS' });
     }
-  }, [successMessage, errorFromAPI, errors, registrationStatus, dispatch, t, i18n, successMessageParams]);
+  }, [successMessage, errorFromAPI, errors, dispatch, t, i18n, successMessageParams, navigate]);
+  // [!!!] END OF THE FIX [!!!]
 
   useEffect(() => {
     const localToken = localStorage.getItem('token');
@@ -335,18 +356,9 @@ function App() {
         socketRef.current = newSocket;
       }
     } else {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
+      if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; }
     }
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-    };
+    return () => { if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; } };
   }, [isAuth, currentUserId, dispatch, user, t]);
 
   const localTokenExistsForLoadingCheck = !!localStorage.getItem('token');
@@ -378,6 +390,7 @@ function App() {
         <main className={`main-content-area flex-grow-1 ${isAuth && user ? 'content-authenticated' : 'content-public'}`}>
           {isAuth && user && <BlockedWarning isAuth={isAuth} user={user} />}
           <Routes>
+            <Route path="/rate-limit-exceeded" element={<RateLimitExceededPage />} />
             <Route path="/login" element={!isAuth || !user ? <Login /> : <Navigate to="/dashboard" replace />} />
             <Route path="/register" element={!isAuth || !user ? <Register /> : <Navigate to="/dashboard" replace />} />
             <Route path="/" element={<OfflineProd />} />
@@ -415,4 +428,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppWrapper;

@@ -190,7 +190,7 @@
     "DEPOSIT_APPROVED": "Deposit Approved",
     "DEPOSIT_REJECTED": "Deposit Rejected",
     "DEPOSIT_PENDING": "Deposit Pending",
-    "NEW_WITHDRAWAL_REQUEST": "New Withdrawal Request",
+    "NEW_WITHDRAWAL_REQUEST": "Withdrawal Request Submitted",
     "WITHDRAWAL_APPROVED": "Withdrawal Approved",
     "WITHDRAWAL_PROCESSING": "Withdrawal Processing",
     "WITHDRAWAL_COMPLETED": "Withdrawal Completed",
@@ -252,17 +252,18 @@
     "MEDIATOR_APP_APPROVED": "Congratulations! Your application to become a mediator has been approved.",
     "MEDIATOR_APP_REJECTED": "Your application to become a mediator was rejected. Reason: {{reason}}",
     "MEDIATOR_APP_PENDING": "Your application to become a mediator is now pending review.",
-    "ADMIN_BALANCE_ADJUSTMENT": "Admin '{{adminName}}' adjusted your account balance. Changes: {{changes}}",
+    "ADMIN_BALANCE_ADJUSTMENT": "Admin '{{adminName}}' adjusted your account balances. Changes: {{changes}}",
     "USER_BALANCE_ADJUSTED": "You adjusted the balances for user '{{userName}}'.",
     "NEW_DEPOSIT_REQUEST": "A new deposit request of {{amount}} has been submitted by '{{userName}}'.",
     "DEPOSIT_APPROVED": "Your deposit request of {{amount}} has been approved.",
     "DEPOSIT_REJECTED": "Your deposit request of {{amount}} was rejected. Reason: {{reason}}",
     "DEPOSIT_PENDING": "Your deposit request of {{amount}} is pending.",
-    "NEW_WITHDRAWAL_REQUEST": "A new withdrawal request of {{amount}} has been submitted by '{{userName}}'.",
+    "NEW_WITHDRAWAL_REQUEST": "Your withdrawal request for {{amount}} has been submitted and is now pending review.",
+    "NEW_WITHDRAWAL_REQUEST_ADMIN": "User '{{userName}}' has submitted a new withdrawal request for {{amount}}.",
     "WITHDRAWAL_APPROVED": "Your withdrawal request of {{amount}} has been approved.",
     "WITHDRAWAL_PROCESSING": "Your withdrawal request of {{amount}} is now being processed.",
-    "WITHDRAWAL_COMPLETED": "Your withdrawal of {{amount}} is complete.",
-    "WITHDRAWAL_REJECTED": "Your withdrawal request of {{amount}} was rejected. Reason: {{reason}}",
+    "WITHDRAWAL_COMPLETED": "Your withdrawal of {{amount}} via {{methodName}} is complete.",
+    "WITHDRAWAL_REJECTED": "Your withdrawal request for {{amount}} via {{methodName}} was rejected. Reason: {{reason}}",
     "FUNDS_RECEIVED": "You have received {{amount}} from {{senderName}}.",
     "FUNDS_SENT": "You have sent {{amount}} to {{recipientName}}.",
     "FUNDS_NOW_AVAILABLE": "Funds amounting to {{amount}} from the sale of '{{productName}}' are now available in your account.",
@@ -278,43 +279,69 @@
     "ACCOUNT_BLOCKED": "Your account has been blocked by an administrator. Reason: {{reason}}",
     "ACCOUNT_UNBLOCKED": "Your account has been unblocked by an administrator. Welcome back!"
   },
-  "adminProducts": {
-    "pendingApprovals": "Pending Approvals",
-    "loading": "Loading pending products...",
-    "error": "Error loading products: {{error}}",
-    "noPending": "No pending products found.",
-    "table": {
-      "image": "Image",
-      "title": "Title",
-      "vendor": "Vendor",
-      "price": "Price",
-      "dateAdded": "Date Added",
-      "actions": "Actions"
-    },
-    "actions": {
-      "viewDetails": "View Details",
-      "approve": "Approve",
-      "reject": "Reject"
+  "admin": {
+    "requests": {
+      "title": "Transaction Requests",
+      "refreshTooltip": "Refresh List",
+      "refreshButton": "Refresh",
+      "refreshing": "Refreshing list...",
+      "newDepositToast": "New deposit request from {{user}}",
+      "newWithdrawalToast": "New withdrawal request from {{user}}",
+      "reasonRequired": "Rejection reason is required.",
+      "error": "Error: {{error}}",
+      "noRequests": "No requests found for this category.",
+      "tabs": {
+        "pendingDeposits": "Pending Deposits",
+        "allDeposits": "All Deposits",
+        "pendingWithdrawals": "Pending Withdrawals",
+        "allWithdrawals": "All Withdrawals"
+      },
+      "table": {
+        "date": "Date",
+        "user": "User",
+        "amount": "Amount",
+        "method": "Method",
+        "status": "Status",
+        "info": "Info (ID/Ref)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View Details",
+        "approve": "Approve",
+        "complete": "Complete",
+        "reject": "Reject"
+      },
+      "rejectModalTitle": "Rejecting {{type}} from {{user}}",
+      "rejectModalTitleGeneric": "Reject Request"
     },
     "detailsModal": {
-      "title": "Product Details: {{title}}",
-      "by": "By",
-      "description": "Description",
-      "linkType": "Link Type",
-      "price": "Price",
-      "quantity": "Quantity",
-      "submitted": "Submitted",
-      "close": "Close"
-    },
-    "rejectModal": {
-      "title": "Reject: {{title}}",
-      "reason": "Reason (Required)",
-      "cancel": "Cancel",
-      "confirm": "Confirm Rejection",
-      "rejecting": "Rejecting...",
-      "reasonRequired": "Rejection reason is required."
-    },
-    "confirmApprove": "Are you sure you want to approve this product?"
+      "title": "{{type}} Request Details",
+      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
+      "noData": "Request data not available.",
+      "userTitle": "User Information",
+      "userName": "User Name",
+      "userEmail": "User Email",
+      "userPhone": "User Phone",
+      "userBalance": "User Current Balance",
+      "requestTitle": "Request Details",
+      "requestId": "Request ID",
+      "status": "Status",
+      "requestDate": "Request Date",
+      "method": "Payment Method",
+      "depositAmount": "Deposit Amount",
+      "withdrawalAmount": "Withdrawal Amount",
+      "fee": "Fee Applied",
+      "netCredit": "Net Amount To Credit",
+      "netReceive": "Net Amount To Receive",
+      "txnId": "Transaction ID (User)",
+      "screenshot": "Screenshot",
+      "rejectionReason": "Rejection Reason",
+      "withdrawalAmountOriginal": "Amount Withdrawn ({{currency}})",
+      "feeOriginal": "Fee (Est. {{currency}})",
+      "netReceiveOriginal": "Net to Receive (Est. {{currency}})",
+      "totalDeductedTND": "Total Deducted (TND)",
+      "withdrawalInfo": "Withdrawal Info (User)"
+    }
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -411,15 +438,29 @@
       "bidAmountLabel_new": "New Bid Amount ({{currency}})",
       "currentBalance": "Your current balance",
       "minBalanceRequired": "Min. {{amount}} required to participate in bids.",
-      "insufficientBalanceError": "Insufficient balance. You need {{requiredTND}} (approx. {{requiredOriginal}}) to cover this bid, but you only have {{available}}."
+      "insufficientBalanceError": "Insufficient balance. You need {{requiredTND}} (approx. {{requiredOriginal}}) to cover this bid, but you only have {{available}}.",
+      "balanceTooLowError": "Your balance is too low to participate in bids."
     }
   },
   "common": {
     "cancel": "Cancel",
     "close": "Close",
+    "loading": "Loading...",
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",
     "level": "Level {{level}}"
+  },
+  "rejectModal": {
+    "title": "Reject Request",
+    "reasonLabel": "Reason for Rejection (Required)",
+    "reasonPlaceholder": "Enter reason...",
+    "validationError": "Please provide a clear reason for rejection (min. 5 characters).",
+    "confirmButton": "Confirm Rejection"
+  },
+  "clipboard": {
+    "copied": "{{item}} Copied!",
+    "copyFailed": "Copy failed. Please try again.",
+    "copy": "Copy {{item}}"
   },
   "userProfilePage": {
     "loading": "Loading Profile...",
@@ -493,7 +534,8 @@
     "sessionExpired": "Session expired or invalid. Please login again.",
     "getProfileFail": "Failed to load user profile.",
     "notAuthorized": "Authorization required. Please log in.",
-    "notAuthorizedAdmin": "Admin authorization is required for this action."
+    "notAuthorizedAdmin": "Admin authorization is required for this action.",
+    "Failed_to_fetch_withdrawal_requests": "Server error fetching your withdrawal requests."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -502,6 +544,9 @@
     "title": "My Wallet",
     "loading": "Loading Wallet...",
     "error": "User data not available. Please login.",
+    "errorActivity_deposits": "Error fetching deposit history",
+    "errorActivity_withdrawals": "Error fetching withdrawal history",
+    "errorActivity_transactions": "Error fetching transaction history",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
     "send": "Send",
@@ -677,7 +722,50 @@
         "detailsRequired": "Please enter your {{details}}.",
         "correctErrors": "Please correct the errors before submitting."
       }
+    },
+    "withdrawal": {
+      "success": "Withdrawal request submitted successfully!",
+      "fail": "Failed to submit withdrawal request.",
+      "historyFail": "Failed to fetch withdrawal history."
     }
+  },
+  "api_success": {
+    "depositRequestSubmitted": "Your deposit request for {{amount}} has been submitted and is pending review.",
+    "withdrawalRequestSubmitted": "Your withdrawal request has been submitted successfully!"
+  },
+  "api_error": {
+    "createDepositFail": "Failed to create the deposit request. Please try again."
+  },
+  "activityModal": {
+    "title": "{{type}} Details",
+    "types": {
+      "DEPOSIT_REQUEST": "Deposit Request",
+      "WITHDRAWAL_REQUEST": "Withdrawal Request",
+      "TRANSFER": "Transfer",
+      "DEPOSIT": "Deposit",
+      "WITHDRAWAL": "Withdrawal"
+    },
+    "paymentDetails": "Payment & Amount Details",
+    "transactionDetails": "Transaction Details",
+    "generalDetails": "General Details",
+    "genericInfo": "Details for this activity type are generic.",
+    "method": "Method:",
+    "amountSent": "Amount Sent ({{currency}}):",
+    "fee": "Fee ({{currency}}):",
+    "netAmount": "Net Amount ({{currency}}):",
+    "transactionId": "Transaction ID:",
+    "senderInfo": "Sender Info:",
+    "amountWithdrawn": "Amount Withdrawn ({{currency}}):",
+    "netReceived": "Net Received ({{currency}}):",
+    "withdrawalInfo": "Withdrawal Details:",
+    "paymentRef": "Payment Ref:",
+    "sentTo": "Sent To:",
+    "receivedFrom": "Received From:",
+    "amount": "Amount:",
+    "description": "Description:",
+    "rejectionReason": "Rejection Reason",
+    "dateTime": "Date & Time",
+    "timestamp": "Timestamp:"
   },
   "profilePage": {
     "loading": "Loading profile...",
@@ -1005,6 +1093,68 @@
       "priorityUpdateFail": "Failed to update priority.",
       "assignSuccess": "Ticket assignment updated.",
       "assignFail": "Failed to assign ticket."
+    },
+    "requests": {
+      "title": "Transaction Requests",
+      "refreshTooltip": "Refresh List",
+      "refreshButton": "Refresh",
+      "refreshing": "Refreshing list...",
+      "newDepositToast": "New deposit request from {{user}}",
+      "newWithdrawalToast": "New withdrawal request from {{user}}",
+      "reasonRequired": "Rejection reason is required.",
+      "error": "Error: {{error}}",
+      "noRequests": "No requests found for this category.",
+      "tabs": {
+        "pendingDeposits": "Pending Deposits",
+        "allDeposits": "All Deposits",
+        "pendingWithdrawals": "Pending Withdrawals",
+        "allWithdrawals": "All Withdrawals"
+      },
+      "table": {
+        "date": "Date",
+        "user": "User",
+        "amount": "Amount",
+        "method": "Method",
+        "status": "Status",
+        "info": "Info (ID/Ref)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View Details",
+        "approve": "Approve",
+        "complete": "Complete",
+        "reject": "Reject"
+      },
+      "rejectModalTitle": "Rejecting {{type}} from {{user}}",
+      "rejectModalTitleGeneric": "Reject Request"
+    },
+    "detailsModal": {
+      "title": "{{type}} Request Details",
+      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
+      "noData": "Request data not available.",
+      "userTitle": "User Information",
+      "userName": "User Name",
+      "userEmail": "User Email",
+      "userPhone": "User Phone",
+      "userBalance": "User Current Balance",
+      "requestTitle": "Request Details",
+      "requestId": "Request ID",
+      "status": "Status",
+      "requestDate": "Request Date",
+      "method": "Payment Method",
+      "depositAmount": "Deposit Amount",
+      "withdrawalAmount": "Withdrawal Amount",
+      "fee": "Fee Applied",
+      "netCredit": "Net Amount To Credit",
+      "netReceive": "Net Amount To Receive",
+      "txnId": "Transaction ID (User)",
+      "screenshot": "Screenshot",
+      "rejectionReason": "Rejection Reason",
+      "withdrawalAmountOriginal": "Amount Withdrawn ({{currency}})",
+      "feeOriginal": "Fee (Est. {{currency}})",
+      "netReceiveOriginal": "Net to Receive (Est. {{currency}})",
+      "totalDeductedTND": "Total Deducted (TND)",
+      "withdrawalInfo": "Withdrawal Info (User)"
     }
   },
   "comptes": {

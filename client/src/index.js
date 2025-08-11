@@ -1,10 +1,10 @@
+// src/index.js
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
+import AppWrapper from './App'; // [!!!] استيراد AppWrapper بدلاً من App
 import reportWebVitals from './reportWebVitals';
 import store from './redux/store';
-import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import './i18n';
 
@@ -13,12 +13,10 @@ root.render(
   <React.StrictMode>
     <Suspense fallback="loading...">
       <Provider store={store}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <AppWrapper /> {/* [!!!] استخدام AppWrapper هنا */}
       </Provider>
     </Suspense>
-    </React.StrictMode>
+  </React.StrictMode>
 );
 
 reportWebVitals();

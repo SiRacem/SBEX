@@ -197,7 +197,7 @@
     "DEPOSIT_APPROVED": "Dépôt approuvé",
     "DEPOSIT_REJECTED": "Dépôt rejeté",
     "DEPOSIT_PENDING": "Dépôt en attente",
-    "NEW_WITHDRAWAL_REQUEST": "Nouvelle demande de retrait",
+    "NEW_WITHDRAWAL_REQUEST": "Demande de retrait soumise",
     "WITHDRAWAL_APPROVED": "Retrait approuvé",
     "WITHDRAWAL_PROCESSING": "Retrait en cours de traitement",
     "WITHDRAWAL_COMPLETED": "Retrait terminé",
@@ -259,17 +259,18 @@
     "MEDIATOR_APP_APPROVED": "Félicitations ! Votre candidature pour devenir médiateur a été approuvée.",
     "MEDIATOR_APP_REJECTED": "Votre candidature pour devenir médiateur a été rejetée. Raison : {{reason}}",
     "MEDIATOR_APP_PENDING": "Votre candidature pour devenir médiateur est en cours d'examen.",
-    "ADMIN_BALANCE_ADJUSTMENT": "L'admin '{{adminName}}' a ajusté le solde de votre compte. Changements : {{changes}}",
-    "USER_BALANCE_ADJUSTED": "Vous avez ajusté les soldes de l'utilisateur '{{userName}}'.",
+    "ADMIN_BALANCE_ADJUSTMENT": "L'administrateur '{{adminName}}' a ajusté les soldes de votre compte. Changements : {{changes}}",
+    "USER_BALANCE_ADJUSTED": "Vous avez ajusté avec succès les soldes de l'utilisateur '{{userName}}'.",
     "NEW_DEPOSIT_REQUEST": "Une nouvelle demande de dépôt de {{amount}} a été soumise par '{{userName}}'.",
     "DEPOSIT_APPROVED": "Votre demande de dépôt de {{amount}} a été approuvée.",
     "DEPOSIT_REJECTED": "Votre demande de dépôt de {{amount}} a été rejetée. Raison : {{reason}}",
     "DEPOSIT_PENDING": "Votre demande de dépôt de {{amount}} est en attente.",
-    "NEW_WITHDRAWAL_REQUEST": "Une nouvelle demande de retrait de {{amount}} a été soumise par '{{userName}}'.",
+    "NEW_WITHDRAWAL_REQUEST": "Votre demande de retrait de {{amount}} a été soumise et est maintenant en attente d'examen.",
+    "NEW_WITHDRAWAL_REQUEST_ADMIN": "L'utilisateur '{{userName}}' a soumis une nouvelle demande de retrait de {{amount}}.",
     "WITHDRAWAL_APPROVED": "Votre demande de retrait de {{amount}} a été approuvée.",
     "WITHDRAWAL_PROCESSING": "Votre demande de retrait de {{amount}} est en cours de traitement.",
-    "WITHDRAWAL_COMPLETED": "Votre retrait de {{amount}} est terminé.",
-    "WITHDRAWAL_REJECTED": "Votre demande de retrait de {{amount}} a été rejetée. Raison : {{reason}}",
+    "WITHDRAWAL_COMPLETED": "Votre retrait de {{amount}} via {{methodName}} est terminé.",
+    "WITHDRAWAL_REJECTED": "Votre demande de retrait de {{amount}} via {{methodName}} a été rejetée. Raison : {{reason}}",
     "FUNDS_RECEIVED": "Vous avez reçu {{amount}} de {{senderName}}.",
     "FUNDS_SENT": "Vous avez envoyé {{amount}} à {{recipientName}}.",
     "FUNDS_NOW_AVAILABLE": "Les fonds s'élevant à {{amount}} de la vente de '{{productName}}' sont maintenant disponibles dans votre compte.",
@@ -285,43 +286,69 @@
     "ACCOUNT_BLOCKED": "Votre compte a été bloqué par un administrateur. Raison : {{reason}}",
     "ACCOUNT_UNBLOCKED": "Votre compte a été débloqué par un administrateur. Bon retour !"
   },
-  "adminProducts": {
-    "pendingApprovals": "Approbations en attente",
-    "loading": "Chargement...",
-    "error": "Erreur: {{error}}",
-    "noPending": "Aucun produit en attente.",
-    "table": {
-      "image": "Image",
-      "title": "Titre",
-      "vendor": "Vendeur",
-      "price": "Prix",
-      "dateAdded": "Date d'ajout",
-      "actions": "Actions"
-    },
-    "actions": {
-      "viewDetails": "Détails",
-      "approve": "Approuver",
-      "reject": "Rejeter"
+  "admin": {
+    "requests": {
+      "title": "Demandes de Transaction",
+      "refreshTooltip": "Actualiser la liste",
+      "refreshButton": "Actualiser",
+      "refreshing": "Actualisation de la liste...",
+      "newDepositToast": "Nouvelle demande de dépôt de {{user}}",
+      "newWithdrawalToast": "Nouvelle demande de retrait de {{user}}",
+      "reasonRequired": "La raison du rejet est requise.",
+      "error": "Erreur : {{error}}",
+      "noRequests": "Aucune demande trouvée pour cette catégorie.",
+      "tabs": {
+        "pendingDeposits": "Dépôts en attente",
+        "allDeposits": "Tous les Dépôts",
+        "pendingWithdrawals": "Retraits en attente",
+        "allWithdrawals": "Tous les Retraits"
+      },
+      "table": {
+        "date": "Date",
+        "user": "Utilisateur",
+        "amount": "Montant",
+        "method": "Méthode",
+        "status": "Statut",
+        "info": "Info (ID/Réf)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "Voir Détails",
+        "approve": "Approuver",
+        "complete": "Compléter",
+        "reject": "Rejeter"
+      },
+      "rejectModalTitle": "Rejeter la demande de {{type}} de {{user}}",
+      "rejectModalTitleGeneric": "Rejeter la Demande"
     },
     "detailsModal": {
-      "title": "Détails du produit : {{title}}",
-      "by": "Par",
-      "description": "Description",
-      "linkType": "Type de lien",
-      "price": "Prix",
-      "quantity": "Quantité",
-      "submitted": "Soumis le",
-      "close": "Fermer"
-    },
-    "rejectModal": {
-      "title": "Rejeter : {{title}}",
-      "reason": "Raison (Requise)",
-      "cancel": "Annuler",
-      "confirm": "Confirmer",
-      "rejecting": "Rejet...",
-      "reasonRequired": "La raison est requise."
-    },
-    "confirmApprove": "Êtes-vous sûr d'approuver ce produit ?"
+      "title": "Détails de la Demande de {{type}}",
+      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
+      "noData": "Données de la demande non disponibles.",
+      "userTitle": "Informations Utilisateur",
+      "userName": "Nom",
+      "userEmail": "Email",
+      "userPhone": "Téléphone",
+      "userBalance": "Solde Actuel",
+      "requestTitle": "Détails de la Demande",
+      "requestId": "ID Demande",
+      "status": "Statut",
+      "requestDate": "Date Demande",
+      "method": "Méthode de Paiement",
+      "depositAmount": "Montant du Dépôt",
+      "withdrawalAmount": "Montant du Retrait",
+      "fee": "Frais Appliqués",
+      "netCredit": "Montant Net à Créditer",
+      "netReceive": "Montant Net à Recevoir",
+      "txnId": "ID Transaction (Utilisateur)",
+      "screenshot": "Capture d'écran",
+      "rejectionReason": "Raison du Rejet",
+      "withdrawalAmountOriginal": "Montant Retiré ({{currency}})",
+      "feeOriginal": "Frais (Est. {{currency}})",
+      "netReceiveOriginal": "Net à Recevoir (Est. {{currency}})",
+      "totalDeductedTND": "Total Déduit (TND)",
+      "withdrawalInfo": "Informations de Retrait (Utilisateur)"
+    }
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -418,15 +445,29 @@
       "bidAmountLabel_new": "Nouveau montant d'enchère ({{currency}})",
       "currentBalance": "Votre solde actuel",
       "minBalanceRequired": "Min. {{amount}} requis pour participer aux enchères.",
-      "insufficientBalanceError": "Solde insuffisant. Vous avez besoin de {{requiredTND}} (environ {{requiredOriginal}}) pour couvrir cette enchère, mais vous n'avez que {{available}}."
+      "insufficientBalanceError": "Solde insuffisant. Vous avez besoin de {{requiredTND}} (environ {{requiredOriginal}}) pour couvrir cette enchère, mais vous n'avez que {{available}}.",
+      "balanceTooLowError": "Votre solde est trop bas pour participer aux enchères."
     }
   },
   "common": {
     "cancel": "Annuler",
     "close": "Fermer",
+    "loading": "Chargement...",
     "processing": "En cours...",
     "confirmBid": "Confirmer l'enchère",
     "level": "Niveau {{level}}"
+  },
+  "rejectModal": {
+    "title": "Rejeter la Demande",
+    "reasonLabel": "Raison du Rejet (Requise)",
+    "reasonPlaceholder": "Entrez la raison...",
+    "validationError": "Veuillez fournir une raison claire pour le rejet (min. 5 caractères).",
+    "confirmButton": "Confirmer le Rejet"
+  },
+  "clipboard": {
+    "copied": "{{item}} copié !",
+    "copyFailed": "La copie a échoué. Veuillez réessayer.",
+    "copy": "Copier {{item}}"
   },
   "userProfilePage": {
     "loading": "Chargement du profil...",
@@ -500,7 +541,8 @@
     "sessionExpired": "Session expirée ou invalide. Veuillez vous reconnecter.",
     "getProfileFail": "Échec du chargement du profil utilisateur.",
     "notAuthorized": "Autorisation requise. Veuillez vous connecter.",
-    "notAuthorizedAdmin": "Une autorisation d'administrateur est requise pour cette action."
+    "notAuthorizedAdmin": "Une autorisation d'administrateur est requise pour cette action.",
+    "Failed_to_fetch_withdrawal_requests": "Erreur serveur lors de la récupération de vos demandes de retrait."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -509,6 +551,9 @@
     "title": "Mon Portefeuille",
     "loading": "Chargement du portefeuille...",
     "error": "Données utilisateur non disponibles. Veuillez vous connecter.",
+    "errorActivity_deposits": "Erreur de chargement de l'historique des dépôts",
+    "errorActivity_withdrawals": "Erreur de chargement de l'historique des retraits",
+    "errorActivity_transactions": "Erreur de chargement de l'historique des transactions",
     "deposit": "Dépôt",
     "withdraw": "Retrait",
     "send": "Envoyer",
@@ -684,7 +729,50 @@
         "detailsRequired": "Veuillez saisir vos {{details}}.",
         "correctErrors": "Veuillez corriger les erreurs avant de soumettre."
       }
+    },
+    "withdrawal": {
+      "success": "Demande de retrait soumise avec succès !",
+      "fail": "Échec de la soumission de la demande de retrait.",
+      "historyFail": "Échec de la récupération de l'historique des retraits."
     }
+  },
+  "api_success": {
+    "depositRequestSubmitted": "Votre demande de dépôt de {{amount}} a été soumise et est en attente d'examen.",
+    "withdrawalRequestSubmitted": "Votre demande de retrait a été soumise avec succès !"
+  },
+  "api_error": {
+    "createDepositFail": "Échec de la création de la demande de dépôt. Veuillez réessayer."
+  },
+  "activityModal": {
+    "title": "Détails de {{type}}",
+    "types": {
+      "DEPOSIT_REQUEST": "Demande de Dépôt",
+      "WITHDRAWAL_REQUEST": "Demande de Retrait",
+      "TRANSFER": "Transfert",
+      "DEPOSIT": "Dépôt",
+      "WITHDRAWAL": "Retrait"
+    },
+    "paymentDetails": "Détails du Paiement et du Montant",
+    "transactionDetails": "Détails de la Transaction",
+    "generalDetails": "Détails Généraux",
+    "genericInfo": "Les détails pour ce type d'activité sont génériques.",
+    "method": "Méthode:",
+    "amountSent": "Montant Envoyé ({{currency}}):",
+    "fee": "Frais ({{currency}}):",
+    "netAmount": "Montant Net ({{currency}}):",
+    "transactionId": "ID de Transaction:",
+    "senderInfo": "Infos Expéditeur:",
+    "amountWithdrawn": "Montant Retiré ({{currency}}):",
+    "netReceived": "Net Reçu ({{currency}}):",
+    "withdrawalInfo": "Détails du Retrait:",
+    "paymentRef": "Réf. Paiement:",
+    "sentTo": "Envoyé À:",
+    "receivedFrom": "Reçu De:",
+    "amount": "Montant:",
+    "description": "Description:",
+    "rejectionReason": "Raison du Rejet",
+    "dateTime": "Date & Heure",
+    "timestamp": "Horodatage:"
   },
   "profilePage": {
     "loading": "Chargement du profil...",
@@ -1012,6 +1100,68 @@
       "priorityUpdateFail": "Échec de la mise à jour de la priorité.",
       "assignSuccess": "Assignation du ticket mise à jour.",
       "assignFail": "Échec de l'assignation du ticket."
+    },
+    "requests": {
+      "title": "Demandes de Transaction",
+      "refreshTooltip": "Actualiser la liste",
+      "refreshButton": "Actualiser",
+      "refreshing": "Actualisation de la liste...",
+      "newDepositToast": "Nouvelle demande de dépôt de {{user}}",
+      "newWithdrawalToast": "Nouvelle demande de retrait de {{user}}",
+      "reasonRequired": "La raison du rejet est requise.",
+      "error": "Erreur : {{error}}",
+      "noRequests": "Aucune demande trouvée pour cette catégorie.",
+      "tabs": {
+        "pendingDeposits": "Dépôts en attente",
+        "allDeposits": "Tous les Dépôts",
+        "pendingWithdrawals": "Retraits en attente",
+        "allWithdrawals": "Tous les Retraits"
+      },
+      "table": {
+        "date": "Date",
+        "user": "Utilisateur",
+        "amount": "Montant",
+        "method": "Méthode",
+        "status": "Statut",
+        "info": "Info (ID/Réf)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "Voir Détails",
+        "approve": "Approuver",
+        "complete": "Compléter",
+        "reject": "Rejeter"
+      },
+      "rejectModalTitle": "Rejeter la demande de {{type}} de {{user}}",
+      "rejectModalTitleGeneric": "Rejeter la Demande"
+    },
+    "detailsModal": {
+      "title": "Détails de la Demande de {{type}}",
+      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
+      "noData": "Données de la demande non disponibles.",
+      "userTitle": "Informations Utilisateur",
+      "userName": "Nom",
+      "userEmail": "Email",
+      "userPhone": "Téléphone",
+      "userBalance": "Solde Actuel",
+      "requestTitle": "Détails de la Demande",
+      "requestId": "ID Demande",
+      "status": "Statut",
+      "requestDate": "Date Demande",
+      "method": "Méthode de Paiement",
+      "depositAmount": "Montant du Dépôt",
+      "withdrawalAmount": "Montant du Retrait",
+      "fee": "Frais Appliqués",
+      "netCredit": "Montant Net à Créditer",
+      "netReceive": "Montant Net à Recevoir",
+      "txnId": "ID Transaction (Utilisateur)",
+      "screenshot": "Capture d'écran",
+      "rejectionReason": "Raison du Rejet",
+      "withdrawalAmountOriginal": "Montant Retiré ({{currency}})",
+      "feeOriginal": "Frais (Est. {{currency}})",
+      "netReceiveOriginal": "Net à Recevoir (Est. {{currency}})",
+      "totalDeductedTND": "Total Déduit (TND)",
+      "withdrawalInfo": "Informations de Retrait (Utilisateur)"
     }
   },
   "comptes": {
@@ -1074,5 +1224,13 @@
     "imagePreview": "Aperçu de l'image",
     "viewImage": "Voir l'image",
     "removeImage": "Supprimer l'image"
+  },
+  "rateLimit": {
+    "title": "Trop de tentatives",
+    "subtitle": "Pour des raisons de sécurité, votre accès a été temporairement verrouillé.",
+    "tryAgainIn": "Veuillez réessayer dans",
+    "now": "Maintenant !",
+    "goBackButtonReady": "Aller à la connexion",
+    "goBackButtonWaiting": "Veuillez patienter"
   }
 }

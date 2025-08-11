@@ -1,7 +1,6 @@
 // src/components/admin/DepositRequestDetailsModal.jsx
-// *** نسخة معدلة لعرض المبالغ الأصلية لطلبات السحب ***
-
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Modal,
   Button,
@@ -27,509 +26,331 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
-// --- المكون الرئيسي ---
+const TND_TO_USD_RATE = 3.0; // تأكد من تطابقه مع الخادم
+
 const DepositRequestDetailsModal = ({
   show,
   onHide,
   request,
   loading,
   requestType,
-  // --- [!!!] استقبال الـ props الجديدة [!!!] ---
-  formatCurrencyFn, // دالة تنسيق العملة الممررة
-  tndToUsdRate, // سعر الصرف الممرر
-  // -----------------------------------------
 }) => {
+  const { t, i18n } = useTranslation();
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [copiedValue, setCopiedValue] = useState(null);
 
-  // --- [!!!] استخدام formatCurrencyFn الممررة أو دالة افتراضية ---
-  const formatCurrency =
-    formatCurrencyFn ||
-    ((amount, currencyCode = "USD") => {
-      const num = Number(amount);
-      if (
-        isNaN(num) ||
-        !currencyCode ||
-        typeof currencyCode !== "string" ||
-        currencyCode.trim() === ""
-      ) {
-        return <span className="text-muted fst-italic">N/A</span>;
-      }
-      try {
-        return num.toLocaleString(undefined, {
-          style: "currency",
-          currency: currencyCode,
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
-      } catch (error) {
-        return `${num.toFixed(2)} ${currencyCode}`;
-      }
-    });
-  // ------------------------------------------------------------
+  const formatCurrency = (amount, currencyCode = "TND") => {
+    const num = Number(amount);
+    if (isNaN(num) || amount == null) return "N/A";
+    const locale =
+      currencyCode === "USD"
+        ? "en-US"
+        : i18n.language === "tn"
+        ? "ar-TN"
+        : i18n.language;
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(num);
+    } catch (error) {
+      return `${num.toFixed(2)} ${currencyCode}`;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return format(
+      new Date(dateString),
+      i18n.language === "en" ? "Pp" : "dd/MM/yyyy, HH:mm"
+    );
+  };
 
   useEffect(() => {
-    if (!show) {
-      setIsLightboxOpen(false);
-    }
+    if (!show) setIsLightboxOpen(false);
     setCopiedValue(null);
-  }, [request, show]);
+  }, [show]);
 
   const copyToClipboard = useCallback(
     (text, identifier) => {
       if (!text || copiedValue === identifier) return;
-      const textToCopy = String(text);
       navigator.clipboard
-        .writeText(textToCopy)
+        .writeText(String(text))
         .then(() => {
-          toast.success(`${identifier} Copied!`, { autoClose: 1500 });
+          toast.success(t("clipboard.copied", { item: identifier }), {
+            autoClose: 1500,
+          });
           setCopiedValue(identifier);
           setTimeout(() => setCopiedValue(null), 2000);
         })
-        .catch((err) => {
-          console.error("Clipboard copy failed:", err);
-          toast.error("Copy failed. Please try again.");
-        });
+        .catch(() => toast.error(t("clipboard.copyFailed")));
     },
-    [copiedValue]
+    [copiedValue, t]
   );
 
   const renderStatusBadge = (status) => {
-    let variant = "secondary";
-    let icon = <FaInfoCircle />;
+    let variant = "secondary",
+      icon = <FaInfoCircle />;
     const lowerStatus = status?.toLowerCase();
-    if (lowerStatus === "completed" || lowerStatus === "approved") {
+    if (["completed", "approved"].includes(lowerStatus)) {
       variant = "success";
       icon = <FaCheckCircle />;
     } else if (lowerStatus === "pending") {
       variant = "warning";
       icon = <FaHourglassHalf />;
-    } else if (
-      lowerStatus === "rejected" ||
-      lowerStatus === "failed" ||
-      lowerStatus === "cancelled"
-    ) {
+    } else if (["rejected", "failed", "cancelled"].includes(lowerStatus)) {
       variant = "danger";
       icon = <FaExclamationTriangle />;
     }
-    const displayStatus = status
-      ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-      : "Unknown";
+    const displayStatus = t(`walletPage.statuses.${lowerStatus}`, {
+      defaultValue: status || "Unknown",
+    });
     return (
-      <Badge
-        pill
-        bg={variant}
-        className="d-inline-flex align-items-center status-badge fs-sm"
-      >
-        {" "}
-        {React.cloneElement(icon, { className: "me-1" })} {displayStatus}{" "}
+      <Badge bg={variant} className="d-inline-flex align-items-center">
+        {React.cloneElement(icon, { className: "me-1" })} {displayStatus}
       </Badge>
     );
   };
 
-  const renderDetailRow = (
+  const DetailRow = ({
     label,
     value,
     canCopy = false,
     copyIdentifier = label,
-    isLink = false
-  ) => {
-    const displayValue =
-      value !== undefined && value !== null && value !== "" ? (
-        value
-      ) : (
-        <span className="text-muted fst-italic">N/A</span>
-      );
-    const alwaysShow = [
-      "Status",
-      "User Current Balance",
-      "Processed At",
-      "Admin Notes",
-      "Rejection Reason",
-    ].includes(label);
-    if (displayValue?.props?.children === "N/A" && !alwaysShow) {
-      return null;
-    }
-    return (
-      <tr>
-        <td
-          style={{ width: "35%", fontWeight: "bold", verticalAlign: "middle" }}
-          className="py-2 px-3"
-        >
-          {label}
-        </td>
-        <td
-          style={{ verticalAlign: "middle", wordBreak: "break-word" }}
-          className="py-2 px-3"
-        >
-          {isLink && typeof value === "string" && value.startsWith("http") ? (
-            <a
-              href={value}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={`Open link for ${label}`}
-            >
-              {" "}
-              {value.length > 50 ? `${value.substring(0, 47)}...` : value}{" "}
-              <FaExternalLinkAlt size="0.8em" className="ms-1 text-primary" />{" "}
-            </a>
-          ) : label === "Status" && typeof value === "string" ? (
-            renderStatusBadge(value)
-          ) : (
-            displayValue
-          )}
-          {canCopy && value && displayValue?.props?.children !== "N/A" && (
-            <OverlayTrigger
-              placement="top"
-              overlay={<Tooltip>Copy {copyIdentifier}</Tooltip>}
-            >
-              <span className="d-inline-block">
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="p-0 ms-2 copy-btn-details"
-                  onClick={() => copyToClipboard(value, copyIdentifier)}
-                  disabled={copiedValue === copyIdentifier}
-                >
-                  {copiedValue === copyIdentifier ? (
-                    <FaCheck className="text-success" />
-                  ) : (
-                    <FaCopy className="text-secondary" />
-                  )}
-                </Button>
-              </span>
-            </OverlayTrigger>
-          )}
-        </td>
-      </tr>
-    );
-  };
-
-  const renderImageThumbnailRow = (label, imageUrl) => {
-    if (!imageUrl || typeof imageUrl !== "string")
-      return renderDetailRow(label, null);
-    return (
-      <tr>
-        <td
-          style={{ width: "35%", fontWeight: "bold", verticalAlign: "middle" }}
-          className="py-2 px-3"
-        >
-          {label}
-        </td>
-        <td className="py-2 px-3">
-          <Image
-            src={imageUrl}
-            thumbnail
-            style={{
-              maxHeight: "100px",
-              maxWidth: "100%",
-              cursor: "pointer",
-              display: "block",
-            }}
-            alt={`${label} Thumbnail`}
-            onClick={() => setIsLightboxOpen(true)}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.style.display = "none";
-              const errorPlaceholder = e.target.parentNode?.querySelector(
-                ".img-error-placeholder"
-              );
-              if (errorPlaceholder) errorPlaceholder.style.display = "inline";
-            }}
-          />
-          <span
-            className="img-error-placeholder text-danger small"
-            style={{ display: "none" }}
+  }) => (
+    <tr>
+      <td className="fw-bold" style={{ width: "40%" }}>
+        {label}
+      </td>
+      <td>
+        {value}
+        {canCopy && value && value !== "N/A" && (
+          <OverlayTrigger
+            placement="top"
+            overlay={
+              <Tooltip>{t("clipboard.copy", { item: copyIdentifier })}</Tooltip>
+            }
           >
-            {" "}
-            Failed to load image.{" "}
-            <a
-              href={imageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ms-1"
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 ms-2"
+              onClick={() => copyToClipboard(value, copyIdentifier)}
+              disabled={copiedValue === copyIdentifier}
             >
-              (Open Link <FaExternalLinkAlt size="0.8em" />)
-            </a>{" "}
-          </span>
-        </td>
-      </tr>
+              {copiedValue === copyIdentifier ? (
+                <FaCheck className="text-success" />
+              ) : (
+                <FaCopy className="text-secondary" />
+              )}
+            </Button>
+          </OverlayTrigger>
+        )}
+      </td>
+    </tr>
+  );
+
+  const renderContent = () => {
+    if (loading)
+      return (
+        <div className="text-center p-4">
+          <Spinner animation="border" />
+        </div>
+      );
+    if (!request)
+      return <Alert variant="warning">{t("admin.detailsModal.noData")}</Alert>;
+
+    const isDeposit = requestType === "deposit";
+
+    // [!!!] START OF THE FIX FOR WITHDRAWAL DISPLAY [!!!]
+    let withdrawalDisplay = {};
+    if (!isDeposit && request.originalCurrency) {
+      const {
+        originalAmount,
+        originalCurrency,
+        feeAmount,
+        netAmountToReceive,
+      } = request;
+      let feeInOriginalCurrency = feeAmount;
+      let netInOriginalCurrency = netAmountToReceive;
+
+      // إذا كانت العملة الأصلية ليست TND، قم بالتحويل للعرض فقط
+      if (originalCurrency !== "TND") {
+        feeInOriginalCurrency = feeAmount / TND_TO_USD_RATE;
+        netInOriginalCurrency = originalAmount - feeInOriginalCurrency;
+      }
+
+      withdrawalDisplay = {
+        amountLabel: t("admin.detailsModal.withdrawalAmountOriginal", {
+          currency: originalCurrency,
+        }),
+        amountValue: formatCurrency(originalAmount, originalCurrency),
+        feeLabel: t("admin.detailsModal.feeOriginal", {
+          currency: originalCurrency,
+        }),
+        feeValue: formatCurrency(feeInOriginalCurrency, originalCurrency),
+        netLabel: t("admin.detailsModal.netReceiveOriginal", {
+          currency: originalCurrency,
+        }),
+        netValue: formatCurrency(netInOriginalCurrency, originalCurrency),
+        totalDeductedLabel: t("admin.detailsModal.totalDeductedTND"),
+        totalDeductedValue: formatCurrency(request.amount, "TND"),
+      };
+    }
+    // [!!!] END OF THE FIX FOR WITHDRAWAL DISPLAY [!!!]
+
+    return (
+      <>
+        <h5 className="mb-3">{t("admin.detailsModal.userTitle")}</h5>
+        <Table bordered responsive size="sm" className="mb-4">
+          <tbody>
+            <DetailRow
+              label={t("admin.detailsModal.userName")}
+              value={request.user?.fullName}
+            />
+            <DetailRow
+              label={t("admin.detailsModal.userEmail")}
+              value={request.user?.email}
+              canCopy={true}
+              copyIdentifier={t("admin.detailsModal.userEmail")}
+            />
+            <DetailRow
+              label={t("admin.detailsModal.userPhone")}
+              value={request.user?.phone || "N/A"}
+              canCopy={true}
+              copyIdentifier={t("admin.detailsModal.userPhone")}
+            />
+            <DetailRow
+              label={t("admin.detailsModal.userBalance")}
+              value={formatCurrency(request.user?.balance, "TND")}
+            />
+          </tbody>
+        </Table>
+
+        <h5 className="mb-3">{t("admin.detailsModal.requestTitle")}</h5>
+        <Table bordered responsive size="sm">
+          <tbody>
+            <DetailRow
+              label={t("admin.detailsModal.requestId")}
+              value={request._id}
+              canCopy={true}
+              copyIdentifier="ID"
+            />
+            <DetailRow
+              label={t("admin.detailsModal.status")}
+              value={renderStatusBadge(request.status)}
+            />
+            <DetailRow
+              label={t("admin.detailsModal.requestDate")}
+              value={formatDate(request.createdAt)}
+            />
+            <DetailRow
+              label={t("admin.detailsModal.method")}
+              value={
+                isDeposit
+                  ? request.paymentMethod?.displayName || "N/A"
+                  : request.paymentMethod?.displayName || "N/A"
+              }
+            />
+
+            {isDeposit ? (
+              <>
+                <DetailRow
+                  label={t("admin.detailsModal.depositAmount")}
+                  value={formatCurrency(request.amount, request.currency)}
+                />
+                <DetailRow
+                  label={t("admin.detailsModal.fee")}
+                  value={formatCurrency(request.feeAmount, request.currency)}
+                />
+                <DetailRow
+                  label={t("admin.detailsModal.netCredit")}
+                  value={formatCurrency(
+                    request.netAmountCredited,
+                    request.currency
+                  )}
+                />
+                <DetailRow
+                  label={t("admin.detailsModal.txnId")}
+                  value={request.transactionId || request.senderInfo || "N/A"}
+                  canCopy={true}
+                  copyIdentifier="ID"
+                />
+              </>
+            ) : (
+              <>
+                <DetailRow
+                  label={withdrawalDisplay.amountLabel}
+                  value={withdrawalDisplay.amountValue}
+                />
+                <DetailRow
+                  label={withdrawalDisplay.feeLabel}
+                  value={withdrawalDisplay.feeValue}
+                />
+                <DetailRow
+                  label={withdrawalDisplay.netLabel}
+                  value={withdrawalDisplay.netValue}
+                />
+                <DetailRow
+                  label={withdrawalDisplay.totalDeductedLabel}
+                  value={withdrawalDisplay.totalDeductedValue}
+                />
+                <DetailRow
+                  label={t("admin.detailsModal.withdrawalInfo")}
+                  value={request.withdrawalInfo || "N/A"}
+                  canCopy={true}
+                  copyIdentifier="Info"
+                />
+              </>
+            )}
+
+            {request.screenshotUrl && (
+              <tr>
+                <td className="fw-bold">
+                  {t("admin.detailsModal.screenshot")}
+                </td>
+                <td>
+                  <Image
+                    src={request.screenshotUrl}
+                    thumbnail
+                    fluid
+                    style={{ maxWidth: "200px", cursor: "pointer" }}
+                    onClick={() => window.open(request.screenshotUrl, "_blank")}
+                  />
+                </td>
+              </tr>
+            )}
+            {request.rejectionReason && (
+              <DetailRow
+                label={t("admin.detailsModal.rejectionReason")}
+                value={
+                  <span className="text-danger">{request.rejectionReason}</span>
+                }
+              />
+            )}
+          </tbody>
+        </Table>
+      </>
     );
   };
-
-  const isDepositRequest = requestType === "deposit";
-  const isWithdrawalRequest = requestType === "withdrawal";
-
-  // --- [!!!] حساب القيم لطلبات السحب [!!!] ---
-  let withdrawalOriginalAmountDisplay = null;
-  let withdrawalFeeEstOriginalDisplay = null;
-  let withdrawalNetEstOriginalDisplay = null;
-  let withdrawalDeductedTNDDisplay = null;
-
-  if (isWithdrawalRequest && request) {
-    const originalAmount = request.originalAmount || 0;
-    const originalCurrency = request.originalCurrency || "USD"; // Default to USD if not present
-    const feeTND = request.feeAmount || 0; // This is stored in TND
-    const totalDeductedTND = request.amount || 0; // Total deducted from user in TND
-
-    withdrawalOriginalAmountDisplay = formatCurrency(
-      originalAmount,
-      originalCurrency
-    );
-    withdrawalDeductedTNDDisplay = formatCurrency(totalDeductedTND, "TND");
-
-    if (feeTND > 0 && tndToUsdRate) {
-      const feeOriginalEst =
-        originalCurrency === "USD" ? feeTND / tndToUsdRate : feeTND;
-      withdrawalFeeEstOriginalDisplay = `≈ ${formatCurrency(
-        feeOriginalEst,
-        originalCurrency
-      )}`;
-      const netOriginalEst = originalAmount - feeOriginalEst;
-      withdrawalNetEstOriginalDisplay = `≈ ${formatCurrency(
-        netOriginalEst,
-        originalCurrency
-      )}`;
-    } else if (feeTND === 0) {
-      // No fee case
-      withdrawalFeeEstOriginalDisplay = formatCurrency(0, originalCurrency);
-      withdrawalNetEstOriginalDisplay = formatCurrency(
-        originalAmount,
-        originalCurrency
-      );
-    }
-  }
-  // -----------------------------------------
 
   return (
-    <>
-      <Modal
-        show={show}
-        onHide={onHide}
-        size="lg"
-        centered
-        dialogClassName="details-modal"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {isDepositRequest ? "Deposit" : "Withdrawal"} Request Details
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {loading ? (
-            <div className="text-center p-5">
-              {" "}
-              <Spinner animation="border" variant="primary" />{" "}
-              <p className="mt-2 text-muted">Loading...</p>{" "}
-            </div>
-          ) : !request ? (
-            <Alert variant="warning" className="text-center">
-              No request data available.
-            </Alert>
-          ) : (
-            <>
-              <h5 className="details-section-title">User Information</h5>
-              <Table
-                bordered
-                hover
-                responsive="sm"
-                size="sm"
-                className="details-table align-middle mb-4"
-              >
-                <tbody>
-                  {renderDetailRow("User Name", request.user?.fullName)}
-                  {renderDetailRow(
-                    "User Email",
-                    request.user?.email,
-                    true,
-                    "Email"
-                  )}
-                  {renderDetailRow(
-                    "User Phone",
-                    request.user?.phone,
-                    true,
-                    "Phone"
-                  )}
-                  {renderDetailRow(
-                    "User Current Balance",
-                    request.user?.balance != null
-                      ? formatCurrency(request.user.balance, "TND")
-                      : null
-                  )}
-                </tbody>
-              </Table>
-
-              <h5 className="details-section-title">Request Details</h5>
-              <Table
-                bordered
-                hover
-                responsive="sm"
-                size="sm"
-                className="details-table align-middle mb-4"
-              >
-                <tbody>
-                  {renderDetailRow(
-                    "Request ID",
-                    request._id,
-                    true,
-                    "Request ID"
-                  )}
-                  {renderDetailRow("Status", request.status)}
-                  {renderDetailRow(
-                    "Request Date",
-                    request.createdAt
-                      ? format(new Date(request.createdAt), "Pp O")
-                      : null
-                  )}
-                  {renderDetailRow(
-                    "Payment Method",
-                    request.paymentMethod?.displayName ||
-                      request.paymentMethod?.name ||
-                      request.method
-                  )}
-
-                  {isDepositRequest && (
-                    <>
-                      <tr style={{ height: "5px" }}>
-                        <td colSpan={2} className="p-0 border-0"></td>
-                      </tr>
-                      {renderDetailRow(
-                        "Deposit Amount",
-                        formatCurrency(request.amount, request.currency)
-                      )}
-                      {renderDetailRow(
-                        "Fee Applied",
-                        formatCurrency(request.feeAmount, request.currency)
-                      )}
-                      {renderDetailRow(
-                        "Net Amount To Credit",
-                        formatCurrency(
-                          request.netAmountCredited,
-                          request.currency
-                        )
-                      )}
-                      <tr style={{ height: "5px" }}>
-                        <td colSpan={2} className="p-0 border-0"></td>
-                      </tr>
-                      {renderDetailRow(
-                        "Transaction ID (User)",
-                        request.transactionId,
-                        true,
-                        "User Txn ID"
-                      )}
-                      {renderDetailRow(
-                        "Sender Info (User)",
-                        request.senderInfo
-                      )}
-                      {renderImageThumbnailRow(
-                        "Proof Screenshot",
-                        request.screenshotUrl
-                      )}
-                    </>
-                  )}
-
-                  {isWithdrawalRequest && (
-                    <>
-                      <tr style={{ height: "5px" }}>
-                        <td colSpan={2} className="p-0 border-0"></td>
-                      </tr>
-                      {renderDetailRow(
-                        `Withdrawal Amount (${
-                          request.originalCurrency || "USD"
-                        })`,
-                        withdrawalOriginalAmountDisplay
-                      )}
-                      {renderDetailRow(
-                        `Fee Applied (Est. ${
-                          request.originalCurrency || "USD"
-                        })`,
-                        withdrawalFeeEstOriginalDisplay
-                      )}
-                      {renderDetailRow(
-                        `Net To Receive (Est. ${
-                          request.originalCurrency || "USD"
-                        })`,
-                        withdrawalNetEstOriginalDisplay
-                      )}
-                      {renderDetailRow(
-                        "Total Deducted (TND)",
-                        withdrawalDeductedTNDDisplay
-                      )}
-                      <tr style={{ height: "5px" }}>
-                        <td colSpan={2} className="p-0 border-0"></td>
-                      </tr>
-                      {renderDetailRow(
-                        "Withdrawal Info Provided",
-                        typeof request.withdrawalInfo === "object"
-                          ? JSON.stringify(request.withdrawalInfo)
-                          : request.withdrawalInfo,
-                        true,
-                        "Withdrawal Info"
-                      )}
-                    </>
-                  )}
-                </tbody>
-              </Table>
-
-              {request.status?.toLowerCase() !== "pending" && (
-                <>
-                  <h5 className="details-section-title">
-                    Processing Information
-                  </h5>
-                  <Table
-                    bordered
-                    hover
-                    responsive="sm"
-                    size="sm"
-                    className="details-table align-middle"
-                  >
-                    <tbody>
-                      {renderDetailRow(
-                        "Processed By",
-                        request.processedBy?.fullName ||
-                          request.processedBy?.email
-                      )}
-                      {renderDetailRow(
-                        "Processed At",
-                        request.processedAt
-                          ? format(new Date(request.processedAt), "Pp O")
-                          : null
-                      )}
-                      {request.status?.toLowerCase() === "rejected" &&
-                        renderDetailRow(
-                          "Rejection Reason",
-                          request.rejectionReason || request.adminNotes
-                        )}
-                      {request.status?.toLowerCase() !== "rejected" &&
-                        renderDetailRow("Admin Notes", request.adminNotes)}
-                      {isWithdrawalRequest &&
-                        renderDetailRow(
-                          "Payment Reference (Admin)",
-                          request.transactionReference,
-                          true,
-                          "Admin Payment Ref"
-                        )}
-                    </tbody>
-                  </Table>
-                </>
-              )}
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={onHide}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      <Lightbox
-        open={isLightboxOpen}
-        close={() => setIsLightboxOpen(false)}
-        slides={request?.screenshotUrl ? [{ src: request.screenshotUrl }] : []}
-        styles={{ container: { zIndex: 1060 } }}
-      />
-    </>
+    <Modal show={show} onHide={onHide} centered size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>
+          {t("admin.detailsModal.title", {
+            type: t(`admin.detailsModal.types.${requestType}`),
+          })}
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>{renderContent()}</Modal.Body>
+      <Modal.Footer>
+        <Button variant="secondary" onClick={onHide}>
+          {t("common.close")}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

@@ -23,7 +23,6 @@ import {
   FaArrowLeft,
   FaInfoCircle,
   FaCheckCircle,
-  FaRegCreditCard,
   FaCopy,
   FaCheck,
 } from "react-icons/fa";
@@ -41,38 +40,6 @@ const TND_TO_USD_RATE = 3.0;
 const noImageUrlPlaceholder =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
-const formatCurrencyLocal = (
-  amount,
-  currencyCode = "TND",
-  locale = "en-US"
-) => {
-  const num = Number(amount);
-  if (isNaN(num) || !currencyCode) return "N/A";
-  try {
-    return num.toLocaleString(locale, {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  } catch (e) {
-    return `${num.toFixed(2)} ${currencyCode}`;
-  }
-};
-
-const getTokenJsonConfig = () => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.error("Auth token missing.");
-    return null;
-  }
-  return {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
 const getUploadTokenConfig = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -81,39 +48,11 @@ const getUploadTokenConfig = () => {
   }
   return { headers: { Authorization: `Bearer ${token}` } };
 };
-const calculateCommissionLocal = (method, amount, currency = "TND", t) => {
-  if (!method || isNaN(amount) || amount <= 0)
-    return { error: t("walletPage.depositModal.errors.invalidInput") };
-  const percent = method.depositCommissionPercent ?? 0;
-  const minDeposit =
-    currency === "USD" ? method.minDepositUSD ?? 0 : method.minDepositTND ?? 0;
-  if (amount < minDeposit)
-    return {
-      error: t("walletPage.depositModal.errors.minDeposit", {
-        amount: formatCurrencyLocal(minDeposit, currency),
-      }),
-    };
-  let fee = (amount * percent) / 100;
-  const netAmount = amount - fee;
-  if (netAmount <= 0 && amount > 0)
-    return {
-      error: t("walletPage.depositModal.errors.feeExceedsAmount", {
-        fee: formatCurrencyLocal(fee, currency),
-      }),
-    };
-  return {
-    fee: Number(fee.toFixed(2)),
-    netAmount: Number(netAmount.toFixed(2)),
-    error: null,
-  };
-};
-
-const PRESET_AMOUNTS_TND = [5, 10, 20, 30, 40];
-const PRESET_AMOUNTS_USD = [2, 5, 10, 15, 20];
 
 const DepositModal = ({ show, onHide }) => {
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+
   const { loadingCreate, errorCreate, successCreate } = useSelector(
     (state) => state.depositRequestReducer || {}
   );
@@ -122,6 +61,7 @@ const DepositModal = ({ show, onHide }) => {
     loadingActive: loadingMethods,
     error: errorMethods,
   } = useSelector((state) => state.paymentMethodReducer || {});
+
   const depositMethods = useMemo(
     () =>
       depositMethodsRaw.filter(
@@ -129,6 +69,7 @@ const DepositModal = ({ show, onHide }) => {
       ),
     [depositMethodsRaw]
   );
+
   const [step, setStep] = useState(1);
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [depositAmount, setDepositAmount] = useState("");
@@ -143,6 +84,57 @@ const DepositModal = ({ show, onHide }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [inputCurrency, setInputCurrency] = useState("TND");
   const [isCopied, setIsCopied] = useState(false);
+
+  const formatCurrencyLocal = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num)) return "N/A";
+      const locale = i18n.language === "tn" ? "ar-TN" : i18n.language;
+      try {
+        return num.toLocaleString(locale, {
+          style: "currency",
+          currency: currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      } catch (e) {
+        return `${num.toFixed(2)} ${currencyCode}`;
+      }
+    },
+    [i18n.language]
+  );
+
+  const calculateCommissionLocal = useCallback(
+    (method, amount, currency) => {
+      if (!method || isNaN(amount) || amount <= 0)
+        return { error: t("walletPage.depositModal.errors.invalidInput") };
+      const percent = method.depositCommissionPercent ?? 0;
+      const minDeposit =
+        currency === "USD"
+          ? method.minDepositUSD ?? 0
+          : method.minDepositTND ?? 0;
+      if (amount < minDeposit)
+        return {
+          error: t("walletPage.depositModal.errors.minDeposit", {
+            amount: formatCurrencyLocal(minDeposit, currency),
+          }),
+        };
+      const fee = (amount * percent) / 100;
+      const netAmount = amount - fee;
+      if (netAmount <= 0 && amount > 0)
+        return {
+          error: t("walletPage.depositModal.errors.feeExceedsAmount", {
+            fee: formatCurrencyLocal(fee, currency),
+          }),
+        };
+      return {
+        fee: Number(fee.toFixed(2)),
+        netAmount: Number(netAmount.toFixed(2)),
+        error: null,
+      };
+    },
+    [t, formatCurrencyLocal]
+  );
 
   useEffect(() => {
     if (show) {
@@ -192,8 +184,7 @@ const DepositModal = ({ show, onHide }) => {
         const calc = calculateCommissionLocal(
           selectedMethod,
           amountNum,
-          inputCurrency,
-          t
+          inputCurrency
         );
         setAmountError(calc.error);
         if (!calc.error)
@@ -207,7 +198,7 @@ const DepositModal = ({ show, onHide }) => {
       setAmountError(null);
       setCommissionInfo({ fee: 0, netAmount: 0 });
     }
-  }, [depositAmount, selectedMethod, inputCurrency, t]);
+  }, [depositAmount, selectedMethod, inputCurrency, calculateCommissionLocal]);
 
   const handleSelectMethod = (method) => setSelectedMethod(method);
   const handleAmountInputChange = (e) => {
@@ -245,14 +236,13 @@ const DepositModal = ({ show, onHide }) => {
       const calc = calculateCommissionLocal(
         selectedMethod,
         amountNum,
-        inputCurrency,
-        t
+        inputCurrency
       );
       if (!depositAmount || isNaN(amountNum) || amountNum <= 0 || calc.error) {
-        setAmountError(
-          calc.error || t("walletPage.depositModal.errors.validAmount")
-        );
-        toast.warn(calc.error || t("walletPage.depositModal.errors.validAmount"));
+        const errorMsg =
+          calc.error || t("walletPage.depositModal.errors.validAmount");
+        setAmountError(errorMsg);
+        toast.warn(errorMsg);
         return;
       }
     }
@@ -281,8 +271,7 @@ const DepositModal = ({ show, onHide }) => {
       const calc = calculateCommissionLocal(
         selectedMethod,
         amountNum,
-        inputCurrency,
-        t
+        inputCurrency
       );
       if (
         !selectedMethod ||
@@ -320,8 +309,9 @@ const DepositModal = ({ show, onHide }) => {
           uploadedScreenshotUrl = uploadRes.data.filePath;
         } catch (uploadError) {
           toast.error(
-            t("walletPage.depositModal.errors.uploadFailedShort") +
-              `: ${uploadError.response?.data?.msg || uploadError.message}`
+            `${t("walletPage.depositModal.errors.uploadFailedShort")}: ${
+              uploadError.response?.data?.msg || uploadError.message
+            }`
           );
         } finally {
           setIsUploading(false);
@@ -350,8 +340,12 @@ const DepositModal = ({ show, onHide }) => {
       screenshotFile,
       transactionId,
       senderInfo,
+      calculateCommissionLocal,
     ]
   );
+
+  const PRESET_AMOUNTS_TND = [5, 10, 20, 30, 40];
+  const PRESET_AMOUNTS_USD = [2, 5, 10, 15, 20];
 
   const renderFeeDetails = (method) => {
     if (!method) return null;
@@ -366,7 +360,6 @@ const DepositModal = ({ show, onHide }) => {
           {t("walletPage.depositModal.noFeeLabel")}
         </span>
       );
-
     let limitStrings = [];
     if (method.minDepositTND > 0)
       limitStrings.push(
@@ -384,7 +377,6 @@ const DepositModal = ({ show, onHide }) => {
       );
     const limitString =
       limitStrings.length > 0 ? limitStrings.join(" / ") : null;
-
     return (
       <>
         <Badge pill bg="light" text="dark" className="detail-badge">
@@ -434,9 +426,9 @@ const DepositModal = ({ show, onHide }) => {
             onClose={() => dispatch(resetCreateDeposit())}
             dismissible
           >
-            {t(errorCreate.key, {
+            {t(errorCreate.key || "apiErrors.unknownError", {
               ...errorCreate.params,
-              defaultValue: errorCreate.fallback,
+              defaultValue: errorCreate.fallback || "An unknown error occurred",
             })}
           </Alert>
         )}

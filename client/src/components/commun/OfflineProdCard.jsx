@@ -176,7 +176,7 @@ const OfflineProdCard = ({ el: product }) => {
       loggedInUser &&
       loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID
     ) {
-      setBidAmountError("Your balance is too low to participate in bids.");
+      setBidAmountError("home.bidModal.balanceTooLowError");
       return;
     }
 

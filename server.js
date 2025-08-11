@@ -581,16 +581,31 @@ cron.schedule('*/5 * * * *', async () => { // يعمل كل 5 دقائق
 app.use(helmet());
 
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // نافذة زمنية مدتها 15 دقيقة
-    max: 100, // الحد الأقصى: 100 طلب لكل IP خلال الـ 15 دقيقة
-    // ***** [!!!] التعديل الجديد [!!!] *****
-    message: {
-        // أرسل مفتاح الترجمة بدلاً من النص
-        translationKey: "apiErrors.tooManyRequests"
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100,
+    // [!!!] START: التعديل الجديد
+    handler: (req, res, next, options) => {
+        const retryAfter = Math.ceil(options.windowMs / 1000); // الوقت بالثواني
+        res.status(options.statusCode).json({
+            // أرسل كائن خطأ متكامل
+            errorMessage: {
+                key: "apiErrors.tooManyRequests",
+                fallback: "Too many requests, please try again after 15 minutes.",
+                params: {
+                    retryAfter: retryAfter // وقت إعادة المحاولة بالثواني
+                }
+            },
+            // أرسل بيانات إضافية يمكن للواجهة استخدامها
+            rateLimit: {
+                limit: options.max,
+                remaining: 0,
+                resetTime: new Date(Date.now() + options.windowMs)
+            }
+        });
     },
-    // ***** نهاية التعديل *****
-    standardHeaders: true, // يضيف Headers قياسية للمتصفح لإعلامه بالحد
-    legacyHeaders: false, // لا يضيف Headers القديمة (X-RateLimit-*)
+    // [!!!] END: التعديل الجديد
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 app.use(apiLimiter);

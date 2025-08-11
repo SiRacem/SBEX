@@ -8,13 +8,11 @@ var jwt = require('jsonwebtoken');
 const config = require("config");
 const fs = require('fs');
 const path = require('path');
-const multer = require('multer'); // تأكد من استيراده إذا كنت تتعامل مع أخطاء multer مباشرة
+const multer = require('multer');
 
-// --- ثوابت الشروط (يمكن نقلها لملف config) ---
 const MEDIATOR_REQUIRED_LEVEL = 5;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.00;
 
-// دالة مساعدة لتنسيق العملة (يمكن وضعها في ملف helpers)
 const formatCurrency = (amount, currencyCode = "TND") => {
     const numericAmount = Number(amount);
     if (isNaN(numericAmount)) {
@@ -33,7 +31,6 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     }
 };
 
-// [!!!] دالة مساعدة جديدة لإرسال تحديثات الإحصائيات [!!!]
 const sendUserStatsUpdate = async (req, userId) => {
     if (!req.io || !req.onlineUsers) {
         console.warn(`[sendUserStatsUpdate] Socket.IO not available. Cannot send update for user ${userId}.`);
@@ -59,7 +56,6 @@ const sendUserStatsUpdate = async (req, userId) => {
     }
 };
 
-// --- Register ---
 const Register = async (req, res) => {
     const { fullName, email, phone, address, password, userRole, blocked = false } = req.body;
     console.log("--- Controller: Register Request ---");
@@ -90,7 +86,6 @@ const Register = async (req, res) => {
     }
 };
 
-// --- Login ---
 const Login = async (req, res) => {
     const { email, password } = req.body;
     console.log(`--- Controller: Login attempt for ${email} ---`);
@@ -109,7 +104,7 @@ const Login = async (req, res) => {
 
         const payload = { _id: user._id, fullName: user.fullName, userRole: user.userRole };
         const secret = config.get("secret");
-        const token = jwt.sign(payload, secret, { expiresIn: '7d' }); // تم تغيير مدة الصلاحية إلى 7 أيام
+        const token = jwt.sign(payload, secret, { expiresIn: '7d' });
 
         console.log(`User ${email} logged in successfully. Blocked status: ${user.blocked}`);
         res.status(200).json({
@@ -158,7 +153,6 @@ const Login = async (req, res) => {
     }
 };
 
-// --- Auth (Get Profile) ---
 const Auth = async (req, res) => {
     console.log(`--- Controller: Auth (Get Profile) for user ID: ${req.user?._id} ---`);
     if (!req.user || !req.user._id) {
@@ -192,7 +186,6 @@ const Auth = async (req, res) => {
     }
 };
 
-// --- Check Email Exists ---
 const checkEmailExists = async (req, res) => {
     const { email } = req.body;
     console.log(`--- Controller: checkEmailExists START for email: ${email} (Requested by: ${req.user?._id}) ---`);
@@ -224,7 +217,6 @@ const checkEmailExists = async (req, res) => {
     }
 };
 
-// --- Get Users (Admin) ---
 const getUsers = async (req, res) => {
     console.log("--- Controller: getUsers (Admin) ---");
     try {
@@ -239,7 +231,6 @@ const getUsers = async (req, res) => {
     }
 };
 
-// --- Update User (Admin) ---
 const updateUsers = async (req, res) => {
     const userIdToUpdate = req.params.id;
     const updateData = req.body;
@@ -247,16 +238,11 @@ const updateUsers = async (req, res) => {
     const adminFullName = req.user?.fullName;
     const adminUserRole = req.user?.userRole;
 
-    console.log(`--- Controller: updateUsers attempt for User ID: ${userIdToUpdate} by Admin ID: ${adminUserId} ---`);
-    console.log("Update data received:", updateData);
-
     if (adminUserRole !== 'Admin') {
-        console.warn(`Forbidden: User ${adminUserId} (${adminUserRole}) attempted to update user ${userIdToUpdate}.`);
         return res.status(403).json({ msg: "Forbidden: You do not have permission to update users." });
     }
     if (adminUserId.toString() === userIdToUpdate.toString()) {
-        console.warn(`Admin ${adminUserId} attempted to update their own data via admin route.`);
-        return res.status(400).json({ msg: "Admins cannot update their own data using this specific endpoint. Use profile update." });
+        return res.status(400).json({ msg: "Admins cannot update their own data using this specific endpoint." });
     }
 
     delete updateData.password;
@@ -266,15 +252,12 @@ const updateUsers = async (req, res) => {
     delete updateData.registerDate;
 
     const balanceFields = ['balance', 'sellerAvailableBalance', 'sellerPendingBalance', 'depositBalance', 'withdrawalBalance', 'mediatorEscrowGuarantee'];
-    let originalUser;
 
     try {
-        originalUser = await User.findById(userIdToUpdate).lean();
+        const originalUser = await User.findById(userIdToUpdate).lean();
         if (!originalUser) {
-            console.warn(`Update failed: User ${userIdToUpdate} not found.`);
             return res.status(404).json({ msg: "User not found" });
         }
-        console.log("Original user data fetched:", { _id: originalUser._id, email: originalUser.email });
 
         const updatedUser = await User.findByIdAndUpdate(
             userIdToUpdate,
@@ -283,72 +266,79 @@ const updateUsers = async (req, res) => {
         ).select('-password').lean();
 
         if (!updatedUser) {
-            console.error(`Update failed unexpectedly after finding user ${userIdToUpdate}.`);
             return res.status(500).json({ msg: "Update failed unexpectedly." });
         }
-        console.log(`User ${userIdToUpdate} updated successfully in DB.`);
 
         let balanceChanged = false;
         let changesSummary = [];
         balanceFields.forEach(field => {
             const oldValue = originalUser[field] ?? 0;
             const newValue = updatedUser[field] ?? 0;
-            if (newValue.toFixed(2) !== oldValue.toFixed(2)) { // مقارنة الأرقام العشرية بدقة
+            if (newValue.toFixed(2) !== oldValue.toFixed(2)) {
                 balanceChanged = true;
                 const formattedOld = oldValue.toFixed(2);
                 const formattedNew = newValue.toFixed(2);
                 changesSummary.push(`${field}: ${formattedOld} -> ${formattedNew}`);
-                console.log(`Balance change detected for ${field}: ${formattedOld} -> ${formattedNew}`);
             }
         });
 
         if (balanceChanged) {
-            console.log("Balance change detected, creating notifications...");
-            const targetUserFullName = updatedUser.fullName || 'User';
-            const notificationMessageForUser = `Admin "${adminFullName}" adjusted your balances. Changes: ${changesSummary.join(', ')}. New total balance: ${updatedUser.balance.toFixed(2)}.`;
-            const notificationMessageForAdmin = `You adjusted balances for user "${targetUserFullName}" (ID: ${userIdToUpdate}). Changes: ${changesSummary.join(', ')}.`;
+            console.log("Balance change detected, creating notifications using translation keys...");
 
-            try {
-                await Promise.all([
-                    Notification.create({
-                        user: userIdToUpdate, type: 'ADMIN_BALANCE_ADJUSTMENT',
-                        title: 'Account Balance Adjusted by Admin', message: notificationMessageForUser,
-                        relatedEntity: { id: adminUserId, modelName: 'User' }
-                    }),
-                    Notification.create({
-                        user: adminUserId, type: 'USER_BALANCE_ADJUSTED',
-                        title: `Balances Adjusted for ${targetUserFullName}`, message: notificationMessageForAdmin,
-                        relatedEntity: { id: userIdToUpdate, modelName: 'User' }
-                    })
-                ]);
-                console.log(`Notifications created successfully for balance update of user ${userIdToUpdate}.`);
+            // Notification for the User being updated
+            const userNotification = {
+                user: userIdToUpdate,
+                type: 'ADMIN_BALANCE_ADJUSTMENT',
+                title: 'notification_titles.ADMIN_BALANCE_ADJUSTMENT',
+                message: 'notification_messages.ADMIN_BALANCE_ADJUSTMENT',
+                messageParams: {
+                    adminName: adminFullName || 'Admin',
+                    changes: changesSummary.join(', ')
+                },
+                relatedEntity: { id: adminUserId, modelName: 'User' }
+            };
 
-                const targetUserSocketId = req.onlineUsers[userIdToUpdate.toString()];
-                if (targetUserSocketId && req.io) {
-                    const balancesPayload = {
-                        _id: updatedUser._id,
-                        balance: updatedUser.balance,
-                        sellerAvailableBalance: updatedUser.sellerAvailableBalance,
-                        sellerPendingBalance: updatedUser.sellerPendingBalance,
-                        mediatorEscrowGuarantee: updatedUser.mediatorEscrowGuarantee,
-                    };
-                    req.io.to(targetUserSocketId).emit('user_balances_updated', balancesPayload);
-                    console.log(`   Socket event 'user_balances_updated' emitted to user ${userIdToUpdate} with payload:`, balancesPayload);
-                } else {
-                    console.log(`   User ${userIdToUpdate} is not online to receive real-time balance update.`);
+            // Notification for the Admin who performed the action
+            const adminNotification = {
+                user: adminUserId,
+                type: 'USER_BALANCE_ADJUSTED',
+                title: 'notification_titles.USER_BALANCE_ADJUSTED',
+                message: 'notification_messages.USER_BALANCE_ADJUSTED',
+                messageParams: {
+                    userName: updatedUser.fullName || 'User'
+                },
+                relatedEntity: { id: userIdToUpdate, modelName: 'User' }
+            };
+
+            const createdNotifications = await Notification.insertMany([userNotification, adminNotification]);
+
+            // Emit socket events for real-time updates
+            createdNotifications.forEach(notif => {
+                const socketId = req.onlineUsers ? req.onlineUsers[notif.user.toString()] : null;
+                if (socketId) {
+                    req.io.to(socketId).emit('new_notification', notif.toObject());
                 }
-            } catch (notifyError) {
-                console.error(`Error creating balance update notifications for user ${userIdToUpdate}:`, notifyError);
+            });
+
+            const targetUserSocketId = req.onlineUsers[userIdToUpdate.toString()];
+            if (targetUserSocketId && req.io) {
+                const balancesPayload = {
+                    _id: updatedUser._id,
+                    balance: updatedUser.balance,
+                    sellerAvailableBalance: updatedUser.sellerAvailableBalance,
+                    sellerPendingBalance: updatedUser.sellerPendingBalance,
+                    mediatorEscrowGuarantee: updatedUser.mediatorEscrowGuarantee,
+                };
+                req.io.to(targetUserSocketId).emit('user_balances_updated', balancesPayload);
             }
-        } else {
-            console.log("No balance changes detected. Skipping balance notifications and socket update.");
         }
+
         res.status(200).json(updatedUser);
+
     } catch (error) {
         console.error(`Error processing update for user ${userIdToUpdate}:`, error);
         if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(el => ({ msg: el.message, param: el.path }));
-            return res.status(400).json({ errors });
+            return res.status(400).json({ errors: Object.values(error.errors).map(el => ({ msg: el.message, param: el.path })) });
         }
         if (!res.headersSent) {
             res.status(500).json({ msg: "Server error during user update." });
@@ -1034,5 +1024,5 @@ module.exports = {
     updateMyMediatorStatus,
     updateUserProfilePicture,
     adminUpdateUserBlockStatus,
-    sendUserStatsUpdate // <--- تأكد من تصدير دالتنا المساعدة
+    sendUserStatsUpdate
 };

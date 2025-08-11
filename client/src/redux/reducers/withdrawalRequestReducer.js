@@ -65,14 +65,18 @@ const withdrawalRequestReducer = (state = initialState, action) => {
             return {
                 ...state,
                 loadingUserRequests: false,
-                userRequests: payload.requests || [],
-                // userTotalPages: payload.totalPages,
-                // userCurrentPage: payload.currentPage,
-                // userTotalRequests: payload.totalRequests
+                // تأكد من أنك تضع البيانات في `userRequests`
+                userRequests: action.payload,
+                errorUserRequests: null,
             };
+        // داخل withdrawalRequestReducer.js
         case GET_USER_WITHDRAWALS_FAIL:
-            return { ...state, loadingUserRequests: false, errorUserRequests: payload };
-
+            return {
+                ...state,
+                loadingUserRequests: false,
+                errorUserRequests: action.payload, // حفظ كائن الخطأ
+                userRequests: [], // مسح البيانات القديمة عند حدوث خطأ
+            };
         // --- جلب طلبات الأدمن ---
         case ADMIN_GET_WITHDRAWALS_REQUEST:
             return { ...state, loadingAdminRequests: true, errorAdminRequests: null };

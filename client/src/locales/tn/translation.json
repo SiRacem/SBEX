@@ -190,7 +190,7 @@
     "DEPOSIT_APPROVED": "توافق على الصبان",
     "DEPOSIT_REJECTED": "ترفض الصبان",
     "DEPOSIT_PENDING": "الصبان يستنى",
-    "NEW_WITHDRAWAL_REQUEST": "طلب جبدان جديد",
+    "NEW_WITHDRAWAL_REQUEST": "تبعث طلب جبدان",
     "WITHDRAWAL_APPROVED": "توافق على الجبدان",
     "WITHDRAWAL_PROCESSING": "الجبدان يتخدم",
     "WITHDRAWAL_COMPLETED": "كمل الجبدان",
@@ -258,11 +258,12 @@
     "DEPOSIT_APPROVED": "توافق على طلب الصبان متاعك بسوم {{amount}}.",
     "DEPOSIT_REJECTED": "ترفض طلب الصبان متاعك بسوم {{amount}}. السبب: {{reason}}",
     "DEPOSIT_PENDING": "طلب الصبان متاعك بسوم {{amount}} يستنى.",
-    "NEW_WITHDRAWAL_REQUEST": "طلب جبدان جديد بسوم {{amount}} جا من عند '{{userName}}'.",
+    "NEW_WITHDRAWAL_REQUEST": "طلب الجبدان متاعك بسوم {{amount}} تبعث وهو توّا يستنى في المراجعة.",
+    "NEW_WITHDRAWAL_REQUEST_ADMIN": "المستخدم '{{userName}}' بعث طلب جبدان جديد بسوم {{amount}}.",
     "WITHDRAWAL_APPROVED": "توافق على طلب الجبدان متاعك بسوم {{amount}}.",
     "WITHDRAWAL_PROCESSING": "طلب الجبدان متاعك بسوم {{amount}} قاعد يتخدم.",
-    "WITHDRAWAL_COMPLETED": "جبدانك بسوم {{amount}} كمل.",
-    "WITHDRAWAL_REJECTED": "ترفض طلب الجبدان متاعك بسوم {{amount}}. السبب: {{reason}}",
+    "WITHDRAWAL_COMPLETED": "جبدانك بسوم {{amount}} عبر {{methodName}} كمل.",
+    "WITHDRAWAL_REJECTED": "ترفض طلب الجبدان متاعك بسوم {{amount}} عبر {{methodName}}. السبب: {{reason}}",
     "FUNDS_RECEIVED": "جاتك {{amount}} من عند {{senderName}}.",
     "FUNDS_SENT": "بعثت {{amount}} لـ {{recipientName}}.",
     "FUNDS_NOW_AVAILABLE": "الفلوس متاع بيعة '{{productName}}' اللي قيمتها {{amount}} ولات موجودة في حسابك.",
@@ -278,43 +279,69 @@
     "ACCOUNT_BLOCKED": "الكونت متاعك تبلوكا من عند الأدمن. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "الأدمن حللك الكونت. أهلا بيك من جديد!"
   },
-  "adminProducts": {
-    "pendingApprovals": "موافقات تستنى",
-    "loading": "تحميل المنتوجات...",
-    "error": "فما مشكل: {{error}}",
-    "noPending": "ما فماش منتوجات تستنى.",
-    "table": {
-      "image": "تصويرة",
-      "title": "العنوان",
-      "vendor": "البايع",
-      "price": "السوم",
-      "dateAdded": "تاريخ الإضافة",
-      "actions": "الإجراءات"
-    },
-    "actions": {
-      "viewDetails": "شوف التفاصيل",
-      "approve": "وافق",
-      "reject": "ارفض"
+  "admin": {
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث الليستة",
+      "refreshButton": "تحديث",
+      "refreshing": "قاعدين نحدثو في الليستة...",
+      "newDepositToast": "طلب صبان جديد من عند {{user}}",
+      "newWithdrawalToast": "طلب جبدان جديد من عند {{user}}",
+      "reasonRequired": "لازم تكتب سبب الرفض.",
+      "error": "غلطة: {{error}}",
+      "noRequests": "ما فماش طلبات في الصنف هذا.",
+      "tabs": {
+        "pendingDeposits": "صبان يستنى",
+        "allDeposits": "الصبان الكل",
+        "pendingWithdrawals": "جبدان يستنى",
+        "allWithdrawals": "الجبدان الكل"
+      },
+      "table": {
+        "date": "الوقت",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "معلومات (رقم/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "شوف التفاصيل",
+        "approve": "وافق",
+        "complete": "كمّل",
+        "reject": "ارفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من عند {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
     },
     "detailsModal": {
-      "title": "تفاصيل المنتوج: {{title}}",
-      "by": "من عند",
-      "description": "الوصف",
-      "linkType": "نوع الربط",
-      "price": "السوم",
-      "quantity": "الكمية",
-      "submitted": "تبعث في",
-      "close": "سكر"
-    },
-    "rejectModal": {
-      "title": "رفض: {{title}}",
-      "reason": "السبب (لازم)",
-      "cancel": "أنّيلي",
-      "confirm": "أكد الرفض",
-      "rejecting": "الرفض ماشي...",
-      "reasonRequired": "لازم تكتب سبب الرفض."
-    },
-    "confirmApprove": "بالرسمي تحب توافق؟"
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "صبان", "withdrawal": "جبدان" },
+      "noData": "معلومات الطلب موش موجودة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "الاسم",
+      "userEmail": "الإيميل",
+      "userPhone": "النومرو",
+      "userBalance": "الفلوس الموجودة",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "رقم الطلب",
+      "status": "الحالة",
+      "requestDate": "وقت الطلب",
+      "method": "طريقة الخلاص",
+      "depositAmount": "مبلغ الصبان",
+      "withdrawalAmount": "مبلغ الجبدان",
+      "fee": "العمولة",
+      "netCredit": "الصافي اللي باش يتصب",
+      "netReceive": "الصافي اللي باش يوصل",
+      "txnId": "رقم العملية (مالمستخدم)",
+      "screenshot": "التصويرة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "المبلغ المطلوب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي اللي يوصل (تقريبي {{currency}})",
+      "totalDeductedTND": "الجملة اللي تنحات (دينار)",
+      "withdrawalInfo": "معلومات الجبدان (مالمستخدم)"
+    }
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -411,16 +438,30 @@
       "bidAmountLabel_new": "السوم الجديد ({{currency}})",
       "currentBalance": "فلوسك الموجودة",
       "minBalanceRequired": "لازمك أقل شي {{amount}} باش تنجم تزايد.",
-      "insufficientBalanceError": "فلوسك ما تكفيش. لازمك {{requiredTND}} (تقريبًا {{requiredOriginal}}) باش تحط السوم هذا، أما إنت عندك كهو {{available}}."
+      "insufficientBalanceError": "فلوسك ما تكفيش. لازمك {{requiredTND}} (تقريبًا {{requiredOriginal}}) باش تحط السوم هذا، أما إنت عندك كهو {{available}}.",
+      "balanceTooLowError": "رصيدك ما يكفيش باش تشارك في المزايدات."
     }
   },
   "common": {
     "cancel": "أنّيلي",
     "close": "سكر",
+    "loading": "قاعدين نحملو...",
     "processing": "تتخدم...",
     "confirmBid": "أكد المزايدة",
     "level": "مستوى {{level}}"
   },
+  "rejectModal": {
+    "title": "ارفض الطلب",
+    "reasonLabel": "السبب علاش (لازم)",
+    "reasonPlaceholder": "اكتب السبب...",
+    "validationError": "يرحم والديك اكتب سبب واضح للرفض (أقل شي 5 حروف).",
+    "confirmButton": "أكد الرفض"
+  },
+  "clipboard": {
+    "copied": "تم نسخ {{item}}!",
+    "copyFailed": "النسخ ما تمش. عاود مرة أخرى.",
+    "copy": "انسخ {{item}}"
+  },
   "userProfilePage": {
     "memberSince": "عضو منذ",
     "userStats": "إحصائيات",
@@ -429,21 +470,11 @@
     "productsSold": "منتوجات تباعت",
     "location": "البلاصة",
     "positiveRating": "تقييم باهي",
-    "noRatings": "ما فماش تقييمات."
-  },
-  "userProfilePage": {
+    "noRatings": "ما فماش تقييمات.",
     "loading": "قاعدين نحملو في البروفيل...",
     "errorTitle": "غلطة",
     "goHome": "ارجع للرئيسية",
     "dataNotFound": "ما لقيناش بيانات البروفيل.",
-    "memberSince": "عضو منذ",
-    "userStats": "إحصائيات",
-    "activeListings": "منتوجات موجودة",
-    "productsSold": "منتوجات تباعت",
-    "location": "البلاصة",
-    "userRating": "تقييم",
-    "positiveRating": "تقييم باهي",
-    "noRatings": "ما فماش تقييمات.",
     "reportTooltip": "بلّغ على {{name}}",
     "reportTooltipCooldown": "راك بلّغت على {{name}} قبل. تنجم تبلّغ مرة أخرى بعد {{hours}} سوايع.",
     "invalidId": "معرّف المستخدم غالط.",
@@ -503,7 +534,8 @@
     "sessionExpired": "السيّسيون وفات ولا غالطة. يرحم والديك عاود حل الكونت.",
     "getProfileFail": "فما مشكل في تحميل البروفيل.",
     "notAuthorized": "لازمك تحل الكونت متاعك.",
-    "notAuthorizedAdmin": "لازم صلاحيات أدمن باش تعمل الحكاية هاذي."
+    "notAuthorizedAdmin": "لازم صلاحيات أدمن باش تعمل الحكاية هاذي.",
+    "Failed_to_fetch_withdrawal_requests": "غلطة في السيرفر وقت جاب طلبات الجبدان متاعك."
   },
   "confirmLogout": "بالرسمي تحب تخرج؟",
   "forSellersOnly": "للبايعة أكهو.",
@@ -512,6 +544,9 @@
     "title": "البورطفاي متاعي",
     "loading": "قاعدين نحملو في البورطفاي...",
     "error": "معلومات المستخدم موش موجودة. يرحم والديك، حل الكونت.",
+    "errorActivity_deposits": "غلطة في تحميل سجل الصبان",
+    "errorActivity_withdrawals": "غلطة في تحميل سجل الجبدان",
+    "errorActivity_transactions": "غلطة في تحميل سجل المعاملات",
     "deposit": "صبّان",
     "withdraw": "جبدان",
     "send": "ابعث",
@@ -687,7 +722,50 @@
         "detailsRequired": "يرحم والديك اكتب {{details}}.",
         "correctErrors": "صلّح الغلطات قبل ما تبعث."
       }
+    },
+    "withdrawal": {
+      "success": "طلب الجبدان متاعك تبعث بالصحيح!",
+      "fail": "فشل تقديم طلب الجبدان.",
+      "historyFail": "فشل جلب سجل الجبدان."
     }
+  },
+  "api_success": {
+    "depositRequestSubmitted": "طلب الصبان متاعك بسوم {{amount}} تبعث وهو توّا يستنى في المراجعة.",
+    "withdrawalRequestSubmitted": "طلب الجبدان متاعك تبعث بالصحيح!"
+  },
+  "api_error": {
+    "createDepositFail": "فشل إنشاء طلب الصبان. يرحم والديك عاود."
+  },
+  "activityModal": {
+    "title": "تفاصيل {{type}}",
+    "types": {
+      "DEPOSIT_REQUEST": "طلب صبان",
+      "WITHDRAWAL_REQUEST": "طلب جبدان",
+      "TRANSFER": "تحويل",
+      "DEPOSIT": "صبان",
+      "WITHDRAWAL": "جبدان"
+    },
+    "paymentDetails": "تفاصيل الخلاص والمبلغ",
+    "transactionDetails": "تفاصيل العملية",
+    "generalDetails": "تفاصيل عامة",
+    "genericInfo": "التفاصيل متع النشاط هذا عامة.",
+    "method": "الطريقة:",
+    "amountSent": "المبلغ اللي تبعث ({{currency}}):",
+    "fee": "العمولة ({{currency}}):",
+    "netAmount": "المبلغ الصافي ({{currency}}):",
+    "transactionId": "رقم العملية:",
+    "senderInfo": "معلومات اللي بعث:",
+    "amountWithdrawn": "المبلغ اللي تجبد ({{currency}}):",
+    "netReceived": "الصافي اللي وصلك ({{currency}}):",
+    "withdrawalInfo": "تفاصيل الجبدان:",
+    "paymentRef": "مرجع الخلاص:",
+    "sentTo": "تبعث لـِ:",
+    "receivedFrom": "جاك من عند:",
+    "amount": "المبلغ:",
+    "description": "الوصف:",
+    "rejectionReason": "سبب الرفض",
+    "dateTime": "التاريخ والوقت",
+    "timestamp": "الوقت:"
   },
   "profilePage": {
     "loading": "قاعدين نحملو في البروفيل...",
@@ -1016,6 +1094,68 @@
       "priorityUpdateFail": "فما مشكلة في تبديل الأولوية.",
       "assignSuccess": "تبدل تعيين التذكرة.",
       "assignFail": "فما مشكلة في تعيين التذكرة."
+    },
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث الليستة",
+      "refreshButton": "تحديث",
+      "refreshing": "قاعدين نحدثو في الليستة...",
+      "newDepositToast": "طلب صبان جديد من عند {{user}}",
+      "newWithdrawalToast": "طلب جبدان جديد من عند {{user}}",
+      "reasonRequired": "لازم تكتب سبب الرفض.",
+      "error": "غلطة: {{error}}",
+      "noRequests": "ما فماش طلبات في الصنف هذا.",
+      "tabs": {
+        "pendingDeposits": "صبان يستنى",
+        "allDeposits": "الصبان الكل",
+        "pendingWithdrawals": "جبدان يستنى",
+        "allWithdrawals": "الجبدان الكل"
+      },
+      "table": {
+        "date": "الوقت",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "معلومات (رقم/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "شوف التفاصيل",
+        "approve": "وافق",
+        "complete": "كمّل",
+        "reject": "ارفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من عند {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
+    },
+    "detailsModal": {
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "صبان", "withdrawal": "جبدان" },
+      "noData": "معلومات الطلب موش موجودة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "الاسم",
+      "userEmail": "الإيميل",
+      "userPhone": "النومرو",
+      "userBalance": "الفلوس الموجودة",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "رقم الطلب",
+      "status": "الحالة",
+      "requestDate": "وقت الطلب",
+      "method": "طريقة الخلاص",
+      "depositAmount": "مبلغ الصبان",
+      "withdrawalAmount": "مبلغ الجبدان",
+      "fee": "العمولة",
+      "netCredit": "الصافي اللي باش يتصب",
+      "netReceive": "الصافي اللي باش يوصل",
+      "txnId": "رقم العملية (مالمستخدم)",
+      "screenshot": "التصويرة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "المبلغ المطلوب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي اللي يوصل (تقريبي {{currency}})",
+      "totalDeductedTND": "الجملة اللي تنحات (دينار)",
+      "withdrawalInfo": "معلومات الجبدان (مالمستخدم)"
     }
   },
   "comptes": {
@@ -1078,5 +1218,13 @@
     "imagePreview": "معاينة التصويرة",
     "viewImage": "شوف التصويرة",
     "removeImage": "نحّي التصويرة"
+  },
+  "rateLimit": {
+    "title": "برشا محاولات",
+    "subtitle": "للأمان، تم تجميد دخولك مؤقتاً.",
+    "tryAgainIn": "يرحم والديك عاود بعد",
+    "now": "توّا!",
+    "goBackButtonReady": "أمشي لصفحة الدخول",
+    "goBackButtonWaiting": "استنى باش تكمل"
   }
 }

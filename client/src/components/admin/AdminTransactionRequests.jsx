@@ -8,6 +8,7 @@ import React, {
   useContext,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Row,
@@ -17,13 +18,13 @@ import {
   Button,
   Spinner,
   Alert,
-  ButtonGroup,
-  Tooltip,
-  OverlayTrigger,
-  Image,
   Tabs,
   Tab,
   Pagination,
+  Tooltip,
+  OverlayTrigger,
+  Image,
+  ButtonGroup,
 } from "react-bootstrap";
 import {
   FaEye,
@@ -57,7 +58,6 @@ const PAGE_LIMIT = 15;
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="40px" fill="%23aaaaaa">?</text></svg>';
 
-const TND_TO_USD_RATE = 3.0;
 const formatCurrencyLocal = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
@@ -78,6 +78,7 @@ const formatCurrencyLocal = (amount, currencyCode = "TND") => {
 };
 
 const AdminTransactionRequests = () => {
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const socket = useContext(SocketContext);
 
@@ -147,7 +148,6 @@ const AdminTransactionRequests = () => {
   useEffect(() => {
     if (!socket) return;
     const handleNewRequest = (data) => {
-      console.log("[Socket] Received new admin transaction request", data);
       const { type, request } = data;
       const isDepositTabActive = activeTab.includes("Deposits");
       const isWithdrawalTabActive = activeTab.includes("Withdrawals");
@@ -158,7 +158,11 @@ const AdminTransactionRequests = () => {
           payload: request,
         });
         if (activeTab === "pendingDeposits")
-          toast.info(`🔔 New deposit request from ${request.user?.fullName}`);
+          toast.info(
+            `🔔 ${t("admin.requests.newDepositToast", {
+              user: request.user?.fullName,
+            })}`
+          );
       } else if (type === "withdrawal" && isWithdrawalTabActive) {
         dispatch({
           type: "ADMIN_ADD_WITHDRAWAL_REQUEST_SOCKET",
@@ -166,7 +170,9 @@ const AdminTransactionRequests = () => {
         });
         if (activeTab === "pendingWithdrawals")
           toast.info(
-            `🔔 New withdrawal request from ${request.user?.fullName}`
+            `🔔 ${t("admin.requests.newWithdrawalToast", {
+              user: request.user?.fullName,
+            })}`
           );
       }
     };
@@ -174,7 +180,7 @@ const AdminTransactionRequests = () => {
     return () => {
       socket.off("new_admin_transaction_request", handleNewRequest);
     };
-  }, [socket, dispatch, activeTab]);
+  }, [socket, dispatch, activeTab, t]);
 
   const handleTabSelect = (k) => {
     if (k) {
@@ -182,61 +188,46 @@ const AdminTransactionRequests = () => {
       setCurrentPage(1);
     }
   };
-
   const handlePageChange = (page) => {
-    if (page > 0 && page <= (data.totalPages || 1)) {
+    if (page > 0 && page <= (data?.totalPages || 1)) {
       setCurrentPage(page);
     }
   };
-
   const handleRefresh = () => {
-    toast.info("Refreshing list...");
+    toast.info(t("admin.requests.refreshing"));
     fetchDataForCurrentTab(currentPage);
   };
-
   const handleShowDetails = (request, type) => {
     setSelectedRequest(request);
     setRequestType(type);
     if (type === "withdrawal") dispatch(adminGetWithdrawalDetails(request._id));
     setShowDetailsModal(true);
   };
-
   const handleShowReject = (request, type) => {
     setSelectedRequest(request);
     setRequestType(type);
     setShowRejectModal(true);
   };
-
   const handleApproveOrComplete = async (request, type) => {
-    if (!request || !request._id) return;
+    if (!request?._id) return;
     const actionToDispatch =
       type === "deposit"
         ? adminApproveDeposit(request._id)
         : adminCompleteWithdrawal(request._id);
-    try {
-      await dispatch(actionToDispatch);
-      // After success, re-fetch the first page of the current tab
-      fetchDataForCurrentTab(1);
-    } catch (e) {
-      /* Error is handled in action */
-    }
+    await dispatch(actionToDispatch);
+    fetchDataForCurrentTab(1);
   };
-
   const handleConfirmReject = async (reason) => {
     if (!selectedRequest || !reason.trim()) {
-      toast.warn("Rejection reason is required.");
+      toast.warn(t("admin.requests.reasonRequired"));
       return;
     }
     const actionToDispatch =
       requestType === "deposit"
         ? adminRejectDeposit(selectedRequest._id, reason)
         : adminRejectWithdrawal(selectedRequest._id, reason);
-    try {
-      await dispatch(actionToDispatch);
-      fetchDataForCurrentTab(1);
-    } catch (e) {
-      /* Error is handled in action */
-    }
+    await dispatch(actionToDispatch);
+    fetchDataForCurrentTab(1);
     setShowRejectModal(false);
   };
 
@@ -263,8 +254,9 @@ const AdminTransactionRequests = () => {
       default:
         break;
     }
-    const displayStatus =
-      status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const displayStatus = t(`walletPage.statuses.${status.toLowerCase()}`, {
+      defaultValue: status,
+    });
     return (
       <Badge
         pill
@@ -309,16 +301,28 @@ const AdminTransactionRequests = () => {
           <Spinner />
         </div>
       );
-    if (error)
+    if (error) {
+      let errorMessage;
+      if (typeof error === "object" && error !== null && error.key) {
+        // إذا كان الخطأ كائنًا منظمًا، قم بترجمته
+        errorMessage = t(error.key, {
+          ...error.params,
+          defaultValue: error.fallback || t("apiErrors.unknownError"),
+        });
+      } else {
+        // إذا كان نصًا بسيطًا (للتوافق)
+        errorMessage = error;
+      }
       return (
         <Alert variant="danger" className="text-center">
-          Error: {error}
+          {t("admin.requests.error", { error: errorMessage })}
         </Alert>
       );
+    }
     if (!requests || requests.length === 0) {
       return (
         <Alert variant="info" className="text-center">
-          No {activeTab.replace(/([A-Z])/g, " $1").toLowerCase()} found.
+          {t("admin.requests.noRequests")}
         </Alert>
       );
     }
@@ -336,13 +340,15 @@ const AdminTransactionRequests = () => {
           >
             <thead className="table-light">
               <tr>
-                <th>Date</th>
-                <th>User</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Info (ID/Ref)</th>
-                <th className="text-center">Actions</th>
+                <th>{t("admin.requests.table.date")}</th>
+                <th>{t("admin.requests.table.user")}</th>
+                <th>{t("admin.requests.table.amount")}</th>
+                <th>{t("admin.requests.table.method")}</th>
+                <th>{t("admin.requests.table.status")}</th>
+                <th>{t("admin.requests.table.info")}</th>
+                <th className="text-center">
+                  {t("admin.requests.table.actions")}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -367,7 +373,10 @@ const AdminTransactionRequests = () => {
                   >
                     <td className="small text-muted align-middle">
                       {req.createdAt
-                        ? format(new Date(req.createdAt), "Pp")
+                        ? format(
+                            new Date(req.createdAt),
+                            i18n.language === "en" ? "Pp" : "dd/MM/yyyy, HH:mm"
+                          )
                         : "N/A"}
                     </td>
                     <td className="align-middle">
@@ -389,7 +398,9 @@ const AdminTransactionRequests = () => {
                       {formatCurrencyLocal(displayAmount, displayCurrency)}
                     </td>
                     <td className="align-middle">
-                      {req.method || req.paymentMethod?.displayName || "N/A"}
+                      {req.paymentMethod?.displayName ||
+                        req.withdrawalMethod?.displayName ||
+                        "N/A"}
                     </td>
                     <td className="align-middle">
                       {renderStatusBadge(req.status)}
@@ -413,14 +424,18 @@ const AdminTransactionRequests = () => {
                           false,
                           <FaEye />,
                           () => handleShowDetails(req, type),
-                          "View Details"
+                          t("admin.requests.actions.view")
                         )}
                         {isPending &&
                           renderActionBtn(
                             isProcessing,
                             <FaCheck />,
                             () => handleApproveOrComplete(req, type),
-                            type === "deposit" ? "Approve" : "Complete",
+                            t(
+                              type === "deposit"
+                                ? "admin.requests.actions.approve"
+                                : "admin.requests.actions.complete"
+                            ),
                             "outline-success"
                           )}
                         {isPending &&
@@ -428,7 +443,7 @@ const AdminTransactionRequests = () => {
                             isProcessing,
                             <FaTimes />,
                             () => handleShowReject(req, type),
-                            "Reject",
+                            t("admin.requests.actions.reject"),
                             "outline-danger"
                           )}
                       </ButtonGroup>
@@ -470,20 +485,19 @@ const AdminTransactionRequests = () => {
     <Container fluid className="py-4 admin-requests-page">
       <Row className="mb-3 align-items-center">
         <Col>
-          <h2 className="page-title">Transaction Requests</h2>
+          <h2 className="page-title">{t("admin.requests.title")}</h2>
         </Col>
         <Col xs="auto">
           <Button
             variant="outline-primary"
             size="sm"
             onClick={handleRefresh}
-            title="Refresh List"
+            title={t("admin.requests.refreshTooltip")}
           >
-            <FaSync /> Refresh
+            <FaSync /> {t("admin.requests.refreshButton")}
           </Button>
         </Col>
       </Row>
-
       <Tabs
         activeKey={activeTab}
         onSelect={handleTabSelect}
@@ -491,20 +505,31 @@ const AdminTransactionRequests = () => {
         className="mb-3 nav-tabs-custom"
         fill
       >
-        <Tab eventKey="pendingDeposits" title="Pending Deposits">
+        <Tab
+          eventKey="pendingDeposits"
+          title={t("admin.requests.tabs.pendingDeposits")}
+        >
           {renderTable(data?.requests, "deposit")}
         </Tab>
-        <Tab eventKey="allDeposits" title="All Deposits">
+        <Tab
+          eventKey="allDeposits"
+          title={t("admin.requests.tabs.allDeposits")}
+        >
           {renderTable(data?.requests, "deposit")}
         </Tab>
-        <Tab eventKey="pendingWithdrawals" title="Pending Withdrawals">
+        <Tab
+          eventKey="pendingWithdrawals"
+          title={t("admin.requests.tabs.pendingWithdrawals")}
+        >
           {renderTable(data?.requests, "withdrawal")}
         </Tab>
-        <Tab eventKey="allWithdrawals" title="All Withdrawals">
+        <Tab
+          eventKey="allWithdrawals"
+          title={t("admin.requests.tabs.allWithdrawals")}
+        >
           {renderTable(data?.requests, "withdrawal")}
         </Tab>
       </Tabs>
-
       <DepositRequestDetailsModal
         show={showDetailsModal}
         onHide={() => {
@@ -522,8 +547,6 @@ const AdminTransactionRequests = () => {
         loading={
           requestType === "withdrawal" && withdrawalState.loadingAdminDetails
         }
-        formatCurrencyFn={formatCurrencyLocal}
-        tndToUsdRate={TND_TO_USD_RATE}
       />
       <RejectReasonModal
         show={showRejectModal}
@@ -531,8 +554,11 @@ const AdminTransactionRequests = () => {
         onSubmit={handleConfirmReject}
         requestInfo={
           selectedRequest
-            ? `Rejecting ${requestType} from ${selectedRequest.user?.fullName}`
-            : "Reject Request"
+            ? t("admin.requests.rejectModalTitle", {
+                type: t(`admin.detailsModal.types.${requestType}`),
+                user: selectedRequest.user?.fullName,
+              })
+            : t("admin.requests.rejectModalTitleGeneric")
         }
       />
     </Container>

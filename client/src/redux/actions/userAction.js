@@ -20,22 +20,37 @@ import {
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
 
-// دالة مساعدة جديدة لمعالجة الأخطاء وإرجاع مفتاح ترجمة
+// دالة مساعدة جديدة لمعالجة الأخطاء وإرجاع كائن منظم
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
+    // التعامل مع خطأ Rate Limit بشكل خاص
+    if (error.response?.data?.errorMessage?.key === 'apiErrors.tooManyRequests') {
+        return {
+            ...error.response.data.errorMessage,
+            rateLimit: error.response.data.rateLimit // إضافة معلومات الـ rate limit
+        };
+    }
+
     if (error.response) {
         if (error.response.data.translationKey) {
             return { key: error.response.data.translationKey };
         }
         if (error.response.data.msg) {
-            return { key: `apiErrors.${error.response.data.msg.replace(/\s+/g, '_')}`, fallback: error.response.data.msg };
+            const fallback = error.response.data.msg;
+            // محاولة إنشاء مفتاح ديناميكي، مع fallback
+            const key = `apiErrors.${fallback.replace(/[\s'.]/g, '_')}`;
+            return { key, fallback };
         }
-        return { key: 'apiErrors.requestFailedWithCode', params: { code: error.response.status } };
+        return {
+            key: 'apiErrors.requestFailedWithCode',
+            fallback: `Request failed with status code ${error.response.status}`,
+            params: { code: error.response.status }
+        };
     } else if (error.request) {
-        return { key: 'apiErrors.networkError' };
+        return { key: 'apiErrors.networkError', fallback: 'Network error, please check your connection.' };
     }
-    return { key: defaultKey, params: { message: error.message } };
+    // خطأ غير معروف
+    return { key: defaultKey, fallback: error.message || 'An unknown error occurred.', params: { message: error.message } };
 };
-
 
 const getTokenConfig = (isFormData = false) => {
     const token = localStorage.getItem("token");
@@ -56,35 +71,52 @@ export const registerUser = (newUser) => async (dispatch) => {
         await axios.post("/user/register", newUser);
         dispatch({ type: REGISTER_SUCCESS, payload: { successMessage: 'auth.toast.registerSuccess' } });
     } catch (error) {
-        const { key, fallback } = handleError(error, 'auth.toast.registerFail');
-        dispatch({ type: REGISTER_FAIL, payload: { errorMessage: { key, fallback, params: { error: fallback } } } });
+        const errorMessage = handleError(error, 'auth.toast.registerFail');
+        dispatch({ type: REGISTER_FAIL, payload: { errorMessage } });
     }
 };
 
 export const clearRegistrationStatus = () => ({ type: CLEAR_REGISTRATION_STATUS });
 export const clearUserErrors = () => ({ type: CLEAR_USER_ERRORS });
 
-export const loginUser = (loggedUser) => async (dispatch) => {
+// [!!!] تعديل: loginUser الآن تستقبل `navigate` كمعامل
+export const loginUser = (loggedUser, navigate) => async (dispatch) => {
     dispatch({ type: LOGIN_REQUEST });
     dispatch(clearUserErrors());
     try {
         const { data } = await axios.post("/user/login", loggedUser);
         if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
 
+        // [!!!] التحقق من الحساب المحظور أولاً
+        if (data.user.blocked) {
+            const errorMessage = { key: "auth.toast.accountBlocked", fallback: 'Your account is blocked. Access is restricted.' };
+            dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
+            return; // إيقاف العملية
+        }
+
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user._id);
 
-        if (data.user.blocked) {
-            data.errorMessage = { key: "auth.toast.accountBlocked" };
-        } else {
-            data.successMessage = "auth.toast.welcomeBack";
-            data.successMessageParams = { name: data.user.fullName || 'User' };
-        }
-        dispatch({ type: LOGIN_SUCCESS, payload: data });
+        const payload = {
+            ...data,
+            successMessage: "auth.toast.welcomeBack",
+            successMessageParams: { name: data.user.fullName || 'User' }
+        };
+        dispatch({ type: LOGIN_SUCCESS, payload });
 
     } catch (error) {
-        const { key, fallback } = handleError(error, 'auth.toast.loginError');
-        dispatch({ type: LOGIN_FAIL, payload: { errorMessage: { key, fallback, params: { error: fallback } } } });
+        const errorMessage = handleError(error);
+
+        // [!!!] التعامل مع خطأ Rate Limit هنا
+        if (errorMessage.key === 'apiErrors.tooManyRequests' && navigate) {
+            navigate('/rate-limit-exceeded', { state: { resetTime: errorMessage.rateLimit.resetTime } });
+            // أرسل حمولة فارغة لمنع ظهور Toast
+            dispatch({ type: LOGIN_FAIL, payload: { errorMessage: null } });
+        } else {
+            dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
+        }
+
+        // [!!!] إزالة التوكن عند أي فشل في تسجيل الدخول
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
     }
@@ -98,27 +130,26 @@ export const getProfile = () => async (dispatch, getState) => {
     const config = getTokenConfig();
 
     if (!config) {
-        dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
-        localStorage.removeItem("token");
-        localStorage.removeItem("userId");
         dispatch({ type: LOGOUT });
         return;
     }
 
     try {
         const response = await axios.get("/user/auth", config);
-        if (response && response.data && response.data.user) {
+        if (response?.data?.user) {
             dispatch({ type: GET_PROFILE_SUCCESS, payload: response.data });
         } else {
-            throw new Error("Profile data malformed or user object missing.");
+            throw new Error("Profile data is missing in the response.");
         }
     } catch (error) {
-        const { key, fallback, params } = handleError(error, 'apiErrors.getProfileFail');
+        const errorMessage = handleError(error, 'apiErrors.getProfileFail');
+
+        // إذا كان الخطأ هو خطأ مصادقة، قم بتسجيل الخروج
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key: 'apiErrors.sessionExpired' } } });
-            dispatch(logoutUser());
+            dispatch(logoutUser()); // استدعاء دالة تسجيل الخروج الكاملة
         } else {
-            dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key, fallback, params } } });
+            dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage } });
         }
     }
 };
@@ -127,6 +158,7 @@ export const logoutUser = () => (dispatch) => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     dispatch({ type: LOGOUT, payload: { successMessage: 'auth.toast.loggedOut' } });
+    // مسح الحالات الأخرى عند تسجيل الخروج
     dispatch(clearNotifications());
     dispatch(clearWalletTransactions());
 };
@@ -247,15 +279,5 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
 };
 
 export const resetUpdateAvatarStatus = () => ({ type: UPDATE_AVATAR_RESET });
-
-export const setOnlineUsers = (onlineUserIds) => ({
-    type: SET_ONLINE_USERS,
-    payload: onlineUserIds,
-});
-
-export const updateUserBalances = (balanceData) => (dispatch) => {
-    dispatch({
-        type: UPDATE_USER_BALANCES_SOCKET,
-        payload: balanceData
-    });
-};
+export const setOnlineUsers = (onlineUserIds) => ({ type: SET_ONLINE_USERS, payload: onlineUserIds });
+export const updateUserBalances = (balanceData) => (dispatch) => { dispatch({ type: UPDATE_USER_BALANCES_SOCKET, payload: balanceData }); };

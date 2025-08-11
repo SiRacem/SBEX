@@ -188,13 +188,13 @@
     "MEDIATOR_APP_APPROVED": "تمت الموافقة على طلبك للوساطة!",
     "MEDIATOR_APP_REJECTED": "تم رفض طلبك للوساطة",
     "MEDIATOR_APP_PENDING": "طلبك قيد المراجعة",
-    "ADMIN_BALANCE_ADJUSTMENT": "تم تعديل رصيد الحساب بواسطة المسؤول",
-    "USER_BALANCE_ADJUSTED": "لقد عدلت رصيد مستخدم",
+    "ADMIN_BALANCE_ADJUSTMENT": "قام المسؤول بتعديل رصيد الحساب",
+    "USER_BALANCE_ADJUSTED": "لقد قمت بتعديل رصيد مستخدم",
     "NEW_DEPOSIT_REQUEST": "طلب إيداع جديد",
     "DEPOSIT_APPROVED": "تمت الموافقة على الإيداع",
     "DEPOSIT_REJECTED": "تم رفض الإيداع",
     "DEPOSIT_PENDING": "الإيداع قيد الانتظار",
-    "NEW_WITHDRAWAL_REQUEST": "طلب سحب جديد",
+    "NEW_WITHDRAWAL_REQUEST": "تم تقديم طلب سحب",
     "WITHDRAWAL_APPROVED": "تمت الموافقة على السحب",
     "WITHDRAWAL_PROCESSING": "السحب قيد المعالجة",
     "WITHDRAWAL_COMPLETED": "اكتمل السحب",
@@ -256,17 +256,18 @@
     "MEDIATOR_APP_APPROVED": "تهانينا! تمت الموافقة على طلبك لتصبح وسيطًا.",
     "MEDIATOR_APP_REJECTED": "تم رفض طلبك لتصبح وسيطًا. السبب: {{reason}}",
     "MEDIATOR_APP_PENDING": "طلبك لتصبح وسيطًا قيد المراجعة.",
-    "ADMIN_BALANCE_ADJUSTMENT": "قام المسؤول '{{adminName}}' بتعديل رصيد حسابك. التغييرات: {{changes}}",
-    "USER_BALANCE_ADJUSTED": "لقد عدلت أرصدة المستخدم '{{userName}}'.",
-    "NEW_DEPOSIT_REQUEST": "تم تقديم طلب إيداع جديد بقيمة {{amount}} من قبل '{{userName}}'.",
-    "DEPOSIT_APPROVED": "تمت الموافقة على طلب الإيداع الخاص بك بقيمة {{amount}}.",
-    "DEPOSIT_REJECTED": "تم رفض طلب الإيداع الخاص بك بقيمة {{amount}}. السبب: {{reason}}",
-    "DEPOSIT_PENDING": "طلب الإيداع الخاص بك بقيمة {{amount}} قيد الانتظار.",
-    "NEW_WITHDRAWAL_REQUEST": "تم تقديم طلب سحب جديد بقيمة {{amount}} من قبل '{{userName}}'.",
-    "WITHDRAWAL_APPROVED": "تمت الموافقة على طلب السحب الخاص بك بقيمة {{amount}}.",
-    "WITHDRAWAL_PROCESSING": "طلب السحب الخاص بك بقيمة {{amount}} قيد المعالجة.",
-    "WITHDRAWAL_COMPLETED": "اكتمل سحبك بقيمة {{amount}}.",
-    "WITHDRAWAL_REJECTED": "تم رفض طلب السحب الخاص بك بقيمة {{amount}}. السبب: {{reason}}",
+    "ADMIN_BALANCE_ADJUSTMENT": "قام المسؤول '{{adminName}}' بتعديل أرصدة حسابك. التغييرات: {{changes}}",
+    "USER_BALANCE_ADJUSTED": "لقد قمت بتعديل أرصدة المستخدم '{{userName}}' بنجاح.",
+    "NEW_DEPOSIT_REQUEST": "قدم المستخدم '{{userName}}' طلب إيداع جديد بمبلغ {{amount}}.",
+    "DEPOSIT_APPROVED": "تمت الموافقة على طلب الإيداع الخاص بك بمبلغ {{amount}}.",
+    "DEPOSIT_REJECTED": "تم رفض طلب الإيداع الخاص بك بمبلغ {{amount}}. السبب: {{reason}}",
+    "DEPOSIT_PENDING": "طلب الإيداع الخاص بك بمبلغ {{amount}} قيد الانتظار.",
+    "NEW_WITHDRAWAL_REQUEST": "تم تقديم طلب السحب الخاص بك بمبلغ {{amount}} وهو الآن قيد المراجعة.",
+    "NEW_WITHDRAWAL_REQUEST_ADMIN": "قدم المستخدم '{{userName}}' طلب سحب جديد بمبلغ {{amount}}.",
+    "WITHDRAWAL_APPROVED": "تمت الموافقة على طلب السحب الخاص بك بمبلغ {{amount}}.",
+    "WITHDRAWAL_PROCESSING": "طلب السحب الخاص بك بمبلغ {{amount}} قيد المعالجة.",
+    "WITHDRAWAL_COMPLETED": "اكتمل سحبك لمبلغ {{amount}} عبر {{methodName}}.",
+    "WITHDRAWAL_REJECTED": "تم رفض طلب السحب الخاص بك بمبلغ {{amount}} عبر {{methodName}}. السبب: {{reason}}",
     "FUNDS_RECEIVED": "لقد استلمت {{amount}} من {{senderName}}.",
     "FUNDS_SENT": "لقد أرسلت {{amount}} إلى {{recipientName}}.",
     "FUNDS_NOW_AVAILABLE": "تم الإفراج عن مبلغ {{amount}} من بيع '{{productName}}' وهو الآن متاح في حسابك.",
@@ -282,43 +283,69 @@
     "ACCOUNT_BLOCKED": "تم حظر حسابك من قبل مسؤول. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "تم فك حظر حسابك من قبل مسؤول. أهلاً بعودتك!"
   },
-  "adminProducts": {
-    "pendingApprovals": "موافقات معلقة",
-    "loading": "جاري تحميل المنتجات...",
-    "error": "خطأ في تحميل المنتجات: {{error}}",
-    "noPending": "لا توجد منتجات معلقة.",
-    "table": {
-      "image": "صورة",
-      "title": "العنوان",
-      "vendor": "البائع",
-      "price": "السعر",
-      "dateAdded": "تاريخ الإضافة",
-      "actions": "الإجراءات"
-    },
-    "actions": {
-      "viewDetails": "عرض التفاصيل",
-      "approve": "موافقة",
-      "reject": "رفض"
+  "admin": {
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث القائمة",
+      "refreshButton": "تحديث",
+      "refreshing": "جاري تحديث القائمة...",
+      "newDepositToast": "طلب إيداع جديد من {{user}}",
+      "newWithdrawalToast": "طلب سحب جديد من {{user}}",
+      "reasonRequired": "سبب الرفض مطلوب.",
+      "error": "خطأ: {{error}}",
+      "noRequests": "لا توجد طلبات في هذه الفئة.",
+      "tabs": {
+        "pendingDeposits": "إيداعات معلقة",
+        "allDeposits": "كل الإيداعات",
+        "pendingWithdrawals": "سحوبات معلقة",
+        "allWithdrawals": "كل السحوبات"
+      },
+      "table": {
+        "date": "التاريخ",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "المعلومات (معرف/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "عرض التفاصيل",
+        "approve": "موافقة",
+        "complete": "إكمال",
+        "reject": "رفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
     },
     "detailsModal": {
-      "title": "تفاصيل المنتج: {{title}}",
-      "by": "بواسطة",
-      "description": "الوصف",
-      "linkType": "نوع الربط",
-      "price": "السعر",
-      "quantity": "الكمية",
-      "submitted": "أُرسل في",
-      "close": "إغلاق"
-    },
-    "rejectModal": {
-      "title": "رفض: {{title}}",
-      "reason": "السبب (مطلوب)",
-      "cancel": "إلغاء",
-      "confirm": "تأكيد الرفض",
-      "rejecting": "جاري الرفض...",
-      "reasonRequired": "سبب الرفض مطلوب."
-    },
-    "confirmApprove": "هل أنت متأكد من الموافقة على هذا المنتج؟"
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "إيداع", "withdrawal": "سحب" },
+      "noData": "بيانات الطلب غير متوفرة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "اسم المستخدم",
+      "userEmail": "البريد الإلكتروني",
+      "userPhone": "الهاتف",
+      "userBalance": "الرصيد الحالي للمستخدم",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "معرف الطلب",
+      "status": "الحالة",
+      "requestDate": "تاريخ الطلب",
+      "method": "طريقة الدفع",
+      "depositAmount": "مبلغ الإيداع",
+      "withdrawalAmount": "مبلغ السحب",
+      "fee": "الرسوم المطبقة",
+      "netCredit": "المبلغ الصافي للإضافة",
+      "netReceive": "المبلغ الصافي للاستلام",
+      "txnId": "معرف المعاملة (من المستخدم)",
+      "screenshot": "لقطة الشاشة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "مبلغ السحب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي المستلم (تقريبي {{currency}})",
+      "totalDeductedTND": "الإجمالي المخصوم (دينار)",
+      "withdrawalInfo": "معلومات السحب (من المستخدم)"
+    }
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -415,15 +442,29 @@
       "bidAmountLabel_new": "مبلغ المزايدة الجديد ({{currency}})",
       "currentBalance": "رصيدك الحالي",
       "minBalanceRequired": "مطلوب {{amount}} على الأقل للمشاركة في المزايدات.",
-      "insufficientBalanceError": "رصيد غير كافٍ. تحتاج إلى {{requiredTND}} (حوالي {{requiredOriginal}}) لتغطية هذه المزايدة، لكن لديك فقط {{available}}."
+      "insufficientBalanceError": "رصيد غير كافٍ. تحتاج إلى {{requiredTND}} (حوالي {{requiredOriginal}}) لتغطية هذه المزايدة، لكن لديك فقط {{available}}.",
+      "balanceTooLowError": "رصيدك منخفض جدًا للمشاركة في المزايدات."
     }
   },
   "common": {
     "cancel": "إلغاء",
     "close": "إغلاق",
+    "loading": "جاري التحميل...",
     "processing": "جاري المعالجة...",
     "confirmBid": "تأكيد المزايدة",
     "level": "المستوى {{level}}"
+  },
+  "rejectModal": {
+    "title": "رفض الطلب",
+    "reasonLabel": "سبب الرفض (مطلوب)",
+    "reasonPlaceholder": "أدخل السبب...",
+    "validationError": "الرجاء تقديم سبب واضح للرفض (5 أحرف على الأقل).",
+    "confirmButton": "تأكيد الرفض"
+  },
+  "clipboard": {
+    "copied": "تم نسخ {{item}}!",
+    "copyFailed": "فشل النسخ. الرجاء المحاولة مرة أخرى.",
+    "copy": "نسخ {{item}}"
   },
   "userProfilePage": {
     "loading": "جاري تحميل الملف الشخصي...",
@@ -497,7 +538,8 @@
     "sessionExpired": "انتهت صلاحية الجلسة أو أنها غير صالحة. يرجى تسجيل الدخول مرة أخرى.",
     "getProfileFail": "فشل تحميل الملف الشخصي للمستخدم.",
     "notAuthorized": "المصادقة مطلوبة. يرجى تسجيل الدخول.",
-    "notAuthorizedAdmin": "صلاحيات المسؤول مطلوبة لهذا الإجراء."
+    "notAuthorizedAdmin": "صلاحيات المسؤول مطلوبة لهذا الإجراء.",
+    "Failed_to_fetch_withdrawal_requests": "خطأ في الخادم عند جلب طلبات السحب الخاصة بك."
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",
@@ -506,6 +548,9 @@
     "title": "محفظتي",
     "loading": "جاري تحميل المحفظة...",
     "error": "بيانات المستخدم غير متوفرة. الرجاء تسجيل الدخول.",
+    "errorActivity_deposits": "خطأ في جلب سجل الإيداعات",
+    "errorActivity_withdrawals": "خطأ في جلب سجل السحوبات",
+    "errorActivity_transactions": "خطأ في جلب سجل المعاملات",
     "deposit": "إيداع",
     "withdraw": "سحب",
     "send": "إرسال",
@@ -681,7 +726,50 @@
         "detailsRequired": "الرجاء إدخال {{details}}.",
         "correctErrors": "الرجاء إصلاح الأخطاء قبل الإرسال."
       }
+    },
+    "withdrawal": {
+      "success": "تم تقديم طلب السحب بنجاح!",
+      "fail": "فشل تقديم طلب السحب.",
+      "historyFail": "فشل جلب سجل السحب."
     }
+  },
+  "api_success": {
+    "depositRequestSubmitted": "تم تقديم طلب الإيداع الخاص بك بمبلغ {{amount}} وهو الآن قيد المراجعة.",
+    "withdrawalRequestSubmitted": "تم تقديم طلب السحب بنجاح!"
+  },
+  "api_error": {
+    "createDepositFail": "فشل إنشاء طلب الإيداع. الرجاء المحاولة مرة أخرى."
+  },
+  "activityModal": {
+    "title": "تفاصيل {{type}}",
+    "types": {
+      "DEPOSIT_REQUEST": "طلب إيداع",
+      "WITHDRAWAL_REQUEST": "طلب سحب",
+      "TRANSFER": "تحويل",
+      "DEPOSIT": "إيداع",
+      "WITHDRAWAL": "سحب"
+    },
+    "paymentDetails": "تفاصيل الدفع والمبلغ",
+    "transactionDetails": "تفاصيل المعاملة",
+    "generalDetails": "تفاصيل عامة",
+    "genericInfo": "التفاصيل لنوع هذا النشاط عامة.",
+    "method": "الطريقة:",
+    "amountSent": "المبلغ المرسل ({{currency}}):",
+    "fee": "الرسوم ({{currency}}):",
+    "netAmount": "المبلغ الصافي ({{currency}}):",
+    "transactionId": "معرّف المعاملة:",
+    "senderInfo": "معلومات المرسل:",
+    "amountWithdrawn": "المبلغ المسحوب ({{currency}}):",
+    "netReceived": "الصافي المستلم ({{currency}}):",
+    "withdrawalInfo": "تفاصيل السحب:",
+    "paymentRef": "مرجع الدفع:",
+    "sentTo": "أُرسل إلى:",
+    "receivedFrom": "تم الاستلام من:",
+    "amount": "المبلغ:",
+    "description": "الوصف:",
+    "rejectionReason": "سبب الرفض",
+    "dateTime": "التاريخ والوقت",
+    "timestamp": "التوقيت:"
   },
   "profilePage": {
     "loading": "جاري تحميل الملف الشخصي...",
@@ -1010,6 +1098,68 @@
       "priorityUpdateFail": "فشل في تحديث الأولوية.",
       "assignSuccess": "تم تحديث تعيين التذكرة.",
       "assignFail": "فشل في تعيين التذكرة."
+    },
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث القائمة",
+      "refreshButton": "تحديث",
+      "refreshing": "جاري تحديث القائمة...",
+      "newDepositToast": "طلب إيداع جديد من {{user}}",
+      "newWithdrawalToast": "طلب سحب جديد من {{user}}",
+      "reasonRequired": "سبب الرفض مطلوب.",
+      "error": "خطأ: {{error}}",
+      "noRequests": "لا توجد طلبات في هذه الفئة.",
+      "tabs": {
+        "pendingDeposits": "إيداعات معلقة",
+        "allDeposits": "كل الإيداعات",
+        "pendingWithdrawals": "سحوبات معلقة",
+        "allWithdrawals": "كل السحوبات"
+      },
+      "table": {
+        "date": "التاريخ",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "المعلومات (معرف/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "عرض التفاصيل",
+        "approve": "موافقة",
+        "complete": "إكمال",
+        "reject": "رفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
+    },
+    "detailsModal": {
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "إيداع", "withdrawal": "سحب" },
+      "noData": "بيانات الطلب غير متوفرة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "اسم المستخدم",
+      "userEmail": "البريد الإلكتروني",
+      "userPhone": "الهاتف",
+      "userBalance": "الرصيد الحالي للمستخدم",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "معرف الطلب",
+      "status": "الحالة",
+      "requestDate": "تاريخ الطلب",
+      "method": "طريقة الدفع",
+      "depositAmount": "مبلغ الإيداع",
+      "withdrawalAmount": "مبلغ السحب",
+      "fee": "الرسوم المطبقة",
+      "netCredit": "المبلغ الصافي للإضافة",
+      "netReceive": "المبلغ الصافي للاستلام",
+      "txnId": "معرف المعاملة (من المستخدم)",
+      "screenshot": "لقطة الشاشة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "مبلغ السحب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي المستلم (تقريبي {{currency}})",
+      "totalDeductedTND": "الإجمالي المخصوم (دينار)",
+      "withdrawalInfo": "معلومات السحب (من المستخدم)"
     }
   },
   "comptes": {
@@ -1024,7 +1174,7 @@
     "deleteAccount": "حذف الحساب",
     "status": {
       "approved": "موافق عليه",
-      "pending": "قيد الانتظar",
+      "pending": "قيد الانتظار",
       "rejected": "مرفوض"
     },
     "alerts": {
@@ -1072,5 +1222,13 @@
     "imagePreview": "معاينة الصورة",
     "viewImage": "عرض الصورة",
     "removeImage": "إزالة الصورة"
+  },
+  "rateLimit": {
+    "title": "محاولات كثيرة جداً",
+    "subtitle": "لأسباب أمنية، تم قفل وصولك مؤقتاً.",
+    "tryAgainIn": "يرجى المحاولة مرة أخرى بعد",
+    "now": "الآن!",
+    "goBackButtonReady": "الذهاب إلى صفحة الدخول",
+    "goBackButtonWaiting": "انتظر للمتابعة"
   }
 }

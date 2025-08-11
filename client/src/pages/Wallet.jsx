@@ -44,6 +44,7 @@ import {
 import { IoWalletOutline } from "react-icons/io5";
 import axios from "axios";
 import { format } from "date-fns";
+import { enUS, ar, fr } from "date-fns/locale";
 import { getProfile } from "../redux/actions/userAction";
 import { getTransactions } from "../redux/actions/transactionAction";
 import { getUserDepositRequests } from "../redux/actions/depositAction";
@@ -60,6 +61,13 @@ const MIN_SEND_AMOUNT_TND = 6.0;
 const TND_TO_USD_RATE = 3.0;
 const MIN_SEND_AMOUNT_USD = MIN_SEND_AMOUNT_TND / TND_TO_USD_RATE;
 const TRANSFER_FEE_PERCENT = 2;
+
+const dateFnsLocales = {
+  en: enUS,
+  ar: ar,
+  fr: fr,
+  tn: ar,
+};
 
 const getTokenJsonConfig = () => {
   const token = localStorage.getItem("token");
@@ -123,7 +131,6 @@ const Wallet = () => {
     loading: transactionsLoading = false,
     error: transactionsError = null,
   } = useSelector((state) => state.transactionReducer || {});
-
   const principalBalanceDisplay = useCurrencyDisplay(userBalanceTND);
   const sellerAvailableBalanceDisplay = useCurrencyDisplay(
     user?.sellerAvailableBalance
@@ -131,7 +138,6 @@ const Wallet = () => {
   const sellerPendingBalanceDisplay = useCurrencyDisplay(
     user?.sellerPendingBalance
   );
-
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
@@ -238,7 +244,6 @@ const Wallet = () => {
       sendFromSource === "seller"
         ? user?.sellerAvailableBalance || 0
         : userBalanceTND;
-
     if (sendAmount === "" || isNaN(amountNum)) {
       setAmountError(null);
       setTransferFee(0);
@@ -380,10 +385,12 @@ const Wallet = () => {
     setIsCopied(false);
     setShowReceiveModal(true);
   }, []);
+
   const handleCloseReceiveModal = useCallback(
     () => setShowReceiveModal(false),
     []
   );
+
   const copyToClipboard = useCallback(
     (textToCopy = user?.email) => {
       if (!textToCopy || isCopied) return;
@@ -403,6 +410,7 @@ const Wallet = () => {
     setSelectedActivity(activityItem);
     setShowActivityModal(true);
   }, []);
+
   const handleCloseActivityDetails = useCallback(() => {
     setShowActivityModal(false);
     setSelectedActivity(null);
@@ -458,7 +466,7 @@ const Wallet = () => {
         transactionReference: req.transactionReference,
       }));
     const transfersFormatted = (transactions || [])
-      .filter((tx) => tx.type !== "DEPOSIT" && tx.type !== "WITHDRAWAL")
+      .filter((tx) => tx.type === "TRANSFER")
       .map((tx) => ({
         _id: `tx-${tx._id}`,
         dataType: "Transaction",
@@ -481,20 +489,17 @@ const Wallet = () => {
   }, [depositRequests, withdrawalRequests, transactions, userId]);
 
   const isLoadingHistory =
-    userLoading || transactionsLoading || depositsLoading || withdrawalsLoading;
-  const historyError = transactionsError || depositsError || withdrawalsError;
+    depositsLoading || withdrawalsLoading || transactionsLoading;
 
   const renderHistoryItem = useCallback(
     (item) => {
       if (!item || !item._id) return null;
       let IconComponent = IoWalletOutline,
         iconColorClass = "text-secondary",
-        title =
-          item.type?.replace(/_/g, " ") ||
-          t("walletPage.activityTypes.UNKNOWN_ACTIVITY"),
+        title = "",
         prefix = "",
-        displayAmount = item.amount,
-        displayCurrency = item.currency || "TND";
+        displayAmount = 0,
+        displayCurrency = "TND";
       const statusLower = item.status?.toLowerCase() || "unknown";
       switch (item.type) {
         case "DEPOSIT_REQUEST":
@@ -531,7 +536,10 @@ const Wallet = () => {
           iconColorClass = isSender ? "text-danger" : "text-success";
           break;
         default:
+          title = t("walletPage.activityTypes.UNKNOWN_ACTIVITY");
           prefix = item.amount >= 0 ? "+" : "-";
+          displayAmount = item.amount;
+          displayCurrency = item.currency;
           iconColorClass = item.amount >= 0 ? "text-success" : "text-danger";
           IconComponent =
             item.amount >= 0 ? FiArrowDownCircle : FiArrowUpCircle;
@@ -557,12 +565,8 @@ const Wallet = () => {
           break;
       }
       if (
-        item.type === "DEPOSIT_REQUEST" &&
-        (statusLower === "approved" || statusLower === "completed")
-      )
-        iconColorClass = "text-success";
-      if (
-        item.type === "WITHDRAWAL_REQUEST" &&
+        (item.type === "DEPOSIT_REQUEST" ||
+          item.type === "WITHDRAWAL_REQUEST") &&
         (statusLower === "approved" || statusLower === "completed")
       )
         iconColorClass = "text-success";
@@ -598,22 +602,42 @@ const Wallet = () => {
               <div className="transaction-type-peer fw-bold">{title}</div>
               <div className="transaction-date text-muted small mt-1">
                 {item.createdAt
-                  ? format(new Date(item.createdAt), "Pp")
+                  ? format(
+                      new Date(item.createdAt),
+                      i18n.language === "en" ? "Pp" : "dd/MM/yyyy, HH:mm:ss",
+                      { locale: dateFnsLocales[i18n.language] || enUS }
+                    )
                   : "N/A"}
               </div>
             </div>
           </div>
           <div className={`transaction-amount fw-bold fs-6 ${iconColorClass}`}>
-            
             {prefix} {amountStr} {statusBadge}
           </div>
         </ListGroup.Item>
       );
     },
-    [handleShowActivityDetails, t, formatCurrency]
+    [handleShowActivityDetails, t, formatCurrency, i18n.language]
   );
 
-  if (userLoading && !user)
+  const renderError = (error) => {
+    if (!error) return null;
+    // إذا كان الخطأ كائنًا منظمًا، قم بترجمته مباشرة
+    if (typeof error === "object" && error !== null && error.key) {
+      return t(error.key, {
+        ...error.params,
+        defaultValue: error.fallback || t("apiErrors.unknownError"),
+      });
+    }
+    // إذا كان الخطأ نصًا بسيطًا (للتوافق مع الأجزاء القديمة)
+    if (typeof error === "string") {
+      return error;
+    }
+    // حالة افتراضية
+    return t("apiErrors.unknownError");
+  };
+
+  if (userLoading && !user) {
     return (
       <Container
         fluid
@@ -624,7 +648,9 @@ const Wallet = () => {
         <span className="ms-2">{t("walletPage.loading")}</span>
       </Container>
     );
-  if (!user && !userLoading)
+  }
+
+  if (!user) {
     return (
       <Container fluid className="py-4">
         <Alert variant="danger" className="text-center">
@@ -632,6 +658,7 @@ const Wallet = () => {
         </Alert>
       </Container>
     );
+  }
 
   const sendModalStepTitle = () => {
     const hasSellerBalance = user?.sellerAvailableBalance > 0;
@@ -700,13 +727,16 @@ const Wallet = () => {
               <h5 className="mb-0 text-secondary">
                 {t("walletPage.recentActivity")}
               </h5>
-              {!isLoadingHistory && !historyError && (
-                <span className="text-muted small">
-                  {t("walletPage.showingItems", {
-                    count: combinedHistory.length,
-                  })}
-                </span>
-              )}
+              {!isLoadingHistory &&
+                !depositsError &&
+                !withdrawalsError &&
+                !transactionsError && (
+                  <span className="text-muted small">
+                    {t("walletPage.showingItems", {
+                      count: combinedHistory.length,
+                    })}
+                  </span>
+                )}
             </Card.Header>
             <Card.Body className="p-0">
               {isLoadingHistory ? (
@@ -714,27 +744,50 @@ const Wallet = () => {
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-2">{t("walletPage.loadingActivity")}</p>
                 </div>
-              ) : historyError ? (
-                <Alert variant="danger" className="text-center m-3">
-                  {t("walletPage.errorActivity", { error: historyError })}
-                </Alert>
-              ) : combinedHistory?.length > 0 ? (
-                <ListGroup variant="flush" className="transaction-list">
-                  {combinedHistory.map((item) => renderHistoryItem(item))}
-                </ListGroup>
               ) : (
-                <div
-                  className="no-transactions-placeholder d-flex justify-content-center align-items-center flex-column text-center py-5"
-                  style={{ minHeight: "200px" }}
-                >
-                  <FaReceipt size={40} className="text-light-emphasis mb-3" />
-                  <h6 className="text-muted">
-                    {t("walletPage.noActivityTitle")}
-                  </h6>
-                  <p className="text-muted small mb-0">
-                    {t("walletPage.noActivitySubtitle")}
-                  </p>
-                </div>
+                <>
+                  {depositsError && (
+                    <Alert variant="danger" className="m-3 text-center small">
+                      {renderError(depositsError)}
+                    </Alert>
+                  )}
+                  {withdrawalsError && (
+                    <Alert variant="danger" className="m-3 text-center small">
+                      {renderError(withdrawalsError)}
+                    </Alert>
+                  )}
+                  {transactionsError && (
+                    <Alert variant="danger" className="m-3 text-center small">
+                      {renderError(transactionsError)}
+                    </Alert>
+                  )}
+
+                  {combinedHistory.length > 0 ? (
+                    <ListGroup variant="flush" className="transaction-list">
+                      {combinedHistory.map((item) => renderHistoryItem(item))}
+                    </ListGroup>
+                  ) : (
+                    !depositsError &&
+                    !withdrawalsError &&
+                    !transactionsError && (
+                      <div
+                        className="no-transactions-placeholder d-flex justify-content-center align-items-center flex-column text-center py-5"
+                        style={{ minHeight: "200px" }}
+                      >
+                        <FaReceipt
+                          size={40}
+                          className="text-light-emphasis mb-3"
+                        />
+                        <h6 className="text-muted">
+                          {t("walletPage.noActivityTitle")}
+                        </h6>
+                        <p className="text-muted small mb-0">
+                          {t("walletPage.noActivitySubtitle")}
+                        </p>
+                      </div>
+                    )
+                  )}
+                </>
               )}
             </Card.Body>
           </Card>
@@ -815,7 +868,6 @@ const Wallet = () => {
         </Col>
       </Row>
 
-      {/* Send Modal */}
       <Modal
         show={showSendModal}
         onHide={handleCloseSendModal}
@@ -944,6 +996,7 @@ const Wallet = () => {
             )}
           {modalStep === 3 && recipientUser && (
             <Form
+              noValidate
               onSubmit={(e) => {
                 e.preventDefault();
                 goToNextStep();
@@ -1021,9 +1074,8 @@ const Wallet = () => {
                   label={t("walletPage.sendModal.amountToSendLabel", {
                     currency: sendCurrency,
                   })}
-                  className="mb-1"
                 >
-                  <InputGroup>
+                  <InputGroup hasValidation>
                     <Form.Control
                       type="number"
                       placeholder="0.00"
@@ -1047,14 +1099,18 @@ const Wallet = () => {
                     </Button>
                     <InputGroup.Text>{sendCurrency}</InputGroup.Text>
                   </InputGroup>
-                  <Form.Control.Feedback type="invalid">
-                    {amountError}
-                  </Form.Control.Feedback>
                 </FloatingLabel>
+                <Form.Control.Feedback
+                  type="invalid"
+                  className={amountError ? "d-block" : ""}
+                >
+                  {amountError}
+                </Form.Control.Feedback>
+
                 {sendCurrency === "USD" &&
                   parseFloat(sendAmount) > 0 &&
                   !amountError && (
-                    <Form.Text className="text-muted d-block text-end">
+                    <Form.Text className="text-muted d-block text-end mt-1">
                       {t("walletPage.sendModal.approximateValue", {
                         value: formatCurrency(
                           parseFloat(sendAmount) * TND_TO_USD_RATE,
@@ -1186,7 +1242,6 @@ const Wallet = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Receive Modal */}
       <Modal show={showReceiveModal} onHide={handleCloseReceiveModal} centered>
         <Modal.Header closeButton>
           <Modal.Title>

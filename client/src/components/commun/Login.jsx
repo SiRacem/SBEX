@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Card, Col, Container, Form, Row, Spinner } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"; // استيراد useNavigate
 import { useTranslation } from 'react-i18next';
 import { loginUser } from "../../redux/actions/userAction";
 
@@ -11,11 +11,17 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // تهيئة useNavigate
   const loading = useSelector((state) => state.userReducer?.loading ?? false);
 
   useEffect(() => { document.documentElement.dir = i18n.dir(i18n.language); }, [i18n, i18n.language]);
 
-  const handleSubmit = (e) => { e.preventDefault(); dispatch(loginUser({ email, password })); };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    // loginUser الآن يمكن أن يعيد true أو false أو بيانات الخطأ
+    const result = await dispatch(loginUser({ email, password }, navigate));
+    // لا نحتاج للتعامل مع الخطأ هنا، لأن App.js سيتعامل معه
+  };
 
   return (
     <Container fluid className="d-flex align-items-center justify-content-center login-container py-4" style={{ minHeight: "100vh" }}>
