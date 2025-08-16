@@ -15,11 +15,11 @@ function handleFileUploadsForTicket(reqFiles) {
     if (filesArray.length > 0) {
         filesArray.forEach(file => {
             // بناء المسار النسبي الذي يمكن للـ frontend استخدامه
-            const relativePath = path.join('uploads', 'ticket_attachments', file.filename).replace(/\\/g, '/');
+            const relativePath = `uploads/ticket_attachments/${file.filename}`;
 
             attachments.push({
                 fileName: file.originalname,
-                filePath: relativePath, // استخدام المسار النسبي الصحيح
+                filePath: relativePath, // <--- سيتم الآن حفظ المسار الصحيح دائماً
                 fileType: file.mimetype,
                 fileSize: file.size,
             });

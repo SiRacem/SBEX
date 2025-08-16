@@ -1,5 +1,4 @@
 // src/pages/UserTicketsListPage.jsx
-
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,12 +18,8 @@ import { useTranslation } from "react-i18next";
 import { getUserTicketsAction } from "../redux/actions/ticketAction";
 import { FaTicketAlt, FaPlusCircle, FaEye } from "react-icons/fa";
 import moment from "moment";
-
-// استيراد اللغات لمكتبة moment
 import "moment/locale/ar";
 import "moment/locale/fr";
-// ملاحظة: اللهجة التونسية (tn) غير مدعومة رسميًا، ستستخدم 'ar' كبديل.
-
 import "./tickets.css";
 
 const UserTicketsListPage = () => {
@@ -44,19 +39,16 @@ const UserTicketsListPage = () => {
   const ticketsPerPage = 10;
 
   useEffect(() => {
-    // تحديث لغة moment عند تغيير لغة i18next
     const lang = i18n.language;
     if (lang === "tn") {
-      moment.locale("ar"); // استخدم العربية كبديل للتونسية
+      moment.locale("ar");
     } else {
       moment.locale(lang);
     }
   }, [i18n.language]);
 
   useEffect(() => {
-    if (!isAuth) {
-      navigate("/login");
-    } else {
+    if (isAuth) {
       dispatch(
         getUserTicketsAction({
           page: currentPage,
@@ -93,35 +85,12 @@ const UserTicketsListPage = () => {
     }
   };
 
+  // دالة الترجمة بقيت كما هي لأنها تعتمد على مفاتيح الترجمة
   const getTranslatedCategory = (categoryFromDB) => {
     if (!categoryFromDB) return "";
-
-    // خريطة تحويل من قيم قاعدة البيانات إلى مفاتيح الترجمة
-    // المفاتيح هنا هي القيم التي تأتي من الـ backend (بدون مسافات)
-    const categoryMap = {
-      GeneralInquiry: "General Inquiry",
-      TechnicalSupport: "Technical Support",
-      BillingIssue: "Billing Issue",
-      AccountIssue: "Account Issue",
-      MediationIssue: "Mediation Inquiry", // الربط بين القيمة من DB والمفتاح الصحيح
-      MediationInquiry: "Mediation Inquiry", // إضافة هذا للاحتياط إذا كان الـ DB يرسل هذه القيمة
-      BugReport: "Bug Report",
-      FeatureRequest: "Feature Request",
-      Other: "Other",
-    };
-
-    // إزالة المسافات من القيمة القادمة من قاعدة البيانات للمقارنة
-    const cleanCategoryKeyFromDB = categoryFromDB.replace(/\s/g, "");
-
-    // ابحث عن المفتاح الصحيح في الخريطة
-    const translationKey =
-      categoryMap[cleanCategoryKeyFromDB] || categoryFromDB;
-
-    // قم بالترجمة باستخدام المفتاح الصحيح (مع إزالة المسافات منه أيضًا ليتطابق مع ملف الترجمة)
-    return t(
-      `ticketsListPage.categories.${translationKey.replace(/\s/g, "")}`,
-      { defaultValue: categoryFromDB }
-    );
+    return t(`createTicket.categories.${categoryFromDB}`, {
+      defaultValue: categoryFromDB,
+    });
   };
 
   if (loadingUserTickets && (!userTickets || userTickets.length === 0)) {
@@ -142,7 +111,14 @@ const UserTicketsListPage = () => {
       <Container className="py-5">
         <Alert variant="danger" className="text-center">
           <h4>{t("ticketsListPage.errorTitle")}</h4>
-          <p>{errorUserTickets}</p>
+          <p>
+            {typeof errorUserTickets === "object"
+              ? t(errorUserTickets.key, {
+                  ...errorUserTickets.params,
+                  defaultValue: errorUserTickets.fallback,
+                })
+              : errorUserTickets}
+          </p>
         </Alert>
       </Container>
     );

@@ -96,7 +96,6 @@ io.on('connection', (socket) => {
         const userIdToJoin = socket.userIdForChat || userId;
         console.log(`[Socket Event - joinMediationChat] Attempting join. SocketID: ${socket.id}, MediationID: ${mediationRequestId}, UserID: ${userIdToJoin}, UserRole: ${userRole}`);
 
-        // --- Initial validation (no change here) ---
         if (!userIdToJoin || !mediationRequestId || !mongoose.Types.ObjectId.isValid(userIdToJoin) || !mongoose.Types.ObjectId.isValid(mediationRequestId)) {
             console.warn(`[joinMediationChat] Invalid IDs. UserID: ${userIdToJoin}, MediationID: ${mediationRequestId}`);
             return socket.emit('mediationChatError', { message: "Missing or invalid user/mediation ID for chat join." });
@@ -130,7 +129,6 @@ io.on('connection', (socket) => {
                 return socket.emit('mediationChatError', { message: "Mediation request not found." });
             }
 
-            // --- Permission checks (no change here) ---
             const isSeller = request.seller?.toString() === userIdToJoin;
             const isBuyer = request.buyer?.toString() === userIdToJoin;
             const isMediator = request.mediator?.toString() === userIdToJoin;
@@ -144,15 +142,11 @@ io.on('connection', (socket) => {
                 return socket.emit('mediationChatError', { message: "Unauthorized to join this mediation chat." });
             }
 
-            // --- Joining the socket room (no change here) ---
             socket.join(mediationRequestId.toString());
             console.log(`[joinMediationChat] Socket ${socket.id} (User: ${userIdToJoin}) successfully joined room ${mediationRequestId}.`);
             socket.emit('joinedMediationChatSuccess', { mediationRequestId, message: `Successfully joined chat for: ${request.product?.title || mediationRequestId}.` });
 
-            // --- [!!!] START: REFACTORED LOGIC FOR ADMIN JOINING ---
-
             if (isAdmin && request.status === 'Disputed') {
-                // --- Part 1: Handle adding admin to overseers and notify everyone ---
                 if (!isDesignatedOverseer) {
                     await MediationRequest.updateOne(
                         { _id: mediationRequestId },
@@ -160,13 +154,12 @@ io.on('connection', (socket) => {
                     );
                     console.log(`[joinMediationChat] Admin ${userIdToJoin} added to disputeOverseers.`);
 
-                    // Fetch the fully updated request to broadcast
                     const finalUpdatedRequest = await MediationRequest.findById(mediationRequestId)
                         .populate('product', 'title status')
                         .populate('seller', '_id fullName avatarUrl userRole')
                         .populate('buyer', '_id fullName avatarUrl userRole')
                         .populate('mediator', '_id fullName avatarUrl userRole')
-                        .populate('disputeOverseers', '_id fullName avatarUrl userRole') // This is critical
+                        .populate('disputeOverseers', '_id fullName avatarUrl userRole')
                         .lean();
 
                     if (finalUpdatedRequest) {
@@ -178,15 +171,11 @@ io.on('connection', (socket) => {
                     }
                 }
 
-                // --- Part 2: Handle the system message atomically to prevent duplicates ---
-                // This operation finds a document where the flag is false and sets it to true atomically.
-                // It will only succeed once.
                 const updatedRequestWithMessageFlag = await MediationRequest.findOneAndUpdate(
                     { _id: mediationRequestId, adminJoinMessageSent: false },
                     { $set: { adminJoinMessageSent: true } }
                 );
 
-                // If the above operation found and updated a document, it means this is the first time.
                 if (updatedRequestWithMessageFlag) {
                     const adminName = socket.userFullNameForChat || 'Admin';
                     const productTitle = request.product?.title || 'this dispute';
@@ -198,7 +187,6 @@ io.on('connection', (socket) => {
                         timestamp: new Date()
                     };
 
-                    // Push the message to the DB and broadcast it
                     await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: systemMessage } });
                     io.to(mediationRequestId.toString()).emit('newMediationMessage', systemMessage);
                     console.log(`[joinMediationChat] Admin join system message sent and saved successfully.`);
@@ -206,8 +194,6 @@ io.on('connection', (socket) => {
                     console.log(`[joinMediationChat] Admin join message was already sent. Skipping.`);
                 }
             }
-            // --- [!!!] END: REFACTORED LOGIC FOR ADMIN JOINING ---
-
         } catch (error) {
             console.error(`[joinMediationChat] General error for mediation ${mediationRequestId}:`, error.message, error.stack);
             socket.emit('mediationChatError', { message: "An unexpected error occurred while joining the chat." });
@@ -217,7 +203,6 @@ io.on('connection', (socket) => {
     socket.on('sendMediationMessage', async ({ mediationRequestId, messageText, imageUrl }) => {
         const senderId = socket.userIdForChat;
         if (!senderId || !mediationRequestId) return;
-
         try {
             const newMessageData = {
                 _id: new mongoose.Types.ObjectId(),
@@ -226,60 +211,41 @@ io.on('connection', (socket) => {
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 timestamp: new Date(),
-                // المرسل يقرأ رسالته تلقائيا
                 readBy: [{ readerId: new mongoose.Types.ObjectId(senderId), readAt: new Date() }]
             };
-
-            // 1. حفظ الرسالة
             await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: newMessageData } });
-
-            // 2. بث الرسالة لجميع المشاركين في الشات
             const populatedMessageForEmit = {
                 ...newMessageData,
                 sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat }
             };
             io.to(mediationRequestId.toString()).emit('newMediationMessage', populatedMessageForEmit);
-
-            // ------------------ [!!!] بداية الحل للشات الرئيسي [!!!] ------------------
-
-            // 3. جلب بيانات الوساطة لتحديد المشاركين وإرسال الإشعارات
             const request = await MediationRequest.findById(mediationRequestId)
                 .select('seller buyer mediator disputeOverseers product')
                 .populate('product', 'title')
                 .lean();
-
             if (!request) return;
-
-            // 4. تحديد قائمة مستلمي الإشعار (جميع المشاركين ما عدا المرسل)
             const recipientIds = [
                 request.seller,
                 request.buyer,
                 request.mediator,
                 ...(request.disputeOverseers || [])
             ]
-                .map(id => id?.toString()) // تحويل ID إلى نص
-                .filter(id => id && id !== senderId); // استبعاد القيم الفارغة والمرسل نفسه
-
+                .map(id => id?.toString())
+                .filter(id => id && id !== senderId);
             const uniqueRecipientIds = [...new Set(recipientIds)];
-
-            // 5. إنشاء الإشعارات في قاعدة البيانات
             const productTitle = request.product?.title || 'the mediation';
             const senderName = socket.userFullNameForChat || 'A user';
             const notificationTitle = `New Message: ${productTitle}`;
             const notificationMessage = `You have a new message from ${senderName}.`;
-
             const notificationsToCreate = uniqueRecipientIds.map(userId => ({
                 user: userId,
-                type: 'NEW_CHAT_MESSAGE', // تأكد من أن هذا النوع موجود في موديل الإشعارات
+                type: 'NEW_CHAT_MESSAGE',
                 title: notificationTitle,
                 message: notificationMessage,
                 relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
             }));
-
-            // 6. حفظ الإشعارات وإرسالها للمستخدمين المتصلين
             if (notificationsToCreate.length > 0) {
                 const createdNotifications = await Notification.insertMany(notificationsToCreate);
-
                 createdNotifications.forEach(notif => {
                     const recipientSocketId = onlineUsers[notif.user.toString()];
                     if (recipientSocketId) {
@@ -288,8 +254,6 @@ io.on('connection', (socket) => {
                     }
                 });
             }
-            // ------------------- [!!!] نهاية الحل للشات الرئيسي [!!!] -------------------
-
         } catch (error) {
             console.error(`[sendMediationMessage] Error:`, error);
         }
@@ -346,9 +310,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinAdminSubChat', async ({ mediationRequestId, subChatId, userId, userRole }) => {
         if (!userId || !mediationRequestId || !subChatId) return;
-
         const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
-
         try {
             socket.join(subChatRoomName);
             console.log(`[Socket] User ${userId} joined room: ${subChatRoomName}`);
@@ -362,7 +324,6 @@ io.on('connection', (socket) => {
     socket.on('sendAdminSubChatMessage', async ({ mediationRequestId, subChatId, messageText, imageUrl }) => {
         const senderId = socket.userIdForChat;
         if (!senderId || !mediationRequestId || !subChatId) return;
-
         try {
             const newMessageData = {
                 _id: new mongoose.Types.ObjectId(),
@@ -371,13 +332,8 @@ io.on('connection', (socket) => {
                 imageUrl,
                 type: imageUrl ? 'image' : 'text',
                 timestamp: new Date(),
-                readBy: [{
-                    readerId: new mongoose.Types.ObjectId(senderId),
-                    readAt: new Date(),
-                }]
+                readBy: [{ readerId: new mongoose.Types.ObjectId(senderId), readAt: new Date() }]
             };
-
-            // 1. حفظ الرسالة
             await MediationRequest.updateOne(
                 { _id: mediationRequestId, "adminSubChats.subChatId": subChatId },
                 {
@@ -385,17 +341,10 @@ io.on('connection', (socket) => {
                     $set: { "adminSubChats.$.lastMessageAt": newMessageData.timestamp }
                 }
             );
-
-            // 2. بث الرسالة لمشتركي الشات الفرعي
             const populatedMessageForEmit = {
                 ...newMessageData,
-                sender: {
-                    _id: senderId,
-                    fullName: socket.userFullNameForChat,
-                    avatarUrl: socket.userAvatarUrlForChat
-                }
+                sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat }
             };
-
             const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
             io.to(subChatRoomName).emit('new_admin_sub_chat_message', {
                 mediationRequestId,
@@ -403,48 +352,31 @@ io.on('connection', (socket) => {
                 message: populatedMessageForEmit
             });
             console.log(`[Socket] Emitted 'new_admin_sub_chat_message' to room: ${subChatRoomName}`);
-
-            // ------------------ [!!!] بداية الحل للشات الفرعي [!!!] ------------------
-
-            // 3. جلب بيانات الشات الفرعي لتحديد المشاركين
             const requestWithSubChat = await MediationRequest.findOne(
                 { _id: mediationRequestId, 'adminSubChats.subChatId': subChatId },
                 { 'adminSubChats.$': 1, product: 1 }
             ).populate('product', 'title').lean();
-
-            if (!requestWithSubChat || !requestWithSubChat.adminSubChats || requestWithSubChat.adminSubChats.length === 0) {
-                return;
-            }
-
+            if (!requestWithSubChat || !requestWithSubChat.adminSubChats || requestWithSubChat.adminSubChats.length === 0) return;
             const subChat = requestWithSubChat.adminSubChats[0];
-
-            // 4. تحديد قائمة مستلمي الإشعار
             const recipientIds = subChat.participants
                 .map(p => p.userId?.toString())
                 .filter(id => id && id !== senderId);
-
             const uniqueRecipientIds = [...new Set(recipientIds)];
-
-            // 5. إنشاء الإشعارات في قاعدة البيانات
             const productTitle = requestWithSubChat.product?.title || 'the dispute';
             const subChatTitleForNotif = subChat.title || 'Private Chat';
             const senderName = socket.userFullNameForChat || 'A user';
             const notificationTitle = `New Message in: ${subChatTitleForNotif}`;
             const notificationMessage = `From ${senderName} regarding the dispute for "${productTitle}".`;
-
             const notificationsToCreate = uniqueRecipientIds.map(userId => ({
                 user: userId,
                 type: 'NEW_ADMIN_SUBCHAT_MESSAGE',
                 title: notificationTitle,
                 message: notificationMessage,
                 relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
-                metadata: { subChatId: subChatId.toString() } // مفيد للتوجيه في الواجهة
+                metadata: { subChatId: subChatId.toString() }
             }));
-
-            // 6. حفظ وإرسال الإشعارات
             if (notificationsToCreate.length > 0) {
                 const createdNotifications = await Notification.insertMany(notificationsToCreate);
-
                 createdNotifications.forEach(notif => {
                     const recipientSocketId = onlineUsers[notif.user.toString()];
                     if (recipientSocketId) {
@@ -453,8 +385,6 @@ io.on('connection', (socket) => {
                     }
                 });
             }
-            // ------------------- [!!!] نهاية الحل للشات الفرعي [!!!] -------------------
-
         } catch (error) {
             console.error(`[sendAdminSubChatMessage] Error:`, error);
         }
@@ -478,24 +408,15 @@ io.on('connection', (socket) => {
         if (!readerUserId || !Array.isArray(messageIds) || messageIds.length === 0 || !subChatId || !mediationRequestId) {
             return console.warn(`[markAdminRead] Invalid parameters received from client.`, { mediationRequestId, subChatId, messageIds, readerUserId });
         }
-
         try {
             const readerObjectId = new mongoose.Types.ObjectId(readerUserId);
             const readerDetails = await User.findById(readerObjectId).select('fullName avatarUrl').lean();
             if (!readerDetails) return;
-
-            const readReceipt = {
-                readerId: readerObjectId,
-                readAt: new Date()
-            };
-
+            const readReceipt = { readerId: readerObjectId, readAt: new Date() };
             const objectMessageIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
-
             const updateResult = await MediationRequest.updateOne(
                 { _id: new mongoose.Types.ObjectId(mediationRequestId), "adminSubChats.subChatId": new mongoose.Types.ObjectId(subChatId) },
-                {
-                    $addToSet: { "adminSubChats.$[outer].messages.$[inner].readBy": readReceipt }
-                },
+                { $addToSet: { "adminSubChats.$[outer].messages.$[inner].readBy": readReceipt } },
                 {
                     arrayFilters: [
                         { "outer.subChatId": new mongoose.Types.ObjectId(subChatId) },
@@ -506,7 +427,6 @@ io.on('connection', (socket) => {
                     ]
                 }
             );
-
             if (updateResult.modifiedCount > 0) {
                 const subChatRoomName = `admin_subchat_${mediationRequestId}_${subChatId}`;
                 const updatePayload = {
@@ -523,7 +443,6 @@ io.on('connection', (socket) => {
                 io.to(subChatRoomName).emit('admin_sub_chat_messages_status_updated', updatePayload);
                 console.log(`[Socket] Emitted 'admin_sub_chat_messages_status_updated' to room: ${subChatRoomName}`);
             }
-
         } catch (error) { console.error(`[markAdminRead] Error for sub-chat:`, error); }
     });
 
@@ -539,7 +458,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- [!!!] أضف هذا المستمع الجديد [!!!] ---
     socket.on('join_ticket_room', (ticketId) => {
         if (ticketId) {
             socket.join(ticketId.toString());
@@ -553,7 +471,6 @@ io.on('connection', (socket) => {
             console.log(`[Socket Event - leave_ticket_room] Socket ${socket.id} left room for ticket: ${ticketId}`);
         }
     });
-    // --- نهاية الإضافة ---
 
     socket.on('disconnect', (reason) => {
         if (socket.userIdForChat) {
@@ -566,36 +483,29 @@ io.on('connection', (socket) => {
     });
 });
 
-// ***** [!!!] أضف هذا الجزء قبل app.use(cors) أو في نهاية الملف [!!!] *****
-cron.schedule('*/5 * * * *', async () => { // يعمل كل 5 دقائق
+cron.schedule('*/5 * * * *', async () => {
     console.log(`[CRON MASTER] Triggering 'releaseDuePendingFunds' job at ${new Date().toISOString()}`);
     try {
-        // تمرير io و onlineUsers للخدمة لتتمكن من إرسال تحديثات فورية
         const result = await releaseDuePendingFunds(io, onlineUsers);
         console.log(`[CRON MASTER] Job "releaseDuePendingFunds" completed. Released: ${result.fundsReleasedCount}, Errors: ${result.errorsCount}.`);
     } catch (error) {
         console.error('[CRON MASTER] Critical error during scheduled "releaseDuePendingFunds" job:', error);
     }
 });
-// ***** نهاية الإضافة *****
+
 app.use(helmet());
 
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 100,
-    // [!!!] START: التعديل الجديد
     handler: (req, res, next, options) => {
-        const retryAfter = Math.ceil(options.windowMs / 1000); // الوقت بالثواني
+        const retryAfter = Math.ceil(options.windowMs / 1000);
         res.status(options.statusCode).json({
-            // أرسل كائن خطأ متكامل
             errorMessage: {
                 key: "apiErrors.tooManyRequests",
                 fallback: "Too many requests, please try again after 15 minutes.",
-                params: {
-                    retryAfter: retryAfter // وقت إعادة المحاولة بالثواني
-                }
+                params: { retryAfter: retryAfter }
             },
-            // أرسل بيانات إضافية يمكن للواجهة استخدامها
             rateLimit: {
                 limit: options.max,
                 remaining: 0,
@@ -603,16 +513,26 @@ const apiLimiter = rateLimit({
             }
         });
     },
-    // [!!!] END: التعديل الجديد
     standardHeaders: true,
     legacyHeaders: false,
 });
 
 app.use(apiLimiter);
 
+// --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!] ---
+
+// 1. تفعيل CORS لجميع الطلبات القادمة
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+
+// 2. تفعيل قراءة الجسم بصيغة JSON
 app.use(express.json());
+
+// 3. خدمة الملفات الثابتة (مثل الصور المرفوعة)
+// هذا السطر يخبر الخادم بأن أي طلب يبدأ بـ /uploads يجب أن يبحث عن الملف المقابل في مجلد 'uploads' في جذر المشروع
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// --- [!!!] END: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!] ---
+
 const chatImageUploadPath = path.join(__dirname, 'uploads/chat_images/');
 if (!fs.existsSync(chatImageUploadPath)) {
     fs.mkdirSync(chatImageUploadPath, { recursive: true });
@@ -626,6 +546,7 @@ app.use((req, res, next) => {
 
 connectDB();
 
+// --- Routers ---
 app.use("/user", user);
 app.use('/product', product);
 app.use('/cart', cart);
@@ -643,6 +564,7 @@ app.use('/faq', faqRoute);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 
+// Error handling middleware
 app.use((err, req, res, next) => {
     console.error("!!! UNHANDLED EXPRESS ERROR !!!:", err.stack || err);
     const statusCode = err.statusCode || 500;

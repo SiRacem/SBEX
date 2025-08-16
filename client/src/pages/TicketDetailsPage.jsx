@@ -1,7 +1,15 @@
 // src/pages/TicketDetailsPage.jsx
-import React, { useEffect, useState, useMemo, useContext, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Row,
@@ -71,24 +79,16 @@ const formatFileSize = (bytes) => {
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-const TICKET_STATUSES_OPTIONS = [
-  { value: "Open", label: "Open" },
-  { value: "PendingSupportReply", label: "Pending Support Reply" },
-  { value: "PendingUserInput", label: "Pending User Input" },
-  { value: "InProgress", label: "In Progress" },
-  { value: "Resolved", label: "Resolved" },
-  { value: "Closed", label: "Closed" },
-  { value: "OnHold", label: "On Hold" },
-];
-
-const TICKET_PRIORITIES_OPTIONS = [
-  { value: "Low", label: "Low" },
-  { value: "Medium", label: "Medium" },
-  { value: "High", label: "High" },
-  { value: "Urgent", label: "Urgent" },
-];
+  const createFullUrl = (base, path) => {
+  // يزيل أي شرطة مائلة زائدة من نهاية الرابط الأساسي
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  // يزيل أي شرطة مائلة زائدة من بداية المسار
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${cleanBase}/${cleanPath}`;
+};
 
 const TicketDetailsPage = () => {
+  const { t, i18n } = useTranslation();
   const { ticketId } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -124,16 +124,47 @@ const TicketDetailsPage = () => {
   const [newPriorityAdmin, setNewPriorityAdmin] = useState("");
   const [assignToUserIdAdmin, setAssignToUserIdAdmin] = useState("");
   const [resolutionNotesAdmin, setResolutionNotesAdmin] = useState("");
-
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-
   const [previewLightboxOpen, setPreviewLightboxOpen] = useState(false);
   const [previewLightboxIndex, setPreviewLightboxIndex] = useState(0);
-
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyFiles, setReplyFiles] = useState([]);
   const textAreaRef = useRef(null);
+
+  useEffect(() => {
+    const lang = i18n.language;
+    moment.locale(lang === "tn" ? "ar" : lang);
+  }, [i18n.language]);
+
+  const TICKET_STATUSES_OPTIONS = useMemo(
+    () => [
+      { value: "Open", label: t("ticketsListPage.statuses.Open") },
+      {
+        value: "PendingSupportReply",
+        label: t("ticketsListPage.statuses.PendingSupportReply"),
+      },
+      {
+        value: "PendingUserInput",
+        label: t("ticketsListPage.statuses.PendingUserInput"),
+      },
+      { value: "InProgress", label: t("ticketsListPage.statuses.InProgress") },
+      { value: "Resolved", label: t("ticketsListPage.statuses.Resolved") },
+      { value: "Closed", label: t("ticketsListPage.statuses.Closed") },
+      { value: "OnHold", label: t("ticketsListPage.statuses.OnHold") },
+    ],
+    [t]
+  );
+
+  const TICKET_PRIORITIES_OPTIONS = useMemo(
+    () => [
+      { value: "Low", label: t("createTicket.priorities.Low") },
+      { value: "Medium", label: t("createTicket.priorities.Medium") },
+      { value: "High", label: t("createTicket.priorities.High") },
+      { value: "Urgent", label: t("createTicket.priorities.Urgent") },
+    ],
+    [t]
+  );
 
   const onEmojiClick = (emojiObject) => {
     const cursor = textAreaRef.current.selectionStart;
@@ -146,14 +177,14 @@ const TicketDetailsPage = () => {
     textAreaRef.current.focus();
   };
 
-  const onDrop = (acceptedFiles) => {
+  const onDrop = useCallback((acceptedFiles) => {
     const newFiles = acceptedFiles.map((file) =>
       Object.assign(file, {
         preview: URL.createObjectURL(file),
       })
     );
     setReplyFiles((prev) => [...prev, ...newFiles].slice(0, 5));
-  };
+  }, []);
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
@@ -185,21 +216,30 @@ const TicketDetailsPage = () => {
 
   useEffect(() => {
     if (ticketId) {
-      if (isAdminView && isUserAdminOrSupport)
+      if (isAdminView && isUserAdminOrSupport) {
         dispatch(adminGetTicketDetailsAction(ticketId));
-      else if (!isAdminView && user) dispatch(getTicketDetailsAction(ticketId));
-      else if (isAdminView && user && !isUserAdminOrSupport) {
-        toast.error("Access Denied for admin view.");
+      } else if (!isAdminView && user) {
+        dispatch(getTicketDetailsAction(ticketId));
+      } else if (isAdminView && user && !isUserAdminOrSupport) {
+        toast.error(t("apiErrors.notAuthorizedAdmin"));
         navigate("/dashboard/tickets");
       }
     }
     return () => {
       dispatch(clearTicketDetailsAction());
     };
-  }, [dispatch, ticketId, isAdminView, isUserAdminOrSupport, user, navigate]);
+  }, [
+    dispatch,
+    ticketId,
+    isAdminView,
+    isUserAdminOrSupport,
+    user,
+    navigate,
+    t,
+  ]);
 
   useEffect(() => {
-    if (socket && ticket && ticket._id) {
+    if (socket && ticket?._id) {
       const ticketRoomId = ticket._id.toString();
       socket.emit("join_ticket_room", ticketRoomId);
       return () => {
@@ -221,17 +261,21 @@ const TicketDetailsPage = () => {
       setReplyMessage("");
       replyFiles.forEach((file) => URL.revokeObjectURL(file.preview));
       setReplyFiles([]);
-      toast.success("Reply added successfully!");
+      toast.success(t("ticketDetails.replySuccess"));
       dispatch(resetAddTicketReplyStatus());
     }
     if (errorAddReply) {
-      toast.error(errorAddReply);
+      const errorMessage = t(errorAddReply.key, {
+        ...errorAddReply.params,
+        defaultValue: errorAddReply.fallback,
+      });
+      toast.error(errorMessage);
       dispatch(resetAddTicketReplyStatus());
     }
-  }, [successAddReply, errorAddReply, dispatch, replyFiles]);
+  }, [successAddReply, errorAddReply, dispatch, replyFiles, t]);
 
   useEffect(() => {
-    if (socket && ticket && ticket._id) {
+    if (socket && ticket?._id) {
       const handleNewReply = (data) => {
         if (
           data.ticketId === ticket._id &&
@@ -248,7 +292,7 @@ const TicketDetailsPage = () => {
   const handleAddReply = (e) => {
     e.preventDefault();
     if (!replyMessage.trim() && replyFiles.length === 0) {
-      toast.error("Reply message or an attachment is required.");
+      toast.error(t("ticketDetails.replyRequired"));
       return;
     }
     const currentTicketId = ticket?.ticketId || ticket?._id || ticketId;
@@ -263,7 +307,7 @@ const TicketDetailsPage = () => {
   };
 
   const handleCloseTicket = () => {
-    if (window.confirm("Are you sure?"))
+    if (window.confirm(t("ticketDetails.confirmClose")))
       dispatch(closeTicketByUserAction(ticket?._id || ticketId));
   };
   const handleAdminUpdateStatus = () => {
@@ -331,8 +375,8 @@ const TicketDetailsPage = () => {
     return (
       <Container className="py-5 text-center">
         <Alert variant="warning">
-          Your session might have expired. Please <Link to="/login">login</Link>{" "}
-          again.
+          {t("ticketDetails.sessionExpired")}{" "}
+          <Link to="/login">{t("app.goToLogin")}</Link>
         </Alert>
       </Container>
     );
@@ -344,7 +388,7 @@ const TicketDetailsPage = () => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <p className="mt-3 fs-5">Loading ticket...</p>
+        <p className="mt-3 fs-5">{t("ticketDetails.loading")}</p>
       </Container>
     );
   if (errorTicketDetails)
@@ -352,15 +396,20 @@ const TicketDetailsPage = () => {
       <Container className="py-5">
         <Alert variant="danger" className="text-center">
           <h4>
-            <FaTimesCircle className="me-2" /> Error
+            <FaTimesCircle className="me-2" /> {t("ticketDetails.errorTitle")}
           </h4>
-          <p>{errorTicketDetails}</p>
+          <p>
+            {t(errorTicketDetails.key, {
+              ...errorTicketDetails.params,
+              defaultValue: errorTicketDetails.fallback,
+            })}
+          </p>
           <Button
             as={Link}
             to={isAdminView ? "/dashboard/admin/tickets" : "/dashboard/tickets"}
             variant="primary"
           >
-            Back
+            {t("ticketDetails.backButton")}
           </Button>
         </Alert>
       </Container>
@@ -370,30 +419,29 @@ const TicketDetailsPage = () => {
       <Container className="py-5 text-center">
         <Alert variant="warning">
           <h4>
-            <FaInfoCircle className="me-2" /> Not Found
+            <FaInfoCircle className="me-2" /> {t("ticketDetails.notFoundTitle")}
           </h4>
-          <p>Ticket details not found.</p>
+          <p>{t("ticketDetails.notFoundBody")}</p>
           <Button
             as={Link}
             to={isAdminView ? "/dashboard/admin/tickets" : "/dashboard/tickets"}
             variant="secondary"
           >
-            Back
+            {t("ticketDetails.backButton")}
           </Button>
         </Alert>
       </Container>
     );
-  if (ticket && user) {
-    if (!isAdminView && user._id !== ticket.user?._id)
-      return (
-        <Container className="py-5 text-center">
-          <Alert variant="danger">Not authorized.</Alert>
-        </Container>
-      );
-  } else if (!loadingTicketDetails)
+  if (ticket && user && !isAdminView && user._id !== ticket.user?._id)
     return (
       <Container className="py-5 text-center">
-        <Alert variant="info">Preparing details...</Alert>
+        <Alert variant="danger">{t("apiErrors.notAuthorized")}</Alert>
+      </Container>
+    );
+  if (!ticket)
+    return (
+      <Container className="py-5 text-center">
+        <Alert variant="info">{t("ticketDetails.preparing")}</Alert>
       </Container>
     );
 
@@ -412,7 +460,9 @@ const TicketDetailsPage = () => {
                 <h4 className="mb-1 ticket-title">
                   <FaTicketAlt className="me-2 text-primary" /> {ticket.title}
                 </h4>
-                <span className="text-muted small">ID: {ticket.ticketId}</span>
+                <span className="text-muted small">
+                  {t("ticketsListPage.ticketId")} {ticket.ticketId}
+                </span>
               </div>
               <Button
                 as={Link}
@@ -424,57 +474,60 @@ const TicketDetailsPage = () => {
                 variant="outline-secondary"
                 size="sm"
               >
-                « Back to Tickets
+                « {t("ticketDetails.backButton")}
               </Button>
             </Card.Header>
             <Card.Body className="p-3 p-md-4">
               <Row className="mb-3 ticket-meta-info">
                 <Col md={6} className="mb-2 mb-md-0">
                   <p className="mb-1">
-                    <strong className="text-muted">Category:</strong>{" "}
-                    {ticket.category}
+                    <strong>{t("ticketsListPage.category")}</strong>{" "}
+                    {t(`createTicket.categories.${ticket.category}`, {
+                      defaultValue: ticket.category,
+                    })}
                   </p>
                   <p className="mb-1">
-                    <strong className="text-muted">Priority:</strong>{" "}
+                    <strong>{t("createTicket.labels.priority")}:</strong>{" "}
                     <Badge
                       pill
                       bg={getPriorityBadgeVariant(ticket.priority)}
                       className="ms-1"
                     >
-                      {ticket.priority}
+                      {t(`createTicket.priorities.${ticket.priority}`, {
+                        defaultValue: ticket.priority,
+                      })}
                     </Badge>
                   </p>
                   <p className="mb-0">
-                    <strong className="text-muted">Status:</strong>{" "}
+                    <strong>{t("admin.detailsModal.status")}:</strong>{" "}
                     <Badge
                       pill
                       bg={getStatusBadgeVariant(ticket.status)}
                       className="ms-1"
                     >
-                      {ticket.status}
+                      {t(`ticketsListPage.statuses.${ticket.status}`, {
+                        defaultValue: ticket.status,
+                      })}
                     </Badge>
                   </p>
                 </Col>
                 <Col md={6} className="text-md-end">
                   <p className="mb-1">
-                    <strong className="text-muted">By:</strong>{" "}
+                    <strong>{t("ticketDetails.meta.by")}:</strong>{" "}
                     {ticket.user?.fullName || "N/A"} (
-                    <small className="text-monospace">
-                      {ticket.user?.email || "N/A"}
-                    </small>
-                    )
+                    <small>{ticket.user?.email || "N/A"}</small>)
                   </p>
                   <p className="mb-1">
-                    <strong className="text-muted">Created:</strong>{" "}
+                    <strong>{t("ticketDetails.meta.created")}:</strong>{" "}
                     {moment(ticket.createdAt).format("MMM DD, YYYY, h:mm A")}
                   </p>
                   <p className="mb-1">
-                    <strong className="text-muted">Last Update:</strong>{" "}
+                    <strong>{t("ticketDetails.meta.lastUpdate")}:</strong>{" "}
                     {moment(ticket.lastReplyAt || ticket.updatedAt).fromNow()}
                   </p>
                   {ticket.assignedTo && (
                     <p className="mb-0">
-                      <strong className="text-muted">Assigned:</strong>{" "}
+                      <strong>{t("ticketDetails.meta.assigned")}:</strong>{" "}
                       <FaUserTie className="me-1" />
                       {ticket.assignedTo.fullName || "Support"}
                     </p>
@@ -482,7 +535,9 @@ const TicketDetailsPage = () => {
                 </Col>
               </Row>
               <hr />
-              <h5 className="mt-4 mb-2">Initial Description:</h5>
+              <h5 className="mt-4 mb-2">
+                {t("ticketDetails.initialDescription")}
+              </h5>
               <div className="ticket-description p-3 bg-light-subtle border rounded">
                 <pre
                   style={{
@@ -497,18 +552,24 @@ const TicketDetailsPage = () => {
               {ticket.attachments && ticket.attachments.length > 0 && (
                 <div className="mt-4">
                   <h5 className="mb-3">
-                    <FaPaperclip className="me-2" /> Attachments
+                    <FaPaperclip className="me-2" />{" "}
+                    {t("createTicket.labels.attachments")}
                   </h5>
                   <ListGroup
                     variant="flush"
                     className="attachment-list-details"
                   >
                     {ticket.attachments.map((att, idx) => {
+                      console.log("--- DEBUG TICKET ATTACHMENT ---");
+                      console.log("BACKEND_URL:", BACKEND_URL);
+                      console.log("File Path from DB:", att.filePath);
+                      const testUrl = new URL(att.filePath, BACKEND_URL).href;
+                      console.log("Generated URL:", testUrl);
                       const fileType = att.fileType || "";
                       const isImage = fileType.startsWith("image/");
                       const isVideo = fileType.startsWith("video/");
                       const isAudio = fileType.startsWith("audio/");
-                      const fullUrl = `${BACKEND_URL}/${att.filePath}`;
+                      const fullUrl = createFullUrl(BACKEND_URL, att.filePath);
                       return (
                         <ListGroup.Item
                           key={idx}
@@ -530,7 +591,9 @@ const TicketDetailsPage = () => {
                                   }
                                 }}
                                 style={{ cursor: "pointer" }}
-                                title={`View ${att.fileName}`}
+                                title={t("ticketDetails.viewImage", {
+                                  name: att.fileName,
+                                })}
                               >
                                 <img
                                   src={fullUrl}
@@ -597,28 +660,28 @@ const TicketDetailsPage = () => {
 
           {isAdminView && isUserAdminOrSupport && ticket && (
             <Card className="shadow-sm border-0 mb-4 admin-ticket-actions-panel">
-              {" "}
               <Card.Header className="bg-secondary text-white py-2">
                 <h5 className="mb-0">
-                  <FaUserShield className="me-2" /> Admin Controls
+                  <FaUserShield className="me-2" />{" "}
+                  {t("ticketDetails.admin.title")}
                 </h5>
-              </Card.Header>{" "}
+              </Card.Header>
               <Card.Body className="p-3">
-                {" "}
                 <Row className="g-3">
-                  {" "}
                   <Col md={6} className="mb-3 mb-md-0">
-                    {" "}
                     <Form.Group controlId="adminChangeStatus">
                       <Form.Label className="small fw-semibold">
-                        <FaTasks className="me-1" /> Change Status
+                        <FaTasks className="me-1" />{" "}
+                        {t("ticketDetails.admin.changeStatus")}
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
                           value={newStatusAdmin}
                           onChange={(e) => setNewStatusAdmin(e.target.value)}
                         >
-                          <option value="">Select status...</option>
+                          <option value="">
+                            {t("ticketDetails.admin.selectStatus")}
+                          </option>
                           {TICKET_STATUSES_OPTIONS.map((s) => (
                             <option key={s.value} value={s.value}>
                               {s.label}
@@ -630,23 +693,25 @@ const TicketDetailsPage = () => {
                           onClick={handleAdminUpdateStatus}
                           disabled={loadingAdminUpdate || !newStatusAdmin}
                         >
-                          Update
+                          {t("ticketDetails.admin.updateButton")}
                         </Button>
                       </InputGroup>
-                    </Form.Group>{" "}
-                  </Col>{" "}
+                    </Form.Group>
+                  </Col>
                   <Col md={6} className="mb-3 mb-md-0">
-                    {" "}
                     <Form.Group controlId="adminChangePriority">
                       <Form.Label className="small fw-semibold">
-                        <FaHighlighter className="me-1" /> Change Priority
+                        <FaHighlighter className="me-1" />{" "}
+                        {t("ticketDetails.admin.changePriority")}
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
                           value={newPriorityAdmin}
                           onChange={(e) => setNewPriorityAdmin(e.target.value)}
                         >
-                          <option value="">Select priority...</option>
+                          <option value="">
+                            {t("ticketDetails.admin.selectPriority")}
+                          </option>
                           {TICKET_PRIORITIES_OPTIONS.map((p) => (
                             <option key={p.value} value={p.value}>
                               {p.label}
@@ -658,16 +723,16 @@ const TicketDetailsPage = () => {
                           onClick={handleAdminUpdatePriority}
                           disabled={loadingAdminUpdate || !newPriorityAdmin}
                         >
-                          Update
+                          {t("ticketDetails.admin.updateButton")}
                         </Button>
                       </InputGroup>
-                    </Form.Group>{" "}
-                  </Col>{" "}
+                    </Form.Group>
+                  </Col>
                   <Col md={12} className="mt-md-3">
-                    {" "}
                     <Form.Group controlId="adminAssignTicket">
                       <Form.Label className="small fw-semibold">
-                        <FiUsers className="me-1" /> Assign To
+                        <FiUsers className="me-1" />{" "}
+                        {t("ticketDetails.admin.assignTo")}
                       </Form.Label>
                       <InputGroup>
                         <Form.Select
@@ -676,7 +741,9 @@ const TicketDetailsPage = () => {
                             setAssignToUserIdAdmin(e.target.value)
                           }
                         >
-                          <option value="">Unassigned / Select Staff...</option>
+                          <option value="">
+                            {t("ticketDetails.admin.unassigned")}
+                          </option>
                           {supportStaffList.map((staff) => (
                             <option key={staff._id} value={staff._id}>
                               {staff.fullName} ({staff.userRole})
@@ -688,16 +755,16 @@ const TicketDetailsPage = () => {
                           onClick={handleAdminAssignTicket}
                           disabled={loadingAdminUpdate}
                         >
-                          Assign
+                          {t("ticketDetails.admin.assignButton")}
                         </Button>
                       </InputGroup>
-                    </Form.Group>{" "}
-                  </Col>{" "}
+                    </Form.Group>
+                  </Col>
                   {newStatusAdmin === "Resolved" && (
                     <Col md={12} className="mt-md-3">
                       <Form.Group controlId="adminResolutionNotes">
                         <Form.Label className="small fw-semibold">
-                          Resolution Notes (Optional)
+                          {t("ticketDetails.admin.resolutionNotes")}
                         </Form.Label>
                         <Form.Control
                           as="textarea"
@@ -706,95 +773,30 @@ const TicketDetailsPage = () => {
                           onChange={(e) =>
                             setResolutionNotesAdmin(e.target.value)
                           }
-                          placeholder="Add notes about the resolution..."
+                          placeholder={t(
+                            "ticketDetails.admin.resolutionNotesPlaceholder"
+                          )}
                         />
                       </Form.Group>
                     </Col>
-                  )}{" "}
-                </Row>{" "}
+                  )}
+                </Row>
                 {loadingAdminUpdate && (
                   <div className="text-center mt-2">
                     <Spinner animation="border" size="sm" variant="info" />
                   </div>
-                )}{" "}
-              </Card.Body>{" "}
+                )}
+              </Card.Body>
             </Card>
           )}
 
-          <Card className="shadow-sm border-0 mb-4">
-            <Card.Header className="bg-light p-3">
-              <h5 className="mb-0">Conversation</h5>
-            </Card.Header>
-            <ListGroup variant="flush" className="ticket-replies-list p-3">
-              {replies && replies.length > 0 ? (
-                replies.map((reply) => (
-                  <ListGroup.Item
-                    key={reply._id}
-                    className={`mb-3 p-3 border-0 rounded shadow-sm reply-item ${
-                      reply.isSupportReply ? "reply-support" : "reply-user"
-                    }`}
-                  >
-                    {" "}
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      {" "}
-                      <strong className="reply-author">
-                        {reply.isSupportReply ? (
-                          <FaHeadset className="me-1 text-info" />
-                        ) : (
-                          <FaUserCircle className="me-1 text-success" />
-                        )}
-                        {reply.user?.fullName ||
-                          (reply.isSupportReply ? "Support Team" : "User")}
-                      </strong>{" "}
-                      <small className="text-muted">
-                        {moment(reply.createdAt).fromNow()}
-                      </small>{" "}
-                    </div>{" "}
-                    <pre
-                      className="reply-message"
-                      style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}
-                    >
-                      {reply.message}
-                    </pre>{" "}
-                    {reply.attachments && reply.attachments.length > 0 && (
-                      <div className="mt-2 reply-attachments">
-                        {" "}
-                        <small className="text-muted d-block mb-1">
-                          Attachments:
-                        </small>{" "}
-                        {reply.attachments.map((att, rix) => (
-                          <a
-                            key={rix}
-                            href={`${BACKEND_URL}/${att.filePath}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="d-block small text-decoration-none mb-1"
-                          >
-                            <FaPaperclip size="0.8em" /> {att.fileName}
-                          </a>
-                        ))}{" "}
-                      </div>
-                    )}{" "}
-                  </ListGroup.Item>
-                ))
-              ) : (
-                <ListGroup.Item className="text-center text-muted py-4 border-0">
-                  No replies yet.
-                </ListGroup.Item>
-              )}
-            </ListGroup>
-          </Card>
-
           {ticket &&
             ticket.status !== "Closed" &&
-            ((user &&
-              (user._id === ticket.user?._id || isUserAdminOrSupport) &&
-              ticket.status !== "Resolved") ||
-              (isUserAdminOrSupport && ticket.status === "Resolved")) && (
+            (user._id === ticket.user?._id || isUserAdminOrSupport) && (
               <Card className="shadow-sm border-0 add-reply-card">
                 <Card.Header className="bg-light p-3">
                   <h5 className="mb-0">
-                    <FaReply className="me-2" /> Add Your Reply
+                    <FaReply className="me-2" /> {t("ticketDetails.addReply")}
                   </h5>
                 </Card.Header>
                 <Card.Body className="p-3 p-md-4">
@@ -844,7 +846,7 @@ const TicketDetailsPage = () => {
                         ref={textAreaRef}
                         as="textarea"
                         rows={5}
-                        placeholder="Type your reply here..."
+                        placeholder={t("ticketDetails.replyPlaceholder")}
                         value={replyMessage}
                         onChange={(e) => setReplyMessage(e.target.value)}
                       />
@@ -890,7 +892,7 @@ const TicketDetailsPage = () => {
                         ) : (
                           <FiSend className="me-1" />
                         )}
-                        Submit
+                        {t("ticketDetails.submitReply")}
                       </Button>
                     </div>
                   </Form>
@@ -912,23 +914,21 @@ const TicketDetailsPage = () => {
                   ) : (
                     <FaTimesCircle className="me-1" />
                   )}{" "}
-                  Close This Ticket
+                  {t("ticketDetails.closeTicketButton")}
                 </Button>
               </div>
             )}
         </Col>
       </Row>
-
       <Lightbox
         open={lightboxOpen}
         close={() => setLightboxOpen(false)}
         slides={imageAttachments.map((att) => ({
-          src: `${BACKEND_URL}/${att.filePath}`,
+          src: createFullUrl(BACKEND_URL, att.filePath), // <-- استخدم الدالة الجديدة هنا أيضًا
         }))}
         index={lightboxIndex}
         on={{ view: ({ index }) => setLightboxIndex(index) }}
       />
-
       <Lightbox
         open={previewLightboxOpen}
         close={() => setPreviewLightboxOpen(false)}

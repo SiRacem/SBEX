@@ -1157,6 +1157,44 @@
       "withdrawalInfo": "Withdrawal Info (User)"
     }
   },
+  "adminProducts": {
+    "pendingApprovals": "Pending Approvals",
+    "loading": "Loading products...",
+    "error": "Error loading products: {{error}}",
+    "noPending": "No pending products.",
+    "table": {
+      "image": "Image",
+      "title": "Title",
+      "vendor": "Vendor",
+      "price": "Price",
+      "dateAdded": "Date Added",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDetails": "View Details",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "detailsModal": {
+      "title": "Product Details: {{title}}",
+      "by": "By",
+      "description": "Description",
+      "linkType": "Link Type",
+      "price": "Price",
+      "quantity": "Quantity",
+      "submitted": "Submitted",
+      "close": "Close"
+    },
+    "rejectModal": {
+      "title": "Reject: {{title}}",
+      "reason": "Reason (Required)",
+      "cancel": "Cancel",
+      "confirm": "Confirm Rejection",
+      "rejecting": "Rejecting...",
+      "reasonRequired": "Rejection reason is required."
+    },
+    "confirmApprove": "Are you sure you want to approve this product?"
+  },
   "comptes": {
     "title": "My Accounts",
     "addAccount": "Add Account",
@@ -1217,5 +1255,147 @@
     "imagePreview": "Image Preview",
     "viewImage": "View Image",
     "removeImage": "Remove Image"
+  },
+  "levelsModal": {
+    "title": "Your Progression Path",
+    "summary": "You are Level {{level}} ({{badgeName}}) with {{points}} pts.",
+    "current": "Current",
+    "requires": "Requires",
+    "totalPoints": "{{count}} total pts",
+    "reward": "Reward",
+    "rewardClaimed": "Reward Claimed",
+    "rewardUnlocked": "Reward Unlocked!",
+    "rewardForLevel": "Reward for this level",
+    "noCashReward": "No cash reward",
+    "achieved": "Achieved",
+    "progressText": "{{earned}} / {{needed}} pts to Level {{nextLevel}}",
+    "unlockDetails": "Reach {{points}} pts to unlock details"
+  },
+  "ratingForm": {
+    "title": "Rate {{name}}:",
+    "thisUser": "this user",
+    "selectRating": "Please select Like or Dislike.",
+    "like": "Like",
+    "dislike": "Dislike",
+    "commentLabel": "Comment (Optional):",
+    "commentPlaceholder": "Share your experience...",
+    "submitButton": "Submit Rating"
+  },
+  "createTicket": {
+    "loadingUser": "Loading user data...",
+    "loginRequiredAlert": "You must be logged in to create a support ticket.",
+    "loginRequired": "Please login to create a support ticket.",
+    "successToast": "Support ticket created successfully!",
+    "header": {
+      "title": "Open a New Support Ticket",
+      "subtitle": "We're here to help. Please fill out the form below."
+    },
+    "labels": {
+      "title": "Title",
+      "category": "Category",
+      "priority": "Priority",
+      "description": "Description",
+      "attachments": "Attachments"
+    },
+    "placeholders": {
+      "title": "e.g., Issue with my last order payment",
+      "description": "Please provide as much detail as possible..."
+    },
+    "categories": {
+      "select": "...Select a category",
+      "TechnicalIssue": "Technical Issue",
+      "TransactionInquiry": "Transaction Inquiry",
+      "AccountIssue": "Account Issue",
+      "PaymentIssue": "Payment Issue",
+      "MediationIssue": "Mediation Issue",
+      "BugReport": "Bug Report",
+      "FeatureRequest": "Feature Request",
+      "GeneralInquiry": "General Inquiry",
+      "Complaint": "Complaint",
+      "Other": "Other"
+    },
+    "priorities": {
+      "Medium": "Medium (Default)",
+      "Low": "Low",
+      "High": "High",
+      "Urgent": "Urgent"
+    },
+    "fileUpload": {
+      "dragAndDrop": "Drag & drop files here, or click to browse",
+      "constraints": "(Max {{count}} files, up to {{size}}MB each)",
+      "remove": "Remove file"
+    },
+    "submitting": "Submitting...",
+    "submitButton": "Create Ticket",
+    "footerNote": "We typically respond within 24-48 hours.",
+    "errors": {
+      "formInvalid": "Please correct the errors in the form before submitting.",
+      "titleRequired": "Title is required.",
+      "titleMin": "Title must be at least 5 characters.",
+      "titleMax": "Title cannot exceed 150 characters.",
+      "descriptionRequired": "Description is required.",
+      "descriptionMin": "Description must be at least 20 characters.",
+      "descriptionMax": "Description cannot exceed 5000 characters.",
+      "categoryRequired": "Please select a category.",
+      "fileSize": "\"{{name}}\" is too large (max {{size}}MB).",
+      "fileType": "File type of \"{{name}}\" is not permitted.",
+      "fileExists": "File \"{{name}}\" is already selected.",
+      "fileCount": "Max {{count}} files allowed."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "Loading your tickets...",
+    "errorTitle": "Error Loading Tickets",
+    "pageTitle": "My Support Tickets",
+    "createButton": "Create New Ticket",
+    "ticketId": "Ticket ID:",
+    "lastUpdate": "Last Update:",
+    "category": "Category:",
+    "viewButton": "View",
+    "noTicketsTitle": "No Support Tickets Found",
+    "noTicketsSubtitle": "You haven't created any support tickets yet.",
+    "createFirstButton": "Create Your First Ticket",
+    "statuses": {
+      "Open": "Open",
+      "PendingSupportReply": "Pending Support Reply",
+      "PendingUserInput": "Pending Your Reply",
+      "InProgress": "In Progress",
+      "Resolved": "Resolved",
+      "Closed": "Closed",
+      "OnHold": "On Hold"
+    }
+  },
+  "ticketDetails": {
+    "replySuccess": "Reply added successfully!",
+    "replyRequired": "Reply message or an attachment is required.",
+    "confirmClose": "Are you sure you want to close this ticket? You won't be able to reply afterwards.",
+    "sessionExpired": "Your session might have expired. Please",
+    "loading": "Loading ticket...",
+    "errorTitle": "Error",
+    "backButton": "Back to Tickets",
+    "notFoundTitle": "Not Found",
+    "notFoundBody": "Ticket details not found.",
+    "preparing": "Preparing details...",
+    "meta": {
+      "by": "By",
+      "created": "Created",
+      "lastUpdate": "Last Update",
+      "assigned": "Assigned"
+    },
+    "initialDescription": "Initial Description",
+    "admin": {
+      "title": "Admin Controls",
+      "changeStatus": "Change Status",
+      "selectStatus": "Select status...",
+      "updateButton": "Update"
+    },
+    "conversation": "Conversation",
+    "supportTeam": "Support Team",
+    "user": "User",
+    "noReplies": "No replies yet.",
+    "addReply": "Add Your Reply",
+    "replyPlaceholder": "Type your reply here...",
+    "submitReply": "Submit",
+    "closeTicketButton": "Close This Ticket"
   }
 }

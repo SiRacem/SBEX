@@ -419,15 +419,15 @@
     "productDataUnavailable": "بيانات المنتج غير متوفرة",
     "productImageAlt": "{{title}} - صورة {{index}}",
     "highestBidTooltip": "أعلى مزايدة: {{amount}}",
-    "like": "إعجاب",
-    "unlike": "إلغاء الإعجاب",
+    "like": "لايك",
+    "unlike": "إلغاء اللايك",
     "bidders": "المزايدون",
     "updateBid": "تحديث المزايدة",
     "placeBid": "ضع مزايدة",
     "addToCart": "أضف للسلة",
     "pleaseLoginToBid": "الرجاء تسجيل الدخول للمزايدة.",
-    "pleaseLoginToLike": "الرجاء تسجيل الدخول للإعجاب بالمنتجات.",
-    "likeUpdateFailed": "فشل تحديث حالة الإعجاب.",
+    "pleaseLoginToLike": "الرجاء تسجيل الدخول لللايك بالمنتجات.",
+    "likeUpdateFailed": "فشل تحديث حالة اللايك.",
     "bidUpdatedSuccess": "تم تحديث المزايدة بنجاح!",
     "bidPlacedSuccess": "تم وضع المزايدة بنجاح!",
     "imageNotAvailable": "الصورة غير متوفرة.",
@@ -1162,6 +1162,44 @@
       "withdrawalInfo": "معلومات السحب (من المستخدم)"
     }
   },
+  "adminProducts": {
+    "pendingApprovals": "موافقات معلقة",
+    "loading": "جاري تحميل المنتجات...",
+    "error": "خطأ في تحميل المنتجات: {{error}}",
+    "noPending": "لا توجد منتجات معلقة.",
+    "table": {
+      "image": "صورة",
+      "title": "العنوان",
+      "vendor": "البائع",
+      "price": "السعر",
+      "dateAdded": "تاريخ الإضافة",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "viewDetails": "عرض التفاصيل",
+      "approve": "موافقة",
+      "reject": "رفض"
+    },
+    "detailsModal": {
+      "title": "تفاصيل المنتج: {{title}}",
+      "by": "بواسطة",
+      "description": "الوصف",
+      "linkType": "نوع الربط",
+      "price": "السعر",
+      "quantity": "الكمية",
+      "submitted": "أُرسل في",
+      "close": "إغلاق"
+    },
+    "rejectModal": {
+      "title": "رفض: {{title}}",
+      "reason": "السبب (مطلوب)",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد الرفض",
+      "rejecting": "جاري الرفض...",
+      "reasonRequired": "سبب الرفض مطلوب."
+    },
+    "confirmApprove": "هل أنت متأكد من الموافقة على هذا المنتج؟"
+  },
   "comptes": {
     "title": "حساباتي",
     "addAccount": "إضافة حساب",
@@ -1230,5 +1268,147 @@
     "now": "الآن!",
     "goBackButtonReady": "الذهاب إلى صفحة الدخول",
     "goBackButtonWaiting": "انتظر للمتابعة"
+  },
+  "levelsModal": {
+    "title": "مسار تقدمك",
+    "summary": "أنت في المستوى {{level}} ({{badgeName}}) مع {{points}} نقطة.",
+    "current": "الحالي",
+    "requires": "يتطلب",
+    "totalPoints": "{{count}} نقطة إجمالاً",
+    "reward": "المكافأة",
+    "rewardClaimed": "تم استلام المكافأة",
+    "rewardUnlocked": "تم فتح المكافأة!",
+    "rewardForLevel": "مكافأة هذا المستوى",
+    "noCashReward": "لا توجد مكافأة نقدية",
+    "achieved": "تم الوصول إليه",
+    "progressText": "{{earned}} / {{needed}} نقطة للمستوى {{nextLevel}}",
+    "unlockDetails": "صل إلى {{points}} نقطة لفتح التفاصيل"
+  },
+  "ratingForm": {
+    "title": "تقييم {{name}}:",
+    "thisUser": "هذا المستخدم",
+    "selectRating": "الرجاء اختيار لايك أو ديس لايك.",
+    "like": "لايك",
+    "dislike": "ديس لايك",
+    "commentLabel": "تعليق (اختياري):",
+    "commentPlaceholder": "شارك تجربتك...",
+    "submitButton": "إرسال التقييم"
+  },
+  "createTicket": {
+    "loadingUser": "جاري تحميل بيانات المستخدم...",
+    "loginRequiredAlert": "يجب عليك تسجيل الدخول لإنشاء تذكرة دعم.",
+    "loginRequired": "الرجاء تسجيل الدخول لإنشاء تذكرة دعم.",
+    "successToast": "تم إنشاء تذكرة الدعم بنجاح!",
+    "header": {
+      "title": "فتح تذكرة دعم جديدة",
+      "subtitle": "نحن هنا للمساعدة. الرجاء ملء النموذج أدناه."
+    },
+    "labels": {
+      "title": "العنوان",
+      "category": "الفئة",
+      "priority": "الأولوية",
+      "description": "الوصف",
+      "attachments": "المرفقات"
+    },
+    "placeholders": {
+      "title": "مثال: مشكلة في دفع طلبي الأخير",
+      "description": "الرجاء تقديم أكبر قدر ممكن من التفاصيل..."
+    },
+    "categories": {
+      "select": "...اختر فئة",
+      "TechnicalIssue": "مشكلة تقنية",
+      "TransactionInquiry": "استفسار عن معاملة",
+      "AccountIssue": "مشكلة في الحساب",
+      "PaymentIssue": "مشكلة في الدفع",
+      "MediationIssue": "مشكلة وساطة",
+      "BugReport": "الإبلاغ عن خطأ",
+      "FeatureRequest": "اقتراح ميزة",
+      "GeneralInquiry": "استفسار عام",
+      "Complaint": "شكوى",
+      "Other": "أخرى"
+    },
+    "priorities": {
+      "Medium": "متوسطة (افتراضي)",
+      "Low": "منخفضة",
+      "High": "عالية",
+      "Urgent": "عاجلة"
+    },
+    "fileUpload": {
+      "dragAndDrop": "اسحب وأفلت الملفات هنا، أو انقر للتصفح",
+      "constraints": "(حد أقصى {{count}} ملفات، حتى {{size}} ميجابايت لكل ملف)",
+      "remove": "إزالة الملف"
+    },
+    "submitting": "جاري الإرسال...",
+    "submitButton": "إنشاء تذكرة",
+    "footerNote": "عادة ما نرد في غضون 24-48 ساعة.",
+    "errors": {
+      "formInvalid": "الرجاء تصحيح الأخطاء في النموذج قبل الإرسال.",
+      "titleRequired": "العنوان مطلوب.",
+      "titleMin": "يجب أن يتكون العنوان من 5 أحرف على الأقل.",
+      "titleMax": "لا يمكن أن يتجاوز العنوان 150 حرفًا.",
+      "descriptionRequired": "الوصف مطلوب.",
+      "descriptionMin": "يجب أن يتكون الوصف من 20 حرفًا على الأقل.",
+      "descriptionMax": "لا يمكن أن يتجاوز الوصف 5000 حرف.",
+      "categoryRequired": "الرجاء اختيار فئة.",
+      "fileSize": "حجم الملف \"{{name}}\" كبير جدًا (الحد الأقصى {{size}} ميجابايت).",
+      "fileType": "نوع الملف \"{{name}}\" غير مسموح به.",
+      "fileExists": "الملف \"{{name}}\" محدد بالفعل.",
+      "fileCount": "الحد الأقصى المسموح به هو {{count}} ملفات."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "جاري تحميل تذاكرك...",
+    "errorTitle": "خطأ في تحميل التذاكر",
+    "pageTitle": "تذاكر الدعم الخاصة بي",
+    "createButton": "إنشاء تذكرة جديدة",
+    "ticketId": "معرّف التذكرة:",
+    "lastUpdate": "آخر تحديث:",
+    "category": "الفئة:",
+    "viewButton": "عرض",
+    "noTicketsTitle": "لم يتم العثور على تذاكر دعم",
+    "noTicketsSubtitle": "لم تقم بإنشاء أي تذاكر دعم بعد.",
+    "createFirstButton": "أنشئ تذكرتك الأولى",
+    "statuses": {
+      "Open": "مفتوحة",
+      "PendingSupportReply": "بانتظار رد الدعم",
+      "PendingUserInput": "بانتظار ردك",
+      "InProgress": "قيد التنفيذ",
+      "Resolved": "تم حلها",
+      "Closed": "مغلقة",
+      "OnHold": "معلّقة"
+    }
+  },
+  "ticketDetails": {
+    "replySuccess": "تمت إضافة الرد بنجاح!",
+    "replyRequired": "مطلوب رسالة رد أو مرفق.",
+    "confirmClose": "هل أنت متأكد من أنك تريد إغلاق هذه التذكرة؟ لن تتمكن من الرد بعد ذلك.",
+    "sessionExpired": "ربما انتهت صلاحية جلستك. يرجى",
+    "loading": "جاري تحميل التذكرة...",
+    "errorTitle": "خطأ",
+    "backButton": "العودة إلى التذاكر",
+    "notFoundTitle": "غير موجود",
+    "notFoundBody": "لم يتم العثور على تفاصيل التذكرة.",
+    "preparing": "جاري تحضير التفاصيل...",
+    "meta": {
+      "by": "بواسطة",
+      "created": "أُنشئت في",
+      "lastUpdate": "آخر تحديث",
+      "assigned": "مُعيّنة لـ"
+    },
+    "initialDescription": "الوصف الأولي:",
+    "admin": {
+      "title": "أدوات المسؤول",
+      "changeStatus": "تغيير الحالة",
+      "selectStatus": "اختر حالة...",
+      "updateButton": "تحديث"
+    },
+    "conversation": "المحادثة",
+    "supportTeam": "فريق الدعم",
+    "user": "المستخدم",
+    "noReplies": "لا توجد ردود بعد.",
+    "addReply": "أضف ردك",
+    "replyPlaceholder": "اكتب ردك هنا...",
+    "submitReply": "إرسال",
+    "closeTicketButton": "إغلاق هذه التذكرة"
   }
 }

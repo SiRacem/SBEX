@@ -1,7 +1,4 @@
 // src/components/modals/LevelsModal.jsx
-// (الكود الكامل كما هو في الرد السابق الذي يحتوي على Version 3 للمودال)
-// تأكد من أن دالة determineReputationBadgeFrontend هنا تعكس نفس منطق الشارات
-// الذي تريده في Profile.jsx (Novice لـ 1-2، Bronze لـ 3-4، إلخ.)
 import React, { useMemo } from "react";
 import {
   Modal,
@@ -12,6 +9,7 @@ import {
   Col,
   Row,
 } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
   FaStar,
   FaGift,
@@ -148,6 +146,8 @@ function determineReputationBadgeFrontend(numericLevel) {
 }
 
 const LevelsModal = ({ show, handleClose, currentUserData }) => {
+  const { t } = useTranslation();
+
   const levelsToDisplay = useMemo(() => {
     const data = [];
     const userLevel = currentUserData?.level || 1;
@@ -213,6 +213,7 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
     }
     return data;
   }, [currentUserData]);
+
   return (
     <Modal
       show={show}
@@ -223,15 +224,21 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
     >
       <Modal.Header closeButton className="levels-modal-header-final">
         <Modal.Title className="levels-modal-title-final">
-          <FaStar className="title-icon-final" /> Your Progression Path
+          <FaStar className="title-icon-final" /> {t("levelsModal.title")}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="levels-modal-body-final p-0">
         {currentUserData && (
           <div className="current-user-summary-final p-3">
-            You are <strong>Level {currentUserData.level}</strong> (
-            {determineReputationBadgeFrontend(currentUserData.level).name}) with
-            <strong>{currentUserData.reputationPoints} pts</strong>.
+            {t("levelsModal.summary", {
+              level: currentUserData.level,
+              badgeName: t(
+                `reputationLevels.${
+                  determineReputationBadgeFrontend(currentUserData.level).name
+                }`
+              ),
+              points: currentUserData.reputationPoints,
+            })}
           </div>
         )}
         <ListGroup variant="flush" className="m-0">
@@ -275,7 +282,7 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
                   <div className="level-top-info-final">
                     <div>
                       <h6 className="level-title-final mb-0">
-                        Level {item.level}
+                        {t("common.level", { level: item.level })}
                       </h6>
                       <span
                         className="badge-name-final"
@@ -286,12 +293,12 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
                               : "#6c757d",
                         }}
                       >
-                        {item.badgeName}
+                        {t(`reputationLevels.${item.badgeName}`)}
                       </span>
                     </div>
                     {item.isCurrentLevel && (
                       <Badge pill className="current-tag-final ms-2">
-                        Current
+                        {t("levelsModal.current")}
                       </Badge>
                     )}
                   </div>
@@ -301,36 +308,42 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
                     <>
                       <div className="level-details-final mt-2">
                         <div className="detail-item-final">
-                          <span className="detail-label-final">Requires:</span>
+                          <span className="detail-label-final">
+                            {t("levelsModal.requires")}:
+                          </span>
                           <span className="detail-value-final">
-                            {item.pointsRequired} total pts
+                            {t("levelsModal.totalPoints", {
+                              count: item.pointsRequired,
+                            })}
                           </span>
                         </div>
                         <div className="detail-item-final">
-                          <span className="detail-label-final">Reward:</span>
+                          <span className="detail-label-final">
+                            {t("levelsModal.reward")}:
+                          </span>
                           {item.rewardAmount > 0 ? (
                             <span className="detail-value-final reward-value-final">
                               {item.isRewardClaimed ? (
                                 <FaCheckCircle
                                   className="text-success me-1"
-                                  title="Reward Claimed"
+                                  title={t("levelsModal.rewardClaimed")}
                                 />
                               ) : item.isAchieved ? (
                                 <FaGift
                                   className="text-info me-1"
-                                  title="Reward Unlocked!"
+                                  title={t("levelsModal.rewardUnlocked")}
                                 />
                               ) : (
                                 <FaGift
                                   className="text-muted me-1"
-                                  title="Reward for this level"
+                                  title={t("levelsModal.rewardForLevel")}
                                 />
                               )}
                               {item.rewardAmount} {item.rewardCurrency}
                             </span>
                           ) : (
                             <span className="detail-value-final text-muted">
-                              No cash reward
+                              {t("levelsModal.noCashReward")}
                             </span>
                           )}
                         </div>
@@ -351,16 +364,19 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
                               />
                               {item.isAchieved && !item.isCurrentLevel && (
                                 <span className="progress-text-final text-success-emphasis small ms-2 achieved-text-final">
-                                  <FaCheckCircle className="me-1" /> Achieved
+                                  <FaCheckCircle className="me-1" />{" "}
+                                  {t("levelsModal.achieved")}
                                 </span>
                               )}
                             </div>
                             {item.isCurrentLevel &&
                               item.pointsNeededForNextStep > 0 && (
                                 <div className="progress-text-final text-muted small mt-1 text-end">
-                                  {item.pointsEarnedInCurrentStep} /
-                                  {item.pointsNeededForNextStep} pts to Level
-                                  {item.level + 1}
+                                  {t("levelsModal.progressText", {
+                                    earned: item.pointsEarnedInCurrentStep,
+                                    needed: item.pointsNeededForNextStep,
+                                    nextLevel: item.level + 1,
+                                  })}
                                 </div>
                               )}
                           </div>
@@ -370,7 +386,9 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
                     <div className="locked-details-final mt-2">
                       <FaLock size={12} className="me-1 text-muted" />
                       <span className="text-muted small">
-                        Reach {item.pointsRequired} pts to unlock details
+                        {t("levelsModal.unlockDetails", {
+                          points: item.pointsRequired,
+                        })}
                       </span>
                     </div>
                   )}
@@ -386,7 +404,7 @@ const LevelsModal = ({ show, handleClose, currentUserData }) => {
           onClick={handleClose}
           className="close-button-final"
         >
-          Close
+          {t("common.close")}
         </Button>
       </Modal.Footer>
     </Modal>

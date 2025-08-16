@@ -1158,6 +1158,44 @@
       "withdrawalInfo": "معلومات الجبدان (مالمستخدم)"
     }
   },
+  "adminProducts": {
+    "pendingApprovals": "موافقات تستنى",
+    "loading": "تحميل المنتوجات...",
+    "error": "فما مشكل في تحميل المنتوجات: {{error}}",
+    "noPending": "ما فماش منتوجات تستنى.",
+    "table": {
+      "image": "تصويرة",
+      "title": "العنوان",
+      "vendor": "البايع",
+      "price": "السوم",
+      "dateAdded": "تاريخ الإضافة",
+      "actions": "الإجراءات"
+    },
+    "actions": {
+      "viewDetails": "شوف التفاصيل",
+      "approve": "وافق",
+      "reject": "ارفض"
+    },
+    "detailsModal": {
+      "title": "تفاصيل المنتوج: {{title}}",
+      "by": "من عند",
+      "description": "الوصف",
+      "linkType": "نوع الربط",
+      "price": "السوم",
+      "quantity": "الكمية",
+      "submitted": "تبعث في",
+      "close": "سكر"
+    },
+    "rejectModal": {
+      "title": "رفض: {{title}}",
+      "reason": "السبب (لازم)",
+      "cancel": "أنّيلي",
+      "confirm": "أكد الرفض",
+      "rejecting": "الرفض ماشي...",
+      "reasonRequired": "لازم تكتب سبب الرفض."
+    },
+    "confirmApprove": "بالرسمي تحب توافق؟"
+  },
   "comptes": {
     "title": "كونتواتي",
     "addAccount": "زيد كونت",
@@ -1226,5 +1264,147 @@
     "now": "توّا!",
     "goBackButtonReady": "أمشي لصفحة الدخول",
     "goBackButtonWaiting": "استنى باش تكمل"
+  },
+  "levelsModal": {
+    "title": "مسار تقدمك",
+    "summary": "إنت في المستوى {{level}} ({{badgeName}}) وعندك {{points}} نقطة.",
+    "current": "الحالي",
+    "requires": "تستحق",
+    "totalPoints": "{{count}} نقطة في الجملة",
+    "reward": "الكادو",
+    "rewardClaimed": "الكادو تخذى",
+    "rewardUnlocked": "الكادو تحلّ!",
+    "rewardForLevel": "كادو المستوى هذا",
+    "noCashReward": "ما فماش كادو فلوس",
+    "achieved": "وصلتلو",
+    "progressText": "{{earned}} / {{needed}} نقطة للمستوى {{nextLevel}}",
+    "unlockDetails": "أوصل لـ {{points}} نقطة باش تشوف التفاصيل"
+  },
+  "ratingForm": {
+    "title": "قيّم {{name}}:",
+    "thisUser": "المستخدم هذا",
+    "selectRating": "يرحم والديك اختار جيم ولا ديس لايك.",
+    "like": "جيم",
+    "dislike": "ديس لايك",
+    "commentLabel": "تعليق (اختياري):",
+    "commentPlaceholder": "احكي على تجربتك...",
+    "submitButton": "ابعث التقييم"
+  },
+  "createTicket": {
+    "loadingUser": "قاعدين نحملو في بيانات المستخدم...",
+    "loginRequiredAlert": "لازمك تحل الكونت باش تعمل تذكرة دعم.",
+    "loginRequired": "يرحم والديك حل الكونت باش تعمل تذكرة دعم.",
+    "successToast": "تذكرة الدعم تحلت بالصحيح!",
+    "header": {
+      "title": "حل تذكرة دعم جديدة",
+      "subtitle": "حنا هوني باش نعاونوك. يرحم والديك عمر الفورميلار."
+    },
+    "labels": {
+      "title": "العنوان",
+      "category": "الصنف",
+      "priority": "الأولوية",
+      "description": "الوصف",
+      "attachments": "المرفقات"
+    },
+    "placeholders": {
+      "title": "مثال: مشكلة في خلاص آخر طلب",
+      "description": "يرحم والديك أعطينا أكثر تفاصيل ممكنة..."
+    },
+    "categories": {
+      "select": "...اختار صنف",
+      "TechnicalIssue": "مشكلة تقنية",
+      "TransactionInquiry": "استفسار على معاملة",
+      "AccountIssue": "مشكلة في الكونت",
+      "PaymentIssue": "مشكلة في الخلاص",
+      "MediationIssue": "مشكلة وساطة",
+      "BugReport": "تبليغ على بق",
+      "FeatureRequest": "اقتراح ميزة",
+      "GeneralInquiry": "استفسار عام",
+      "Complaint": "تشكي",
+      "Other": "أخرى"
+    },
+    "priorities": {
+      "Medium": "متوسطة (العادية)",
+      "Low": "عادية",
+      "High": "مهمة",
+      "Urgent": "مستعجلة"
+    },
+    "fileUpload": {
+      "dragAndDrop": "حط الفيشيات هوني، ولا انزل باش تلوج",
+      "constraints": "(أكثر حاجة {{count}} فيشيات، كل واحد ما يفوتش {{size}} ميغا)",
+      "remove": "نحّي الفيشي"
+    },
+    "submitting": "قاعدين نبعثو...",
+    "submitButton": "اعمل تذكرة",
+    "footerNote": "عادةً نجاوبو في 24-48 ساعة.",
+    "errors": {
+      "formInvalid": "يرحم والديك صلح الغلطات قبل ما تبعث.",
+      "titleRequired": "العنوان لازم.",
+      "titleMin": "العنوان لازم فيه 5 حروف عالأقل.",
+      "titleMax": "العنوان ما لازمش يفوت 150 حرف.",
+      "descriptionRequired": "الوصف لازم.",
+      "descriptionMin": "الوصف لازم فيه 20 حرف عالأقل.",
+      "descriptionMax": "الوصف ما لازمش يفوت 5000 حرف.",
+      "categoryRequired": "يرحم والديك اختار صنف.",
+      "fileSize": "الفيشي \"{{name}}\" كبير برشا (أكثر حاجة {{size}} ميغا).",
+      "fileType": "نوع الفيشي \"{{name}}\" موش مسموح بيه.",
+      "fileExists": "الفيشي \"{{name}}\" موجود ديجا.",
+      "fileCount": "أكثر حاجة تنجم تبعثها هي {{count}} فيشيات."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "قاعدين نحملو في تذاكرك...",
+    "errorTitle": "غلطة في تحميل التذاكر",
+    "pageTitle": "تذاكر الدعم متاعي",
+    "createButton": "حل تذكرة جديدة",
+    "ticketId": "نومرو التذكرة:",
+    "lastUpdate": "آخر تحديث:",
+    "category": "الصنف:",
+    "viewButton": "شوف",
+    "noTicketsTitle": "ما لقينا حتى تذكرة دعم",
+    "noTicketsSubtitle": "مازلت ما عملت حتى تذكرة دعم.",
+    "createFirstButton": "حل تذكرتك لولة",
+    "statuses": {
+      "Open": "محلولة",
+      "PendingSupportReply": "نستناو في جواب الدعم",
+      "PendingUserInput": "نستناو في جوابك",
+      "InProgress": "تتخدم",
+      "Resolved": "تحلت",
+      "Closed": "تسكرت",
+      "OnHold": "تستنى"
+    }
+  },
+  "ticketDetails": {
+    "replySuccess": "الجواب تبعث بالصحيح!",
+    "replyRequired": "لازم تكتب ميساج ولا تحط فيشي.",
+    "confirmClose": "بالرسمي تحب تسكر التذكرة؟ ما عادش تنجم تجاوب بعدها.",
+    "sessionExpired": "السيّسيون متاعك يمكن وفات. يرحم والديك",
+    "loading": "قاعدين نحملو في التذكرة...",
+    "errorTitle": "غلطة",
+    "backButton": "ارجع للتذاكر",
+    "notFoundTitle": "ما لقيناش",
+    "notFoundBody": "تفاصيل التذكرة موش موجودة.",
+    "preparing": "قاعدين نحضرو في التفاصيل...",
+    "meta": {
+      "by": "من عند",
+      "created": "تحلت في",
+      "lastUpdate": "آخر تحديث",
+      "assigned": "عند"
+    },
+    "initialDescription": "الوصف لولاني:",
+    "admin": {
+      "title": "أدوات الأدمن",
+      "changeStatus": "بدل الحالة",
+      "selectStatus": "اختار حالة...",
+      "updateButton": "تحديث"
+    },
+    "conversation": "المحادثة",
+    "supportTeam": "فريق الدعم",
+    "user": "المستخدم",
+    "noReplies": "ما فماش جوابات.",
+    "addReply": "زيد جوابك",
+    "replyPlaceholder": "اكتب جوابك هوني...",
+    "submitReply": "ابعث",
+    "closeTicketButton": "سكر التذكرة هاذي"
   }
 }

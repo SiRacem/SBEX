@@ -1164,6 +1164,44 @@
       "withdrawalInfo": "Informations de Retrait (Utilisateur)"
     }
   },
+  "adminProducts": {
+    "pendingApprovals": "Approbations en attente",
+    "loading": "Chargement des produits...",
+    "error": "Erreur de chargement des produits : {{error}}",
+    "noPending": "Aucun produit en attente.",
+    "table": {
+      "image": "Image",
+      "title": "Titre",
+      "vendor": "Vendeur",
+      "price": "Prix",
+      "dateAdded": "Date d'ajout",
+      "actions": "Actions"
+    },
+    "actions": {
+      "viewDetails": "Voir les détails",
+      "approve": "Approuver",
+      "reject": "Rejeter"
+    },
+    "detailsModal": {
+      "title": "Détails du produit : {{title}}",
+      "by": "Par",
+      "description": "Description",
+      "linkType": "Type de lien",
+      "price": "Prix",
+      "quantity": "Quantité",
+      "submitted": "Soumis le",
+      "close": "Fermer"
+    },
+    "rejectModal": {
+      "title": "Rejeter : {{title}}",
+      "reason": "Raison (Requise)",
+      "cancel": "Annuler",
+      "confirm": "Confirmer le rejet",
+      "rejecting": "Rejet en cours...",
+      "reasonRequired": "Une raison de rejet est requise."
+    },
+    "confirmApprove": "Êtes-vous sûr de vouloir approuver ce produit ?"
+  },
   "comptes": {
     "title": "Mes Comptes",
     "addAccount": "Ajouter un Compte",
@@ -1232,5 +1270,147 @@
     "now": "Maintenant !",
     "goBackButtonReady": "Aller à la connexion",
     "goBackButtonWaiting": "Veuillez patienter"
+  },
+  "levelsModal": {
+    "title": "Votre Parcours de Progression",
+    "summary": "Vous êtes au Niveau {{level}} ({{badgeName}}) avec {{points}} pts.",
+    "current": "Actuel",
+    "requires": "Requiert",
+    "totalPoints": "{{count}} pts au total",
+    "reward": "Récompense",
+    "rewardClaimed": "Récompense réclamée",
+    "rewardUnlocked": "Récompense débloquée !",
+    "rewardForLevel": "Récompense pour ce niveau",
+    "noCashReward": "Aucune récompense en espèces",
+    "achieved": "Atteint",
+    "progressText": "{{earned}} / {{needed}} pts pour le Niveau {{nextLevel}}",
+    "unlockDetails": "Atteignez {{points}} pts pour débloquer les détails"
+  },
+  "ratingForm": {
+    "title": "Évaluer {{name}} :",
+    "thisUser": "cet utilisateur",
+    "selectRating": "Veuillez sélectionner J'aime ou Je n'aime pas.",
+    "like": "J'aime",
+    "dislike": "Je n'aime pas",
+    "commentLabel": "Commentaire (Optionnel) :",
+    "commentPlaceholder": "Partagez votre expérience...",
+    "submitButton": "Soumettre l'évaluation"
+  },
+  "createTicket": {
+    "loadingUser": "Chargement des données utilisateur...",
+    "loginRequiredAlert": "Vous devez être connecté pour créer un ticket de support.",
+    "loginRequired": "Veuillez vous connecter pour créer un ticket de support.",
+    "successToast": "Ticket de support créé avec succès !",
+    "header": {
+      "title": "Ouvrir un nouveau ticket de support",
+      "subtitle": "Nous sommes là pour vous aider. Veuillez remplir le formulaire ci-dessous."
+    },
+    "labels": {
+      "title": "Titre",
+      "category": "Catégorie",
+      "priority": "Priorité",
+      "description": "Description",
+      "attachments": "Pièces jointes"
+    },
+    "placeholders": {
+      "title": "ex: Problème avec le paiement de ma dernière commande",
+      "description": "Veuillez fournir autant de détails que possible..."
+    },
+    "categories": {
+      "select": "...Sélectionnez une catégorie",
+      "TechnicalIssue": "Problème Technique",
+      "TransactionInquiry": "Question sur une Transaction",
+      "AccountIssue": "Problème de Compte",
+      "PaymentIssue": "Problème de Paiement",
+      "MediationIssue": "Problème de Médiation",
+      "BugReport": "Rapport de Bug",
+      "FeatureRequest": "Demande de Fonctionnalité",
+      "GeneralInquiry": "Question Générale",
+      "Complaint": "Plainte",
+      "Other": "Autre"
+    },
+    "priorities": {
+      "Medium": "Moyenne (Défaut)",
+      "Low": "Basse",
+      "High": "Haute",
+      "Urgent": "Urgente"
+    },
+    "fileUpload": {
+      "dragAndDrop": "Glissez-déposez des fichiers ici, ou cliquez pour parcourir",
+      "constraints": "(Max {{count}} fichiers, jusqu'à {{size}}Mo chacun)",
+      "remove": "Retirer le fichier"
+    },
+    "submitting": "Envoi en cours...",
+    "submitButton": "Créer le ticket",
+    "footerNote": "Nous répondons généralement dans un délai de 24 à 48 heures.",
+    "errors": {
+      "formInvalid": "Veuillez corriger les erreurs dans le formulaire avant de soumettre.",
+      "titleRequired": "Le titre est requis.",
+      "titleMin": "Le titre doit comporter au moins 5 caractères.",
+      "titleMax": "Le titre ne peut pas dépasser 150 caractères.",
+      "descriptionRequired": "La description est requise.",
+      "descriptionMin": "La description doit comporter au moins 20 caractères.",
+      "descriptionMax": "La description ne peut pas dépasser 5000 caractères.",
+      "categoryRequired": "Veuillez sélectionner une catégorie.",
+      "fileSize": "Le fichier \"{{name}}\" est trop volumineux (max {{size}}Mo).",
+      "fileType": "Le type de fichier de \"{{name}}\" n'est pas autorisé.",
+      "fileExists": "Le fichier \"{{name}}\" est déjà sélectionné.",
+      "fileCount": "Max {{count}} fichiers autorisés."
+    }
+  },
+  "ticketsListPage": {
+    "loading": "Chargement de vos tickets...",
+    "errorTitle": "Erreur de chargement des tickets",
+    "pageTitle": "Mes tickets de support",
+    "createButton": "Créer un nouveau ticket",
+    "ticketId": "ID du Ticket :",
+    "lastUpdate": "Dernière mise à jour :",
+    "category": "Catégorie :",
+    "viewButton": "Voir",
+    "noTicketsTitle": "Aucun ticket de support trouvé",
+    "noTicketsSubtitle": "Vous n'avez encore créé aucun ticket de support.",
+    "createFirstButton": "Créez votre premier ticket",
+    "statuses": {
+      "Open": "Ouvert",
+      "PendingSupportReply": "En attente de réponse du support",
+      "PendingUserInput": "En attente de votre réponse",
+      "InProgress": "En cours",
+      "Resolved": "Résolu",
+      "Closed": "Fermé",
+      "OnHold": "En attente"
+    }
+  },
+  "ticketDetails": {
+    "replySuccess": "Réponse ajoutée avec succès !",
+    "replyRequired": "Un message de réponse ou une pièce jointe est requis.",
+    "confirmClose": "Êtes-vous sûr de vouloir fermer ce ticket ? Vous ne pourrez plus répondre par la suite.",
+    "sessionExpired": "Votre session a peut-être expiré. Veuillez",
+    "loading": "Chargement du ticket...",
+    "errorTitle": "Erreur",
+    "backButton": "Retour aux tickets",
+    "notFoundTitle": "Introuvable",
+    "notFoundBody": "Détails du ticket non trouvés.",
+    "preparing": "Préparation des détails...",
+    "meta": {
+      "by": "Par",
+      "created": "Créé le",
+      "lastUpdate": "Dernière mise à jour",
+      "assigned": "Assigné à"
+    },
+    "initialDescription": "Description initiale :",
+    "admin": {
+      "title": "Contrôles administrateur",
+      "changeStatus": "Changer le statut",
+      "selectStatus": "Sélectionner un statut...",
+      "updateButton": "Mettre à jour"
+    },
+    "conversation": "Conversation",
+    "supportTeam": "Équipe de support",
+    "user": "Utilisateur",
+    "noReplies": "Aucune réponse pour le moment.",
+    "addReply": "Ajouter votre réponse",
+    "replyPlaceholder": "Saisissez votre réponse ici...",
+    "submitReply": "Envoyer",
+    "closeTicketButton": "Fermer ce ticket"
   }
 }
