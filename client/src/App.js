@@ -55,14 +55,12 @@ import AdminFAQManagement from './components/admin/AdminFAQManagement';
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
 
-// AppWrapper needed to use useNavigate inside App component
 const AppWrapper = () => (
   <Router>
     <App />
   </Router>
 );
 
-// --- No changes in ProtectedRoute, BlockedWarning, CustomToastContainer ---
 const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -128,7 +126,6 @@ const CustomToastContainer = () => {
   const { i18n } = useTranslation();
   return <ToastContainer position="top-center" autoClose={4000} hideProgressBar={false} newestOnTop closeOnClick rtl={i18n.dir() === 'rtl'} pauseOnFocusLoss draggable pauseOnHover theme="colored" />;
 };
-// --- End of unchanged components ---
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -141,13 +138,13 @@ function App() {
     successMessage,
     registrationStatus,
     successMessageParams,
-    errorFromAPI // This is the old name, the state now holds `errorMessage` from Redux
+    errorFromAPI
   } = useSelector(state => ({
     errors: state.userReducer.errors,
     successMessage: state.userReducer.successMessage,
     registrationStatus: state.userReducer.registrationStatus,
     successMessageParams: state.userReducer.successMessageParams,
-    errorFromAPI: state.userReducer.errorMessage, // Keep mapping to the new state property
+    errorFromAPI: state.userReducer.errorMessage,
   }));
 
   const { isAuth, user, authChecked, userLoading, userError } = useSelector(state => state.userReducer);
@@ -160,16 +157,18 @@ function App() {
       toast.success(t(successMessage, successMessageParams));
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
     } else if (errorFromAPI) {
-      // [!!!] START: التعديل الرئيسي هنا
-      // التحقق من وجود الخطأ الخاص بـ rate limit
+      // --- [!] التعديل الرئيسي هنا: تحقق من خطأ تحديد المعدل أولاً
+      // الخادم يرسل كائنًا مميزًا لهذا الخطأ، سنبحث عنه
       if (typeof errorFromAPI === 'object' && errorFromAPI?.key === 'apiErrors.tooManyRequests') {
         const resetTimeFromServer = errorFromAPI.rateLimit?.resetTime;
+        // قم بالتوجيه إلى صفحة الانتظار مع تمرير وقت إعادة التعيين
         navigate('/rate-limit-exceeded', { state: { resetTime: resetTimeFromServer } });
         dispatch({ type: 'CLEAR_USER_MESSAGES' });
-        return; // إيقاف التنفيذ لتجنب عرض Toast
+        return; // <-- مهم جدًا: إيقاف التنفيذ لتجنب عرض Toast والتسبب في الانهيار
       }
-      // [!!!] END: التعديل الرئيسي هنا
+      // --- نهاية التعديل الرئيسي ---
 
+      // الكود الأصلي للتعامل مع الأخطاء الأخرى يبقى كما هو
       let finalErrorMessage;
       if (typeof errorFromAPI === 'object' && errorFromAPI !== null && 'key' in errorFromAPI) {
         finalErrorMessage = t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: errorFromAPI.fallback || t("apiErrors.unknownError") });

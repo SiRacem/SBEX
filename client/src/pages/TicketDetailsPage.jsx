@@ -30,7 +30,6 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { useDropzone } from "react-dropzone";
 import EmojiPicker from "emoji-picker-react";
-
 import {
   getTicketDetailsAction,
   adminGetTicketDetailsAction,
@@ -48,8 +47,6 @@ import {
   FaReply,
   FaTimesCircle,
   FaInfoCircle,
-  FaUserCircle,
-  FaHeadset,
   FaTicketAlt,
   FaFileAlt,
   FaUserShield,
@@ -74,17 +71,6 @@ const formatFileSize = (bytes) => {
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-};
-
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
-
-  const createFullUrl = (base, path) => {
-  // يزيل أي شرطة مائلة زائدة من نهاية الرابط الأساسي
-  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  // يزيل أي شرطة مائلة زائدة من بداية المسار
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-  return `${cleanBase}/${cleanPath}`;
 };
 
 const TicketDetailsPage = () => {
@@ -179,9 +165,7 @@ const TicketDetailsPage = () => {
 
   const onDrop = useCallback((acceptedFiles) => {
     const newFiles = acceptedFiles.map((file) =>
-      Object.assign(file, {
-        preview: URL.createObjectURL(file),
-      })
+      Object.assign(file, { preview: URL.createObjectURL(file) })
     );
     setReplyFiles((prev) => [...prev, ...newFiles].slice(0, 5));
   }, []);
@@ -499,7 +483,7 @@ const TicketDetailsPage = () => {
                     </Badge>
                   </p>
                   <p className="mb-0">
-                    <strong>{t("admin.detailsModal.status")}:</strong>{" "}
+                    <strong>{t("admin.tickets.table.status")}:</strong>{" "}
                     <Badge
                       pill
                       bg={getStatusBadgeVariant(ticket.status)}
@@ -560,16 +544,12 @@ const TicketDetailsPage = () => {
                     className="attachment-list-details"
                   >
                     {ticket.attachments.map((att, idx) => {
-                      console.log("--- DEBUG TICKET ATTACHMENT ---");
-                      console.log("BACKEND_URL:", BACKEND_URL);
-                      console.log("File Path from DB:", att.filePath);
-                      const testUrl = new URL(att.filePath, BACKEND_URL).href;
-                      console.log("Generated URL:", testUrl);
                       const fileType = att.fileType || "";
                       const isImage = fileType.startsWith("image/");
                       const isVideo = fileType.startsWith("video/");
                       const isAudio = fileType.startsWith("audio/");
-                      const fullUrl = createFullUrl(BACKEND_URL, att.filePath);
+                      const fullUrl = `/${att.filePath}`;
+
                       return (
                         <ListGroup.Item
                           key={idx}
@@ -607,31 +587,41 @@ const TicketDetailsPage = () => {
                                   }}
                                 />
                               </div>
-                            ) : isVideo ? (
-                              <div className="text-center">
-                                <FaFileVideo
-                                  size={40}
-                                  className="text-primary"
-                                />
-                                <span className="d-block small text-muted">
-                                  Video
-                                </span>
-                              </div>
-                            ) : isAudio ? (
-                              <div className="text-center">
-                                <FaFileAudio size={40} className="text-info" />
-                                <span className="d-block small text-muted">
-                                  Audio
-                                </span>
-                              </div>
                             ) : (
                               <div className="text-center">
-                                <FaFileAlt
-                                  size={40}
-                                  className="text-secondary"
-                                />
+                                {isVideo ? (
+                                  <FaFileVideo
+                                    size={40}
+                                    className="text-primary"
+                                  />
+                                ) : isAudio ? (
+                                  <FaFileAudio
+                                    size={40}
+                                    className="text-info"
+                                  />
+                                ) : (
+                                  <FaFileAlt
+                                    size={40}
+                                    className="text-secondary"
+                                  />
+                                )}
                                 <span className="d-block small text-muted">
-                                  File
+                                  {t(
+                                    `ticketDetails.fileTypes.${
+                                      isVideo
+                                        ? "Video"
+                                        : isAudio
+                                        ? "Audio"
+                                        : "File"
+                                    }`,
+                                    {
+                                      defaultValue: isVideo
+                                        ? "Video"
+                                        : isAudio
+                                        ? "Audio"
+                                        : "File",
+                                    }
+                                  )}
                                 </span>
                               </div>
                             )}
@@ -920,14 +910,12 @@ const TicketDetailsPage = () => {
             )}
         </Col>
       </Row>
+
       <Lightbox
         open={lightboxOpen}
         close={() => setLightboxOpen(false)}
-        slides={imageAttachments.map((att) => ({
-          src: createFullUrl(BACKEND_URL, att.filePath), // <-- استخدم الدالة الجديدة هنا أيضًا
-        }))}
+        slides={imageAttachments.map((att) => ({ src: `/${att.filePath}` }))}
         index={lightboxIndex}
-        on={{ view: ({ index }) => setLightboxIndex(index) }}
       />
       <Lightbox
         open={previewLightboxOpen}
@@ -936,7 +924,6 @@ const TicketDetailsPage = () => {
           .filter((file) => file.type.startsWith("image/"))
           .map((file) => ({ src: file.preview }))}
         index={previewLightboxIndex}
-        on={{ view: ({ index }) => setPreviewLightboxIndex(index) }}
       />
     </Container>
   );

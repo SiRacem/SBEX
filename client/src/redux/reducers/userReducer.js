@@ -1,3 +1,5 @@
+// src/redux/reducers/userReducer.js
+
 import {
   REGISTER_REQUEST, REGISTER_SUCCESS, REGISTER_FAIL, CLEAR_REGISTRATION_STATUS,
   LOGIN_REQUEST, LOGIN_SUCCESS, LOGIN_FAIL,
@@ -10,7 +12,7 @@ import {
   UPDATE_MEDIATOR_STATUS_REQUEST, UPDATE_MEDIATOR_STATUS_SUCCESS, UPDATE_MEDIATOR_STATUS_FAIL,
   UPDATE_USER_BALANCE, UPDATE_AVATAR_REQUEST, UPDATE_AVATAR_SUCCESS, UPDATE_AVATAR_FAIL,
   UPDATE_AVATAR_RESET, SET_ONLINE_USERS, UPDATE_USER_BALANCES_SOCKET, ADMIN_ADD_PENDING_MEDIATOR_APPLICATION,
-  UPDATE_USER_PROFILE_SOCKET, UPDATE_USER_STATS
+  UPDATE_USER_PROFILE_SOCKET, UPDATE_USER_STATS, AUTH_CHECK_COMPLETE, LOGOUT_NO_TOKEN_ON_LOAD
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -19,7 +21,7 @@ const initialState = {
   token: localStorage.getItem("token") || null,
   isAuth: !!localStorage.getItem("token"),
   authChecked: false,
-  errors: null, // يبقى للتوافق مع أي كود قديم
+  errors: null,
   registrationStatus: null,
   availableMediators: [],
   loadingMediators: false,
@@ -27,9 +29,9 @@ const initialState = {
   loadingApplyMediator: false,
   errorApplyMediator: null,
   successApplyMediator: false,
-  pendingMediatorApps: { applications: [], totalPages: 0, currentPage: 1, totalApplications: 0 },
-  loadingPendingApps: false,
-  errorPendingApps: null,
+  pendingMediatorApplications: { applications: [], totalPages: 0, currentPage: 1, totalApplications: 0 },
+  loadingPendingMediatorApps: false,
+  errorPendingMediatorApps: null,
   processingApp: {},
   errorProcessApp: null,
   successProcessApp: false,
@@ -41,7 +43,7 @@ const initialState = {
   onlineUsers: [],
   successMessage: null,
   successMessageParams: null,
-  errorMessage: null, // الحقل الجديد للتعامل مع أخطاء الترجمة
+  errorMessage: null,
 };
 
 const userReducer = (state = initialState, action) => {
@@ -53,7 +55,6 @@ const userReducer = (state = initialState, action) => {
     case GET_PROFILE_REQUEST:
     case APPLY_MEDIATOR_REQUEST:
     case UPDATE_AVATAR_REQUEST:
-    case ADMIN_GET_MEDIATOR_APPS_REQUEST:
     case ADMIN_GET_MEDIATORS_REQUEST:
     case UPDATE_MEDIATOR_STATUS_REQUEST:
       return {
@@ -63,6 +64,73 @@ const userReducer = (state = initialState, action) => {
         successMessage: null
       };
 
+    case ADMIN_GET_MEDIATOR_APPS_REQUEST:
+      return {
+        ...state,
+        loadingPendingMediatorApps: true,
+        errorPendingMediatorApps: null,
+      };
+    case ADMIN_GET_MEDIATOR_APPS_SUCCESS:
+      return {
+        ...state,
+        loadingPendingMediatorApps: false,
+        pendingMediatorApplications: payload || initialState.pendingMediatorApplications,
+      };
+    case ADMIN_GET_MEDIATOR_APPS_FAIL:
+      return {
+        ...state,
+        loadingPendingMediatorApps: false,
+        errorPendingMediatorApps: payload.errorMessage,
+      };
+
+    case ADMIN_PROCESS_MEDIATOR_APP_REQUEST:
+      return {
+        ...state,
+        processingApp: { ...state.processingApp, [payload.userId]: true },
+        errorProcessApp: null,
+        successProcessApp: false
+      };
+    case ADMIN_PROCESS_MEDIATOR_APP_SUCCESS:
+      return {
+        ...state,
+        processingApp: { ...state.processingApp, [payload.userId]: false },
+        pendingMediatorApplications: {
+          ...state.pendingMediatorApplications,
+          applications: state.pendingMediatorApplications.applications.filter(app => app._id !== payload.userId),
+          totalApplications: Math.max(0, state.pendingMediatorApplications.totalApplications - 1)
+        },
+        successProcessApp: true,
+        successMessage: payload.successMessage,
+      };
+    case ADMIN_PROCESS_MEDIATOR_APP_FAIL:
+      return {
+        ...state,
+        processingApp: { ...state.processingApp, [payload.userId]: false },
+        errorProcessApp: payload.errorMessage,
+      };
+    case ADMIN_PROCESS_MEDIATOR_APP_RESET:
+      return {
+        ...state,
+        errorProcessApp: null,
+        successProcessApp: false,
+      };
+
+    case ADMIN_ADD_PENDING_MEDIATOR_APPLICATION:
+      const newApp = payload;
+      const appExists = state.pendingMediatorApplications.applications.some(app => app._id === newApp._id);
+      if (appExists) {
+        return state;
+      }
+      return {
+        ...state,
+        pendingMediatorApplications: {
+          ...state.pendingMediatorApplications,
+          applications: [newApp, ...state.pendingMediatorApplications.applications],
+          totalApplications: state.pendingMediatorApplications.totalApplications + 1
+        }
+      };
+
+    // --- [!!!] START: الحل النهائي هنا [!!!] ---
     case LOGIN_SUCCESS:
       return {
         ...state,
@@ -74,8 +142,9 @@ const userReducer = (state = initialState, action) => {
         authChecked: true,
         successMessage: payload.successMessage,
         successMessageParams: payload.successMessageParams,
-        errorMessage: payload.errorMessage || null,
+        errorMessage: null, // <-- السطر الحاسم: قم بمسح أي خطأ قديم عند النجاح
       };
+    // --- [!!!] END: الحل النهائي هنا [!!!] ---
 
     case REGISTER_SUCCESS:
       return {
@@ -116,12 +185,10 @@ const userReducer = (state = initialState, action) => {
         successMessage: payload.successMessage
       };
 
-    // --- حالات الفشل المجمعة ---
     case LOGIN_FAIL:
     case REGISTER_FAIL:
     case GET_PROFILE_FAIL:
     case APPLY_MEDIATOR_FAIL:
-    case ADMIN_GET_MEDIATOR_APPS_FAIL:
     case ADMIN_GET_MEDIATORS_FAIL:
     case UPDATE_MEDIATOR_STATUS_FAIL:
     case UPDATE_AVATAR_FAIL:
@@ -133,11 +200,17 @@ const userReducer = (state = initialState, action) => {
       };
 
     case LOGOUT:
+    case LOGOUT_NO_TOKEN_ON_LOAD:
       return {
         ...initialState,
+        token: null,
+        isAuth: false,
         authChecked: true,
         successMessage: payload?.successMessage || null
       };
+
+    case AUTH_CHECK_COMPLETE:
+      return { ...state, authChecked: true };
 
     case CLEAR_USER_MESSAGES:
       return {

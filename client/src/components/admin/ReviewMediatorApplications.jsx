@@ -1,6 +1,7 @@
-// src/pages/admin/ReviewMediatorApplications.jsx
+// src/components/admin/ReviewMediatorApplications.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Table,
@@ -19,30 +20,24 @@ import {
   FaStar,
   FaMoneyBillWave,
 } from "react-icons/fa";
-import { format as formatDateFns } from "date-fns"; // اسم مميز لتجنب التضارب
+import { format as formatDateFns } from "date-fns";
 import { toast } from "react-toastify";
 import {
   adminGetPendingMediatorApplications,
   adminProcessMediatorApplication,
   adminResetProcessMediatorAppStatus,
-} from "../../redux/actions/userAction"; // تأكد أن المسار صحيح
+} from "../../redux/actions/userAction";
 import { Link } from "react-router-dom";
 
-const PAGE_LIMIT = 15; // عدد العناصر في كل صفحة
+const PAGE_LIMIT = 15;
 
-// دالة تنسيق العملة
 const formatCurrencyForTable = (amount, currencyCode = "TND") => {
   const num = Number(amount);
-  // إذا كانت القيمة الأصلية null، undefined، أو كانت النتيجة NaN بعد التحويل لرقم
   if (amount == null || isNaN(num)) {
-    return "N/A"; // أو يمكنك عرض '-' أو تركها فارغة حسب تفضيلك
+    return "N/A";
   }
-  // يمكنك إضافة معالجة خاصة للصفر إذا أردت
-  // if (num === 0) return "0.00 " + currencyCode; // أو "N/A" إذا كنت لا تريد عرض الصفر
-
   try {
     return new Intl.NumberFormat("en-US", {
-      // أو "fr-TN" أو لغة أخرى
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -50,76 +45,69 @@ const formatCurrencyForTable = (amount, currencyCode = "TND") => {
     }).format(num);
   } catch (e) {
     console.error("Error formatting currency:", e);
-    return `${num.toFixed(2)} ${currencyCode}`; // fallback
+    return `${num.toFixed(2)} ${currencyCode}`;
   }
 };
 
 const ReviewMediatorApplications = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
 
-  // جلب البيانات من Redux store
   const {
-    pendingMediatorApps, // هذا هو الكائن الذي يحتوي على { applications, totalPages, etc. }
-    loadingPendingApps,
-    errorPendingApps,
-    processingApp, // كائن لتتبع تحميل معالجة كل طلب على حدة
-    errorProcessApp, // خطأ عام لمعالجة الطلبات
-    successProcessApp, // حالة نجاح عامة لمعالجة الطلبات
+    pendingMediatorApplications: pendingMediatorApps,
+    loadingPendingMediatorApps: loadingPendingApps,
+    errorPendingMediatorApps: errorPendingApps,
+    processingApp,
+    errorProcessApp,
+    successProcessApp,
   } = useSelector((state) => state.userReducer);
 
-  // حالات المكون المحلية
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [userToReject, setUserToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [currentPage, setCurrentPage] = useState(1); // الصفحة الحالية للـ pagination
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // دالة لجلب طلبات الوسطاء المعلقة بناءً على الصفحة
   const fetchApplications = useCallback(
     (page = 1) => {
-      console.log(`Fetching pending mediator applications for page: ${page}`);
       dispatch(
         adminGetPendingMediatorApplications({ page, limit: PAGE_LIMIT })
       );
-      setCurrentPage(page); // تحديث الصفحة الحالية في حالة المكون
+      setCurrentPage(page);
     },
-    [dispatch] // الاعتمادية هي dispatch فقط
+    [dispatch]
   );
 
-  // جلب الطلبات عند تحميل المكون لأول مرة
   useEffect(() => {
-    fetchApplications(1); // جلب الصفحة الأولى
-  }, []); // الاعتمادية فارغة ليعمل مرة واحدة عند تحميل المكون
+    fetchApplications(1);
+  }, [fetchApplications]); // تم التعديل لإضافة fetchApplications كاعتمادية
 
-  // معالجة الموافقة على طلب
   const handleApprove = (userId) => {
-    if (processingApp[userId]) return; // منع الضغط المتكرر
+    if (processingApp[userId]) return;
     if (
       window.confirm(
-        `Are you sure you want to approve user ID: ${userId} as a mediator?`
+        t("admin.mediatorApps.actions.confirmApprove", { userId: userId })
       )
     ) {
       dispatch(adminProcessMediatorApplication(userId, "approve"));
     }
   };
 
-  // فتح مودال الرفض
   const handleOpenRejectModal = (user) => {
     setUserToReject(user);
-    setRejectReason(""); // مسح سبب الرفض السابق
+    setRejectReason("");
     setShowRejectModal(true);
   };
 
-  // تأكيد الرفض من المودال
   const handleConfirmReject = () => {
     if (!userToReject || !userToReject._id) {
-      toast.error("User to reject is not properly selected.");
+      toast.error(t("admin.mediatorApps.rejectModal.errorUser"));
       return;
     }
     if (!rejectReason.trim()) {
-      toast.warn("Please provide a reason for rejection.");
+      toast.warn(t("admin.mediatorApps.rejectModal.reasonRequired"));
       return;
     }
-    if (processingApp[userToReject._id]) return; // منع الضغط المتكرر
+    if (processingApp[userToReject._id]) return;
 
     dispatch(
       adminProcessMediatorApplication(
@@ -128,13 +116,11 @@ const ReviewMediatorApplications = () => {
         rejectReason.trim()
       )
     );
-    setShowRejectModal(false); // إغلاق المودال بعد الإرسال
+    setShowRejectModal(false);
   };
 
-  // إعادة تعيين حالات النجاح/الخطأ بعد المعالجة لإزالة الرسائل/التحميل
   useEffect(() => {
     if (successProcessApp || errorProcessApp) {
-      // بعد فترة قصيرة لإتاحة الفرصة للمستخدم لرؤية الـ toast
       const timer = setTimeout(() => {
         dispatch(adminResetProcessMediatorAppStatus());
       }, 3000);
@@ -142,7 +128,6 @@ const ReviewMediatorApplications = () => {
     }
   }, [successProcessApp, errorProcessApp, dispatch]);
 
-  // بناء عناصر Pagination
   const paginationItems = [];
   if (pendingMediatorApps && pendingMediatorApps.totalPages > 1) {
     for (let number = 1; number <= pendingMediatorApps.totalPages; number++) {
@@ -161,41 +146,41 @@ const ReviewMediatorApplications = () => {
 
   return (
     <Container fluid className="py-4">
-      <h2 className="page-title mb-4">Review Mediator Applications</h2>
+      <h2 className="page-title mb-4">{t("admin.mediatorApps.page.title")}</h2>
 
-      {/* عرض رسالة الخطأ العامة لمعالجة الطلبات */}
       {errorProcessApp && (
         <Alert
           variant="danger"
           onClose={() => dispatch(adminResetProcessMediatorAppStatus())}
           dismissible
         >
-          Error processing application:{" "}
-          {typeof errorProcessApp === "string"
-            ? errorProcessApp
-            : JSON.stringify(errorProcessApp)}
+          {t("admin.mediatorApps.page.errorProcessing")}:{" "}
+          {t(errorProcessApp.key, {
+            ...errorProcessApp.params,
+            defaultValue: errorProcessApp.fallback,
+          })}
         </Alert>
       )}
 
-      {/* عرض حالة التحميل أو الأخطاء أو البيانات */}
       {loadingPendingApps &&
       (!pendingMediatorApps?.applications ||
         pendingMediatorApps.applications.length === 0) ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Loading applications...</p>
+          <p className="mt-2">{t("admin.mediatorApps.page.loading")}</p>
         </div>
       ) : errorPendingApps ? (
         <Alert variant="danger" className="text-center py-4">
-          Error loading applications:{" "}
-          {typeof errorPendingApps === "string"
-            ? errorPendingApps
-            : JSON.stringify(errorPendingApps)}
+          {t("admin.mediatorApps.page.errorLoading")}:{" "}
+          {t(errorPendingApps.key, {
+            ...errorPendingApps.params,
+            defaultValue: errorPendingApps.fallback,
+          })}
         </Alert>
       ) : !pendingMediatorApps?.applications ||
         pendingMediatorApps.applications.length === 0 ? (
         <Alert variant="info" className="text-center py-4">
-          No pending mediator applications to review at the moment.
+          {t("admin.mediatorApps.page.noApps")}
         </Alert>
       ) : (
         <>
@@ -209,20 +194,32 @@ const ReviewMediatorApplications = () => {
             >
               <thead className="table-light">
                 <tr>
-                  <th className="text-center">Applicant</th>
-                  <th className="text-center">Email</th>
-                  <th className="text-center">Level</th>
-                  <th className="text-center">Guarantee Deposit (TND)</th>
-                  <th className="text-center">Application Basis</th>
-                  <th className="text-center">Applied On</th>
-                  <th className="text-center">Actions</th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.applicant")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.email")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.level")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.guarantee")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.basis")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.appliedOn")}
+                  </th>
+                  <th className="text-center">
+                    {t("admin.mediatorApps.table.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {pendingMediatorApps.applications.map((app) => {
-                  // --- [!!! التعريف الصحيح لـ isProcessingThisApp هنا داخل map !!!] ---
-                  const isProcessingThisApp = processingApp[app._id]; 
-                  // --------------------------------------------------------------------
+                  const isProcessingThisApp = processingApp[app._id];
                   return (
                     <tr key={app._id}>
                       <td>{app.fullName || "N/A"}</td>
@@ -240,23 +237,24 @@ const ReviewMediatorApplications = () => {
                       <td>
                         {app.mediatorApplicationBasis === "Reputation" && (
                           <Badge bg="info" text="dark" pill>
-                            <FaStar className="me-1" /> Reputation
+                            <FaStar className="me-1" />{" "}
+                            {t("admin.mediatorApps.basis.reputation")}
                           </Badge>
                         )}
                         {app.mediatorApplicationBasis === "Guarantee" && (
                           <Badge bg="success" pill>
-                            <FaMoneyBillWave className="me-1" /> Guarantee
+                            <FaMoneyBillWave className="me-1" />{" "}
+                            {t("admin.mediatorApps.basis.guarantee")}
                           </Badge>
                         )}
                         {(!app.mediatorApplicationBasis ||
                           app.mediatorApplicationBasis === "Unknown") && (
                           <Badge bg="secondary" pill>
-                            Unknown
+                            {t("admin.mediatorApps.basis.unknown")}
                           </Badge>
                         )}
                       </td>
                       <td className="small text-muted">
-                        {/* استخدام تاريخ تقديم الطلب المخصص إذا وجد، ثم createdAt، ثم updatedAt */}
                         {app.mediatorApplicationSubmittedAt ||
                         app.createdAt ||
                         app.updatedAt
@@ -273,13 +271,13 @@ const ReviewMediatorApplications = () => {
                       <td className="text-center">
                         <Button
                           as={Link}
-                          to={`/profile/${app._id}`} // افترض أن هذا هو الرابط الصحيح لبروفايل المستخدم
+                          to={`/profile/${app._id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="outline-info"
                           size="sm"
                           className="me-1 action-button"
-                          title="View User Profile"
+                          title={t("admin.mediatorApps.actions.viewProfile")}
                           disabled={isProcessingThisApp}
                         >
                           <FaEye />
@@ -290,7 +288,7 @@ const ReviewMediatorApplications = () => {
                           className="me-1 action-button"
                           onClick={() => handleApprove(app._id)}
                           disabled={isProcessingThisApp}
-                          title="Approve Application"
+                          title={t("admin.mediatorApps.actions.approve")}
                         >
                           {isProcessingThisApp ? (
                             <Spinner size="sm" animation="border" />
@@ -304,7 +302,7 @@ const ReviewMediatorApplications = () => {
                           className="action-button"
                           onClick={() => handleOpenRejectModal(app)}
                           disabled={isProcessingThisApp}
-                          title="Reject Application"
+                          title={t("admin.mediatorApps.actions.reject")}
                         >
                           {isProcessingThisApp ? (
                             <Spinner size="sm" animation="border" />
@@ -314,13 +312,12 @@ const ReviewMediatorApplications = () => {
                         </Button>
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </Table>
           </div>
 
-          {/* Pagination */}
           {pendingMediatorApps.totalPages > 1 && (
             <div className="d-flex justify-content-center mt-3">
               <Pagination size="sm">
@@ -342,41 +339,44 @@ const ReviewMediatorApplications = () => {
         </>
       )}
 
-      {/* Reject Reason Modal */}
       <Modal
         show={showRejectModal}
         onHide={() => setShowRejectModal(false)}
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Reject Mediator Application</Modal.Title>
+          <Modal.Title>{t("admin.mediatorApps.rejectModal.title")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p>
-            Provide reason for rejecting application from: <br />
-            <strong>
-              {userToReject?.fullName || `User ID: ${userToReject?._id}`}
-            </strong>
+            {t("admin.mediatorApps.rejectModal.body", {
+              name: userToReject?.fullName,
+              id: userToReject?._id,
+            })}
           </p>
           <Form.Group controlId="rejectReasonTextarea">
-            <Form.Label>Rejection Reason (Required)</Form.Label>
+            <Form.Label>
+              {t("admin.mediatorApps.rejectModal.reasonLabel")}
+            </Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Enter reason for rejection..."
+              placeholder={t(
+                "admin.mediatorApps.rejectModal.reasonPlaceholder"
+              )}
               required
-              isInvalid={!rejectReason.trim() && rejectReason !== ""} // أظهر خطأ إذا كان فارغًا بعد الكتابة
+              isInvalid={!rejectReason.trim() && rejectReason !== ""}
             />
             <Form.Control.Feedback type="invalid">
-              Reason is required.
+              {t("admin.mediatorApps.rejectModal.reasonRequired")}
             </Form.Control.Feedback>
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowRejectModal(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="danger"
@@ -392,7 +392,7 @@ const ReviewMediatorApplications = () => {
                 aria-hidden="true"
               />
             ) : (
-              "Confirm Rejection"
+              t("admin.mediatorApps.rejectModal.confirmButton")
             )}
           </Button>
         </Modal.Footer>

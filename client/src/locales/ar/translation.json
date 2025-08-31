@@ -61,8 +61,12 @@
       "noActivities": "لا توجد أنشطة حديثة",
       "description": "ستظهر أنشطتك على المنصة هنا."
     },
-    "notifications": { "title": "الإشعارات" },
-    "mediations": { "title": "الوساطات / الرسائل" },
+    "notifications": {
+      "title": "الإشعارات"
+    },
+    "mediations": {
+      "title": "الوساطات / الرسائل"
+    },
     "quickOptions": {
       "title": "خيارات سريعة",
       "settings": "الإعدادات واللغة",
@@ -70,7 +74,10 @@
       "support": "الدعم الفني",
       "logout": "تسجيل الخروج"
     },
-    "settings": { "title": "الإعدادات", "languageTitle": "لغة المنصة" }
+    "settings": {
+      "title": "الإعدادات",
+      "languageTitle": "لغة المنصة"
+    }
   },
   "faq": {
     "title": "نصائح وإجابات من فريقنا",
@@ -283,70 +290,6 @@
     "ACCOUNT_BLOCKED": "تم حظر حسابك من قبل مسؤول. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "تم فك حظر حسابك من قبل مسؤول. أهلاً بعودتك!"
   },
-  "admin": {
-    "requests": {
-      "title": "طلبات المعاملات",
-      "refreshTooltip": "تحديث القائمة",
-      "refreshButton": "تحديث",
-      "refreshing": "جاري تحديث القائمة...",
-      "newDepositToast": "طلب إيداع جديد من {{user}}",
-      "newWithdrawalToast": "طلب سحب جديد من {{user}}",
-      "reasonRequired": "سبب الرفض مطلوب.",
-      "error": "خطأ: {{error}}",
-      "noRequests": "لا توجد طلبات في هذه الفئة.",
-      "tabs": {
-        "pendingDeposits": "إيداعات معلقة",
-        "allDeposits": "كل الإيداعات",
-        "pendingWithdrawals": "سحوبات معلقة",
-        "allWithdrawals": "كل السحوبات"
-      },
-      "table": {
-        "date": "التاريخ",
-        "user": "المستخدم",
-        "amount": "المبلغ",
-        "method": "الطريقة",
-        "status": "الحالة",
-        "info": "المعلومات (معرف/مرجع)",
-        "actions": "الإجراءات"
-      },
-      "actions": {
-        "view": "عرض التفاصيل",
-        "approve": "موافقة",
-        "complete": "إكمال",
-        "reject": "رفض"
-      },
-      "rejectModalTitle": "رفض طلب {{type}} من {{user}}",
-      "rejectModalTitleGeneric": "رفض الطلب"
-    },
-    "detailsModal": {
-      "title": "تفاصيل طلب {{type}}",
-      "types": { "deposit": "إيداع", "withdrawal": "سحب" },
-      "noData": "بيانات الطلب غير متوفرة.",
-      "userTitle": "معلومات المستخدم",
-      "userName": "اسم المستخدم",
-      "userEmail": "البريد الإلكتروني",
-      "userPhone": "الهاتف",
-      "userBalance": "الرصيد الحالي للمستخدم",
-      "requestTitle": "تفاصيل الطلب",
-      "requestId": "معرف الطلب",
-      "status": "الحالة",
-      "requestDate": "تاريخ الطلب",
-      "method": "طريقة الدفع",
-      "depositAmount": "مبلغ الإيداع",
-      "withdrawalAmount": "مبلغ السحب",
-      "fee": "الرسوم المطبقة",
-      "netCredit": "المبلغ الصافي للإضافة",
-      "netReceive": "المبلغ الصافي للاستلام",
-      "txnId": "معرف المعاملة (من المستخدم)",
-      "screenshot": "لقطة الشاشة",
-      "rejectionReason": "سبب الرفض",
-      "withdrawalAmountOriginal": "مبلغ السحب ({{currency}})",
-      "feeOriginal": "العمولة (تقريبي {{currency}})",
-      "netReceiveOriginal": "الصافي المستلم (تقريبي {{currency}})",
-      "totalDeductedTND": "الإجمالي المخصوم (دينار)",
-      "withdrawalInfo": "معلومات السحب (من المستخدم)"
-    }
-  },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
     "emailLabel": "البريد الإلكتروني",
@@ -452,7 +395,381 @@
     "loading": "جاري التحميل...",
     "processing": "جاري المعالجة...",
     "confirmBid": "تأكيد المزايدة",
-    "level": "المستوى {{level}}"
+    "level": "المستوى {{level}}",
+    "saveChanges": "حفظ التغييرات",
+    "statuses": {
+      "active": "نشط",
+      "blocked": "محظور",
+      "inactive": "غير نشط"
+    },
+    "roles": {
+      "User": "مستخدم",
+      "Vendor": "بائع",
+      "Admin": "مسؤول",
+      "Mediator": "وسيط"
+    }
+  },
+  "admin": {
+    "tickets": {
+      "page": {
+        "title": "لوحة تحكم تذاكر الدعم",
+        "loading": "جاري تحميل لوحة التحكم...",
+        "errorTitle": "خطأ في تحميل التذاكر",
+        "noTicketsTitle": "لم يتم العثور على تذاكر",
+        "noTicketsSubtitle": "لا توجد تذاكر دعم تطابق الفلاتر الحالية. حاول تغيير البحث أو الفلاتر."
+      },
+      "filters": {
+        "status": "الحالة",
+        "allStatuses": "جميع الحالات",
+        "priority": "الأولوية",
+        "allPriorities": "جميع الأولويات",
+        "search": "بحث",
+        "searchPlaceholder": "ابحث بالمعرف، العنوان، بريد المستخدم...",
+        "searchButton": "بحث"
+      },
+      "table": {
+        "header": "جميع التذاكر",
+        "id": "المعرّف",
+        "titleCreated": "العنوان / تاريخ الإنشاء",
+        "user": "المستخدم",
+        "category": "الفئة",
+        "priority": "الأولوية",
+        "status": "الحالة",
+        "assignedTo": "مُعيّنة إلى",
+        "lastUpdate": "آخر تحديث",
+        "actions": "الإجراءات",
+        "systemUser": "النظام",
+        "supportStaff": "فريق الدعم",
+        "unassigned": "غير معيّنة"
+      },
+      "actions": {
+        "view": "عرض تفاصيل التذكرة",
+        "viewButton": "عرض"
+      }
+    },
+    "faq": {
+      "page": {
+        "title": "إدارة الأسئلة الشائعة",
+        "addButton": "إضافة سؤال جديد",
+        "noFaqs": "لم يتم إنشاء أي أسئلة شائعة بعد. انقر على \"إضافة سؤال جديد\" للبدء."
+      },
+      "table": {
+        "question": "السؤال",
+        "category": "الفئة",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "edit": "تعديل",
+        "delete": "حذف"
+      },
+      "deleteConfirm": "هل أنت متأكد من رغبتك في حذف هذا السؤال؟ لا يمكن التراجع عن هذا الإجراء.",
+      "modal": {
+        "editTitle": "تعديل السؤال الشائع",
+        "createTitle": "إنشاء سؤال شائع جديد",
+        "questionLabel": "السؤال",
+        "questionPlaceholder": "مثال: كيف يمكنني إعادة تعيين كلمة المرور الخاصة بي؟",
+        "answerLabel": "الإجابة",
+        "answerPlaceholder": "قدم إجابة واضحة ومفصلة.",
+        "categoryLabel": "الفئة",
+        "orderLabel": "ترتيب العرض",
+        "orderHelpText": "الأرقام الأقل تظهر أولاً.",
+        "activeLabel": "نشط (مرئي للمستخدمين)"
+      }
+    },
+    "methods": {
+      "page": {
+        "title": "إدارة طرق الدفع",
+        "addButton": "إضافة طريقة جديدة",
+        "loading": "جاري تحميل الطرق...",
+        "noMethods": "لم يتم تكوين أي طرق دفع بعد. انقر على 'إضافة طريقة جديدة' للبدء."
+      },
+      "table": {
+        "logo": "الشعار",
+        "name": "الاسم المعروض (داخلي)",
+        "type": "النوع",
+        "depositInfo": "معلومات الإيداع",
+        "commission": "العمولة (إيداع٪ / سحب٪)",
+        "minDeposit": "أدنى إيداع (دينار/دولار)",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "types": {
+        "both": "كلاهما",
+        "deposit": "إيداع",
+        "withdrawal": "سحب"
+      },
+      "actions": {
+        "activate": "تفعيل",
+        "deactivate": "إلغاء التفعيل",
+        "edit": "تعديل الطريقة",
+        "delete": "حذف الطريقة"
+      },
+      "modal": {
+        "editTitle": "تعديل: {{name}}",
+        "addTitle": "إضافة طريقة دفع جديدة",
+        "validationWarning": "يرجى ملء جميع الحقول المطلوبة بشكل صحيح.",
+        "nameLabel": "اسم الطريقة (داخلي، فريد)",
+        "nameInvalid": "الاسم مطلوب ويجب أن يكون فريدًا.",
+        "displayNameLabel": "الاسم المعروض (للمستخدمين)",
+        "displayNameInvalid": "الاسم المعروض مطلوب.",
+        "typeLabel": "نوع الطريقة",
+        "typeBoth": "إيداع وسحب",
+        "typeDeposit": "إيداع فقط",
+        "typeWithdrawal": "سحب فقط",
+        "typeInvalid": "النوع مطلوب.",
+        "logoUrlLabel": "رابط الشعار (اختياري)",
+        "logoUrlInvalid": "الرجاء إدخال رابط صحيح.",
+        "descriptionLabel": "الوصف / التعليمات (اختياري)",
+        "depositInfoLabel": "معلومات هدف الإيداع (معرّف، عنوان، رقم)",
+        "withdrawalInfoLabel": "المعلومات المطلوبة للسحب (إن وجدت)",
+        "limitsHeader": "الحدود الدنيا",
+        "minDepositTND": "أدنى إيداع (دينار)",
+        "minDepositUSD": "أدنى إيداع (دولار)",
+        "minWithdrawalTND": "أدنى سحب (دينار)",
+        "minWithdrawalUSD": "أدنى سحب (دولار)",
+        "commissionHeader": "نسب العمولة",
+        "depositCommission": "عمولة الإيداع ٪",
+        "withdrawalCommission": "عمولة السحب ٪",
+        "otherSettingsHeader": "إعدادات أخرى",
+        "activeLabel": "نشطة للمستخدمين",
+        "notesLabel": "ملاحظات المسؤول (داخلية)",
+        "addButton": "إضافة طريقة"
+      },
+      "deleteConfirm": "هل أنت متأكد من رغبتك في حذف طريقة الدفع هذه نهائياً؟ لا يمكن التراجع عن هذا الإجراء."
+    },
+    "disputes": {
+      "page": {
+        "title": "الوساطات المتنازع عليها",
+        "subtitle": "مراجعة وإدارة النزاعات الجارية.",
+        "loading": "جاري تحميل القضايا المتنازع عليها...",
+        "error": "خطأ",
+        "noDisputes": "لا توجد وساطات متنازع عليها في الوقت الحالي."
+      },
+      "card": {
+        "product": "المنتج",
+        "disputedBadge": "متنازع عليها",
+        "mediationId": "معرّف الوساطة",
+        "seller": "البائع",
+        "buyer": "المشتري",
+        "mediator": "الوسيط",
+        "agreedPrice": "السعر المتفق عليه",
+        "lastUpdate": "آخر تحديث",
+        "joinChatButton": "الانضمام/عرض محادثة النزاع"
+      }
+    },
+    "reports": {
+      "page": {
+        "title": "إدارة بلاغات المستخدمين",
+        "loading": "جاري تحميل البلاغات...",
+        "fetchingUpdates": "جاري جلب التحديثات...",
+        "noReports": "لم يتم العثور على بلاغات تطابق معاييرك.",
+        "paginationInfo": "عرض صفحة {{currentPage}} من {{totalPages}}. إجمالي البلاغات: {{totalReports}}."
+      },
+      "filter": {
+        "label": "تصفية حسب الحالة",
+        "all": "جميع الحالات"
+      },
+      "table": {
+        "date": "التاريخ",
+        "reporter": "المُبلِّغ",
+        "reportedUser": "المُبلَّغ عنه",
+        "reason": "السبب",
+        "details": "التفاصيل (مقتطف)",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "viewEdit": "عرض / تعديل"
+      },
+      "statuses": {
+        "pending": "بانتظار المراجعة",
+        "investigation": "قيد التحقيق",
+        "actionTaken": "تم اتخاذ إجراء",
+        "dismissed": "تم التجاهل"
+      },
+      "reasons": {
+        "SCAMMING_OR_FRAUD": "احتيال أو غش",
+        "HARASSMENT_OR_BULLYING": "تحرش أو تنمر",
+        "INAPPROPRIATE_CONTENT": "محتوى غير لائق",
+        "SPAM": "بريد مزعج",
+        "OTHER": "أخرى"
+      },
+      "modal": {
+        "title": "تفاصيل البلاغ",
+        "id": "المعرّف",
+        "loading": "جاري تحميل التفاصيل...",
+        "relatedMediation": "الوساطة ذات الصلة",
+        "viewMediation": "عرض الوساطة",
+        "currentStatus": "الحالة الحالية",
+        "changeStatus": "تغيير الحالة",
+        "reporterDetails": "التفاصيل المقدمة من المُبلِّغ",
+        "attachedImages": "الصور المرفقة ({{count}})",
+        "evidence": "دليل",
+        "adminNotes": "ملاحظات المسؤول (داخلية)",
+        "adminNotesPlaceholder": "ملاحظات داخلية حول التحقيق...",
+        "resolutionDetails": "تفاصيل الحل (مرئية للمُبلِّغ)",
+        "resolutionDetailsPlaceholder": "صف الإجراء الذي تم اتخاذه..."
+      },
+      "errors": {
+        "fetchFailed": "فشل في جلب البلاغات.",
+        "fetchDetailsFailed": "فشل في تحميل تفاصيل البلاغ.",
+        "updateFailed": "فشل في تحديث البلاغ."
+      },
+      "updateSuccess": "تم تحديث البلاغ بنجاح!"
+    },
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث القائمة",
+      "refreshButton": "تحديث",
+      "refreshing": "جاري تحديث القائمة...",
+      "newDepositToast": "طلب إيداع جديد من {{user}}",
+      "newWithdrawalToast": "طلب سحب جديد من {{user}}",
+      "reasonRequired": "سبب الرفض مطلوب.",
+      "error": "خطأ: {{error}}",
+      "noRequests": "لا توجد طلبات في هذه الفئة.",
+      "tabs": {
+        "pendingDeposits": "إيداعات معلقة",
+        "allDeposits": "كل الإيداعات",
+        "pendingWithdrawals": "سحوبات معلقة",
+        "allWithdrawals": "كل السحوبات"
+      },
+      "table": {
+        "date": "التاريخ",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "المعلومات (معرف/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "عرض التفاصيل",
+        "approve": "موافقة",
+        "complete": "إكمال",
+        "reject": "رفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
+    },
+    "detailsModal": {
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "إيداع", "withdrawal": "سحب" },
+      "noData": "بيانات الطلب غير متوفرة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "اسم المستخدم",
+      "userEmail": "البريد الإلكتروني",
+      "userPhone": "الهاتف",
+      "userBalance": "الرصيد الحالي للمستخدم",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "معرف الطلب",
+      "status": "الحالة",
+      "requestDate": "تاريخ الطلب",
+      "method": "طريقة الدفع",
+      "depositAmount": "مبلغ الإيداع",
+      "withdrawalAmount": "مبلغ السحب",
+      "fee": "الرسوم المطبقة",
+      "netCredit": "المبلغ الصافي للإضافة",
+      "netReceive": "المبلغ الصافي للاستلام",
+      "txnId": "معرف المعاملة (من المستخدم)",
+      "screenshot": "لقطة الشاشة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "مبلغ السحب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي المستلم (تقريبي {{currency}})",
+      "totalDeductedTND": "الإجمالي المخصوم (دينار)",
+      "withdrawalInfo": "معلومات السحب (من المستخدم)",
+      "noScreenshot": "لم يتم تقديم لقطة شاشة.",
+      "viewScreenshot": "عرض لقطة الشاشة",
+      "loadingDetails": "جاري تحميل التفاصيل..."
+    },
+    "rejectModal": {
+      "reasonLabel": "سبب الرفض (مطلوب)",
+      "reasonPlaceholder": "أدخل السبب...",
+      "validationError": "الرجاء تقديم سبب واضح للرفض (5 أحرف على الأقل).",
+      "confirmButton": "تأكيد الرفض"
+    },
+    "users": {
+      "page": {
+        "title": "إدارة المستخدمين",
+        "loading": "جاري تحميل المستخدمين...",
+        "noUsers": "لم يتم العثور على مستخدمين."
+      },
+      "table": {
+        "avatar": "الصورة",
+        "nameEmail": "الاسم / البريد الإلكتروني",
+        "role": "الدور",
+        "status": "الحالة",
+        "registered": "تاريخ التسجيل",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "viewDetails": "عرض التفاصيل",
+        "editUser": "تعديل المستخدم",
+        "blockUser": "حظر المستخدم",
+        "unblockUser": "إلغاء حظر المستخدم",
+        "confirmUnblock": "هل أنت متأكد من رغبتك في إلغاء حظر {{name}}؟"
+      },
+      "editModal": {
+        "title": "تعديل المستخدم: {{name}}",
+        "saveHandlerMissing": "معالج الحفظ مفقود.",
+        "saveFailed": "فشل حفظ التغييرات.",
+        "fullName": "الاسم الكامل",
+        "emailReadOnly": "البريد الإلكتروني (للقراءة فقط)",
+        "phone": "الهاتف",
+        "address": "العنوان",
+        "balancesWarning": "تعديل الأرصدة (استخدم بحذر!)"
+      },
+      "blockModal": {
+        "title": "حظر المستخدم: {{name}}",
+        "reasonLabel": "سبب الحظر",
+        "reasonPlaceholder": "أدخل سبب حظر هذا المستخدم...",
+        "confirmButton": "تأكيد الحظر",
+        "reasonRequiredAlert": "سبب الحظر مطلوب."
+      }
+    },
+    "mediatorApps": {
+      "page": {
+        "title": "مراجعة طلبات الوسطاء",
+        "loading": "جاري تحميل الطلبات...",
+        "errorProcessing": "خطأ في معالجة الطلب",
+        "errorLoading": "خطأ في تحميل الطلبات",
+        "noApps": "لا توجد طلبات وساطة معلقة للمراجعة حالياً."
+      },
+      "table": {
+        "applicant": "مقدم الطلب",
+        "email": "البريد الإلكتروني",
+        "level": "المستوى",
+        "guarantee": "وديعة الضمان (دينار)",
+        "basis": "أساس الطلب",
+        "appliedOn": "تاريخ التقديم",
+        "actions": "الإجراءات"
+      },
+      "basis": {
+        "reputation": "السمعة",
+        "guarantee": "الضمان",
+        "unknown": "غير معروف"
+      },
+      "actions": {
+        "viewProfile": "عرض الملف الشخصي للمستخدم",
+        "approve": "الموافقة على الطلب",
+        "reject": "رفض الطلب",
+        "confirmApprove": "هل أنت متأكد من رغبتك في الموافقة على المستخدم ذو المعرف: {{userId}} كوسيط؟"
+      },
+      "rejectModal": {
+        "title": "رفض طلب الوساطة",
+        "body": "يرجى تقديم سبب رفض طلب: <1>{{name}}</1> (المعرّف: {{id}})",
+        "reasonLabel": "سبب الرفض (مطلوب)",
+        "reasonPlaceholder": "أدخل سبب الرفض...",
+        "reasonRequired": "السبب مطلوب.",
+        "errorUser": "لم يتم تحديد المستخدم المراد رفضه بشكل صحيح.",
+        "confirmButton": "تأكيد الرفض"
+      },
+      "loadFail": "فشل تحميل طلبات الوسطاء.",
+      "processFail": "فشل معالجة طلب الوسيط.",
+      "approveSuccess": "تمت الموافقة على طلب الوساطة بنجاح!",
+      "rejectSuccess": "تم رفض طلب الوساطة بنجاح."
+    }
   },
   "rejectModal": {
     "title": "رفض الطلب",
@@ -483,12 +800,6 @@
     "reportTooltipCooldown": "لقد أبلغت عن {{name}} مؤخراً. يمكنك الإبلاغ مرة أخرى بعد {{hours}} ساعة.",
     "invalidId": "معرّف المستخدم غير صالح.",
     "loadFail": "فشل تحميل الملف الشخصي للمستخدم."
-  },
-  "roles": {
-    "User": "مستخدم",
-    "Vendor": "بائع",
-    "Admin": "مسؤول",
-    "Mediator": "وسيط"
   },
   "reputationLevels": {
     "Novice": "مبتدئ",
@@ -1045,123 +1356,6 @@
     "closeSuccessUser": "تم إغلاق التذكرة بنجاح.",
     "closeFailUser": "فشل في إغلاق التذكرة."
   },
-  "admin": {
-    "users": {
-      "loadFail": "فشل في تحميل قائمة المستخدمين.",
-      "updateStatusSuccess": "تم تحديث حالة المستخدم بنجاح.",
-      "updateStatusFail": "فشل في تحديث حالة المستخدم.",
-      "updateDataSuccess": "تم تحديث بيانات المستخدم بنجاح.",
-      "updateDataFail": "فشل في تحديث بيانات المستخدم."
-    },
-    "products": {
-      "loadPendingFail": "فشل في تحميل المنتجات المعلقة للموافقة.",
-      "approveSuccess": "تمت الموافقة على المنتج بنجاح!",
-      "approveFail": "فشل في الموافقة على المنتج.",
-      "rejectSuccess": "تم رفض المنتج بنجاح!",
-      "rejectFail": "فشل في رفض المنتج."
-    },
-    "paymentMethods": {
-      "loadFail": "فشل في تحميل طرق الدفع.",
-      "addSuccess": "تمت إضافة طريقة الدفع بنجاح!",
-      "addFail": "فشل في إضافة طريقة الدفع.",
-      "updateSuccess": "تم تحديث طريقة الدفع بنجاح!",
-      "updateFail": "فشل في تحديث طريقة الدفع.",
-      "deleteSuccess": "تم حذف طريقة الدفع بنجاح!",
-      "deleteFail": "فشل في حذف طريقة الدفع."
-    },
-    "deposits": {
-      "loadFail": "فشل في تحميل طلبات الإيداع.",
-      "approveSuccess": "تمت الموافقة على الإيداع بنجاح!",
-      "approveFail": "فشل في الموافقة على الإيداع.",
-      "rejectSuccess": "تم رفض الإيداع.",
-      "rejectFail": "فشل في رفض الإيداع."
-    },
-    "withdrawals": {
-      "loadFail": "فشل في تحميل طلبات السحب.",
-      "loadDetailsFail": "فشل في تحميل تفاصيل السحب.",
-      "completeSuccess": "اكتمل السحب بنجاح!",
-      "completeFail": "فشل في إكمال السحب.",
-      "rejectSuccess": "تم رفض السحب.",
-      "rejectFail": "فشل في رفض السحب."
-    },
-    "reports": {
-      "loadFail": "فشل في تحميل البلاغات.",
-      "loadDetailsFail": "فشل في تحميل تفاصيل البلاغ.",
-      "updateSuccess": "تم تحديث حالة البلاغ بنجاح."
-    },
-    "tickets": {
-      "loadFail": "فشل في جلب تذاكر الدعم.",
-      "loadDetailsFail": "فشل في جلب تفاصيل التذكرة للوحة التحكم.",
-      "statusUpdateSuccess": "تم تحديث حالة التذكرة.",
-      "statusUpdateFail": "فشل في تحديث حالة التذكرة.",
-      "priorityUpdateSuccess": "تم تحديث أولوية التذكرة.",
-      "priorityUpdateFail": "فشل في تحديث الأولوية.",
-      "assignSuccess": "تم تحديث تعيين التذكرة.",
-      "assignFail": "فشل في تعيين التذكرة."
-    },
-    "requests": {
-      "title": "طلبات المعاملات",
-      "refreshTooltip": "تحديث القائمة",
-      "refreshButton": "تحديث",
-      "refreshing": "جاري تحديث القائمة...",
-      "newDepositToast": "طلب إيداع جديد من {{user}}",
-      "newWithdrawalToast": "طلب سحب جديد من {{user}}",
-      "reasonRequired": "سبب الرفض مطلوب.",
-      "error": "خطأ: {{error}}",
-      "noRequests": "لا توجد طلبات في هذه الفئة.",
-      "tabs": {
-        "pendingDeposits": "إيداعات معلقة",
-        "allDeposits": "كل الإيداعات",
-        "pendingWithdrawals": "سحوبات معلقة",
-        "allWithdrawals": "كل السحوبات"
-      },
-      "table": {
-        "date": "التاريخ",
-        "user": "المستخدم",
-        "amount": "المبلغ",
-        "method": "الطريقة",
-        "status": "الحالة",
-        "info": "المعلومات (معرف/مرجع)",
-        "actions": "الإجراءات"
-      },
-      "actions": {
-        "view": "عرض التفاصيل",
-        "approve": "موافقة",
-        "complete": "إكمال",
-        "reject": "رفض"
-      },
-      "rejectModalTitle": "رفض طلب {{type}} من {{user}}",
-      "rejectModalTitleGeneric": "رفض الطلب"
-    },
-    "detailsModal": {
-      "title": "تفاصيل طلب {{type}}",
-      "types": { "deposit": "إيداع", "withdrawal": "سحب" },
-      "noData": "بيانات الطلب غير متوفرة.",
-      "userTitle": "معلومات المستخدم",
-      "userName": "اسم المستخدم",
-      "userEmail": "البريد الإلكتروني",
-      "userPhone": "الهاتف",
-      "userBalance": "الرصيد الحالي للمستخدم",
-      "requestTitle": "تفاصيل الطلب",
-      "requestId": "معرف الطلب",
-      "status": "الحالة",
-      "requestDate": "تاريخ الطلب",
-      "method": "طريقة الدفع",
-      "depositAmount": "مبلغ الإيداع",
-      "withdrawalAmount": "مبلغ السحب",
-      "fee": "الرسوم المطبقة",
-      "netCredit": "المبلغ الصافي للإضافة",
-      "netReceive": "المبلغ الصافي للاستلام",
-      "txnId": "معرف المعاملة (من المستخدم)",
-      "screenshot": "لقطة الشاشة",
-      "rejectionReason": "سبب الرفض",
-      "withdrawalAmountOriginal": "مبلغ السحب ({{currency}})",
-      "feeOriginal": "العمولة (تقريبي {{currency}})",
-      "netReceiveOriginal": "الصافي المستلم (تقريبي {{currency}})",
-      "totalDeductedTND": "الإجمالي المخصوم (دينار)",
-      "withdrawalInfo": "معلومات السحب (من المستخدم)"
-    }
-  },
   "adminProducts": {
     "pendingApprovals": "موافقات معلقة",
     "loading": "جاري تحميل المنتجات...",
@@ -1356,29 +1550,12 @@
       "fileCount": "الحد الأقصى المسموح به هو {{count}} ملفات."
     }
   },
-  "ticketsListPage": {
-    "loading": "جاري تحميل تذاكرك...",
-    "errorTitle": "خطأ في تحميل التذاكر",
-    "pageTitle": "تذاكر الدعم الخاصة بي",
-    "createButton": "إنشاء تذكرة جديدة",
-    "ticketId": "معرّف التذكرة:",
-    "lastUpdate": "آخر تحديث:",
-    "category": "الفئة:",
-    "viewButton": "عرض",
-    "noTicketsTitle": "لم يتم العثور على تذاكر دعم",
-    "noTicketsSubtitle": "لم تقم بإنشاء أي تذاكر دعم بعد.",
-    "createFirstButton": "أنشئ تذكرتك الأولى",
-    "statuses": {
-      "Open": "مفتوحة",
-      "PendingSupportReply": "بانتظار رد الدعم",
-      "PendingUserInput": "بانتظار ردك",
-      "InProgress": "قيد التنفيذ",
-      "Resolved": "تم حلها",
-      "Closed": "مغلقة",
-      "OnHold": "معلّقة"
-    }
-  },
   "ticketDetails": {
+    "fileTypes": {
+      "Video": "فيديو",
+      "Audio": "صوت",
+      "File": "ملف"
+    },
     "replySuccess": "تمت إضافة الرد بنجاح!",
     "replyRequired": "مطلوب رسالة رد أو مرفق.",
     "confirmClose": "هل أنت متأكد من أنك تريد إغلاق هذه التذكرة؟ لن تتمكن من الرد بعد ذلك.",
@@ -1400,7 +1577,14 @@
       "title": "أدوات المسؤول",
       "changeStatus": "تغيير الحالة",
       "selectStatus": "اختر حالة...",
-      "updateButton": "تحديث"
+      "updateButton": "تحديث",
+      "changePriority": "تغيير الأولوية",
+      "selectPriority": "اختر أولوية...",
+      "assignTo": "تعيين إلى",
+      "unassigned": "غير معيّن",
+      "assignButton": "تعيين",
+      "resolutionNotes": "ملاحظات الحل",
+      "resolutionNotesPlaceholder": "أضف أي ملاحظات حول الحل..."
     },
     "conversation": "المحادثة",
     "supportTeam": "فريق الدعم",

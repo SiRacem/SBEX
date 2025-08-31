@@ -1,6 +1,7 @@
-// src/pages/admin/AdminPaymentMethods.jsx
+// src/components/admin/AdminPaymentMethods.jsx
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Row,
@@ -33,14 +34,14 @@ import {
   adminUpdatePaymentMethod,
   adminDeletePaymentMethod,
   clearPaymentMethodError,
-} from "../../redux/actions/paymentMethodAction"; // تأكد من المسار الصحيح
+} from "../../redux/actions/paymentMethodAction";
 import "./AdminPaymentMethods.css";
 
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
-// --- مكون مودال الإضافة/التعديل (معدل) ---
 const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({});
   const [validated, setValidated] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -65,7 +66,6 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
         method?.minWithdrawalUSD != null
           ? String(method.minWithdrawalUSD)
           : "2",
-      // --- [معدل] استخدام الحقول الجديدة ---
       depositCommissionPercent:
         method?.depositCommissionPercent != null
           ? String(method.depositCommissionPercent)
@@ -74,19 +74,12 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
         method?.withdrawalCommissionPercent != null
           ? String(method.withdrawalCommissionPercent)
           : "0",
-      // --- تمت إزالة الحقول القديمة للعمولة ---
       requiredWithdrawalInfo: method?.requiredWithdrawalInfo || "",
       isActive: method?.isActive !== undefined ? method.isActive : true,
       notes: method?.notes || "",
     });
 
-    if (methodToEdit) {
-      console.log("MethodFormModal: Editing method data:", methodToEdit);
-      setFormData(initializeForm(methodToEdit));
-    } else {
-      console.log("MethodFormModal: Adding new method, setting defaults.");
-      setFormData(initializeForm(null));
-    }
+    setFormData(initializeForm(methodToEdit));
     setValidated(false);
   }, [methodToEdit, show]);
 
@@ -104,13 +97,12 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
     if (form.checkValidity() === false) {
       event.stopPropagation();
       setValidated(true);
-      toast.warn("Please fill all required fields correctly.");
+      toast.warn(t("admin.methods.modal.validationWarning"));
       return;
     }
     setIsSaving(true);
 
     const dataToSave = {
-      // الحقول النصية والمنطقية
       name: formData.name,
       type: formData.type,
       displayName: formData.displayName || formData.name,
@@ -120,36 +112,29 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
       requiredWithdrawalInfo: formData.requiredWithdrawalInfo || null,
       isActive: formData.isActive,
       notes: formData.notes || null,
-
-      // الحقول الرقمية
       minDepositTND: parseFloat(formData.minDepositTND || "0"),
       minDepositUSD: parseFloat(formData.minDepositUSD || "0"),
       minWithdrawalTND: parseFloat(formData.minWithdrawalTND || "0"),
       minWithdrawalUSD: parseFloat(formData.minWithdrawalUSD || "0"),
-      // --- [معدل] استخدام الحقول الجديدة ---
       depositCommissionPercent: parseFloat(
         formData.depositCommissionPercent || "0"
       ),
       withdrawalCommissionPercent: parseFloat(
         formData.withdrawalCommissionPercent || "0"
       ),
-      // --- تمت إزالة الحقول القديمة للعمولة ---
     };
 
-    // التأكد من أن القيم الرقمية ليست NaN
     Object.keys(dataToSave).forEach((key) => {
       if (typeof dataToSave[key] === "number" && isNaN(dataToSave[key])) {
-        dataToSave[key] = 0; // تعيين قيمة افتراضية إذا كانت NaN
+        dataToSave[key] = 0;
       }
     });
 
     try {
-      console.log("ADMIN SAVE - Data being sent:", dataToSave);
       await onSave(dataToSave);
       onHide();
     } catch (err) {
-      console.error("Save failed:", err);
-      // Toast للخطأ يتم عرضه من الأكشن غالبًا
+      // Error toast is handled by the action
     } finally {
       setIsSaving(false);
     }
@@ -160,18 +145,19 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
       <Modal.Header closeButton>
         <Modal.Title>
           {methodToEdit
-            ? `Edit: ${formData.displayName || formData.name}`
-            : "Add New Payment Method"}
+            ? t("admin.methods.modal.editTitle", {
+                name: formData.displayName || formData.name,
+              })
+            : t("admin.methods.modal.addTitle")}
         </Modal.Title>
       </Modal.Header>
       <Form noValidate validated={validated} onSubmit={handleSubmit}>
         <Modal.Body>
           <Row>
-            {/* ... (حقول الاسم، الاسم المعروض، النوع، الشعار، الوصف، معلومات الإيداع، معلومات السحب المطلوبة) ... تبقى كما هي */}
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodName"
-                label="Method Name (Internal, Unique)"
+                label={t("admin.methods.modal.nameLabel")}
               >
                 <Form.Control
                   type="text"
@@ -183,14 +169,14 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   disabled={!!methodToEdit}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Name is required and must be unique.
+                  {t("admin.methods.modal.nameInvalid")}
                 </Form.Control.Feedback>
               </FloatingLabel>
             </Col>
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodDisplayName"
-                label="Display Name (for Users)"
+                label={t("admin.methods.modal.displayNameLabel")}
               >
                 <Form.Control
                   type="text"
@@ -201,12 +187,15 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   required
                 />
                 <Form.Control.Feedback type="invalid">
-                  Display name is required.
+                  {t("admin.methods.modal.displayNameInvalid")}
                 </Form.Control.Feedback>
               </FloatingLabel>
             </Col>
             <Col md={6} className="mb-3">
-              <FloatingLabel controlId="methodType" label="Method Type">
+              <FloatingLabel
+                controlId="methodType"
+                label={t("admin.methods.modal.typeLabel")}
+              >
                 <Form.Select
                   name="type"
                   value={formData.type || "both"}
@@ -214,19 +203,25 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   required
                   disabled={!!methodToEdit}
                 >
-                  <option value="both">Deposit & Withdrawal</option>
-                  <option value="deposit">Deposit Only</option>
-                  <option value="withdrawal">Withdrawal Only</option>
+                  <option value="both">
+                    {t("admin.methods.modal.typeBoth")}
+                  </option>
+                  <option value="deposit">
+                    {t("admin.methods.modal.typeDeposit")}
+                  </option>
+                  <option value="withdrawal">
+                    {t("admin.methods.modal.typeWithdrawal")}
+                  </option>
                 </Form.Select>
                 <Form.Control.Feedback type="invalid">
-                  Type is required.
+                  {t("admin.methods.modal.typeInvalid")}
                 </Form.Control.Feedback>
               </FloatingLabel>
             </Col>
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodLogoUrl"
-                label="Logo URL (Optional)"
+                label={t("admin.methods.modal.logoUrlLabel")}
               >
                 <Form.Control
                   type="url"
@@ -236,20 +231,20 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   onChange={handleChange}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Please enter a valid URL.
+                  {t("admin.methods.modal.logoUrlInvalid")}
                 </Form.Control.Feedback>
               </FloatingLabel>
             </Col>
             <Col xs={12} className="mb-3">
               <FloatingLabel
                 controlId="methodDescription"
-                label="Description / Instructions (Optional)"
+                label={t("admin.methods.modal.descriptionLabel")}
               >
                 <Form.Control
                   as="textarea"
                   rows={2}
                   name="description"
-                  placeholder="Short description for user..."
+                  placeholder="..."
                   value={formData.description || ""}
                   onChange={handleChange}
                 />
@@ -258,12 +253,12 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col xs={12} className="mb-3">
               <FloatingLabel
                 controlId="methodDepositTarget"
-                label="Deposit Target Info (ID, Address, Number - for Copy Button)"
+                label={t("admin.methods.modal.depositInfoLabel")}
               >
                 <Form.Control
                   type="text"
                   name="depositTargetInfo"
-                  placeholder="e.g., P1234567, 0xABC..., YOUR_PAY_ID"
+                  placeholder="..."
                   value={formData.depositTargetInfo || ""}
                   onChange={handleChange}
                   disabled={formData.type === "withdrawal"}
@@ -273,30 +268,30 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col xs={12} className="mb-3">
               <FloatingLabel
                 controlId="methodReqInfo"
-                label="Required Info for Withdrawal (if applicable)"
+                label={t("admin.methods.modal.withdrawalInfoLabel")}
               >
                 <Form.Control
                   type="text"
                   name="requiredWithdrawalInfo"
-                  placeholder="e.g., Your D17 Phone Number"
+                  placeholder="..."
                   value={formData.requiredWithdrawalInfo || ""}
                   onChange={handleChange}
                   disabled={formData.type === "deposit"}
                 />
               </FloatingLabel>
             </Col>
-
-            {/* --- Limits (TND & USD) --- */}
             <Col xs={12}>
               <hr />
             </Col>
             <Col xs={12}>
-              <h6 className="mb-3 text-muted">Minimum Limits</h6>
+              <h6 className="mb-3 text-muted">
+                {t("admin.methods.modal.limitsHeader")}
+              </h6>
             </Col>
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodMinDepTND"
-                label="Min Deposit (TND)"
+                label={t("admin.methods.modal.minDepositTND")}
               >
                 <Form.Control
                   type="number"
@@ -312,7 +307,7 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodMinDepUSD"
-                label="Min Deposit (USD)"
+                label={t("admin.methods.modal.minDepositUSD")}
               >
                 <Form.Control
                   type="number"
@@ -328,7 +323,7 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodMinWdrTND"
-                label="Min Withdrawal (TND)"
+                label={t("admin.methods.modal.minWithdrawalTND")}
               >
                 <Form.Control
                   type="number"
@@ -344,7 +339,7 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodMinWdrUSD"
-                label="Min Withdrawal (USD)"
+                label={t("admin.methods.modal.minWithdrawalUSD")}
               >
                 <Form.Control
                   type="number"
@@ -357,18 +352,18 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                 />
               </FloatingLabel>
             </Col>
-
-            {/* --- [معدل] Commission Percentages --- */}
             <Col xs={12}>
               <hr />
             </Col>
             <Col xs={12}>
-              <h6 className="mb-3 text-muted">Commission Percentages</h6>
+              <h6 className="mb-3 text-muted">
+                {t("admin.methods.modal.commissionHeader")}
+              </h6>
             </Col>
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodDepositCommPercent"
-                label="Deposit Commission %"
+                label={t("admin.methods.modal.depositCommission")}
               >
                 <Form.Control
                   type="number"
@@ -379,14 +374,14 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   max="100"
                   value={formData.depositCommissionPercent ?? ""}
                   onChange={handleChange}
-                  disabled={formData.type === "withdrawal"} // لا معنى لها لطرق السحب فقط
+                  disabled={formData.type === "withdrawal"}
                 />
               </FloatingLabel>
             </Col>
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodWithdrawalCommPercent"
-                label="Withdrawal Commission %"
+                label={t("admin.methods.modal.withdrawalCommission")}
               >
                 <Form.Control
                   type="number"
@@ -397,25 +392,24 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
                   max="100"
                   value={formData.withdrawalCommissionPercent ?? ""}
                   onChange={handleChange}
-                  disabled={formData.type === "deposit"} // لا معنى لها لطرق الإيداع فقط
+                  disabled={formData.type === "deposit"}
                 />
               </FloatingLabel>
             </Col>
-            {/* --- تمت إزالة حقول الرسوم الأخرى --- */}
-
-            {/* --- Other Settings --- */}
             <Col xs={12}>
               <hr />
             </Col>
             <Col xs={12}>
-              <h6 className="mb-3 text-muted">Other Settings</h6>
+              <h6 className="mb-3 text-muted">
+                {t("admin.methods.modal.otherSettingsHeader")}
+              </h6>
             </Col>
             <Col md={6} className="mb-3">
               <Form.Check
                 type="switch"
                 id={`methodIsActive-${methodToEdit?._id || "new"}`}
                 name="isActive"
-                label="Active for Users"
+                label={t("admin.methods.modal.activeLabel")}
                 checked={formData.isActive ?? true}
                 onChange={handleChange}
               />
@@ -423,7 +417,7 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
             <Col md={6} className="mb-3">
               <FloatingLabel
                 controlId="methodNotes"
-                label="Admin Notes (Internal)"
+                label={t("admin.methods.modal.notesLabel")}
               >
                 <Form.Control
                   as="textarea"
@@ -438,15 +432,15 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={onHide} disabled={isSaving}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant="primary" type="submit" disabled={isSaving}>
             {isSaving ? (
               <Spinner as="span" animation="border" size="sm" />
             ) : methodToEdit ? (
-              "Save Changes"
+              t("common.saveChanges")
             ) : (
-              "Add Method"
+              t("admin.methods.modal.addButton")
             )}
           </Button>
         </Modal.Footer>
@@ -455,8 +449,8 @@ const MethodFormModal = ({ show, onHide, methodToEdit, onSave }) => {
   );
 };
 
-// --- المكون الرئيسي للصفحة (معدل في عرض الجدول) ---
 const AdminPaymentMethods = ({ search }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const allMethods = useSelector(
     (state) => state.paymentMethodReducer?.allMethods ?? []
@@ -473,6 +467,7 @@ const AdminPaymentMethods = ({ search }) => {
   const loadingDelete = useSelector(
     (state) => state.paymentMethodReducer?.loadingDelete || {}
   );
+
   const [showModal, setShowModal] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
   const currentSearch = search !== undefined ? search : "";
@@ -488,24 +483,26 @@ const AdminPaymentMethods = ({ search }) => {
     setEditingMethod(null);
     setShowModal(true);
   }, []);
+
   const handleShowEditModal = useCallback((method) => {
     setEditingMethod(method);
     setShowModal(true);
   }, []);
+
   const handleCloseModal = useCallback(() => {
     setShowModal(false);
     setEditingMethod(null);
   }, []);
 
-  // الفلترة
   const filteredMethods = useMemo(() => {
     if (!currentSearch) return allMethods;
     const searchTerm = currentSearch.toLowerCase();
     return allMethods.filter(
       (u) =>
         u.name?.toLowerCase().includes(searchTerm) ||
+        u.displayName?.toLowerCase().includes(searchTerm) ||
         u.type?.toLowerCase().includes(searchTerm)
-      );
+    );
   }, [allMethods, currentSearch]);
 
   const handleSaveMethod = useCallback(
@@ -515,16 +512,17 @@ const AdminPaymentMethods = ({ search }) => {
       } else {
         await dispatch(adminAddPaymentMethod(formData));
       }
-      // الإغلاق يتم الآن داخل handleSubmit في المودال عند النجاح
     },
     [dispatch, editingMethod]
   );
 
   const handleDeleteMethod = useCallback(
     (methodId) => {
-      dispatch(adminDeletePaymentMethod(methodId)); // التأكيد مدمج في الأكشن
+      if (window.confirm(t("admin.methods.deleteConfirm"))) {
+        dispatch(adminDeletePaymentMethod(methodId));
+      }
     },
-    [dispatch]
+    [dispatch, t]
   );
 
   const handleToggleActive = useCallback(
@@ -541,7 +539,7 @@ const AdminPaymentMethods = ({ search }) => {
       <Row className="mb-3 align-items-center">
         <Col>
           <h2 className="page-title mb-0">
-            Manage Payment Methods
+            {t("admin.methods.page.title")}
             <Badge bg="secondary" className="ms-2" pill>
               {filteredMethods.length}
             </Badge>
@@ -549,7 +547,7 @@ const AdminPaymentMethods = ({ search }) => {
         </Col>
         <Col xs="auto">
           <Button variant="primary" onClick={handleShowAddModal}>
-            <FaPlus className="me-1" /> Add New Method
+            <FaPlus className="me-1" /> {t("admin.methods.page.addButton")}
           </Button>
         </Col>
       </Row>
@@ -557,7 +555,7 @@ const AdminPaymentMethods = ({ search }) => {
       {loading && (
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Loading methods...</p>
+          <p className="mt-2">{t("admin.methods.page.loading")}</p>
         </div>
       )}
       {!loading && error && (
@@ -566,7 +564,10 @@ const AdminPaymentMethods = ({ search }) => {
           onClose={() => dispatch(clearPaymentMethodError())}
           dismissible
         >
-          {error}
+          {t(error.key, {
+            ...error.params,
+            defaultValue: error.fallback || error,
+          })}
         </Alert>
       )}
 
@@ -581,16 +582,21 @@ const AdminPaymentMethods = ({ search }) => {
             >
               <thead className="table-light">
                 <tr>
-                  <th style={{ width: "60px" }}>Logo</th>
-                  <th>Display Name (Internal)</th>
-                  <th style={{ width: "100px" }}>Type</th>
-                  <th>Deposit Info</th>
-                  {/* --- [معدل] عمود العمولة --- */}
-                  <th>Commission (Dep% / Wdr%)</th>
-                  <th>Min Deposit (TND/USD)</th>
-                  <th style={{ width: "100px" }}>Status</th>
+                  <th style={{ width: "60px" }}>
+                    {t("admin.methods.table.logo")}
+                  </th>
+                  <th>{t("admin.methods.table.name")}</th>
+                  <th style={{ width: "100px" }}>
+                    {t("admin.methods.table.type")}
+                  </th>
+                  <th>{t("admin.methods.table.depositInfo")}</th>
+                  <th>{t("admin.methods.table.commission")}</th>
+                  <th>{t("admin.methods.table.minDeposit")}</th>
+                  <th style={{ width: "100px" }}>
+                    {t("admin.methods.table.status")}
+                  </th>
                   <th className="text-center" style={{ width: "150px" }}>
-                    Actions
+                    {t("admin.methods.table.actions")}
                   </th>
                 </tr>
               </thead>
@@ -632,7 +638,7 @@ const AdminPaymentMethods = ({ search }) => {
                             }
                             className="text-capitalize"
                           >
-                            {method.type}
+                            {t(`admin.methods.types.${method.type}`)}
                           </Badge>
                         </td>
                         <td className="small text-muted deposit-info-cell">
@@ -654,18 +660,19 @@ const AdminPaymentMethods = ({ search }) => {
                             "-"
                           )}
                         </td>
-                        {/* --- [معدل] عرض العمولات المنفصلة --- */}
                         <td>
-                          {method.depositCommissionPercent ?? 0}% /
+                          {method.depositCommissionPercent ?? 0}% /{" "}
                           {method.withdrawalCommissionPercent ?? 0}%
                         </td>
                         <td>
-                          {method.minDepositTND ?? "-"} /
+                          {method.minDepositTND ?? "-"} /{" "}
                           {method.minDepositUSD ?? "-"}
                         </td>
                         <td>
                           <Badge bg={method.isActive ? "success" : "secondary"}>
-                            {method.isActive ? "Active" : "Inactive"}
+                            {method.isActive
+                              ? t("common.statuses.active")
+                              : t("common.statuses.inactive")}
                           </Badge>
                         </td>
                         <td className="text-center action-cell">
@@ -674,7 +681,9 @@ const AdminPaymentMethods = ({ search }) => {
                               placement="top"
                               overlay={
                                 <Tooltip>
-                                  {method.isActive ? "Deactivate" : "Activate"}
+                                  {method.isActive
+                                    ? t("admin.methods.actions.deactivate")
+                                    : t("admin.methods.actions.activate")}
                                 </Tooltip>
                               }
                             >
@@ -698,7 +707,11 @@ const AdminPaymentMethods = ({ search }) => {
                             </OverlayTrigger>
                             <OverlayTrigger
                               placement="top"
-                              overlay={<Tooltip>Edit Method</Tooltip>}
+                              overlay={
+                                <Tooltip>
+                                  {t("admin.methods.actions.edit")}
+                                </Tooltip>
+                              }
                             >
                               <Button
                                 variant="outline-primary"
@@ -710,7 +723,11 @@ const AdminPaymentMethods = ({ search }) => {
                             </OverlayTrigger>
                             <OverlayTrigger
                               placement="top"
-                              overlay={<Tooltip>Delete Method</Tooltip>}
+                              overlay={
+                                <Tooltip>
+                                  {t("admin.methods.actions.delete")}
+                                </Tooltip>
+                              }
                             >
                               <Button
                                 variant="outline-danger"
@@ -732,8 +749,7 @@ const AdminPaymentMethods = ({ search }) => {
                 ) : (
                   <tr>
                     <td colSpan={8} className="text-center text-muted py-4">
-                      No payment methods configured yet. Click 'Add New Method'
-                      to start.
+                      {t("admin.methods.page.noMethods")}
                     </td>
                   </tr>
                 )}

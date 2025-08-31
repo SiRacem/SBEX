@@ -482,6 +482,8 @@ io.on('connection', (socket) => {
         }
     });
 });
+// --- End of Socket.IO Logic ---
+
 
 cron.schedule('*/5 * * * *', async () => {
     console.log(`[CRON MASTER] Triggering 'releaseDuePendingFunds' job at ${new Date().toISOString()}`);
@@ -493,18 +495,34 @@ cron.schedule('*/5 * * * *', async () => {
     }
 });
 
+// [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
+
+// 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
 
+// 2. تفعيل سياسة CORS للسماح للواجهة الأمامية بالوصول
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+
+// 3. تفعيل قراءة الجسم بصيغة JSON للطلبات القادمة
+app.use(express.json());
+
+// 4. خدمة الملفات الثابتة (مثل الصور). الطلبات إلى /uploads سيتم معالجتها هنا ولن تصل إلى Rate Limiter
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// 5. الآن، قم بتطبيق Rate Limiter على كل ما تبقى (وهي مسارات الـ API فقط)
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // حد معقول للاستخدام العادي
     handler: (req, res, next, options) => {
         const retryAfter = Math.ceil(options.windowMs / 1000);
         res.status(options.statusCode).json({
+            // أرسل كائن خطأ متكامل لكي تتعرف عليه الواجهة الأمامية
             errorMessage: {
                 key: "apiErrors.tooManyRequests",
                 fallback: "Too many requests, please try again after 15 minutes.",
-                params: { retryAfter: retryAfter }
+                params: {
+                    retryAfter: retryAfter
+                }
             },
             rateLimit: {
                 limit: options.max,
@@ -516,34 +534,24 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
-
 app.use(apiLimiter);
 
-// --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!] ---
+// --- [!!!] END: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 
-// 1. تفعيل CORS لجميع الطلبات القادمة
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
-
-// 2. تفعيل قراءة الجسم بصيغة JSON
-app.use(express.json());
-
-// 3. خدمة الملفات الثابتة (مثل الصور المرفوعة)
-// هذا السطر يخبر الخادم بأن أي طلب يبدأ بـ /uploads يجب أن يبحث عن الملف المقابل في مجلد 'uploads' في جذر المشروع
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// --- [!!!] END: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!] ---
-
+// التأكد من وجود مجلدات الرفع
 const chatImageUploadPath = path.join(__dirname, 'uploads/chat_images/');
 if (!fs.existsSync(chatImageUploadPath)) {
     fs.mkdirSync(chatImageUploadPath, { recursive: true });
 }
 
+// إضافة io و onlineUsers إلى كل طلب API
 app.use((req, res, next) => {
     req.io = io;
     req.onlineUsers = onlineUsers;
     next();
 });
 
+// الاتصال بقاعدة البيانات
 connectDB();
 
 // --- Routers ---

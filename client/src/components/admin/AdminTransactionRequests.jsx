@@ -1,4 +1,4 @@
-// src/pages/admin/AdminTransactionRequests.jsx
+// src/components/admin/AdminTransactionRequests.jsx
 
 import React, {
   useEffect,
@@ -304,13 +304,11 @@ const AdminTransactionRequests = () => {
     if (error) {
       let errorMessage;
       if (typeof error === "object" && error !== null && error.key) {
-        // إذا كان الخطأ كائنًا منظمًا، قم بترجمته
         errorMessage = t(error.key, {
           ...error.params,
           defaultValue: error.fallback || t("apiErrors.unknownError"),
         });
       } else {
-        // إذا كان نصًا بسيطًا (للتوافق)
         errorMessage = error;
       }
       return (

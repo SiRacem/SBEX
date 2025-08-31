@@ -50,15 +50,23 @@
       "sellerAvailable": "رصيد البايع الموجود",
       "onHold": "الرصيد المجمّد"
     },
-    "currencies": { "TND": "دينار", "USD": "دولار", "EUR": "أورو" },
+    "currencies": {
+      "TND": "دينار",
+      "USD": "دولار",
+      "EUR": "أورو"
+    },
     "activities": {
       "title": "الأنشطة لخرانية",
       "displaying": "عرض آخر {{count}} نشاطات",
       "noActivities": "ما فماش أنشطة جديدة",
       "description": "أنشطتك في المنصة باش تظهر هوني."
     },
-    "notifications": { "title": "الإشعارات" },
-    "mediations": { "title": "الوساطات / الميساجات" },
+    "notifications": {
+      "title": "الإشعارات"
+    },
+    "mediations": {
+      "title": "الوساطات / الميساجات"
+    },
     "quickOptions": {
       "title": "خيارات سريعة",
       "settings": "الريڨلاج واللغة",
@@ -66,7 +74,10 @@
       "support": "الدعم الفني",
       "logout": "الخروج"
     },
-    "settings": { "title": "الريڨلاج", "languageTitle": "لغة المنصة" }
+    "settings": {
+      "title": "الريڨلاج",
+      "languageTitle": "لغة المنصة"
+    }
   },
   "faq": {
     "title": "نصايح و جوابات من ليكيب متاعنا",
@@ -279,70 +290,6 @@
     "ACCOUNT_BLOCKED": "الكونت متاعك تبلوكا من عند الأدمن. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "الأدمن حللك الكونت. أهلا بيك من جديد!"
   },
-  "admin": {
-    "requests": {
-      "title": "طلبات المعاملات",
-      "refreshTooltip": "تحديث الليستة",
-      "refreshButton": "تحديث",
-      "refreshing": "قاعدين نحدثو في الليستة...",
-      "newDepositToast": "طلب صبان جديد من عند {{user}}",
-      "newWithdrawalToast": "طلب جبدان جديد من عند {{user}}",
-      "reasonRequired": "لازم تكتب سبب الرفض.",
-      "error": "غلطة: {{error}}",
-      "noRequests": "ما فماش طلبات في الصنف هذا.",
-      "tabs": {
-        "pendingDeposits": "صبان يستنى",
-        "allDeposits": "الصبان الكل",
-        "pendingWithdrawals": "جبدان يستنى",
-        "allWithdrawals": "الجبدان الكل"
-      },
-      "table": {
-        "date": "الوقت",
-        "user": "المستخدم",
-        "amount": "المبلغ",
-        "method": "الطريقة",
-        "status": "الحالة",
-        "info": "معلومات (رقم/مرجع)",
-        "actions": "الإجراءات"
-      },
-      "actions": {
-        "view": "شوف التفاصيل",
-        "approve": "وافق",
-        "complete": "كمّل",
-        "reject": "ارفض"
-      },
-      "rejectModalTitle": "رفض طلب {{type}} من عند {{user}}",
-      "rejectModalTitleGeneric": "رفض الطلب"
-    },
-    "detailsModal": {
-      "title": "تفاصيل طلب {{type}}",
-      "types": { "deposit": "صبان", "withdrawal": "جبدان" },
-      "noData": "معلومات الطلب موش موجودة.",
-      "userTitle": "معلومات المستخدم",
-      "userName": "الاسم",
-      "userEmail": "الإيميل",
-      "userPhone": "النومرو",
-      "userBalance": "الفلوس الموجودة",
-      "requestTitle": "تفاصيل الطلب",
-      "requestId": "رقم الطلب",
-      "status": "الحالة",
-      "requestDate": "وقت الطلب",
-      "method": "طريقة الخلاص",
-      "depositAmount": "مبلغ الصبان",
-      "withdrawalAmount": "مبلغ الجبدان",
-      "fee": "العمولة",
-      "netCredit": "الصافي اللي باش يتصب",
-      "netReceive": "الصافي اللي باش يوصل",
-      "txnId": "رقم العملية (مالمستخدم)",
-      "screenshot": "التصويرة",
-      "rejectionReason": "سبب الرفض",
-      "withdrawalAmountOriginal": "المبلغ المطلوب ({{currency}})",
-      "feeOriginal": "العمولة (تقريبي {{currency}})",
-      "netReceiveOriginal": "الصافي اللي يوصل (تقريبي {{currency}})",
-      "totalDeductedTND": "الجملة اللي تنحات (دينار)",
-      "withdrawalInfo": "معلومات الجبدان (مالمستخدم)"
-    }
-  },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
     "emailLabel": "الإيميل",
@@ -448,7 +395,381 @@
     "loading": "قاعدين نحملو...",
     "processing": "تتخدم...",
     "confirmBid": "أكد المزايدة",
-    "level": "مستوى {{level}}"
+    "level": "مستوى {{level}}",
+    "saveChanges": "سجل التغييرات",
+    "statuses": {
+      "active": "يخدم",
+      "blocked": "مبلوكي",
+      "inactive": "ما يخدمش"
+    },
+    "roles": {
+      "User": "مستخدم",
+      "Vendor": "بايع",
+      "Admin": "أدمن",
+      "Mediator": "وسيط"
+    }
+  },
+  "admin": {
+    "tickets": {
+      "page": {
+        "title": "لوحة تحكم تذاكر الدعم",
+        "loading": "قاعدين نحملو في التذاكر...",
+        "errorTitle": "غلطة في تحميل التذاكر",
+        "noTicketsTitle": "ما لقينا حتى تذكرة",
+        "noTicketsSubtitle": "ما فماش تذاكر تطابق الفلتر متاعك. حاول تبدل البحث."
+      },
+      "filters": {
+        "status": "الحالة",
+        "allStatuses": "الحالات الكل",
+        "priority": "الأولوية",
+        "allPriorities": "الأولويات الكل",
+        "search": "لوّج",
+        "searchPlaceholder": "لوّج بالنومرو، العنوان، إيميل المستخدم...",
+        "searchButton": "لوّج"
+      },
+      "table": {
+        "header": "التذاكر الكل",
+        "id": "النومرو",
+        "titleCreated": "العنوان / وقت الحلّان",
+        "user": "المستخدم",
+        "category": "الصنف",
+        "priority": "الأولوية",
+        "status": "الحالة",
+        "assignedTo": "عند شكون",
+        "lastUpdate": "آخر تحديث",
+        "actions": "الإجراءات",
+        "systemUser": "النظام",
+        "supportStaff": "فريق الدعم",
+        "unassigned": "مو لحد"
+      },
+      "actions": {
+        "view": "شوف تفاصيل التذكرة",
+        "viewButton": "شوف"
+      }
+    },
+    "faq": {
+      "page": {
+        "title": "جيستيون الأسئلة الشايعة",
+        "addButton": "زيد سؤال جديد",
+        "noFaqs": "ما فماش أسئلة معمولة. انزل على \"زيد سؤال جديد\" باش تبدا."
+      },
+      "table": {
+        "question": "السؤال",
+        "category": "الصنف",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "edit": "بدّل",
+        "delete": "فسّخ"
+      },
+      "deleteConfirm": "بالرسمي تحب تفسخ السؤال هذا؟ ما تنجمش ترجع باللوالي.",
+      "modal": {
+        "editTitle": "بدّل السؤال",
+        "createTitle": "اعمل سؤال جديد",
+        "questionLabel": "السؤال",
+        "questionPlaceholder": "مثال: كيفاش نبدل المودباس متاعي؟",
+        "answerLabel": "الجواب",
+        "answerPlaceholder": "أعطي جواب واضح ومفسر.",
+        "categoryLabel": "الصنف",
+        "orderLabel": "ترتيب الظهور",
+        "orderHelpText": "النومروات الصغار يظهرو هوما اللولين.",
+        "activeLabel": "تظهر للمستخدمين"
+      }
+    },
+    "methods": {
+      "page": {
+        "title": "جيستيون طرق الخلاص",
+        "addButton": "زيد طريقة جديدة",
+        "loading": "قاعدين نحملو في الطرق...",
+        "noMethods": "ما فماش طرق خلاص. انزل على 'زيد طريقة جديدة' باش تبدا."
+      },
+      "table": {
+        "logo": "اللوڨو",
+        "name": "الاسم (الداخلي)",
+        "type": "النوع",
+        "depositInfo": "معلومات الصبان",
+        "commission": "العمولة (صبان٪ / جبدان٪)",
+        "minDeposit": "أقل صبان (دينار/دولار)",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "types": {
+        "both": "الزوز",
+        "deposit": "صبان",
+        "withdrawal": "جبدان"
+      },
+      "actions": {
+        "activate": "فعّل",
+        "deactivate": "نحّي التفعيل",
+        "edit": "بدّل الطريقة",
+        "delete": "فسّخ الطريقة"
+      },
+      "modal": {
+        "editTitle": "تبديل: {{name}}",
+        "addTitle": "زيد طريقة خلاص جديدة",
+        "validationWarning": "يرحم والديك عمر الخانات اللازمة الكل بالصحيح.",
+        "nameLabel": "اسم الطريقة (داخلي، ما يتعاودش)",
+        "nameInvalid": "الاسم لازم وما لازمش يتعاود.",
+        "displayNameLabel": "الاسم اللي يظهر (للمستخدمين)",
+        "displayNameInvalid": "الاسم اللي يظهر لازم.",
+        "typeLabel": "نوع الطريقة",
+        "typeBoth": "صبان و جبدان",
+        "typeDeposit": "صبان أكهو",
+        "typeWithdrawal": "جبدان أكهو",
+        "typeInvalid": "النوع لازم.",
+        "logoUrlLabel": "رابط اللوڨو (اختياري)",
+        "logoUrlInvalid": "يرحم والديك اكتب رابط صحيح.",
+        "descriptionLabel": "الوصف / التعليمات (اختياري)",
+        "depositInfoLabel": "معلومات الصبان (نومرو، عنوان، ID)",
+        "withdrawalInfoLabel": "المعلومات اللازمة للجبدان (كان فما)",
+        "limitsHeader": "الحدود الدنيا",
+        "minDepositTND": "أقل صبان (دينار)",
+        "minDepositUSD": "أقل صبان (دولار)",
+        "minWithdrawalTND": "أقل جبدان (دينار)",
+        "minWithdrawalUSD": "أقل جبدان (دولار)",
+        "commissionHeader": "نسبة العمولة",
+        "depositCommission": "عمولة الصبان ٪",
+        "withdrawalCommission": "عمولة الجبدان ٪",
+        "otherSettingsHeader": "ريڨلاجات أخرى",
+        "activeLabel": "تخدم للمستخدمين",
+        "notesLabel": "ملاحظات الأدمن (داخلية)",
+        "addButton": "زيد الطريقة"
+      },
+      "deleteConfirm": "بالرسمي تحب تفسخ طريقة الخلاص هاذي؟ ما تنجمش ترجع باللوالي."
+    },
+    "disputes": {
+      "page": {
+        "title": "الوساطات اللي عليها مشاكل",
+        "subtitle": "راجع و جيّر المشاكل اللي قاعدة تصير.",
+        "loading": "قاعدين نحملو في القضايا...",
+        "error": "غلطة",
+        "noDisputes": "ما فماش وساطات عليها مشاكل توّا."
+      },
+      "card": {
+        "product": "المنتوج",
+        "disputedBadge": "عليها مشكلة",
+        "mediationId": "نومرو الوساطة",
+        "seller": "البايع",
+        "buyer": "الشاري",
+        "mediator": "الوسيط",
+        "agreedPrice": "السوم المتفاهم عليه",
+        "lastUpdate": "آخر تحديث",
+        "joinChatButton": "ادخل/شوف محادثة المشكلة"
+      }
+    },
+    "reports": {
+      "page": {
+        "title": "جيستيون البلاغات",
+        "loading": "قاعدين نحملو في البلاغات...",
+        "fetchingUpdates": "نجيبو في الجديد...",
+        "noReports": "ما لقينا حتى بلاغ يطابق البحث متاعك.",
+        "paginationInfo": "نعرضو في صفحة {{currentPage}} من {{totalPages}}. الجملة: {{totalReports}} بلاغات."
+      },
+      "filter": {
+        "label": "صفي حسب الحالة",
+        "all": "الحالات الكل"
+      },
+      "table": {
+        "date": "الوقت",
+        "reporter": "شكون بلّغ",
+        "reportedUser": "شكون تبلّغ عليه",
+        "reason": "السبب",
+        "details": "التفاصيل (شوية)",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "viewEdit": "شوف / بدّل"
+      },
+      "statuses": {
+        "pending": "يستنى في المراجعة",
+        "investigation": "قيد التحقيق",
+        "actionTaken": "خذينا إجراء",
+        "dismissed": "تسكر"
+      },
+      "reasons": {
+        "SCAMMING_OR_FRAUD": "تحيل و بركاج",
+        "HARASSMENT_OR_BULLYING": "تقلقيل و تنمر",
+        "INAPPROPRIATE_CONTENT": "محتوى موش باهي",
+        "SPAM": "سبام",
+        "OTHER": "حاجة أخرى"
+      },
+      "modal": {
+        "title": "تفاصيل البلاغ",
+        "id": "النومرو",
+        "loading": "قاعدين نحملو في التفاصيل...",
+        "relatedMediation": "الوساطة المتعلقة",
+        "viewMediation": "شوف الوساطة",
+        "currentStatus": "الحالة توّا",
+        "changeStatus": "بدّل الحالة",
+        "reporterDetails": "التفاصيل اللي عطاها اللي بلّغ",
+        "attachedImages": "التصاور المرفقة ({{count}})",
+        "evidence": "دليل",
+        "adminNotes": "ملاحظات الأدمن (داخلية)",
+        "adminNotesPlaceholder": "ملاحظات داخلية على التحقيق...",
+        "resolutionDetails": "تفاصيل الحل (يشوفها اللي بلّغ)",
+        "resolutionDetailsPlaceholder": "أوصف الإجراء اللي خذيتو..."
+      },
+      "errors": {
+        "fetchFailed": "فما مشكلة في جيبان البلاغات.",
+        "fetchDetailsFailed": "فما مشكلة في تحميل تفاصيل البلاغ.",
+        "updateFailed": "فما مشكلة في تحديث البلاغ."
+      },
+      "updateSuccess": "البلاغ تبدل بالصحيح!"
+    },
+    "requests": {
+      "title": "طلبات المعاملات",
+      "refreshTooltip": "تحديث الليستة",
+      "refreshButton": "تحديث",
+      "refreshing": "قاعدين نحدثو في الليستة...",
+      "newDepositToast": "طلب صبان جديد من عند {{user}}",
+      "newWithdrawalToast": "طلب جبدان جديد من عند {{user}}",
+      "reasonRequired": "لازم تكتب سبب الرفض.",
+      "error": "غلطة: {{error}}",
+      "noRequests": "ما فماش طلبات في الصنف هذا.",
+      "tabs": {
+        "pendingDeposits": "صبان يستنى",
+        "allDeposits": "الصبان الكل",
+        "pendingWithdrawals": "جبدان يستنى",
+        "allWithdrawals": "الجبدان الكل"
+      },
+      "table": {
+        "date": "الوقت",
+        "user": "المستخدم",
+        "amount": "المبلغ",
+        "method": "الطريقة",
+        "status": "الحالة",
+        "info": "معلومات (رقم/مرجع)",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "view": "شوف التفاصيل",
+        "approve": "وافق",
+        "complete": "كمّل",
+        "reject": "ارفض"
+      },
+      "rejectModalTitle": "رفض طلب {{type}} من عند {{user}}",
+      "rejectModalTitleGeneric": "رفض الطلب"
+    },
+    "detailsModal": {
+      "title": "تفاصيل طلب {{type}}",
+      "types": { "deposit": "صبان", "withdrawal": "جبدان" },
+      "noData": "معلومات الطلب موش موجودة.",
+      "userTitle": "معلومات المستخدم",
+      "userName": "الاسم",
+      "userEmail": "الإيميل",
+      "userPhone": "النومرو",
+      "userBalance": "الفلوس الموجودة",
+      "requestTitle": "تفاصيل الطلب",
+      "requestId": "رقم الطلب",
+      "status": "الحالة",
+      "requestDate": "وقت الطلب",
+      "method": "طريقة الخلاص",
+      "depositAmount": "مبلغ الصبان",
+      "withdrawalAmount": "مبلغ الجبدان",
+      "fee": "العمولة",
+      "netCredit": "الصافي اللي باش يتصب",
+      "netReceive": "الصافي اللي باش يوصل",
+      "txnId": "رقم العملية (مالمستخدم)",
+      "screenshot": "التصويرة",
+      "rejectionReason": "سبب الرفض",
+      "withdrawalAmountOriginal": "المبلغ المطلوب ({{currency}})",
+      "feeOriginal": "العمولة (تقريبي {{currency}})",
+      "netReceiveOriginal": "الصافي اللي يوصل (تقريبي {{currency}})",
+      "totalDeductedTND": "الجملة اللي تنحات (دينار)",
+      "withdrawalInfo": "معلومات الجبدان (مالمستخدم)",
+      "noScreenshot": "ما فماش تصويرة.",
+      "viewScreenshot": "شوف التصويرة",
+      "loadingDetails": "قاعدين نحملو في التفاصيل..."
+    },
+    "rejectModal": {
+      "reasonLabel": "السبب علاش (لازم)",
+      "reasonPlaceholder": "اكتب السبب...",
+      "validationError": "يرحم والديك اكتب سبب واضح للرفض (أقل شي 5 حروف).",
+      "confirmButton": "أكد الرفض"
+    },
+    "users": {
+      "page": {
+        "title": "إدارة المستخدمين",
+        "loading": "قاعدين نحملو في المستخدمين...",
+        "noUsers": "ما لقينا حتى مستخدم."
+      },
+      "table": {
+        "avatar": "التصويرة",
+        "nameEmail": "الاسم / الإيميل",
+        "role": "الدور",
+        "status": "الحالة",
+        "registered": "تاريخ التسجيل",
+        "actions": "الإجراءات"
+      },
+      "actions": {
+        "viewDetails": "شوف التفاصيل",
+        "editUser": "بدّل المستخدم",
+        "blockUser": "بلّوكي المستخدم",
+        "unblockUser": "نحّي البلوك",
+        "confirmUnblock": "بالرسمي تحب تنحي البلوك على {{name}}؟"
+      },
+      "editModal": {
+        "title": "بدّل المستخدم: {{name}}",
+        "saveHandlerMissing": "معالج الحفظ ناقص.",
+        "saveFailed": "فشل تسجيل التغييرات.",
+        "fullName": "الاسم الكامل",
+        "emailReadOnly": "الإيميل (ما يتبدلش)",
+        "phone": "النومرو",
+        "address": "العنوان",
+        "balancesWarning": "بدّل الأرصدة (رد بالك!)"
+      },
+      "blockModal": {
+        "title": "بلّوكي المستخدم: {{name}}",
+        "reasonLabel": "سبب البلوك",
+        "reasonPlaceholder": "اكتب علاش باش تبلّوكي المستخدم هذا...",
+        "confirmButton": "أكد البلوك",
+        "reasonRequiredAlert": "لازم تكتب سبب البلوك."
+      }
+    },
+    "mediatorApps": {
+      "page": {
+        "title": "مراجعة طلبات الوسطاء",
+        "loading": "قاعدين نحملو في الطلبات...",
+        "errorProcessing": "غلطة في معالجة الطلب",
+        "errorLoading": "غلطة في تحميل الطلبات",
+        "noApps": "ما فماش طلبات وساطة تستنى في المراجعة توّا."
+      },
+      "table": {
+        "applicant": "شكون طلب",
+        "email": "الإيميل",
+        "level": "المستوى",
+        "guarantee": "فلوس الضمان (دينار)",
+        "basis": "على أي أساس",
+        "appliedOn": "وقتاش طلب",
+        "actions": "الإجراءات"
+      },
+      "basis": {
+        "reputation": "السمعة",
+        "guarantee": "الضمان",
+        "unknown": "مو واضحش"
+      },
+      "actions": {
+        "viewProfile": "شوف بروفيل المستخدم",
+        "approve": "وافق على الطلب",
+        "reject": "ارفض الطلب",
+        "confirmApprove": "بالرسمي تحب توافق على المستخدم نومرو: {{userId}} باش يولي وسيط؟"
+      },
+      "rejectModal": {
+        "title": "ارفض طلب الوساطة",
+        "body": "يرحم والديك اكتب علاش باش ترفض طلب: <1>{{name}}</1> (النومرو: {{id}})",
+        "reasonLabel": "سبب الرفض (لازم)",
+        "reasonPlaceholder": "اكتب سبب الرفض...",
+        "reasonRequired": "لازم تكتب السبب.",
+        "errorUser": "المستخدم اللي باش ترفضو موش محدد بالصحيح.",
+        "confirmButton": "أكد الرفض"
+      },
+      "loadFail": "فما مشكلة في تحميل طلبات الوسطاء.",
+      "processFail": "فما مشكلة في معالجة طلب الوسيط.",
+      "approveSuccess": "توافق على طلب الوسيط بالصحيح!",
+      "rejectSuccess": "ترفض طلب الوسيط بالصحيح."
+    }
   },
   "rejectModal": {
     "title": "ارفض الطلب",
@@ -480,12 +801,6 @@
     "invalidId": "معرّف المستخدم غالط.",
     "loadFail": "فما مشكل في تحميل البروفيل."
   },
-  "roles": {
-    "User": "مستخدم",
-    "Vendor": "بايع",
-    "Admin": "أدمن",
-    "Mediator": "وسيط"
-  },
   "reputationLevels": {
     "Novice": "مبتدي",
     "Bronze": "برونزي",
@@ -501,7 +816,7 @@
   "apiErrors": {
     "Invalid_credentials": "الإيميل ولا كلمة السر غالطين.",
     "Email_already_exists": "الإيميل هذا موجود ديجا.",
-    "You_cannot_rate_yourself": "ما تنجمش تقيّم روحك.",
+    "You_cannot_rate_yourself": "ما تنجمش تقيِّم روحك.",
     "Rejection_reason_is_required": "لازم تكتب سبب الرفض.",
     "Failed_to_fetch_pending_assignments": "فما مشكلة في جيبان الخدمات اللي تستنى.",
     "Failed_to_fetch_assignments": "فما مشكلة في جيبان خدماتك.",
@@ -939,7 +1254,7 @@
     }
   },
   "ticketsListPage": {
-    "loading": "قاعدين نحملو في التذاكر متاعك...",
+    "loading": "قاعدين نحملو في تذاكرك...",
     "errorTitle": "غلطة في تحميل التذاكر",
     "pageTitle": "تذاكر الدعم متاعي",
     "createButton": "اعمل تذكرة جديدة",
@@ -1040,123 +1355,6 @@
     "adminReplyFail": "فما مشكلة في زيادة الجواب كمسؤول دعم.",
     "closeSuccessUser": "تسكرت التذكرة بالصحيح.",
     "closeFailUser": "فما مشكلة في تسكير التذكرة."
-  },
-  "admin": {
-    "users": {
-      "loadFail": "فما مشكلة في تحميل ليستة المستخدمين.",
-      "updateStatusSuccess": "تبدلت حالة المستخدم بالصحيح.",
-      "updateStatusFail": "فما مشكلة في تبديل حالة المستخدم.",
-      "updateDataSuccess": "تبدلت معلومات المستخدم بالصحيح.",
-      "updateDataFail": "فما مشكلة في تبديل معلومات المستخدم."
-    },
-    "products": {
-      "loadPendingFail": "فما مشكلة في تحميل المنتوجات اللي تستنى.",
-      "approveSuccess": "توافق على المنتوج بالصحيح!",
-      "approveFail": "فما مشكلة في الموافقة على المنتوج.",
-      "rejectSuccess": "ترفض المنتوج بالصحيح!",
-      "rejectFail": "فما مشكلة في رفض المنتوج."
-    },
-    "paymentMethods": {
-      "loadFail": "فما مشكلة في تحميل طرق الخلاص.",
-      "addSuccess": "تزادت طريقة الخلاص بالصحيح!",
-      "addFail": "فما مشكلة في زيادة طريقة الخلاص.",
-      "updateSuccess": "تبدلت طريقة الخلاص بالصحيح!",
-      "updateFail": "فما مشكلة في تبديل طريقة الخلاص.",
-      "deleteSuccess": "تفسخت طريقة الخلاص بالصحيح!",
-      "deleteFail": "فما مشكلة في فسخان طريقة الخلاص."
-    },
-    "deposits": {
-      "loadFail": "فما مشكلة في تحميل طلبات الصبان.",
-      "approveSuccess": "توافق على الصبان بالصحيح!",
-      "approveFail": "فما مشكلة في الموافقة على الصبان.",
-      "rejectSuccess": "ترفض الصبان.",
-      "rejectFail": "فما مشكلة في رفض الصبان."
-    },
-    "withdrawals": {
-      "loadFail": "فما مشكلة في تحميل طلبات الجبدان.",
-      "loadDetailsFail": "فما مشكلة في تحميل تفاصيل الجبدان.",
-      "completeSuccess": "كمل الجبدان بالصحيح!",
-      "completeFail": "فما مشكلة في تكميل الجبدان.",
-      "rejectSuccess": "ترفض الجبدان.",
-      "rejectFail": "فما مشكلة في رفض الجبدان."
-    },
-    "reports": {
-      "loadFail": "فما مشكلة في تحميل البلاغات.",
-      "loadDetailsFail": "فما مشكلة في تحميل تفاصيل البلاغ.",
-      "updateSuccess": "تبدلت حالة البلاغ بالصحيح."
-    },
-    "tickets": {
-      "loadFail": "فما مشكلة في جيبان تذاكر الأدمن.",
-      "loadDetailsFail": "فما مشكلة في جيبان تفاصيل التذكرة للأدمن.",
-      "statusUpdateSuccess": "تبدلت حالة التذكرة.",
-      "statusUpdateFail": "فما مشكلة في تبديل حالة التذكرة.",
-      "priorityUpdateSuccess": "تبدلت أولوية التذكرة.",
-      "priorityUpdateFail": "فما مشكلة في تبديل الأولوية.",
-      "assignSuccess": "تبدل تعيين التذكرة.",
-      "assignFail": "فما مشكلة في تعيين التذكرة."
-    },
-    "requests": {
-      "title": "طلبات المعاملات",
-      "refreshTooltip": "تحديث الليستة",
-      "refreshButton": "تحديث",
-      "refreshing": "قاعدين نحدثو في الليستة...",
-      "newDepositToast": "طلب صبان جديد من عند {{user}}",
-      "newWithdrawalToast": "طلب جبدان جديد من عند {{user}}",
-      "reasonRequired": "لازم تكتب سبب الرفض.",
-      "error": "غلطة: {{error}}",
-      "noRequests": "ما فماش طلبات في الصنف هذا.",
-      "tabs": {
-        "pendingDeposits": "صبان يستنى",
-        "allDeposits": "الصبان الكل",
-        "pendingWithdrawals": "جبدان يستنى",
-        "allWithdrawals": "الجبدان الكل"
-      },
-      "table": {
-        "date": "الوقت",
-        "user": "المستخدم",
-        "amount": "المبلغ",
-        "method": "الطريقة",
-        "status": "الحالة",
-        "info": "معلومات (رقم/مرجع)",
-        "actions": "الإجراءات"
-      },
-      "actions": {
-        "view": "شوف التفاصيل",
-        "approve": "وافق",
-        "complete": "كمّل",
-        "reject": "ارفض"
-      },
-      "rejectModalTitle": "رفض طلب {{type}} من عند {{user}}",
-      "rejectModalTitleGeneric": "رفض الطلب"
-    },
-    "detailsModal": {
-      "title": "تفاصيل طلب {{type}}",
-      "types": { "deposit": "صبان", "withdrawal": "جبدان" },
-      "noData": "معلومات الطلب موش موجودة.",
-      "userTitle": "معلومات المستخدم",
-      "userName": "الاسم",
-      "userEmail": "الإيميل",
-      "userPhone": "النومرو",
-      "userBalance": "الفلوس الموجودة",
-      "requestTitle": "تفاصيل الطلب",
-      "requestId": "رقم الطلب",
-      "status": "الحالة",
-      "requestDate": "وقت الطلب",
-      "method": "طريقة الخلاص",
-      "depositAmount": "مبلغ الصبان",
-      "withdrawalAmount": "مبلغ الجبدان",
-      "fee": "العمولة",
-      "netCredit": "الصافي اللي باش يتصب",
-      "netReceive": "الصافي اللي باش يوصل",
-      "txnId": "رقم العملية (مالمستخدم)",
-      "screenshot": "التصويرة",
-      "rejectionReason": "سبب الرفض",
-      "withdrawalAmountOriginal": "المبلغ المطلوب ({{currency}})",
-      "feeOriginal": "العمولة (تقريبي {{currency}})",
-      "netReceiveOriginal": "الصافي اللي يوصل (تقريبي {{currency}})",
-      "totalDeductedTND": "الجملة اللي تنحات (دينار)",
-      "withdrawalInfo": "معلومات الجبدان (مالمستخدم)"
-    }
   },
   "adminProducts": {
     "pendingApprovals": "موافقات تستنى",
@@ -1352,29 +1550,12 @@
       "fileCount": "أكثر حاجة تنجم تبعثها هي {{count}} فيشيات."
     }
   },
-  "ticketsListPage": {
-    "loading": "قاعدين نحملو في تذاكرك...",
-    "errorTitle": "غلطة في تحميل التذاكر",
-    "pageTitle": "تذاكر الدعم متاعي",
-    "createButton": "حل تذكرة جديدة",
-    "ticketId": "نومرو التذكرة:",
-    "lastUpdate": "آخر تحديث:",
-    "category": "الصنف:",
-    "viewButton": "شوف",
-    "noTicketsTitle": "ما لقينا حتى تذكرة دعم",
-    "noTicketsSubtitle": "مازلت ما عملت حتى تذكرة دعم.",
-    "createFirstButton": "حل تذكرتك لولة",
-    "statuses": {
-      "Open": "محلولة",
-      "PendingSupportReply": "نستناو في جواب الدعم",
-      "PendingUserInput": "نستناو في جوابك",
-      "InProgress": "تتخدم",
-      "Resolved": "تحلت",
-      "Closed": "تسكرت",
-      "OnHold": "تستنى"
-    }
-  },
   "ticketDetails": {
+    "fileTypes": {
+      "Video": "فيديو",
+      "Audio": "صوت",
+      "File": "فيشي"
+    },
     "replySuccess": "الجواب تبعث بالصحيح!",
     "replyRequired": "لازم تكتب ميساج ولا تحط فيشي.",
     "confirmClose": "بالرسمي تحب تسكر التذكرة؟ ما عادش تنجم تجاوب بعدها.",
@@ -1394,9 +1575,16 @@
     "initialDescription": "الوصف لولاني:",
     "admin": {
       "title": "أدوات الأدمن",
-      "changeStatus": "بدل الحالة",
+      "changeStatus": "بدّل الحالة",
       "selectStatus": "اختار حالة...",
-      "updateButton": "تحديث"
+      "updateButton": "تحديث",
+      "changePriority": "بدّل الأولوية",
+      "selectPriority": "اختار أولوية...",
+      "assignTo": "عيّن لـِ",
+      "unassigned": "مو لحد",
+      "assignButton": "تعيين",
+      "resolutionNotes": "ملاحظات على الحل",
+      "resolutionNotesPlaceholder": "زيد أي ملاحظة على الحل..."
     },
     "conversation": "المحادثة",
     "supportTeam": "فريق الدعم",

@@ -115,14 +115,14 @@ const withdrawalRequestReducer = (state = initialState, action) => {
                 // Remove the processed request from the list of pending requests
                 adminRequestsData: {
                     ...state.adminRequestsData,
-                    requests: state.adminRequestsData.requests.filter(req =>
+                    requests: state.adminRequestsData.filter(req =>
                         req._id !== requestId
                     ),
                     totalRequests: Math.max(0, state.adminRequestsData.totalRequests - 1),
                 },
-        // --- [!!!] END: MODIFICATION [!!!] ---
-        // You can still update userRequests and adminRequestDetails if needed
-                    };
+                // --- [!!!] END: MODIFICATION [!!!] ---
+                // You can still update userRequests and adminRequestDetails if needed
+            };
 
         case ADMIN_COMPLETE_WITHDRAWAL_FAIL:
         case ADMIN_REJECT_WITHDRAWAL_FAIL:
@@ -140,7 +140,7 @@ const withdrawalRequestReducer = (state = initialState, action) => {
                     requests: [payload, ...state.adminRequestsData.requests],
                     totalRequests: state.adminRequestsData.totalRequests + 1,
                 },
-                };
+            };
 
         default:
             return state;

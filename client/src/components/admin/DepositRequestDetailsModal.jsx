@@ -18,7 +18,6 @@ import "yet-another-react-lightbox/styles.css";
 import {
   FaCopy,
   FaCheck,
-  FaExternalLinkAlt,
   FaInfoCircle,
   FaHourglassHalf,
   FaCheckCircle,
@@ -26,7 +25,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 
-const TND_TO_USD_RATE = 3.0; // تأكد من تطابقه مع الخادم
+const TND_TO_USD_RATE = 3.0;
 
 const DepositRequestDetailsModal = ({
   show,
@@ -156,6 +155,7 @@ const DepositRequestDetailsModal = ({
       return (
         <div className="text-center p-4">
           <Spinner animation="border" />
+          <p className="mt-2">{t("admin.detailsModal.loadingDetails")}</p>
         </div>
       );
     if (!request)
@@ -163,23 +163,14 @@ const DepositRequestDetailsModal = ({
 
     const isDeposit = requestType === "deposit";
 
-    // [!!!] START OF THE FIX FOR WITHDRAWAL DISPLAY [!!!]
     let withdrawalDisplay = {};
     if (!isDeposit && request.originalCurrency) {
-      const {
-        originalAmount,
-        originalCurrency,
-        feeAmount,
-        netAmountToReceive,
-      } = request;
+      const { originalAmount, originalCurrency, feeAmount } = request;
       let feeInOriginalCurrency = feeAmount;
-      let netInOriginalCurrency = netAmountToReceive;
-
-      // إذا كانت العملة الأصلية ليست TND، قم بالتحويل للعرض فقط
       if (originalCurrency !== "TND") {
         feeInOriginalCurrency = feeAmount / TND_TO_USD_RATE;
-        netInOriginalCurrency = originalAmount - feeInOriginalCurrency;
       }
+      const netInOriginalCurrency = originalAmount - feeInOriginalCurrency;
 
       withdrawalDisplay = {
         amountLabel: t("admin.detailsModal.withdrawalAmountOriginal", {
@@ -198,7 +189,6 @@ const DepositRequestDetailsModal = ({
         totalDeductedValue: formatCurrency(request.amount, "TND"),
       };
     }
-    // [!!!] END OF THE FIX FOR WITHDRAWAL DISPLAY [!!!]
 
     return (
       <>
@@ -250,7 +240,7 @@ const DepositRequestDetailsModal = ({
               value={
                 isDeposit
                   ? request.paymentMethod?.displayName || "N/A"
-                  : request.paymentMethod?.displayName || "N/A"
+                  : request.withdrawalMethod?.displayName || "N/A"
               }
             />
 
@@ -305,20 +295,31 @@ const DepositRequestDetailsModal = ({
               </>
             )}
 
-            {request.screenshotUrl && (
+            {request.screenshotUrl ? (
               <tr>
                 <td className="fw-bold">
                   {t("admin.detailsModal.screenshot")}
                 </td>
                 <td>
-                  <Image
-                    src={request.screenshotUrl}
-                    thumbnail
-                    fluid
-                    style={{ maxWidth: "200px", cursor: "pointer" }}
-                    onClick={() => window.open(request.screenshotUrl, "_blank")}
-                  />
+                  <Button
+                    variant="link"
+                    className="p-0"
+                    onClick={() => setIsLightboxOpen(true)}
+                  >
+                    <Image
+                      src={request.screenshotUrl}
+                      thumbnail
+                      style={{ maxWidth: "150px", cursor: "pointer" }}
+                    />
+                  </Button>
                 </td>
+              </tr>
+            ) : (
+              <tr>
+                <td className="fw-bold">
+                  {t("admin.detailsModal.screenshot")}
+                </td>
+                <td>{t("admin.detailsModal.noScreenshot")}</td>
               </tr>
             )}
             {request.rejectionReason && (
@@ -336,21 +337,31 @@ const DepositRequestDetailsModal = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered size="lg">
-      <Modal.Header closeButton>
-        <Modal.Title>
-          {t("admin.detailsModal.title", {
-            type: t(`admin.detailsModal.types.${requestType}`),
-          })}
-        </Modal.Title>
-      </Modal.Header>
-      <Modal.Body>{renderContent()}</Modal.Body>
-      <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
-          {t("common.close")}
-        </Button>
-      </Modal.Footer>
-    </Modal>
+    <>
+      <Modal show={show} onHide={onHide} centered size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {t("admin.detailsModal.title", {
+              type: t(`admin.detailsModal.types.${requestType}`),
+            })}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>{renderContent()}</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={onHide}>
+            {t("common.close")}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {request?.screenshotUrl && (
+        <Lightbox
+          open={isLightboxOpen}
+          close={() => setIsLightboxOpen(false)}
+          slides={[{ src: request.screenshotUrl }]}
+        />
+      )}
+    </>
   );
 };
 

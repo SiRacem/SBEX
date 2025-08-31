@@ -91,7 +91,7 @@ const mediationReducer = (state = initialState, action) => {
                 assigningMediator: { ...state.assigningMediator, [assignedRequestIdAdmin]: false },
                 pendingAssignmentsAdmin: {
                     ...state.pendingAssignmentsAdmin,
-                    requests: state.pendingAssignmentsAdmin.requests.filter(req => req._id !== assignedRequestIdAdmin),
+                    requests: state.pendingAssignmentsAdmin.filter(req => req._id !== assignedRequestIdAdmin),
                     totalRequests: Math.max(0, state.pendingAssignmentsAdmin.totalRequests - 1)
                 },
                 successAssign: true, errorAssign: null
@@ -266,7 +266,7 @@ const mediationReducer = (state = initialState, action) => {
                     ? updatedRequestFromApi
                     : state.activeMediationDetails,
             };
-            }
+        }
         case BUYER_REJECT_MEDIATION_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 
@@ -277,12 +277,12 @@ const mediationReducer = (state = initialState, action) => {
         case GET_MY_MEDIATION_SUMMARIES_FAIL:
             return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: [], loading: false, error: payload, totalUnreadMessagesCount: 0 } };
         case MARK_MEDIATION_AS_READ_IN_LIST:
-            const updatedRequestsMarkRead = state.myMediationSummaries.requests.map(med => med._id === payload.mediationId ? { ...med, unreadMessagesCount: 0 } : med);
+            const updatedRequestsMarkRead = state.myMediationSummaries.map(med => med._id === payload.mediationId ? { ...med, unreadMessagesCount: 0 } : med);
             const newTotalUnreadMarkRead = updatedRequestsMarkRead.reduce((total, med) => total + (med.unreadMessagesCount || 0), 0);
             return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: updatedRequestsMarkRead, totalUnreadMessagesCount: newTotalUnreadMarkRead } };
         case UPDATE_UNREAD_COUNT_FROM_SOCKET:
             let foundMediation = false;
-            const updatedRequestsSocket = state.myMediationSummaries.requests.map(med => {
+            const updatedRequestsSocket = state.myMediationSummaries.map(med => {
                 if (med._id === payload.mediationId) {
                     foundMediation = true;
                     return { ...med, unreadMessagesCount: payload.unreadCount, lastMessageTimestamp: payload.lastMessageTimestamp || med.lastMessageTimestamp };
@@ -490,7 +490,7 @@ const mediationReducer = (state = initialState, action) => {
 
                 buyerRequests: updateBuyerRequestList(state.buyerRequests),
             };
-            }
+        }
         case CLEAR_ACTIVE_MEDIATION_DETAILS:
             return { ...state, activeMediationDetails: null, loadingActiveMediationDetails: false, errorActiveMediationDetails: null, adminSubChats: { ...initialState.adminSubChats }, activeSubChat: { ...initialState.activeSubChat } };
 

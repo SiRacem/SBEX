@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useTranslation } from "react-i18next"; // <-- [!] تم الاستيراد
 import {
   Table,
   Button,
@@ -15,7 +16,6 @@ import {
   Row,
   Col,
   ListGroup,
-  InputGroup,
   FloatingLabel,
   Card,
 } from "react-bootstrap";
@@ -34,26 +34,23 @@ import {
   FaHourglassHalf,
   FaPiggyBank,
   FaUniversity,
-  FaSearch,
   FaUserCircle,
 } from "react-icons/fa";
 import {
   adminGetAllUsers,
   adminUpdateUserStatus,
   adminUpdateUserData,
-} from "../../redux/actions/adminUserActions"; // تأكد من المسار الصحيح
+} from "../../redux/actions/adminUserActions";
 import { getProfile } from "../../redux/actions/userAction";
-import "./UserListAd.css"; // تأكد من المسار الصحيح
+import "./UserListAd.css";
 
-// --- تعريف الصور البديلة كثوابت خارج المكون ---
 const FALLBACK_IMAGE_URL =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">X</text></svg>';
-const NO_IMAGE_URL =
-  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
-// ----------------------------------------------------
 
 // --- مكون مودال تفاصيل المستخدم ---
 const UserDetailsModal = ({ show, onHide, user }) => {
+  const { t } = useTranslation(); // <-- [!] تم الإضافة
+
   const formatCurrency = useCallback((amount, currencyCode = "TND") => {
     const num = Number(amount);
     if (isNaN(num)) return "N/A";
@@ -85,66 +82,66 @@ const UserDetailsModal = ({ show, onHide, user }) => {
             height={40}
             className="me-2 bg-light"
           />
-          User Details: {user.fullName}
+          {t("admin.users.detailsModal.title", { name: user.fullName })}
           <Badge
             bg={user.blocked ? "danger" : "success"}
             className="ms-2 align-middle"
           >
-            {user.blocked ? "Blocked" : "Active"}
+            {user.blocked ? t("common.statuses.blocked") : t("common.statuses.active")}
           </Badge>
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Row>
           <Col md={6}>
-            <h5 className="mb-3">User Information</h5>
+            <h5 className="mb-3">{t("admin.users.detailsModal.userInfo")}</h5>
             <ListGroup variant="flush">
               <ListGroup.Item>
                 <FaUserCircle className="me-2 text-primary" />{" "}
-                <strong>ID:</strong>{" "}
+                <strong>{t("admin.users.detailsModal.id")}:</strong>{" "}
                 <code className="user-select-all">{user._id}</code>
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaEnvelope className="me-2 text-primary" />{" "}
-                <strong>Email:</strong> {user.email}
+                <strong>{t("admin.users.detailsModal.email")}:</strong> {user.email}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaPhone className="me-2 text-primary" />{" "}
-                <strong>Phone:</strong> {user.phone || "N/A"}
+                <strong>{t("admin.users.detailsModal.phone")}:</strong> {user.phone || "N/A"}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaMapMarkerAlt className="me-2 text-primary" />{" "}
-                <strong>Address:</strong> {user.address || "N/A"}
+                <strong>{t("admin.users.detailsModal.address")}:</strong> {user.address || "N/A"}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaUserTag className="me-2 text-primary" />{" "}
-                <strong>Role:</strong> {user.userRole}
+                <strong>{t("admin.users.detailsModal.role")}:</strong> {t(`common.roles.${user.userRole}`, { defaultValue: user.userRole })}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaCalendarAlt className="me-2 text-primary" />{" "}
-                <strong>Registered:</strong>{" "}
+                <strong>{t("admin.users.detailsModal.registered")}:</strong>{" "}
                 {new Date(user.registerDate).toLocaleString()}
               </ListGroup.Item>
             </ListGroup>
           </Col>
           <Col md={6}>
-            <h5 className="mt-3 mt-md-0 mb-3 text-center">Balances</h5>
+            <h5 className="mt-3 mt-md-0 mb-3 text-center">{t("admin.users.detailsModal.balances")}</h5>
             <ListGroup variant="flush">
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaPiggyBank className="me-1 text-success" /> Principal:
+                  <FaPiggyBank className="me-1 text-success" /> {t("admin.users.detailsModal.principal")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.balance)}</strong>
               </ListGroup.Item>
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaUniversity className="me-1 text-info" /> Deposit:
+                  <FaUniversity className="me-1 text-info" /> {t("admin.users.detailsModal.deposit")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.depositBalance)}</strong>
               </ListGroup.Item>
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaDollarSign className="me-1 text-danger" /> Withdrawal:
+                  <FaDollarSign className="me-1 text-danger" /> {t("admin.users.detailsModal.withdrawal")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.withdrawalBalance)}</strong>
               </ListGroup.Item>
@@ -152,8 +149,7 @@ const UserDetailsModal = ({ show, onHide, user }) => {
                 <>
                   <ListGroup.Item className="d-flex justify-content-between mt-2 border-top pt-2">
                     <span>
-                      <FaBalanceScale className="me-1 text-success" /> Seller
-                      Available:
+                      <FaBalanceScale className="me-1 text-success" /> {t("admin.users.detailsModal.sellerAvailable")}:
                     </span>{" "}
                     <strong>
                       {formatCurrency(user.sellerAvailableBalance)}
@@ -161,8 +157,7 @@ const UserDetailsModal = ({ show, onHide, user }) => {
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between">
                     <span>
-                      <FaHourglassHalf className="me-1 text-warning" /> Seller
-                      On Hold:
+                      <FaHourglassHalf className="me-1 text-warning" /> {t("admin.users.detailsModal.sellerOnHold")}:
                     </span>{" "}
                     <strong>{formatCurrency(user.sellerPendingBalance)}</strong>
                   </ListGroup.Item>
@@ -174,7 +169,7 @@ const UserDetailsModal = ({ show, onHide, user }) => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>
-          Close
+          {t("common.close")}
         </Button>
       </Modal.Footer>
     </Modal>
@@ -183,14 +178,13 @@ const UserDetailsModal = ({ show, onHide, user }) => {
 
 // --- مودال تعديل بيانات المستخدم ---
 const EditUserModal = ({ show, onHide, user, onSave }) => {
+  const { t } = useTranslation(); // <-- [!] تم الإضافة
   const [formData, setFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  // --- [!] Selector مفصول ---
   const loadingSpecificUser = useSelector(
     (state) => state.adminUserReducer?.loadingDataChange?.[user?._id] ?? false
   );
-  // -------------------------
 
   useEffect(() => {
     if (user) {
@@ -232,10 +226,10 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
         await onSave(user._id, dataToSave);
         onHide();
       } else {
-        throw new Error("onSave handler is missing.");
+        throw new Error(t("admin.users.editModal.saveHandlerMissing"));
       }
     } catch (error) {
-      setSaveError(error?.message || "Failed to save changes.");
+      setSaveError(error?.message || t("admin.users.editModal.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -246,7 +240,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
   return (
     <Modal show={show} onHide={onHide} centered backdrop="static">
       <Modal.Header closeButton>
-        <Modal.Title>Edit User: {user.fullName}</Modal.Title>
+        <Modal.Title>{t("admin.users.editModal.title", { name: user.fullName })}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {saveError && (
@@ -263,7 +257,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editFullName"
-                label="Full Name"
+                label={t("admin.users.editModal.fullName")}
                 className="mb-3"
               >
                 <Form.Control
@@ -277,7 +271,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editEmail"
-                label="Email (Read Only)"
+                label={t("admin.users.editModal.emailReadOnly")}
                 className="mb-3"
               >
                 <Form.Control
@@ -291,7 +285,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editPhone"
-                label="Phone"
+                label={t("admin.users.editModal.phone")}
                 className="mb-3"
               >
                 <Form.Control
@@ -305,7 +299,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editAddress"
-                label="Address"
+                label={t("admin.users.editModal.address")}
                 className="mb-3"
               >
                 <Form.Control
@@ -318,12 +312,12 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             </Col>
             <hr className="my-3" />
             <h5 className="mb-3 text-center text-muted">
-              Edit Balances (Use with caution!)
+              {t("admin.users.editModal.balancesWarning")}
             </h5>
             <Col md={6}>
               <FloatingLabel
                 controlId="editBalance"
-                label="Principal Balance"
+                label={t("admin.users.detailsModal.principal")}
                 className="mb-3"
               >
                 <Form.Control
@@ -338,7 +332,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editDepositBalance"
-                label="Deposit Balance"
+                label={t("admin.users.detailsModal.deposit")}
                 className="mb-3"
               >
                 <Form.Control
@@ -353,7 +347,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
             <Col md={6}>
               <FloatingLabel
                 controlId="editWithdrawalBalance"
-                label="Withdrawal Balance"
+                label={t("admin.users.detailsModal.withdrawal")}
                 className="mb-3"
               >
                 <Form.Control
@@ -370,7 +364,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
                 <Col md={6}>
                   <FloatingLabel
                     controlId="editSellerAvailableBalance"
-                    label="Seller Available"
+                    label={t("admin.users.detailsModal.sellerAvailable")}
                     className="mb-3"
                   >
                     <Form.Control
@@ -385,7 +379,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
                 <Col md={6}>
                   <FloatingLabel
                     controlId="editSellerPendingBalance"
-                    label="Seller On Hold"
+                    label={t("admin.users.detailsModal.sellerOnHold")}
                     className="mb-3"
                   >
                     <Form.Control
@@ -408,7 +402,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
           onClick={onHide}
           disabled={loadingSpecificUser || isSaving}
         >
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="primary"
@@ -418,7 +412,7 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
           {loadingSpecificUser || isSaving ? (
             <Spinner size="sm" animation="border" />
           ) : (
-            "Save Changes"
+            t("common.saveChanges")
           )}
         </Button>
       </Modal.Footer>
@@ -428,22 +422,15 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
 
 // --- المكون الرئيسي لصفحة إدارة المستخدمين ---
 const UserListAd = ({ search }) => {
+  const { t } = useTranslation(); // <-- [!] تم الإضافة
   const dispatch = useDispatch();
 
-  // --- [!] Selectors محسّنة ومفصولة ---
   const users = useSelector((state) => state.adminUserReducer?.users ?? []);
-  const loading = useSelector(
-    (state) => state.adminUserReducer?.loading ?? false
-  );
+  const loading = useSelector((state) => state.adminUserReducer?.loading ?? false);
   const error = useSelector((state) => state.adminUserReducer?.error ?? null);
-  const loadingStatusChange = useSelector(
-    (state) => state.adminUserReducer?.loadingStatusChange || {}
-  );
-  const loadingDataChange = useSelector(
-    (state) => state.adminUserReducer?.loadingDataChange || {}
-  );
+  const loadingStatusChange = useSelector((state) => state.adminUserReducer?.loadingStatusChange || {});
+  const loadingDataChange = useSelector((state) => state.adminUserReducer?.loadingDataChange || {});
   const currentUser = useSelector((state) => state.userReducer?.user);
-  // ------------------------------------
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -451,13 +438,12 @@ const UserListAd = ({ search }) => {
   const currentSearch = search !== undefined ? search : "";
   const [showBlockReasonModal, setShowBlockReasonModal] = useState(false);
   const [blockReason, setBlockReason] = useState("");
-  const [userToBlock, setUserToBlock] = useState(null); // لتخزين المستخدم الذي سيتم حظره
+  const [userToBlock, setUserToBlock] = useState(null);
 
   useEffect(() => {
     dispatch(adminGetAllUsers());
   }, [dispatch]);
 
-  // --- Handlers ---
   const handleShowDetails = useCallback((user) => {
     setSelectedUser(user);
     setShowDetailsModal(true);
@@ -468,32 +454,22 @@ const UserListAd = ({ search }) => {
     setShowEditUserModal(true);
   }, []);
   const handleCloseEdit = useCallback(() => setShowEditUserModal(false), []);
-  const handleToggleBlock = useCallback(
-    (user) => {
-      // استقبل الكائن user كاملاً
-      if (loadingStatusChange[user._id]) return;
-
-      if (user.blocked) {
-        // إذا كان محظورًا بالفعل، قم بإلغاء الحظر مباشرة
-        if (
-          window.confirm(`Are you sure you want to unblock ${user.fullName}?`)
-        ) {
-          dispatch(adminUpdateUserStatus(user._id, false, null)); // أرسل null للسبب
-        }
-      } else {
-        // إذا لم يكن محظورًا، افتح مودال السبب
-        setUserToBlock(user);
-        setBlockReason(""); // أفرغ السبب السابق
-        setShowBlockReasonModal(true);
+  const handleToggleBlock = useCallback((user) => {
+    if (loadingStatusChange[user._id]) return;
+    if (user.blocked) {
+      if (window.confirm(t('admin.users.actions.confirmUnblock', { name: user.fullName }))) {
+        dispatch(adminUpdateUserStatus(user._id, false, null));
       }
-    },
-    [dispatch, loadingStatusChange]
-  );
+    } else {
+      setUserToBlock(user);
+      setBlockReason("");
+      setShowBlockReasonModal(true);
+    }
+  }, [dispatch, loadingStatusChange, t]);
 
   const handleConfirmBlock = () => {
     if (!userToBlock || !blockReason.trim()) {
-      // يمكنك عرض رسالة خطأ هنا بأن السبب مطلوب
-      alert("Block reason is required.");
+      alert(t("admin.users.blockModal.reasonRequiredAlert"));
       return;
     }
     dispatch(adminUpdateUserStatus(userToBlock._id, true, blockReason));
@@ -512,13 +488,12 @@ const UserListAd = ({ search }) => {
         }
       } catch (error) {
         console.error("Error saving user (caught in component):", error);
-        throw error; // Re-throw to allow modal to catch it
+        throw error;
       }
     },
     [dispatch, currentUser?._id]
   );
 
-  // الفلترة
   const filteredUsers = useMemo(() => {
     if (!currentSearch) return users;
     const searchTerm = currentSearch.toLowerCase();
@@ -530,7 +505,6 @@ const UserListAd = ({ search }) => {
     );
   }, [users, currentSearch]);
 
-  // معالج خطأ الصورة للجدول
   const handleTableImageError = (e) => {
     if (e.target.src !== FALLBACK_IMAGE_URL) {
       e.target.onerror = null;
@@ -543,7 +517,7 @@ const UserListAd = ({ search }) => {
       <Row className="mb-3 align-items-center">
         <Col>
           <h2 className="page-title mb-0">
-            User Management{" "}
+            {t("admin.users.page.title")}{" "}
             <Badge bg="secondary" pill>
               {filteredUsers.length}
             </Badge>
@@ -554,7 +528,7 @@ const UserListAd = ({ search }) => {
       {loading && (
         <div className="text-center my-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2">Loading users...</p>
+          <p className="mt-2">{t("admin.users.page.loading")}</p>
         </div>
       )}
       {!loading && error && (
@@ -570,12 +544,12 @@ const UserListAd = ({ search }) => {
               <thead className="table-light">
                 <tr>
                   <th>#</th>
-                  <th style={{ width: "60px" }}>Avatar</th>
-                  <th>Name / Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Registered</th>
-                  <th className="text-center">Actions</th>
+                  <th style={{ width: "60px" }}>{t("admin.users.table.avatar")}</th>
+                  <th>{t("admin.users.table.nameEmail")}</th>
+                  <th>{t("admin.users.table.role")}</th>
+                  <th>{t("admin.users.table.status")}</th>
+                  <th>{t("admin.users.table.registered")}</th>
+                  <th className="text-center">{t("admin.users.table.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -614,12 +588,12 @@ const UserListAd = ({ search }) => {
                                 : "secondary"
                             }
                           >
-                            {u.userRole}
+                            {t(`common.roles.${u.userRole}`, { defaultValue: u.userRole })}
                           </Badge>
                         </td>
                         <td>
                           <Badge pill bg={u.blocked ? "danger" : "success"}>
-                            {u.blocked ? "Blocked" : "Active"}
+                            {u.blocked ? t("common.statuses.blocked") : t("common.statuses.active")}
                           </Badge>
                         </td>
                         <td>{new Date(u.registerDate).toLocaleDateString()}</td>
@@ -629,7 +603,7 @@ const UserListAd = ({ search }) => {
                             size="sm"
                             className="me-1 action-btn"
                             onClick={() => handleShowDetails(u)}
-                            title="View Details"
+                            title={t("admin.users.actions.viewDetails")}
                             disabled={isChangingStatus || isChangingData}
                           >
                             <FaEye />
@@ -639,7 +613,7 @@ const UserListAd = ({ search }) => {
                             size="sm"
                             className="me-1 action-btn"
                             onClick={() => handleShowEdit(u)}
-                            title="Edit User"
+                            title={t("admin.users.actions.editUser")}
                             disabled={isChangingStatus || isChangingData}
                           >
                             <FaUserEdit />
@@ -652,7 +626,7 @@ const UserListAd = ({ search }) => {
                             className="action-btn"
                             onClick={() => handleToggleBlock(u)}
                             disabled={isChangingStatus || isChangingData}
-                            title={u.blocked ? "Unblock User" : "Block User"}
+                            title={u.blocked ? t("admin.users.actions.unblockUser") : t("admin.users.actions.blockUser")}
                           >
                             {isChangingStatus ? (
                               <Spinner size="sm" animation="border" />
@@ -661,7 +635,6 @@ const UserListAd = ({ search }) => {
                             ) : (
                               <FaUserLock />
                             )}
-                            {/* ملاحظة: isChangingData قد لا يكون مرتبطًا مباشرة بزر الحظر */}
                           </Button>
                         </td>
                       </tr>
@@ -670,7 +643,7 @@ const UserListAd = ({ search }) => {
                 ) : (
                   <tr>
                     <td colSpan={7} className="text-center text-muted py-4">
-                      No users found.
+                      {t("admin.users.page.noUsers")}
                     </td>
                   </tr>
                 )}
@@ -679,26 +652,25 @@ const UserListAd = ({ search }) => {
           </Card.Body>
         </Card>
       )}
-      {/* Block Reason Modal */}
       <Modal
         show={showBlockReasonModal}
         onHide={() => setShowBlockReasonModal(false)}
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Block User: {userToBlock?.fullName}</Modal.Title>
+          <Modal.Title>{t("admin.users.blockModal.title", { name: userToBlock?.fullName })}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group>
             <Form.Label>
-              Reason for blocking <span className="text-danger">*</span>
+              {t("admin.users.blockModal.reasonLabel")} <span className="text-danger">*</span>
             </Form.Label>
             <Form.Control
               as="textarea"
               rows={3}
               value={blockReason}
               onChange={(e) => setBlockReason(e.target.value)}
-              placeholder="Enter the reason for blocking this user..."
+              placeholder={t("admin.users.blockModal.reasonPlaceholder")}
             />
           </Form.Group>
         </Modal.Body>
@@ -707,14 +679,14 @@ const UserListAd = ({ search }) => {
             variant="secondary"
             onClick={() => setShowBlockReasonModal(false)}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             variant="danger"
             onClick={handleConfirmBlock}
             disabled={!blockReason.trim()}
           >
-            Confirm Block
+            {t("admin.users.blockModal.confirmButton")}
           </Button>
         </Modal.Footer>
       </Modal>

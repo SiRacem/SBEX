@@ -158,8 +158,7 @@ const AssignMediatorRequests = () => {
         </div>
       ) : errorPending ? (
         <Alert variant="danger">Error loading requests: {errorPending}</Alert>
-      ) : !pendingAssignments?.requests ||
-        pendingAssignments.requests.length === 0 ? (
+      ) : !pendingAssignments?.requests || pendingAssignments.length === 0 ? (
         <Alert variant="info">
           No pending mediation requests require assignment.
         </Alert>
@@ -184,7 +183,7 @@ const AssignMediatorRequests = () => {
                 </tr>
               </thead>
               <tbody className="text-center">
-                {pendingAssignments.requests.map((req) => (
+                {pendingAssignments.map((req) => (
                   <tr key={req._id}>
                     <td className="small text-muted align-middle">
                       {req.createdAt

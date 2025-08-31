@@ -66,14 +66,14 @@ const depositRequestReducer = (state = initialState, { type, payload }) => {
         // ... (حالات ADMIN_GET_DEPOSITS - تأكد من استخدام adminRequestsData) ...
         case ADMIN_GET_DEPOSITS_REQUEST: return { ...state, loadingAdminList: true, errorAdminList: null };
         case ADMIN_GET_DEPOSITS_SUCCESS:
-    if (typeof payload === 'object' && payload !== null && Array.isArray(payload.requests)) {
-        return {
-            ...state,
-            loadingAdminList: false,
-            adminRequestsData: payload, // <-- هنا يتم تحديث البيانات
-            errorAdminList: null,
-        };
-    } else {
+            if (typeof payload === 'object' && payload !== null && Array.isArray(payload.requests)) {
+                return {
+                    ...state,
+                    loadingAdminList: false,
+                    adminRequestsData: payload, // <-- هنا يتم تحديث البيانات
+                    errorAdminList: null,
+                };
+            } else {
                 console.error("ADMIN_GET_DEPOSITS_SUCCESS received unexpected payload structure:", payload);
                 return { ...state, loadingAdminList: false, errorAdminList: "Invalid data format received from server." };
             }
@@ -93,7 +93,7 @@ const depositRequestReducer = (state = initialState, { type, payload }) => {
                 loadingAdminAction: { ...state.loadingAdminAction, [updatedRequest._id]: false },
                 adminRequestsData: {
                     ...state.adminRequestsData,
-                    requests: state.adminRequestsData.requests.map(req =>
+                    requests: state.adminRequestsData.map(req =>
                         req._id === updatedRequest._id ? updatedRequest : req
                     ),
                 },
@@ -121,7 +121,7 @@ const depositRequestReducer = (state = initialState, { type, payload }) => {
                     requests: [payload, ...state.adminRequestsData.requests],
                     totalRequests: state.adminRequestsData.totalRequests + 1,
                 },
-                };
+            };
 
         default:
             return state;

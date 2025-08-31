@@ -61,8 +61,12 @@
       "noActivities": "Aucune Activité Récente",
       "description": "Vos activités apparaîtront ici."
     },
-    "notifications": { "title": "Notifications" },
-    "mediations": { "title": "Médiations / Messages" },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "mediations": {
+      "title": "Médiations / Messages"
+    },
     "quickOptions": {
       "title": "Options Rapides",
       "settings": "Paramètres & Langue",
@@ -286,70 +290,6 @@
     "ACCOUNT_BLOCKED": "Votre compte a été bloqué par un administrateur. Raison : {{reason}}",
     "ACCOUNT_UNBLOCKED": "Votre compte a été débloqué par un administrateur. Bon retour !"
   },
-  "admin": {
-    "requests": {
-      "title": "Demandes de Transaction",
-      "refreshTooltip": "Actualiser la liste",
-      "refreshButton": "Actualiser",
-      "refreshing": "Actualisation de la liste...",
-      "newDepositToast": "Nouvelle demande de dépôt de {{user}}",
-      "newWithdrawalToast": "Nouvelle demande de retrait de {{user}}",
-      "reasonRequired": "La raison du rejet est requise.",
-      "error": "Erreur : {{error}}",
-      "noRequests": "Aucune demande trouvée pour cette catégorie.",
-      "tabs": {
-        "pendingDeposits": "Dépôts en attente",
-        "allDeposits": "Tous les Dépôts",
-        "pendingWithdrawals": "Retraits en attente",
-        "allWithdrawals": "Tous les Retraits"
-      },
-      "table": {
-        "date": "Date",
-        "user": "Utilisateur",
-        "amount": "Montant",
-        "method": "Méthode",
-        "status": "Statut",
-        "info": "Info (ID/Réf)",
-        "actions": "Actions"
-      },
-      "actions": {
-        "view": "Voir Détails",
-        "approve": "Approuver",
-        "complete": "Compléter",
-        "reject": "Rejeter"
-      },
-      "rejectModalTitle": "Rejeter la demande de {{type}} de {{user}}",
-      "rejectModalTitleGeneric": "Rejeter la Demande"
-    },
-    "detailsModal": {
-      "title": "Détails de la Demande de {{type}}",
-      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
-      "noData": "Données de la demande non disponibles.",
-      "userTitle": "Informations Utilisateur",
-      "userName": "Nom",
-      "userEmail": "Email",
-      "userPhone": "Téléphone",
-      "userBalance": "Solde Actuel",
-      "requestTitle": "Détails de la Demande",
-      "requestId": "ID Demande",
-      "status": "Statut",
-      "requestDate": "Date Demande",
-      "method": "Méthode de Paiement",
-      "depositAmount": "Montant du Dépôt",
-      "withdrawalAmount": "Montant du Retrait",
-      "fee": "Frais Appliqués",
-      "netCredit": "Montant Net à Créditer",
-      "netReceive": "Montant Net à Recevoir",
-      "txnId": "ID Transaction (Utilisateur)",
-      "screenshot": "Capture d'écran",
-      "rejectionReason": "Raison du Rejet",
-      "withdrawalAmountOriginal": "Montant Retiré ({{currency}})",
-      "feeOriginal": "Frais (Est. {{currency}})",
-      "netReceiveOriginal": "Net à Recevoir (Est. {{currency}})",
-      "totalDeductedTND": "Total Déduit (TND)",
-      "withdrawalInfo": "Informations de Retrait (Utilisateur)"
-    }
-  },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
     "emailLabel": "Adresse e-mail",
@@ -455,7 +395,381 @@
     "loading": "Chargement...",
     "processing": "En cours...",
     "confirmBid": "Confirmer l'enchère",
-    "level": "Niveau {{level}}"
+    "level": "Niveau {{level}}",
+    "saveChanges": "Enregistrer les modifications",
+    "statuses": {
+      "active": "Actif",
+      "blocked": "Bloqué",
+      "inactive": "Inactif"
+    },
+    "roles": {
+      "User": "Utilisateur",
+      "Vendor": "Vendeur",
+      "Admin": "Admin",
+      "Mediator": "Médiateur"
+    }
+  },
+  "admin": {
+    "tickets": {
+      "page": {
+        "title": "Tableau de bord des tickets de support",
+        "loading": "Chargement du tableau de bord...",
+        "errorTitle": "Erreur de chargement des tickets",
+        "noTicketsTitle": "Aucun ticket trouvé",
+        "noTicketsSubtitle": "Aucun ticket de support ne correspond à vos filtres actuels. Essayez de modifier votre recherche ou vos filtres."
+      },
+      "filters": {
+        "status": "Statut",
+        "allStatuses": "Tous les statuts",
+        "priority": "Priorité",
+        "allPriorities": "Toutes les priorités",
+        "search": "Rechercher",
+        "searchPlaceholder": "Rechercher par ID, titre, e-mail...",
+        "searchButton": "Rechercher"
+      },
+      "table": {
+        "header": "Tous les tickets",
+        "id": "ID",
+        "titleCreated": "Titre / Créé le",
+        "user": "Utilisateur",
+        "category": "Catégorie",
+        "priority": "Priorité",
+        "status": "Statut",
+        "assignedTo": "Assigné à",
+        "lastUpdate": "Dernière MàJ",
+        "actions": "Actions",
+        "systemUser": "Système",
+        "supportStaff": "Équipe de support",
+        "unassigned": "Non assigné"
+      },
+      "actions": {
+        "view": "Voir les détails du ticket",
+        "viewButton": "Voir"
+      }
+    },
+    "faq": {
+      "page": {
+        "title": "Gestion de la FAQ",
+        "addButton": "Ajouter une nouvelle FAQ",
+        "noFaqs": "Aucune FAQ n'a encore été créée. Cliquez sur \"Ajouter une nouvelle FAQ\" pour commencer."
+      },
+      "table": {
+        "question": "Question",
+        "category": "Catégorie",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "actions": {
+        "edit": "Modifier",
+        "delete": "Supprimer"
+      },
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette FAQ ? Cette action est irréversible.",
+      "modal": {
+        "editTitle": "Modifier la FAQ",
+        "createTitle": "Créer une nouvelle FAQ",
+        "questionLabel": "Question",
+        "questionPlaceholder": "Ex: Comment réinitialiser mon mot de passe ?",
+        "answerLabel": "Réponse",
+        "answerPlaceholder": "Fournissez une réponse claire et détaillée.",
+        "categoryLabel": "Catégorie",
+        "orderLabel": "Ordre d'affichage",
+        "orderHelpText": "Les nombres les plus bas apparaissent en premier.",
+        "activeLabel": "Actif (Visible pour les utilisateurs)"
+      }
+    },
+    "methods": {
+      "page": {
+        "title": "Gérer les moyens de paiement",
+        "addButton": "Ajouter un moyen",
+        "loading": "Chargement des moyens...",
+        "noMethods": "Aucun moyen de paiement configuré. Cliquez sur 'Ajouter un moyen' pour commencer."
+      },
+      "table": {
+        "logo": "Logo",
+        "name": "Nom d'affichage (Interne)",
+        "type": "Type",
+        "depositInfo": "Infos de dépôt",
+        "commission": "Commission (Dépôt % / Retrait %)",
+        "minDeposit": "Dépôt min (TND/USD)",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "types": {
+        "both": "Les deux",
+        "deposit": "Dépôt",
+        "withdrawal": "Retrait"
+      },
+      "actions": {
+        "activate": "Activer",
+        "deactivate": "Désactiver",
+        "edit": "Modifier le moyen",
+        "delete": "Supprimer le moyen"
+      },
+      "modal": {
+        "editTitle": "Modifier : {{name}}",
+        "addTitle": "Ajouter un nouveau moyen de paiement",
+        "validationWarning": "Veuillez remplir correctement tous les champs obligatoires.",
+        "nameLabel": "Nom du moyen (Interne, Unique)",
+        "nameInvalid": "Le nom est requis et doit être unique.",
+        "displayNameLabel": "Nom d'affichage (pour les utilisateurs)",
+        "displayNameInvalid": "Le nom d'affichage est requis.",
+        "typeLabel": "Type de moyen",
+        "typeBoth": "Dépôt & Retrait",
+        "typeDeposit": "Dépôt uniquement",
+        "typeWithdrawal": "Retrait uniquement",
+        "typeInvalid": "Le type est requis.",
+        "logoUrlLabel": "URL du logo (Optionnel)",
+        "logoUrlInvalid": "Veuillez entrer une URL valide.",
+        "descriptionLabel": "Description / Instructions (Optionnel)",
+        "depositInfoLabel": "Informations de la cible de dépôt (ID, Adresse, Numéro)",
+        "withdrawalInfoLabel": "Informations requises pour le retrait (si applicable)",
+        "limitsHeader": "Limites minimales",
+        "minDepositTND": "Dépôt min (TND)",
+        "minDepositUSD": "Dépôt min (USD)",
+        "minWithdrawalTND": "Retrait min (TND)",
+        "minWithdrawalUSD": "Retrait min (USD)",
+        "commissionHeader": "Pourcentages de commission",
+        "depositCommission": "Commission de dépôt %",
+        "withdrawalCommission": "Commission de retrait %",
+        "otherSettingsHeader": "Autres paramètres",
+        "activeLabel": "Actif pour les utilisateurs",
+        "notesLabel": "Notes de l'administrateur (internes)",
+        "addButton": "Ajouter le moyen"
+      },
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer définitivement ce moyen de paiement ? Cette action est irréversible."
+    },
+    "disputes": {
+      "page": {
+        "title": "Médiations en litige",
+        "subtitle": "Examinez et gérez les litiges en cours.",
+        "loading": "Chargement des cas en litige...",
+        "error": "Erreur",
+        "noDisputes": "Aucune médiation en litige trouvée pour le moment."
+      },
+      "card": {
+        "product": "Produit",
+        "disputedBadge": "En litige",
+        "mediationId": "ID de médiation",
+        "seller": "Vendeur",
+        "buyer": "Acheteur",
+        "mediator": "Médiateur",
+        "agreedPrice": "Prix convenu",
+        "lastUpdate": "Dernière mise à jour",
+        "joinChatButton": "Rejoindre/Voir le chat du litige"
+      }
+    },
+    "reports": {
+      "page": {
+        "title": "Gestion des signalements d'utilisateurs",
+        "loading": "Chargement des signalements...",
+        "fetchingUpdates": "Récupération des mises à jour...",
+        "noReports": "Aucun signalement correspondant à vos critères n'a été trouvé.",
+        "paginationInfo": "Affichage de la page {{currentPage}} sur {{totalPages}}. Total des signalements : {{totalReports}}."
+      },
+      "filter": {
+        "label": "Filtrer par statut",
+        "all": "Tous les statuts"
+      },
+      "table": {
+        "date": "Date",
+        "reporter": "Signaleur",
+        "reportedUser": "Utilisateur signalé",
+        "reason": "Raison",
+        "details": "Détails (Extrait)",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "actions": {
+        "viewEdit": "Voir / Modifier"
+      },
+      "statuses": {
+        "pending": "En attente d'examen",
+        "investigation": "En cours d'investigation",
+        "actionTaken": "Action entreprise",
+        "dismissed": "Rejeté"
+      },
+      "reasons": {
+        "SCAMMING_OR_FRAUD": "Escroquerie ou fraude",
+        "HARASSMENT_OR_BULLYING": "Harcèlement ou intimidation",
+        "INAPPROPRIATE_CONTENT": "Contenu inapproprié",
+        "SPAM": "Spam",
+        "OTHER": "Autre"
+      },
+      "modal": {
+        "title": "Détails du signalement",
+        "id": "ID",
+        "loading": "Chargement des détails...",
+        "relatedMediation": "Médiation associée",
+        "viewMediation": "Voir la médiation",
+        "currentStatus": "Statut actuel",
+        "changeStatus": "Changer le statut",
+        "reporterDetails": "Détails fournis par le signaleur",
+        "attachedImages": "Images jointes ({{count}})",
+        "evidence": "Preuve",
+        "adminNotes": "Notes de l'administrateur (internes)",
+        "adminNotesPlaceholder": "Notes internes sur l'enquête...",
+        "resolutionDetails": "Détails de la résolution (visibles par le signaleur)",
+        "resolutionDetailsPlaceholder": "Décrivez l'action qui a été prise..."
+      },
+      "errors": {
+        "fetchFailed": "Échec de la récupération des signalements.",
+        "fetchDetailsFailed": "Échec du chargement des détails du signalement.",
+        "updateFailed": "Échec de la mise à jour du signalement."
+      },
+      "updateSuccess": "Signalement mis à jour avec succès !"
+    },
+    "requests": {
+      "title": "Demandes de Transaction",
+      "refreshTooltip": "Actualiser la liste",
+      "refreshButton": "Actualiser",
+      "refreshing": "Actualisation de la liste...",
+      "newDepositToast": "Nouvelle demande de dépôt de {{user}}",
+      "newWithdrawalToast": "Nouvelle demande de retrait de {{user}}",
+      "reasonRequired": "La raison du rejet est requise.",
+      "error": "Erreur : {{error}}",
+      "noRequests": "Aucune demande trouvée pour cette catégorie.",
+      "tabs": {
+        "pendingDeposits": "Dépôts en attente",
+        "allDeposits": "Tous les Dépôts",
+        "pendingWithdrawals": "Retraits en attente",
+        "allWithdrawals": "Tous les Retraits"
+      },
+      "table": {
+        "date": "Date",
+        "user": "Utilisateur",
+        "amount": "Montant",
+        "method": "Méthode",
+        "status": "Statut",
+        "info": "Info (ID/Réf)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "Voir Détails",
+        "approve": "Approuver",
+        "complete": "Compléter",
+        "reject": "Rejeter"
+      },
+      "rejectModalTitle": "Rejeter la demande de {{type}} de {{user}}",
+      "rejectModalTitleGeneric": "Rejeter la Demande"
+    },
+    "detailsModal": {
+      "title": "Détails de la Demande de {{type}}",
+      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
+      "noData": "Données de la demande non disponibles.",
+      "userTitle": "Informations Utilisateur",
+      "userName": "Nom",
+      "userEmail": "Email",
+      "userPhone": "Téléphone",
+      "userBalance": "Solde Actuel",
+      "requestTitle": "Détails de la Demande",
+      "requestId": "ID Demande",
+      "status": "Statut",
+      "requestDate": "Date Demande",
+      "method": "Méthode de Paiement",
+      "depositAmount": "Montant du Dépôt",
+      "withdrawalAmount": "Montant du Retrait",
+      "fee": "Frais Appliqués",
+      "netCredit": "Montant Net à Créditer",
+      "netReceive": "Montant Net à Recevoir",
+      "txnId": "ID Transaction (Utilisateur)",
+      "screenshot": "Capture d'écran",
+      "rejectionReason": "Raison du Rejet",
+      "withdrawalAmountOriginal": "Montant Retiré ({{currency}})",
+      "feeOriginal": "Frais (Est. {{currency}})",
+      "netReceiveOriginal": "Net à Recevoir (Est. {{currency}})",
+      "totalDeductedTND": "Total Déduit (TND)",
+      "withdrawalInfo": "Informations de Retrait (Utilisateur)",
+      "noScreenshot": "Aucune capture d'écran fournie.",
+      "viewScreenshot": "Voir la capture d'écran",
+      "loadingDetails": "Chargement des détails..."
+    },
+    "rejectModal": {
+      "reasonLabel": "Raison du Rejet (Requise)",
+      "reasonPlaceholder": "Entrez la raison...",
+      "validationError": "Veuillez fournir une raison claire pour le rejet (min. 5 caractères).",
+      "confirmButton": "Confirmer le Rejet"
+    },
+    "users": {
+      "page": {
+        "title": "Gestion des utilisateurs",
+        "loading": "Chargement des utilisateurs...",
+        "noUsers": "Aucun utilisateur trouvé."
+      },
+      "table": {
+        "avatar": "Avatar",
+        "nameEmail": "Nom / E-mail",
+        "role": "Rôle",
+        "status": "Statut",
+        "registered": "Inscrit le",
+        "actions": "Actions"
+      },
+      "actions": {
+        "viewDetails": "Voir les détails",
+        "editUser": "Modifier l'utilisateur",
+        "blockUser": "Bloquer l'utilisateur",
+        "unblockUser": "Débloquer l'utilisateur",
+        "confirmUnblock": "Êtes-vous sûr de vouloir débloquer {{name}} ?"
+      },
+      "editModal": {
+        "title": "Modifier l'utilisateur : {{name}}",
+        "saveHandlerMissing": "Le gestionnaire onSave est manquant.",
+        "saveFailed": "Échec de l'enregistrement des modifications.",
+        "fullName": "Nom complet",
+        "emailReadOnly": "E-mail (Lecture seule)",
+        "phone": "Téléphone",
+        "address": "Adresse",
+        "balancesWarning": "Modifier les soldes (À utiliser avec prudence !)"
+      },
+      "blockModal": {
+        "title": "Bloquer l'utilisateur : {{name}}",
+        "reasonLabel": "Raison du blocage",
+        "reasonPlaceholder": "Entrez la raison du blocage de cet utilisateur...",
+        "confirmButton": "Confirmer le blocage",
+        "reasonRequiredAlert": "La raison du blocage est requise."
+      }
+    },
+    "mediatorApps": {
+      "page": {
+        "title": "Examiner les candidatures de médiateurs",
+        "loading": "Chargement des candidatures...",
+        "errorProcessing": "Erreur lors du traitement de la candidature",
+        "errorLoading": "Erreur de chargement des candidatures",
+        "noApps": "Aucune candidature de médiateur en attente d'examen pour le moment."
+      },
+      "table": {
+        "applicant": "Candidat",
+        "email": "E-mail",
+        "level": "Niveau",
+        "guarantee": "Dépôt de garantie (TND)",
+        "basis": "Base de la candidature",
+        "appliedOn": "Postulé le",
+        "actions": "Actions"
+      },
+      "basis": {
+        "reputation": "Réputation",
+        "guarantee": "Garantie",
+        "unknown": "Inconnu"
+      },
+      "actions": {
+        "viewProfile": "Voir le profil de l'utilisateur",
+        "approve": "Approuver la candidature",
+        "reject": "Rejeter la candidature",
+        "confirmApprove": "Êtes-vous sûr de vouloir approuver l'utilisateur avec l'ID : {{userId}} en tant que médiateur ?"
+      },
+      "rejectModal": {
+        "title": "Rejeter la candidature de médiateur",
+        "body": "Veuillez fournir la raison du rejet de la candidature de : <1>{{name}}</1> (ID : {{id}})",
+        "reasonLabel": "Raison du rejet (Requise)",
+        "reasonPlaceholder": "Entrez la raison du rejet...",
+        "reasonRequired": "La raison est requise.",
+        "errorUser": "L'utilisateur à rejeter n'est pas correctement sélectionné.",
+        "confirmButton": "Confirmer le rejet"
+      },
+      "loadFail": "Échec du chargement des candidatures de médiateurs.",
+      "processFail": "Échec du traitement de la candidature de médiateur.",
+      "approveSuccess": "Candidature de médiateur approuvée avec succès !",
+      "rejectSuccess": "Candidature de médiateur rejetée avec succès."
+    }
   },
   "rejectModal": {
     "title": "Rejeter la Demande",
@@ -486,12 +800,6 @@
     "reportTooltipCooldown": "Vous avez récemment signalé {{name}}. Vous pourrez signaler à nouveau dans {{hours}} heures.",
     "invalidId": "ID utilisateur invalide.",
     "loadFail": "Échec du chargement du profil utilisateur."
-  },
-  "roles": {
-    "User": "Utilisateur",
-    "Vendor": "Vendeur",
-    "Admin": "Admin",
-    "Mediator": "Médiateur"
   },
   "reputationLevels": {
     "Novice": "Novice",
@@ -1047,123 +1355,6 @@
     "closeSuccessUser": "Ticket fermé avec succès.",
     "closeFailUser": "Échec de la fermeture du ticket."
   },
-  "admin": {
-    "users": {
-      "loadFail": "Échec du chargement de la liste des utilisateurs.",
-      "updateStatusSuccess": "Statut de l'utilisateur mis à jour avec succès.",
-      "updateStatusFail": "Échec de la mise à jour du statut de l'utilisateur.",
-      "updateDataSuccess": "Données de l'utilisateur mises à jour avec succès.",
-      "updateDataFail": "Échec de la mise à jour des données de l'utilisateur."
-    },
-    "products": {
-      "loadPendingFail": "Échec du chargement des produits en attente d'approbation.",
-      "approveSuccess": "Produit approuvé avec succès !",
-      "approveFail": "Échec de l'approbation du produit.",
-      "rejectSuccess": "Produit rejeté avec succès !",
-      "rejectFail": "Échec du rejet du produit."
-    },
-    "paymentMethods": {
-      "loadFail": "Échec du chargement des méthodes de paiement.",
-      "addSuccess": "Méthode de paiement ajoutée avec succès !",
-      "addFail": "Échec de l'ajout de la méthode de paiement.",
-      "updateSuccess": "Méthode de paiement mise à jour avec succès !",
-      "updateFail": "Échec de la mise à jour de la méthode de paiement.",
-      "deleteSuccess": "Méthode de paiement supprimée avec succès !",
-      "deleteFail": "Échec de la suppression de la méthode de paiement."
-    },
-    "deposits": {
-      "loadFail": "Échec du chargement des demandes de dépôt.",
-      "approveSuccess": "Dépôt approuvé avec succès !",
-      "approveFail": "Échec de l'approbation du dépôt.",
-      "rejectSuccess": "Dépôt rejeté.",
-      "rejectFail": "Échec du rejet du dépôt."
-    },
-    "withdrawals": {
-      "loadFail": "Échec du chargement des demandes de retrait.",
-      "loadDetailsFail": "Échec du chargement des détails du retrait.",
-      "completeSuccess": "Retrait effectué avec succès !",
-      "completeFail": "Échec de la finalisation du retrait.",
-      "rejectSuccess": "Retrait rejeté.",
-      "rejectFail": "Échec du rejet du retrait."
-    },
-    "reports": {
-      "loadFail": "Échec du chargement des signalements.",
-      "loadDetailsFail": "Échec du chargement des détails du signalement.",
-      "updateSuccess": "Statut du signalement mis à jour avec succès."
-    },
-    "tickets": {
-      "loadFail": "Échec de la récupération des tickets admin.",
-      "loadDetailsFail": "Échec de la récupération des détails du ticket pour l'admin.",
-      "statusUpdateSuccess": "Statut du ticket mis à jour.",
-      "statusUpdateFail": "Échec de la mise à jour du statut du ticket.",
-      "priorityUpdateSuccess": "Priorité du ticket mise à jour.",
-      "priorityUpdateFail": "Échec de la mise à jour de la priorité.",
-      "assignSuccess": "Assignation du ticket mise à jour.",
-      "assignFail": "Échec de l'assignation du ticket."
-    },
-    "requests": {
-      "title": "Demandes de Transaction",
-      "refreshTooltip": "Actualiser la liste",
-      "refreshButton": "Actualiser",
-      "refreshing": "Actualisation de la liste...",
-      "newDepositToast": "Nouvelle demande de dépôt de {{user}}",
-      "newWithdrawalToast": "Nouvelle demande de retrait de {{user}}",
-      "reasonRequired": "La raison du rejet est requise.",
-      "error": "Erreur : {{error}}",
-      "noRequests": "Aucune demande trouvée pour cette catégorie.",
-      "tabs": {
-        "pendingDeposits": "Dépôts en attente",
-        "allDeposits": "Tous les Dépôts",
-        "pendingWithdrawals": "Retraits en attente",
-        "allWithdrawals": "Tous les Retraits"
-      },
-      "table": {
-        "date": "Date",
-        "user": "Utilisateur",
-        "amount": "Montant",
-        "method": "Méthode",
-        "status": "Statut",
-        "info": "Info (ID/Réf)",
-        "actions": "Actions"
-      },
-      "actions": {
-        "view": "Voir Détails",
-        "approve": "Approuver",
-        "complete": "Compléter",
-        "reject": "Rejeter"
-      },
-      "rejectModalTitle": "Rejeter la demande de {{type}} de {{user}}",
-      "rejectModalTitleGeneric": "Rejeter la Demande"
-    },
-    "detailsModal": {
-      "title": "Détails de la Demande de {{type}}",
-      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
-      "noData": "Données de la demande non disponibles.",
-      "userTitle": "Informations Utilisateur",
-      "userName": "Nom",
-      "userEmail": "Email",
-      "userPhone": "Téléphone",
-      "userBalance": "Solde Actuel",
-      "requestTitle": "Détails de la Demande",
-      "requestId": "ID Demande",
-      "status": "Statut",
-      "requestDate": "Date Demande",
-      "method": "Méthode de Paiement",
-      "depositAmount": "Montant du Dépôt",
-      "withdrawalAmount": "Montant du Retrait",
-      "fee": "Frais Appliqués",
-      "netCredit": "Montant Net à Créditer",
-      "netReceive": "Montant Net à Recevoir",
-      "txnId": "ID Transaction (Utilisateur)",
-      "screenshot": "Capture d'écran",
-      "rejectionReason": "Raison du Rejet",
-      "withdrawalAmountOriginal": "Montant Retiré ({{currency}})",
-      "feeOriginal": "Frais (Est. {{currency}})",
-      "netReceiveOriginal": "Net à Recevoir (Est. {{currency}})",
-      "totalDeductedTND": "Total Déduit (TND)",
-      "withdrawalInfo": "Informations de Retrait (Utilisateur)"
-    }
-  },
   "adminProducts": {
     "pendingApprovals": "Approbations en attente",
     "loading": "Chargement des produits...",
@@ -1358,29 +1549,12 @@
       "fileCount": "Max {{count}} fichiers autorisés."
     }
   },
-  "ticketsListPage": {
-    "loading": "Chargement de vos tickets...",
-    "errorTitle": "Erreur de chargement des tickets",
-    "pageTitle": "Mes tickets de support",
-    "createButton": "Créer un nouveau ticket",
-    "ticketId": "ID du Ticket :",
-    "lastUpdate": "Dernière mise à jour :",
-    "category": "Catégorie :",
-    "viewButton": "Voir",
-    "noTicketsTitle": "Aucun ticket de support trouvé",
-    "noTicketsSubtitle": "Vous n'avez encore créé aucun ticket de support.",
-    "createFirstButton": "Créez votre premier ticket",
-    "statuses": {
-      "Open": "Ouvert",
-      "PendingSupportReply": "En attente de réponse du support",
-      "PendingUserInput": "En attente de votre réponse",
-      "InProgress": "En cours",
-      "Resolved": "Résolu",
-      "Closed": "Fermé",
-      "OnHold": "En attente"
-    }
-  },
   "ticketDetails": {
+    "fileTypes": {
+      "Video": "Vidéo",
+      "Audio": "Audio",
+      "File": "Fichier"
+    },
     "replySuccess": "Réponse ajoutée avec succès !",
     "replyRequired": "Un message de réponse ou une pièce jointe est requis.",
     "confirmClose": "Êtes-vous sûr de vouloir fermer ce ticket ? Vous ne pourrez plus répondre par la suite.",
@@ -1402,7 +1576,14 @@
       "title": "Contrôles administrateur",
       "changeStatus": "Changer le statut",
       "selectStatus": "Sélectionner un statut...",
-      "updateButton": "Mettre à jour"
+      "updateButton": "Mettre à jour",
+      "changePriority": "Changer la priorité",
+      "selectPriority": "Sélectionner une priorité...",
+      "assignTo": "Assigner à",
+      "unassigned": "Non assigné",
+      "assignButton": "Assigner",
+      "resolutionNotes": "Notes de résolution",
+      "resolutionNotesPlaceholder": "Ajoutez des notes sur la résolution..."
     },
     "conversation": "Conversation",
     "supportTeam": "Équipe de support",

@@ -1,7 +1,8 @@
-// src/pages/admin/AdminTicketsDashboardPage.jsx
-import React, { useEffect, useState } from "react";
+// src/components/admin/AdminTicketsDashboardPage.jsx
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, Link } from "react-router-dom"; // أضفت Link هنا
+import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Container,
   Row,
@@ -25,42 +26,41 @@ import {
   FaUserTie,
   FaUser,
   FaExclamationTriangle,
-} from "react-icons/fa"; // تم إضافة FaExclamationTriangle
+} from "react-icons/fa";
 import moment from "moment";
-import { toast } from "react-toastify"; // تم إضافة استيراد toast
-
-// تعريف قوائم الفلاتر (يمكنك وضعها في ملف constants إذا أردت)
-const TICKET_STATUSES = [
-  { value: "", label: "All Statuses" },
-  { value: "Open", label: "Open" },
-  { value: "PendingSupportReply", label: "Pending Support Reply" },
-  { value: "PendingUserInput", label: "Pending User Input" },
-  { value: "InProgress", label: "In Progress" },
-  { value: "Resolved", label: "Resolved" },
-  { value: "Closed", label: "Closed" },
-  { value: "OnHold", label: "On Hold" },
-];
-
-// --- [تم تعريف TICKET_PRIORITIES هنا] ---
-const TICKET_PRIORITIES = [
-  // أضف خيار "All Priorities" إذا أردت
-  // { value: '', label: 'All Priorities' },
-  { value: "Low", label: "Low" },
-  { value: "Medium", label: "Medium" },
-  { value: "High", label: "High" },
-  { value: "Urgent", label: "Urgent" },
-];
-// --- نهاية تعريف TICKET_PRIORITIES ---
+import { toast } from "react-toastify";
 
 const AdminTicketsDashboardPage = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleViewTicket = (ticketIdentifier) => {
-    // افترض أن مسار تفاصيل تذكرة الأدمن هو /dashboard/admin/ticket-view/:ticketId
-    // أو أي مسار تقرره
-    navigate(`/dashboard/admin/ticket-view/${ticketIdentifier}`);
-  };
+  // Dynamically generate filter options from translation files
+  const TICKET_STATUSES = useMemo(
+    () => [
+      { value: "", label: t("admin.tickets.filters.allStatuses") },
+      ...Object.keys(
+        t("ticketsListPage.statuses", { returnObjects: true })
+      ).map((key) => ({
+        value: key,
+        label: t(`ticketsListPage.statuses.${key}`),
+      })),
+    ],
+    [t]
+  );
+
+  const TICKET_PRIORITIES = useMemo(
+    () => [
+      { value: "", label: t("admin.tickets.filters.allPriorities") },
+      ...Object.keys(t("createTicket.priorities", { returnObjects: true })).map(
+        (key) => ({
+          value: key,
+          label: t(`createTicket.priorities.${key}`),
+        })
+      ),
+    ],
+    [t]
+  );
 
   const {
     adminTickets,
@@ -81,9 +81,7 @@ const AdminTicketsDashboardPage = () => {
       !isAuth ||
       (user && user.userRole !== "Admin" && user.userRole !== "Support")
     ) {
-      toast.error(
-        "Access Denied: You do not have permission to view this page."
-      );
+      toast.error(t("apiErrors.notAuthorizedAdmin"));
       navigate("/dashboard");
     } else {
       const params = {
@@ -107,6 +105,7 @@ const AdminTicketsDashboardPage = () => {
     priorityFilter,
     searchTerm,
     ticketsPerPage,
+    t,
   ]);
 
   const handlePageChange = (pageNumber) => {
@@ -126,8 +125,6 @@ const AdminTicketsDashboardPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setCurrentPage(1);
-    // الـ useEffect سيعيد جلب البيانات عند تغيير searchTerm
-    // أو يمكنك استدعاء dispatch هنا مباشرةً لضمان التحديث الفوري عند الضغط على زر البحث
     const params = {
       page: 1,
       limit: ticketsPerPage,
@@ -141,6 +138,7 @@ const AdminTicketsDashboardPage = () => {
   };
 
   const getStatusBadgeVariant = (status) => {
+    // ... (this function remains the same)
     switch (status) {
       case "Open":
         return "primary";
@@ -161,6 +159,7 @@ const AdminTicketsDashboardPage = () => {
     }
   };
   const getPriorityBadgeVariant = (priority) => {
+    // ... (this function remains the same)
     switch (priority) {
       case "Low":
         return "success";
@@ -176,7 +175,6 @@ const AdminTicketsDashboardPage = () => {
   };
 
   if (loadingAdminTickets && (!adminTickets || adminTickets.length === 0)) {
-    // تعديل الشرط قليلاً
     return (
       <Container className="py-5 text-center">
         <Spinner
@@ -184,7 +182,7 @@ const AdminTicketsDashboardPage = () => {
           variant="primary"
           style={{ width: "3rem", height: "3rem" }}
         />
-        <p className="mt-3 fs-5">Loading tickets dashboard...</p>
+        <p className="mt-3 fs-5">{t("admin.tickets.page.loading")}</p>
       </Container>
     );
   }
@@ -194,7 +192,7 @@ const AdminTicketsDashboardPage = () => {
       <Row className="mb-4 align-items-center">
         <Col>
           <h2 className="page-title d-flex align-items-center">
-            <FaTicketAlt className="me-2" /> Support Tickets Dashboard
+            <FaTicketAlt className="me-2" /> {t("admin.tickets.page.title")}
           </h2>
         </Col>
       </Row>
@@ -206,7 +204,8 @@ const AdminTicketsDashboardPage = () => {
               <Col md={4} sm={6} className="mb-2 mb-md-0">
                 <Form.Group controlId="statusFilterAdmin">
                   <Form.Label className="small fw-semibold">
-                    <FaFilter className="me-1" /> Status
+                    <FaFilter className="me-1" />{" "}
+                    {t("admin.tickets.filters.status")}
                   </Form.Label>
                   <Form.Select
                     name="statusFilter"
@@ -224,14 +223,14 @@ const AdminTicketsDashboardPage = () => {
               <Col md={4} sm={6} className="mb-2 mb-md-0">
                 <Form.Group controlId="priorityFilterAdmin">
                   <Form.Label className="small fw-semibold">
-                    <FaExclamationTriangle className="me-1" /> Priority
+                    <FaExclamationTriangle className="me-1" />{" "}
+                    {t("admin.tickets.filters.priority")}
                   </Form.Label>
                   <Form.Select
                     name="priorityFilter"
                     value={priorityFilter}
                     onChange={handleFilterChange}
                   >
-                    <option value="">All Priorities</option>
                     {TICKET_PRIORITIES.map((p) => (
                       <option key={p.value} value={p.value}>
                         {p.label}
@@ -242,18 +241,18 @@ const AdminTicketsDashboardPage = () => {
               </Col>
               <Col md={4}>
                 <Form.Label className="small fw-semibold">
-                  <FaSearch className="me-1" /> Search
+                  <FaSearch className="me-1" />{" "}
+                  {t("admin.tickets.filters.search")}
                 </Form.Label>
                 <InputGroup>
                   <Form.Control
                     type="text"
-                    placeholder="Search by ID, title, user email..."
+                    placeholder={t("admin.tickets.filters.searchPlaceholder")}
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    aria-label="Search tickets"
                   />
                   <Button variant="outline-primary" type="submit">
-                    Search
+                    {t("admin.tickets.filters.searchButton")}
                   </Button>
                 </InputGroup>
               </Col>
@@ -264,20 +263,25 @@ const AdminTicketsDashboardPage = () => {
 
       {errorAdminTickets && (
         <Alert variant="danger">
-          <h4>Error Loading Tickets</h4>
-          <p>{errorAdminTickets}</p>
+          <h4>{t("admin.tickets.page.errorTitle")}</h4>
+          <p>
+            {t(errorAdminTickets.key, {
+              ...errorAdminTickets.params,
+              defaultValue: errorAdminTickets.fallback,
+            })}
+          </p>
           <Button
-            onClick={() => {
-              /* استدعاء dispatch لجلب التذاكر مرة أخرى */ dispatch(
+            onClick={() =>
+              dispatch(
                 adminGetAllTicketsAction({
                   page: currentPage,
                   limit: ticketsPerPage,
                 })
-              );
-            }}
+              )
+            }
             variant="outline-danger"
           >
-            Retry
+            {t("common.retry")}
           </Button>
         </Alert>
       )}
@@ -289,10 +293,9 @@ const AdminTicketsDashboardPage = () => {
           <Card className="text-center shadow-sm mt-4">
             <Card.Body className="p-5">
               <FaTicketAlt size={50} className="text-muted mb-3" />
-              <h4>No Tickets Found</h4>
+              <h4>{t("admin.tickets.page.noTicketsTitle")}</h4>
               <p className="text-muted">
-                There are no support tickets matching your current filters. Try
-                adjusting your search or filters.
+                {t("admin.tickets.page.noTicketsSubtitle")}
               </p>
             </Card.Body>
           </Card>
@@ -302,12 +305,11 @@ const AdminTicketsDashboardPage = () => {
         <Card className="shadow-sm tickets-table-card">
           <Card.Header className="bg-light d-flex justify-content-between align-items-center py-3">
             <h5 className="mb-0">
-              All Tickets{" "}
+              {t("admin.tickets.table.header")}{" "}
               <Badge bg="secondary" pill>
                 {adminTicketsPagination.totalDocs || 0}
               </Badge>
             </h5>
-            {/* يمكن إضافة spinner هنا إذا كان loadingAdminTickets هو true ولكن هناك تذاكر معروضة من تحميل سابق */}
             {loadingAdminTickets && (
               <Spinner animation="border" size="sm" variant="primary" />
             )}
@@ -316,15 +318,17 @@ const AdminTicketsDashboardPage = () => {
             <Table responsive hover className="mb-0 tickets-table align-middle">
               <thead className="table-light">
                 <tr>
-                  <th>ID</th>
-                  <th>Title / Created</th>
-                  <th>User</th>
-                  <th>Category</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Assigned To</th>
-                  <th>Last Update</th>
-                  <th className="text-center">Actions</th>
+                  <th>{t("admin.tickets.table.id")}</th>
+                  <th>{t("admin.tickets.table.titleCreated")}</th>
+                  <th>{t("admin.tickets.table.user")}</th>
+                  <th>{t("admin.tickets.table.category")}</th>
+                  <th>{t("admin.tickets.table.priority")}</th>
+                  <th>{t("admin.tickets.table.status")}</th>
+                  <th>{t("admin.tickets.table.assignedTo")}</th>
+                  <th>{t("admin.tickets.table.lastUpdate")}</th>
+                  <th className="text-center">
+                    {t("admin.tickets.table.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -359,12 +363,16 @@ const AdminTicketsDashboardPage = () => {
                         </>
                       ) : (
                         <Badge bg="light" text="dark" pill>
-                          System
+                          {t("admin.tickets.table.systemUser")}
                         </Badge>
                       )}
                     </td>
                     <td>
-                      <small>{ticket.category}</small>
+                      <small>
+                        {t(`createTicket.categories.${ticket.category}`, {
+                          defaultValue: ticket.category,
+                        })}
+                      </small>
                     </td>
                     <td>
                       <Badge
@@ -372,7 +380,9 @@ const AdminTicketsDashboardPage = () => {
                         bg={getPriorityBadgeVariant(ticket.priority)}
                         className="fw-normal"
                       >
-                        {ticket.priority}
+                        {t(`createTicket.priorities.${ticket.priority}`, {
+                          defaultValue: ticket.priority,
+                        })}
                       </Badge>
                     </td>
                     <td>
@@ -381,18 +391,21 @@ const AdminTicketsDashboardPage = () => {
                         bg={getStatusBadgeVariant(ticket.status)}
                         className="fw-normal"
                       >
-                        {ticket.status}
+                        {t(`ticketsListPage.statuses.${ticket.status}`, {
+                          defaultValue: ticket.status,
+                        })}
                       </Badge>
                     </td>
                     <td>
                       {ticket.assignedTo ? (
                         <>
                           <FaUserTie className="me-1 text-muted" size="0.9em" />{" "}
-                          {ticket.assignedTo.fullName || "Support Staff"}
+                          {ticket.assignedTo.fullName ||
+                            t("admin.tickets.table.supportStaff")}
                         </>
                       ) : (
                         <Badge bg="secondary" pill className="fw-normal">
-                          Unassigned
+                          {t("admin.tickets.table.unassigned")}
                         </Badge>
                       )}
                     </td>
@@ -414,10 +427,12 @@ const AdminTicketsDashboardPage = () => {
                             }`
                           )
                         }
-                        title="View Ticket Details"
+                        title={t("admin.tickets.actions.view")}
                       >
                         <FaEye />{" "}
-                        <span className="d-none d-md-inline">View</span>
+                        <span className="d-none d-md-inline">
+                          {t("admin.tickets.actions.viewButton")}
+                        </span>
                       </Button>
                     </td>
                   </tr>
@@ -440,7 +455,6 @@ const AdminTicketsDashboardPage = () => {
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || loadingAdminTickets}
               />
-              {/* يمكنك عرض عدد محدود من أرقام الصفحات هنا بدلاً من كلها */}
               {[...Array(adminTicketsPagination.totalPages).keys()].map(
                 (page) => (
                   <Pagination.Item

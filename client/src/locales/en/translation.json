@@ -50,15 +50,23 @@
       "sellerAvailable": "Seller Available",
       "onHold": "On Hold Balance"
     },
-    "currencies": { "TND": "TND", "USD": "USD", "EUR": "EUR" },
+    "currencies": {
+      "TND": "TND",
+      "USD": "USD",
+      "EUR": "EUR"
+    },
     "activities": {
       "title": "Recent Activities",
       "displaying": "Displaying last {{count}} activities",
       "noActivities": "No Recent Activities",
       "description": "Your platform activities will appear here."
     },
-    "notifications": { "title": "Notifications" },
-    "mediations": { "title": "Mediations / Messages" },
+    "notifications": {
+      "title": "Notifications"
+    },
+    "mediations": {
+      "title": "Mediations / Messages"
+    },
     "quickOptions": {
       "title": "Quick Options",
       "settings": "Settings & Language",
@@ -66,7 +74,10 @@
       "support": "Technical Support",
       "logout": "Logout"
     },
-    "settings": { "title": "Settings", "languageTitle": "Platform Language" }
+    "settings": {
+      "title": "Settings",
+      "languageTitle": "Platform Language"
+    }
   },
   "faq": {
     "title": "Advice and answers from our Team",
@@ -279,70 +290,6 @@
     "ACCOUNT_BLOCKED": "Your account has been blocked by an administrator. Reason: {{reason}}",
     "ACCOUNT_UNBLOCKED": "Your account has been unblocked by an administrator. Welcome back!"
   },
-  "admin": {
-    "requests": {
-      "title": "Transaction Requests",
-      "refreshTooltip": "Refresh List",
-      "refreshButton": "Refresh",
-      "refreshing": "Refreshing list...",
-      "newDepositToast": "New deposit request from {{user}}",
-      "newWithdrawalToast": "New withdrawal request from {{user}}",
-      "reasonRequired": "Rejection reason is required.",
-      "error": "Error: {{error}}",
-      "noRequests": "No requests found for this category.",
-      "tabs": {
-        "pendingDeposits": "Pending Deposits",
-        "allDeposits": "All Deposits",
-        "pendingWithdrawals": "Pending Withdrawals",
-        "allWithdrawals": "All Withdrawals"
-      },
-      "table": {
-        "date": "Date",
-        "user": "User",
-        "amount": "Amount",
-        "method": "Method",
-        "status": "Status",
-        "info": "Info (ID/Ref)",
-        "actions": "Actions"
-      },
-      "actions": {
-        "view": "View Details",
-        "approve": "Approve",
-        "complete": "Complete",
-        "reject": "Reject"
-      },
-      "rejectModalTitle": "Rejecting {{type}} from {{user}}",
-      "rejectModalTitleGeneric": "Reject Request"
-    },
-    "detailsModal": {
-      "title": "{{type}} Request Details",
-      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
-      "noData": "Request data not available.",
-      "userTitle": "User Information",
-      "userName": "User Name",
-      "userEmail": "User Email",
-      "userPhone": "User Phone",
-      "userBalance": "User Current Balance",
-      "requestTitle": "Request Details",
-      "requestId": "Request ID",
-      "status": "Status",
-      "requestDate": "Request Date",
-      "method": "Payment Method",
-      "depositAmount": "Deposit Amount",
-      "withdrawalAmount": "Withdrawal Amount",
-      "fee": "Fee Applied",
-      "netCredit": "Net Amount To Credit",
-      "netReceive": "Net Amount To Receive",
-      "txnId": "Transaction ID (User)",
-      "screenshot": "Screenshot",
-      "rejectionReason": "Rejection Reason",
-      "withdrawalAmountOriginal": "Amount Withdrawn ({{currency}})",
-      "feeOriginal": "Fee (Est. {{currency}})",
-      "netReceiveOriginal": "Net to Receive (Est. {{currency}})",
-      "totalDeductedTND": "Total Deducted (TND)",
-      "withdrawalInfo": "Withdrawal Info (User)"
-    }
-  },
   "auth": {
     "welcomeBack": "Welcome Back!",
     "emailLabel": "Email address",
@@ -443,12 +390,386 @@
     }
   },
   "common": {
-    "cancel": "Cancel",
     "close": "Close",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
     "loading": "Loading...",
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",
-    "level": "Level {{level}}"
+    "level": "Level {{level}}",
+    "statuses": {
+      "active": "Active",
+      "blocked": "Blocked",
+      "inactive": "Inactive"
+    },
+    "roles": {
+      "User": "User",
+      "Vendor": "Vendor",
+      "Admin": "Admin",
+      "Mediator": "Mediator"
+    }
+  },
+  "admin": {
+    "tickets": {
+      "page": {
+        "title": "Support Tickets Dashboard",
+        "loading": "Loading tickets dashboard...",
+        "errorTitle": "Error Loading Tickets",
+        "noTicketsTitle": "No Tickets Found",
+        "noTicketsSubtitle": "There are no support tickets matching your current filters. Try adjusting your search or filters."
+      },
+      "filters": {
+        "status": "Status",
+        "allStatuses": "All Statuses",
+        "priority": "Priority",
+        "allPriorities": "All Priorities",
+        "search": "Search",
+        "searchPlaceholder": "Search by ID, title, user email...",
+        "searchButton": "Search"
+      },
+      "table": {
+        "header": "All Tickets",
+        "id": "ID",
+        "titleCreated": "Title / Created",
+        "user": "User",
+        "category": "Category",
+        "priority": "Priority",
+        "status": "Status",
+        "assignedTo": "Assigned To",
+        "lastUpdate": "Last Update",
+        "actions": "Actions",
+        "systemUser": "System",
+        "supportStaff": "Support Staff",
+        "unassigned": "Unassigned"
+      },
+      "actions": {
+        "view": "View Ticket Details",
+        "viewButton": "View"
+      }
+    },
+    "faq": {
+      "page": {
+        "title": "FAQ Management",
+        "addButton": "Add New FAQ",
+        "noFaqs": "No FAQs have been created yet. Click \"Add New FAQ\" to get started."
+      },
+      "table": {
+        "question": "Question",
+        "category": "Category",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "deleteConfirm": "Are you sure you want to delete this FAQ? This action cannot be undone.",
+      "modal": {
+        "editTitle": "Edit FAQ",
+        "createTitle": "Create New FAQ",
+        "questionLabel": "Question",
+        "questionPlaceholder": "e.g., How do I reset my password?",
+        "answerLabel": "Answer",
+        "answerPlaceholder": "Provide a clear and detailed answer.",
+        "categoryLabel": "Category",
+        "orderLabel": "Display Order",
+        "orderHelpText": "Lower numbers appear first.",
+        "activeLabel": "Is Active (Visible to users)"
+      }
+    },
+    "methods": {
+      "page": {
+        "title": "Manage Payment Methods",
+        "addButton": "Add New Method",
+        "loading": "Loading methods...",
+        "noMethods": "No payment methods configured yet. Click 'Add New Method' to start."
+      },
+      "table": {
+        "logo": "Logo",
+        "name": "Display Name (Internal)",
+        "type": "Type",
+        "depositInfo": "Deposit Info",
+        "commission": "Commission (Dep% / Wdr%)",
+        "minDeposit": "Min Deposit (TND/USD)",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "types": {
+        "both": "Both",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal"
+      },
+      "actions": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "edit": "Edit Method",
+        "delete": "Delete Method"
+      },
+      "modal": {
+        "editTitle": "Edit: {{name}}",
+        "addTitle": "Add New Payment Method",
+        "validationWarning": "Please fill all required fields correctly.",
+        "nameLabel": "Method Name (Internal, Unique)",
+        "nameInvalid": "Name is required and must be unique.",
+        "displayNameLabel": "Display Name (for Users)",
+        "displayNameInvalid": "Display name is required.",
+        "typeLabel": "Method Type",
+        "typeBoth": "Deposit & Withdrawal",
+        "typeDeposit": "Deposit Only",
+        "typeWithdrawal": "Withdrawal Only",
+        "typeInvalid": "Type is required.",
+        "logoUrlLabel": "Logo URL (Optional)",
+        "logoUrlInvalid": "Please enter a valid URL.",
+        "descriptionLabel": "Description / Instructions (Optional)",
+        "depositInfoLabel": "Deposit Target Info (ID, Address, Number)",
+        "withdrawalInfoLabel": "Required Info for Withdrawal (if applicable)",
+        "limitsHeader": "Minimum Limits",
+        "minDepositTND": "Min Deposit (TND)",
+        "minDepositUSD": "Min Deposit (USD)",
+        "minWithdrawalTND": "Min Withdrawal (TND)",
+        "minWithdrawalUSD": "Min Withdrawal (USD)",
+        "commissionHeader": "Commission Percentages",
+        "depositCommission": "Deposit Commission %",
+        "withdrawalCommission": "Withdrawal Commission %",
+        "otherSettingsHeader": "Other Settings",
+        "activeLabel": "Active for Users",
+        "notesLabel": "Admin Notes (Internal)",
+        "addButton": "Add Method"
+      },
+      "deleteConfirm": "Are you sure you want to permanently delete this payment method? This action cannot be undone."
+    },
+    "disputes": {
+      "page": {
+        "title": "Disputed Mediations",
+        "subtitle": "Review and manage ongoing disputes.",
+        "loading": "Loading disputed cases...",
+        "error": "Error",
+        "noDisputes": "No disputed mediations found at the moment."
+      },
+      "card": {
+        "product": "Product",
+        "disputedBadge": "Disputed",
+        "mediationId": "Mediation ID",
+        "seller": "Seller",
+        "buyer": "Buyer",
+        "mediator": "Mediator",
+        "agreedPrice": "Agreed Price",
+        "lastUpdate": "Last Update",
+        "joinChatButton": "Join/View Dispute Chat"
+      }
+    },
+    "reports": {
+      "page": {
+        "title": "User Reports Management",
+        "loading": "Loading reports...",
+        "fetchingUpdates": "Fetching updates...",
+        "noReports": "No reports found matching your criteria.",
+        "paginationInfo": "Showing page {{currentPage}} of {{totalPages}}. Total reports: {{totalReports}}."
+      },
+      "filter": {
+        "label": "Filter by Status",
+        "all": "All Statuses"
+      },
+      "table": {
+        "date": "Date",
+        "reporter": "Reporter",
+        "reportedUser": "Reported User",
+        "reason": "Reason",
+        "details": "Details (Snippet)",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "actions": {
+        "viewEdit": "View / Edit"
+      },
+      "statuses": {
+        "pending": "Pending Review",
+        "investigation": "Under Investigation",
+        "actionTaken": "Action Taken",
+        "dismissed": "Dismissed"
+      },
+      "reasons": {
+        "SCAMMING_OR_FRAUD": "Scamming or Fraud",
+        "HARASSMENT_OR_BULLYING": "Harassment or Bullying",
+        "INAPPROPRIATE_CONTENT": "Inappropriate Content",
+        "SPAM": "Spam",
+        "OTHER": "Other"
+      },
+      "modal": {
+        "title": "Report Details",
+        "id": "ID",
+        "loading": "Loading details...",
+        "relatedMediation": "Related Mediation",
+        "viewMediation": "View Mediation",
+        "currentStatus": "Current Status",
+        "changeStatus": "Change Status",
+        "reporterDetails": "Details Provided by Reporter",
+        "attachedImages": "Attached Images ({{count}})",
+        "evidence": "Evidence",
+        "adminNotes": "Admin Notes (Internal)",
+        "adminNotesPlaceholder": "Internal notes about the investigation...",
+        "resolutionDetails": "Resolution Details (Visible to reporter)",
+        "resolutionDetailsPlaceholder": "Describe the action taken..."
+      },
+      "errors": {
+        "fetchFailed": "Failed to fetch reports.",
+        "fetchDetailsFailed": "Failed to load report details.",
+        "updateFailed": "Failed to update report."
+      },
+      "updateSuccess": "Report updated successfully!"
+    },
+    "requests": {
+      "title": "Transaction Requests",
+      "refreshTooltip": "Refresh List",
+      "refreshButton": "Refresh",
+      "refreshing": "Refreshing list...",
+      "newDepositToast": "New deposit request from {{user}}",
+      "newWithdrawalToast": "New withdrawal request from {{user}}",
+      "reasonRequired": "Rejection reason is required.",
+      "error": "Error: {{error}}",
+      "noRequests": "No requests found for this category.",
+      "tabs": {
+        "pendingDeposits": "Pending Deposits",
+        "allDeposits": "All Deposits",
+        "pendingWithdrawals": "Pending Withdrawals",
+        "allWithdrawals": "All Withdrawals"
+      },
+      "table": {
+        "date": "Date",
+        "user": "User",
+        "amount": "Amount",
+        "method": "Method",
+        "status": "Status",
+        "info": "Info (ID/Ref)",
+        "actions": "Actions"
+      },
+      "actions": {
+        "view": "View Details",
+        "approve": "Approve",
+        "complete": "Complete",
+        "reject": "Reject"
+      },
+      "rejectModalTitle": "Rejecting {{type}} from {{user}}",
+      "rejectModalTitleGeneric": "Reject Request"
+    },
+    "detailsModal": {
+      "title": "{{type}} Request Details",
+      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
+      "noData": "Request data not available.",
+      "userTitle": "User Information",
+      "userName": "User Name",
+      "userEmail": "User Email",
+      "userPhone": "User Phone",
+      "userBalance": "User Current Balance",
+      "requestTitle": "Request Details",
+      "requestId": "Request ID",
+      "status": "Status",
+      "requestDate": "Request Date",
+      "method": "Payment Method",
+      "depositAmount": "Deposit Amount",
+      "withdrawalAmount": "Withdrawal Amount",
+      "fee": "Fee Applied",
+      "netCredit": "Net Amount To Credit",
+      "netReceive": "Net Amount To Receive",
+      "txnId": "Transaction ID (User)",
+      "screenshot": "Screenshot",
+      "rejectionReason": "Rejection Reason",
+      "withdrawalAmountOriginal": "Amount Withdrawn ({{currency}})",
+      "feeOriginal": "Fee (Est. {{currency}})",
+      "netReceiveOriginal": "Net to Receive (Est. {{currency}})",
+      "totalDeductedTND": "Total Deducted (TND)",
+      "withdrawalInfo": "Withdrawal Info (User)",
+      "noScreenshot": "No screenshot provided.",
+      "viewScreenshot": "View Screenshot",
+      "loadingDetails": "Loading details..."
+    },
+    "rejectModal": {
+      "reasonLabel": "Reason for Rejection (Required)",
+      "reasonPlaceholder": "Enter reason...",
+      "validationError": "Please provide a clear reason for rejection (min. 5 characters).",
+      "confirmButton": "Confirm Rejection"
+    },
+    "users": {
+      "page": {
+        "title": "User Management",
+        "loading": "Loading users...",
+        "noUsers": "No users found."
+      },
+      "table": {
+        "avatar": "Avatar",
+        "nameEmail": "Name / Email",
+        "role": "Role",
+        "status": "Status",
+        "registered": "Registered",
+        "actions": "Actions"
+      },
+      "actions": {
+        "viewDetails": "View Details",
+        "editUser": "Edit User",
+        "blockUser": "Block User",
+        "unblockUser": "Unblock User",
+        "confirmUnblock": "Are you sure you want to unblock {{name}}?"
+      },
+      "editModal": {
+        "title": "Edit User: {{name}}",
+        "saveHandlerMissing": "onSave handler is missing.",
+        "saveFailed": "Failed to save changes.",
+        "fullName": "Full Name",
+        "emailReadOnly": "Email (Read Only)",
+        "phone": "Phone",
+        "address": "Address",
+        "balancesWarning": "Edit Balances (Use with caution!)"
+      },
+      "blockModal": {
+        "title": "Block User: {{name}}",
+        "reasonLabel": "Reason for blocking",
+        "reasonPlaceholder": "Enter the reason for blocking this user...",
+        "confirmButton": "Confirm Block",
+        "reasonRequiredAlert": "Block reason is required."
+      }
+    },
+    "mediatorApps": {
+      "page": {
+        "title": "Review Mediator Applications",
+        "loading": "Loading applications...",
+        "errorProcessing": "Error processing application",
+        "errorLoading": "Error loading applications",
+        "noApps": "No pending mediator applications to review at the moment."
+      },
+      "table": {
+        "applicant": "Applicant",
+        "email": "Email",
+        "level": "Level",
+        "guarantee": "Guarantee Deposit (TND)",
+        "basis": "Application Basis",
+        "appliedOn": "Applied On",
+        "actions": "Actions"
+      },
+      "basis": {
+        "reputation": "Reputation",
+        "guarantee": "Guarantee",
+        "unknown": "Unknown"
+      },
+      "actions": {
+        "viewProfile": "View User Profile",
+        "approve": "Approve Application",
+        "reject": "Reject Application",
+        "confirmApprove": "Are you sure you want to approve user ID: {{userId}} as a mediator?"
+      },
+      "rejectModal": {
+        "title": "Reject Mediator Application",
+        "body": "Provide reason for rejecting application from: <1>{{name}}</1> (ID: {{id}})",
+        "reasonLabel": "Rejection Reason (Required)",
+        "reasonPlaceholder": "Enter reason for rejection...",
+        "reasonRequired": "Reason is required.",
+        "errorUser": "User to reject is not properly selected.",
+        "confirmButton": "Confirm Rejection"
+      },
+      "loadFail": "Failed to load mediator applications.",
+      "processFail": "Failed to process mediator application.",
+      "approveSuccess": "Mediator application approved successfully!",
+      "rejectSuccess": "Mediator application rejected successfully."
+    }
   },
   "rejectModal": {
     "title": "Reject Request",
@@ -479,12 +800,6 @@
     "reportTooltipCooldown": "You have recently reported {{name}}. You can report again after {{hours}} hours.",
     "invalidId": "Invalid User ID provided.",
     "loadFail": "Failed to load user profile."
-  },
-  "roles": {
-    "User": "User",
-    "Vendor": "Vendor",
-    "Admin": "Admin",
-    "Mediator": "Mediator"
   },
   "reputationLevels": {
     "Novice": "Novice",
@@ -1040,123 +1355,6 @@
     "closeSuccessUser": "Ticket closed successfully.",
     "closeFailUser": "Failed to close the ticket."
   },
-  "admin": {
-    "users": {
-      "loadFail": "Failed to load users list.",
-      "updateStatusSuccess": "User status updated successfully.",
-      "updateStatusFail": "Failed to update user status.",
-      "updateDataSuccess": "User data updated successfully.",
-      "updateDataFail": "Failed to update user data."
-    },
-    "products": {
-      "loadPendingFail": "Failed to load pending products for approval.",
-      "approveSuccess": "Product approved successfully!",
-      "approveFail": "Failed to approve product.",
-      "rejectSuccess": "Product rejected successfully!",
-      "rejectFail": "Failed to reject product."
-    },
-    "paymentMethods": {
-      "loadFail": "Failed to load payment methods.",
-      "addSuccess": "Payment method added successfully!",
-      "addFail": "Failed to add payment method.",
-      "updateSuccess": "Payment method updated successfully!",
-      "updateFail": "Failed to update payment method.",
-      "deleteSuccess": "Payment method deleted successfully!",
-      "deleteFail": "Failed to delete payment method."
-    },
-    "deposits": {
-      "loadFail": "Failed to load deposit requests.",
-      "approveSuccess": "Deposit approved successfully!",
-      "approveFail": "Failed to approve deposit.",
-      "rejectSuccess": "Deposit rejected.",
-      "rejectFail": "Failed to reject deposit."
-    },
-    "withdrawals": {
-      "loadFail": "Failed to load withdrawal requests.",
-      "loadDetailsFail": "Failed to load withdrawal details.",
-      "completeSuccess": "Withdrawal completed successfully!",
-      "completeFail": "Failed to complete withdrawal.",
-      "rejectSuccess": "Withdrawal rejected.",
-      "rejectFail": "Failed to reject withdrawal."
-    },
-    "reports": {
-      "loadFail": "Failed to load reports.",
-      "loadDetailsFail": "Failed to load report details.",
-      "updateSuccess": "Report status updated successfully."
-    },
-    "tickets": {
-      "loadFail": "Failed to fetch admin tickets.",
-      "loadDetailsFail": "Failed to fetch ticket details for admin.",
-      "statusUpdateSuccess": "Ticket status updated.",
-      "statusUpdateFail": "Failed to update ticket status.",
-      "priorityUpdateSuccess": "Ticket priority updated.",
-      "priorityUpdateFail": "Failed to update priority.",
-      "assignSuccess": "Ticket assignment updated.",
-      "assignFail": "Failed to assign ticket."
-    },
-    "requests": {
-      "title": "Transaction Requests",
-      "refreshTooltip": "Refresh List",
-      "refreshButton": "Refresh",
-      "refreshing": "Refreshing list...",
-      "newDepositToast": "New deposit request from {{user}}",
-      "newWithdrawalToast": "New withdrawal request from {{user}}",
-      "reasonRequired": "Rejection reason is required.",
-      "error": "Error: {{error}}",
-      "noRequests": "No requests found for this category.",
-      "tabs": {
-        "pendingDeposits": "Pending Deposits",
-        "allDeposits": "All Deposits",
-        "pendingWithdrawals": "Pending Withdrawals",
-        "allWithdrawals": "All Withdrawals"
-      },
-      "table": {
-        "date": "Date",
-        "user": "User",
-        "amount": "Amount",
-        "method": "Method",
-        "status": "Status",
-        "info": "Info (ID/Ref)",
-        "actions": "Actions"
-      },
-      "actions": {
-        "view": "View Details",
-        "approve": "Approve",
-        "complete": "Complete",
-        "reject": "Reject"
-      },
-      "rejectModalTitle": "Rejecting {{type}} from {{user}}",
-      "rejectModalTitleGeneric": "Reject Request"
-    },
-    "detailsModal": {
-      "title": "{{type}} Request Details",
-      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
-      "noData": "Request data not available.",
-      "userTitle": "User Information",
-      "userName": "User Name",
-      "userEmail": "User Email",
-      "userPhone": "User Phone",
-      "userBalance": "User Current Balance",
-      "requestTitle": "Request Details",
-      "requestId": "Request ID",
-      "status": "Status",
-      "requestDate": "Request Date",
-      "method": "Payment Method",
-      "depositAmount": "Deposit Amount",
-      "withdrawalAmount": "Withdrawal Amount",
-      "fee": "Fee Applied",
-      "netCredit": "Net Amount To Credit",
-      "netReceive": "Net Amount To Receive",
-      "txnId": "Transaction ID (User)",
-      "screenshot": "Screenshot",
-      "rejectionReason": "Rejection Reason",
-      "withdrawalAmountOriginal": "Amount Withdrawn ({{currency}})",
-      "feeOriginal": "Fee (Est. {{currency}})",
-      "netReceiveOriginal": "Net to Receive (Est. {{currency}})",
-      "totalDeductedTND": "Total Deducted (TND)",
-      "withdrawalInfo": "Withdrawal Info (User)"
-    }
-  },
   "adminProducts": {
     "pendingApprovals": "Pending Approvals",
     "loading": "Loading products...",
@@ -1343,29 +1541,12 @@
       "fileCount": "Max {{count}} files allowed."
     }
   },
-  "ticketsListPage": {
-    "loading": "Loading your tickets...",
-    "errorTitle": "Error Loading Tickets",
-    "pageTitle": "My Support Tickets",
-    "createButton": "Create New Ticket",
-    "ticketId": "Ticket ID:",
-    "lastUpdate": "Last Update:",
-    "category": "Category:",
-    "viewButton": "View",
-    "noTicketsTitle": "No Support Tickets Found",
-    "noTicketsSubtitle": "You haven't created any support tickets yet.",
-    "createFirstButton": "Create Your First Ticket",
-    "statuses": {
-      "Open": "Open",
-      "PendingSupportReply": "Pending Support Reply",
-      "PendingUserInput": "Pending Your Reply",
-      "InProgress": "In Progress",
-      "Resolved": "Resolved",
-      "Closed": "Closed",
-      "OnHold": "On Hold"
-    }
-  },
   "ticketDetails": {
+    "fileTypes": {
+      "Video": "Video",
+      "Audio": "Audio",
+      "File": "File"
+    },
     "replySuccess": "Reply added successfully!",
     "replyRequired": "Reply message or an attachment is required.",
     "confirmClose": "Are you sure you want to close this ticket? You won't be able to reply afterwards.",
@@ -1387,7 +1568,14 @@
       "title": "Admin Controls",
       "changeStatus": "Change Status",
       "selectStatus": "Select status...",
-      "updateButton": "Update"
+      "updateButton": "Update",
+      "changePriority": "Change Priority",
+      "selectPriority": "Select priority...",
+      "assignTo": "Assign To",
+      "unassigned": "Unassigned",
+      "assignButton": "Assign",
+      "resolutionNotes": "Resolution Notes",
+      "resolutionNotesPlaceholder": "Add any notes about the resolution..."
     },
     "conversation": "Conversation",
     "supportTeam": "Support Team",
