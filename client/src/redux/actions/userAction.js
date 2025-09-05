@@ -20,23 +20,19 @@ import {
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
 
-// دالة مساعدة جديدة لمعالجة الأخطاء وإرجاع كائن منظم
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
-    // التعامل مع خطأ Rate Limit بشكل خاص
     if (error.response?.data?.errorMessage?.key === 'apiErrors.tooManyRequests') {
         return {
             ...error.response.data.errorMessage,
-            rateLimit: error.response.data.rateLimit // إضافة معلومات الـ rate limit
+            rateLimit: error.response.data.rateLimit
         };
     }
-
     if (error.response) {
         if (error.response.data.translationKey) {
             return { key: error.response.data.translationKey };
         }
         if (error.response.data.msg) {
             const fallback = error.response.data.msg;
-            // محاولة إنشاء مفتاح ديناميكي، مع fallback
             const key = `apiErrors.${fallback.replace(/[\s'.]/g, '_')}`;
             return { key, fallback };
         }
@@ -48,14 +44,12 @@ const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
     } else if (error.request) {
         return { key: 'apiErrors.networkError', fallback: 'Network error, please check your connection.' };
     }
-    // خطأ غير معروف
     return { key: defaultKey, fallback: error.message || 'An unknown error occurred.', params: { message: error.message } };
 };
 
 const getTokenConfig = (isFormData = false) => {
     const token = localStorage.getItem("token");
     if (!token || token === 'null' || token === 'undefined') {
-        console.warn("getTokenConfig: No token found in localStorage.");
         return null;
     }
     const headers = { 'Authorization': `Bearer ${token}` };
@@ -79,19 +73,18 @@ export const registerUser = (newUser) => async (dispatch) => {
 export const clearRegistrationStatus = () => ({ type: CLEAR_REGISTRATION_STATUS });
 export const clearUserErrors = () => ({ type: CLEAR_USER_ERRORS });
 
-// [!!!] تعديل: loginUser الآن تستقبل `navigate` كمعامل
-export const loginUser = (loggedUser, navigate) => async (dispatch) => {
+// --- THIS IS THE FIX: `navigate` parameter is removed ---
+export const loginUser = (loggedUser) => async (dispatch) => {
     dispatch({ type: LOGIN_REQUEST });
     dispatch(clearUserErrors());
     try {
         const { data } = await axios.post("/user/login", loggedUser);
         if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
 
-        // [!!!] التحقق من الحساب المحظور أولاً
         if (data.user.blocked) {
             const errorMessage = { key: "auth.toast.accountBlocked", fallback: 'Your account is blocked. Access is restricted.' };
             dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
-            return; // إيقاف العملية
+            return;
         }
 
         localStorage.setItem("token", data.token);
@@ -106,21 +99,13 @@ export const loginUser = (loggedUser, navigate) => async (dispatch) => {
 
     } catch (error) {
         const errorMessage = handleError(error);
-
-        // [!!!] التعامل مع خطأ Rate Limit هنا
-        if (errorMessage.key === 'apiErrors.tooManyRequests' && navigate) {
-            navigate('/rate-limit-exceeded', { state: { resetTime: errorMessage.rateLimit.resetTime } });
-            // أرسل حمولة فارغة لمنع ظهور Toast
-            dispatch({ type: LOGIN_FAIL, payload: { errorMessage: null } });
-        } else {
-            dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
-        }
-
-        // [!!!] إزالة التوكن عند أي فشل في تسجيل الدخول
+        // The action now simply dispatches the error without navigating
+        dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
     }
 };
+// --- END OF FIX ---
 
 export const getProfile = () => async (dispatch, getState) => {
     if (getState().userReducer.loading) {
@@ -143,11 +128,9 @@ export const getProfile = () => async (dispatch, getState) => {
         }
     } catch (error) {
         const errorMessage = handleError(error, 'apiErrors.getProfileFail');
-
-        // إذا كان الخطأ هو خطأ مصادقة، قم بتسجيل الخروج
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage: { key: 'apiErrors.sessionExpired' } } });
-            dispatch(logoutUser()); // استدعاء دالة تسجيل الخروج الكاملة
+            dispatch(logoutUser());
         } else {
             dispatch({ type: GET_PROFILE_FAIL, payload: { errorMessage } });
         }
@@ -158,11 +141,11 @@ export const logoutUser = () => (dispatch) => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     dispatch({ type: LOGOUT, payload: { successMessage: 'auth.toast.loggedOut' } });
-    // مسح الحالات الأخرى عند تسجيل الخروج
     dispatch(clearNotifications());
     dispatch(clearWalletTransactions());
 };
 
+// ... (rest of the file remains the same) ...
 export const adminGetAvailableMediators = () => async (dispatch) => {
     dispatch({ type: ADMIN_GET_MEDIATORS_REQUEST });
     const config = getTokenConfig();

@@ -1,52 +1,71 @@
 // src/pages/RateLimitExceededPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Container, Card, Button, Spinner } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { FaHourglassHalf, FaArrowLeft } from "react-icons/fa";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const RateLimitExceededPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // استخراج وقت إعادة المحاولة من الحالة التي نمررها
-  const resetTime = location.state?.resetTime;
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+  // Function to get the reset time from localStorage
+  const getResetTimeFromStorage = useCallback(() => {
+    const storedTime = localStorage.getItem("rateLimitResetTime");
+    if (!storedTime) return null;
 
-  function calculateTimeLeft() {
-    if (!resetTime) return { minutes: 15, seconds: 0 }; // قيمة افتراضية
-    const difference = new Date(resetTime) - new Date();
+    const resetDate = new Date(storedTime);
+    // If the stored time is invalid or in the past, remove it and return null
+    if (isNaN(resetDate.getTime()) || resetDate < new Date()) {
+      localStorage.removeItem("rateLimitResetTime");
+      return null;
+    }
+    return resetDate;
+  }, []);
+
+  const [resetTime, setResetTime] = useState(getResetTimeFromStorage());
+
+  const calculateTimeLeft = useCallback(() => {
+    if (!resetTime) return { total: 0, minutes: 0, seconds: 0 };
+
+    const difference = resetTime - new Date();
+
     if (difference > 0) {
       return {
+        total: difference,
         minutes: Math.floor((difference / 1000 / 60) % 60),
         seconds: Math.floor((difference / 1000) % 60),
       };
     }
-    return { minutes: 0, seconds: 0 };
-  }
+
+    return { total: 0, minutes: 0, seconds: 0 };
+  }, [resetTime]);
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
   useEffect(() => {
-    if (!resetTime) return;
+    // If the time is up, clear the interval and the stored item
+    if (timeLeft.total <= 0) {
+      localStorage.removeItem("rateLimitResetTime");
+      return;
+    }
 
-    const timer = setTimeout(() => {
+    // Set up an interval to update the countdown every second
+    const timer = setInterval(() => {
       setTimeLeft(calculateTimeLeft());
     }, 1000);
 
-    // إذا انتهى الوقت، اسمح للمستخدم بالعودة
-    if (timeLeft.minutes === 0 && timeLeft.seconds === 0) {
-      clearTimeout(timer);
-    }
-
-    return () => clearTimeout(timer);
-  });
+    // Clean up the interval when the component unmounts or dependencies change
+    return () => clearInterval(timer);
+  }, [calculateTimeLeft, timeLeft.total]);
 
   const handleGoBack = () => {
-    // العودة إلى صفحة تسجيل الدخول أو الصفحة السابقة
+    // Always clear the storage when the user manually navigates away
+    localStorage.removeItem("rateLimitResetTime");
     navigate("/login", { replace: true });
   };
 
-  const isTimeUp = timeLeft.minutes === 0 && timeLeft.seconds === 0;
+  const isTimeUp = timeLeft.total <= 0;
 
   return (
     <div

@@ -1,0 +1,42 @@
+/* src/components/tickets/TicketReplies.css */
+
+.ticket-replies-container .reply-card {
+    border-radius: 15px;
+    border: 1px solid var(--bs-border-color-translucent);
+}
+
+.reply-card .reply-message {
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+/* Current user's reply card */
+.reply-card.bg-primary-light {
+    background-color: #e7f3ff; /* A light blue */
+    border-color: #d0e8ff;
+}
+
+.reply-card.bg-primary-light .reply-message {
+    color: #0d47a1;
+}
+
+/* Other user's (support) reply card */
+.reply-card.bg-light-subtle {
+    background-color: #f8f9fa; /* A very light grey */
+    border-color: #eee;
+}
+
+
+.reply-card .attachment-list .list-group-item a {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.reply-card .attachment-list .list-group-item a:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.reply-card pre {
+    margin-bottom: 0;
+}

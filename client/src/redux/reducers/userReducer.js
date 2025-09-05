@@ -1,5 +1,4 @@
 // src/redux/reducers/userReducer.js
-
 import {
   REGISTER_REQUEST, REGISTER_SUCCESS, REGISTER_FAIL, CLEAR_REGISTRATION_STATUS,
   LOGIN_REQUEST, LOGIN_SUCCESS, LOGIN_FAIL,
@@ -130,7 +129,6 @@ const userReducer = (state = initialState, action) => {
         }
       };
 
-    // --- [!!!] START: الحل النهائي هنا [!!!] ---
     case LOGIN_SUCCESS:
       return {
         ...state,
@@ -142,9 +140,8 @@ const userReducer = (state = initialState, action) => {
         authChecked: true,
         successMessage: payload.successMessage,
         successMessageParams: payload.successMessageParams,
-        errorMessage: null, // <-- السطر الحاسم: قم بمسح أي خطأ قديم عند النجاح
+        errorMessage: null,
       };
-    // --- [!!!] END: الحل النهائي هنا [!!!] ---
 
     case REGISTER_SUCCESS:
       return {
@@ -165,15 +162,18 @@ const userReducer = (state = initialState, action) => {
         authChecked: true,
       };
 
+    // --- THIS IS THE FIX ---
     case UPDATE_AVATAR_SUCCESS:
       return {
         ...state,
         loading: false,
         successUpdateAvatar: true,
-        user: payload.user,
+        // Safely merge the new user data with the existing user data
+        user: { ...state.user, ...payload.user },
         successMessage: payload.successMessage,
         errorUpdateAvatar: null,
       };
+    // --- END OF FIX ---
 
     case APPLY_MEDIATOR_SUCCESS:
       return {

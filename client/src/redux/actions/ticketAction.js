@@ -2,13 +2,30 @@
 import axios from 'axios';
 import * as types from '../actionTypes/ticketActionTypes';
 
-// [!!!] دالة مساعدة جديدة لمعالجة الأخطاء وإرجاع مفتاح ترجمة [!!!]
+// Helper function to navigate on rate limit error
+const handleRateLimitError = (error, navigate) => {
+    if (navigate && error.response?.data?.errorMessage?.key === 'apiErrors.tooManyRequests') {
+        const resetTime = error.response.data.rateLimit?.resetTime;
+        if (resetTime) {
+            localStorage.setItem('rateLimitResetTime', resetTime);
+        }
+        navigate('/rate-limit-exceeded');
+        return true; // Indicates the error was handled
+    }
+    return false;
+};
+
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
     if (error.response) {
+        if (error.response.data?.errorMessage?.key === 'apiErrors.tooManyRequests') {
+            return {
+                ...error.response.data.errorMessage,
+                rateLimit: error.response.data.rateLimit
+            };
+        }
         if (error.response.data.translationKey) return { key: error.response.data.translationKey };
         if (error.response.data.msg) {
             const fallback = error.response.data.msg;
-            // نحول رسالة الخطأ إلى مفتاح (مثال: "Auth required." -> "apiErrors.Auth_required")
             const key = `apiErrors.${fallback.replace(/\s+/g, '_').replace(/[!'.]/g, '')}`;
             return { key, fallback };
         }
@@ -31,8 +48,7 @@ const getTokenConfig = (isFormData = false) => {
 
 const API_PREFIX = '/support';
 
-// --- إنشاء تذكرة جديدة ---
-export const createTicketAction = (ticketData, files = []) => async (dispatch) => {
+export const createTicketAction = (ticketData, files = [], navigate) => async (dispatch) => {
     dispatch({ type: types.CREATE_TICKET_REQUEST });
     const config = getTokenConfig(true);
     if (!config) {
@@ -40,7 +56,6 @@ export const createTicketAction = (ticketData, files = []) => async (dispatch) =
         dispatch({ type: types.CREATE_TICKET_FAIL, payload: { errorMessage } });
         return Promise.reject(new Error("Authorization required."));
     }
-
     const formData = new FormData();
     formData.append('title', ticketData.title);
     formData.append('description', ticketData.description);
@@ -49,12 +64,12 @@ export const createTicketAction = (ticketData, files = []) => async (dispatch) =
     if (files && files.length > 0) {
         files.forEach(file => formData.append('attachments', file));
     }
-
     try {
         const { data } = await axios.post(`${API_PREFIX}/tickets`, formData, config);
         dispatch({ type: types.CREATE_TICKET_SUCCESS, payload: { ...data.ticket, successMessage: 'tickets.createSuccess' } });
         return data.ticket;
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.createFail');
         dispatch({ type: types.CREATE_TICKET_FAIL, payload: { errorMessage: { key, fallback, params } } });
         throw error;
@@ -63,8 +78,7 @@ export const createTicketAction = (ticketData, files = []) => async (dispatch) =
 
 export const resetCreateTicketStatus = () => ({ type: types.CREATE_TICKET_RESET });
 
-// --- جلب تذاكر المستخدم الحالي ---
-export const getUserTicketsAction = (params = {}) => async (dispatch) => {
+export const getUserTicketsAction = (params = {}, navigate) => async (dispatch) => {
     dispatch({ type: types.GET_USER_TICKETS_REQUEST });
     const config = getTokenConfig();
     if (!config) {
@@ -74,13 +88,13 @@ export const getUserTicketsAction = (params = {}) => async (dispatch) => {
         const { data } = await axios.get(`${API_PREFIX}/tickets`, { ...config, params });
         dispatch({ type: types.GET_USER_TICKETS_SUCCESS, payload: data });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.loadUserTicketsFail');
         dispatch({ type: types.GET_USER_TICKETS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-// --- جلب تفاصيل تذكرة معينة ---
-export const getTicketDetailsAction = (ticketId) => async (dispatch) => {
+export const getTicketDetailsAction = (ticketId, navigate) => async (dispatch) => {
     dispatch({ type: types.GET_TICKET_DETAILS_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) {
@@ -90,13 +104,13 @@ export const getTicketDetailsAction = (ticketId) => async (dispatch) => {
         const { data } = await axios.get(`${API_PREFIX}/tickets/${ticketId}`, config);
         dispatch({ type: types.GET_TICKET_DETAILS_SUCCESS, payload: data });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.loadDetailsFail');
         dispatch({ type: types.GET_TICKET_DETAILS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-// --- إضافة رد على تذكرة ---
-export const addTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch) => {
+export const addTicketReplyAction = (ticketId, replyData, files = [], navigate) => async (dispatch) => {
     dispatch({ type: types.ADD_TICKET_REPLY_REQUEST, payload: { ticketId } });
     const config = getTokenConfig(true);
     if (!config) {
@@ -111,14 +125,14 @@ export const addTicketReplyAction = (ticketId, replyData, files = []) => async (
         const { data } = await axios.post(`${API_PREFIX}/tickets/${ticketId}/replies`, formData, config);
         dispatch({ type: types.ADD_TICKET_REPLY_SUCCESS, payload: { reply: data.reply, ticketId, updatedTicketStatus: data.updatedTicketStatus } });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.replyFail');
         dispatch({ type: types.ADD_TICKET_REPLY_FAIL, payload: { errorMessage: { key, fallback, params } } });
         throw error;
     }
 };
 
-// --- إضافة رد على تذكرة من قبل الأدمن ---
-export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => async (dispatch) => {
+export const adminAddTicketReplyAction = (ticketId, replyData, files = [], navigate) => async (dispatch) => {
     dispatch({ type: types.ADD_TICKET_REPLY_REQUEST, payload: { ticketId } });
     const config = getTokenConfig(true);
     if (!config) {
@@ -133,6 +147,7 @@ export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => as
         const { data } = await axios.post(`${API_PREFIX}/panel/tickets/${ticketId}/replies`, formData, config);
         dispatch({ type: types.ADD_TICKET_REPLY_SUCCESS, payload: { reply: data.reply, ticketId, updatedTicketStatus: data.updatedTicketStatus } });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.adminReplyFail');
         dispatch({ type: types.ADD_TICKET_REPLY_FAIL, payload: { errorMessage: { key, fallback, params } } });
         throw error;
@@ -142,8 +157,7 @@ export const adminAddTicketReplyAction = (ticketId, replyData, files = []) => as
 export const clearTicketDetailsAction = () => ({ type: types.CLEAR_TICKET_DETAILS });
 export const resetAddTicketReplyStatus = () => ({ type: types.ADD_TICKET_REPLY_RESET });
 
-// --- المستخدم يغلق تذكرته ---
-export const closeTicketByUserAction = (ticketId) => async (dispatch) => {
+export const closeTicketByUserAction = (ticketId, navigate) => async (dispatch) => {
     dispatch({ type: types.CLOSE_TICKET_BY_USER_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) {
@@ -154,14 +168,15 @@ export const closeTicketByUserAction = (ticketId) => async (dispatch) => {
         dispatch({ type: types.CLOSE_TICKET_BY_USER_SUCCESS, payload: { ticketId, updatedTicket: data.ticket, successMessage: 'tickets.closeSuccessUser' } });
         return data.ticket;
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'tickets.closeFailUser');
         dispatch({ type: types.CLOSE_TICKET_BY_USER_FAIL, payload: { errorMessage: { key, fallback, params } } });
         throw error;
     }
 };
 
-// --- Admin/Support Actions ---
-export const adminGetAllTicketsAction = (params = {}) => async (dispatch) => {
+// ... (rest of the admin actions will also be updated)
+export const adminGetAllTicketsAction = (params = {}, navigate) => async (dispatch) => {
     dispatch({ type: types.ADMIN_GET_ALL_TICKETS_REQUEST });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: types.ADMIN_GET_ALL_TICKETS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
@@ -169,12 +184,13 @@ export const adminGetAllTicketsAction = (params = {}) => async (dispatch) => {
         const { data } = await axios.get(`${API_PREFIX}/panel/tickets`, { ...config, params });
         dispatch({ type: types.ADMIN_GET_ALL_TICKETS_SUCCESS, payload: data });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'admin.tickets.loadFail');
         dispatch({ type: types.ADMIN_GET_ALL_TICKETS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-export const adminGetTicketDetailsAction = (ticketId) => async (dispatch) => {
+export const adminGetTicketDetailsAction = (ticketId, navigate) => async (dispatch) => {
     dispatch({ type: types.ADMIN_GET_TICKET_DETAILS_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) {
@@ -184,12 +200,13 @@ export const adminGetTicketDetailsAction = (ticketId) => async (dispatch) => {
         const { data } = await axios.get(`${API_PREFIX}/panel/tickets/${ticketId}`, config);
         dispatch({ type: types.GET_TICKET_DETAILS_SUCCESS, payload: data }); // Reuses the same success type
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'admin.tickets.loadDetailsFail');
         dispatch({ type: types.ADMIN_GET_TICKET_DETAILS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-export const adminUpdateTicketStatusAction = (ticketId, statusData) => async (dispatch) => {
+export const adminUpdateTicketStatusAction = (ticketId, statusData, navigate) => async (dispatch) => {
     dispatch({ type: types.ADMIN_UPDATE_TICKET_STATUS_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: types.ADMIN_UPDATE_TICKET_STATUS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
@@ -197,12 +214,13 @@ export const adminUpdateTicketStatusAction = (ticketId, statusData) => async (di
         const { data } = await axios.put(`${API_PREFIX}/panel/tickets/${ticketId}/status`, statusData, config);
         dispatch({ type: types.ADMIN_UPDATE_TICKET_STATUS_SUCCESS, payload: { ticketId, updatedTicket: data.ticket, successMessage: 'admin.tickets.statusUpdateSuccess' } });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'admin.tickets.statusUpdateFail');
         dispatch({ type: types.ADMIN_UPDATE_TICKET_STATUS_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-export const adminUpdateTicketPriorityAction = (ticketId, priorityData) => async (dispatch) => {
+export const adminUpdateTicketPriorityAction = (ticketId, priorityData, navigate) => async (dispatch) => {
     dispatch({ type: types.ADMIN_UPDATE_TICKET_PRIORITY_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: types.ADMIN_UPDATE_TICKET_PRIORITY_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
@@ -210,12 +228,13 @@ export const adminUpdateTicketPriorityAction = (ticketId, priorityData) => async
         const { data } = await axios.put(`${API_PREFIX}/panel/tickets/${ticketId}/priority`, priorityData, config);
         dispatch({ type: types.ADMIN_UPDATE_TICKET_PRIORITY_SUCCESS, payload: { ticketId, updatedTicket: data.ticket, successMessage: 'admin.tickets.priorityUpdateSuccess' } });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'admin.tickets.priorityUpdateFail');
         dispatch({ type: types.ADMIN_UPDATE_TICKET_PRIORITY_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }
 };
 
-export const adminAssignTicketAction = (ticketId, assignmentData) => async (dispatch) => {
+export const adminAssignTicketAction = (ticketId, assignmentData, navigate) => async (dispatch) => {
     dispatch({ type: types.ADMIN_ASSIGN_TICKET_REQUEST, payload: { ticketId } });
     const config = getTokenConfig();
     if (!config) return dispatch({ type: types.ADMIN_ASSIGN_TICKET_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorizedAdmin' } } });
@@ -223,6 +242,7 @@ export const adminAssignTicketAction = (ticketId, assignmentData) => async (disp
         const { data } = await axios.put(`${API_PREFIX}/panel/tickets/${ticketId}/assign`, assignmentData, config);
         dispatch({ type: types.ADMIN_ASSIGN_TICKET_SUCCESS, payload: { ticketId, updatedTicket: data.ticket, successMessage: 'admin.tickets.assignSuccess' } });
     } catch (error) {
+        if (handleRateLimitError(error, navigate)) return;
         const { key, fallback, params } = handleError(error, 'admin.tickets.assignFail');
         dispatch({ type: types.ADMIN_ASSIGN_TICKET_FAIL, payload: { errorMessage: { key, fallback, params } } });
     }

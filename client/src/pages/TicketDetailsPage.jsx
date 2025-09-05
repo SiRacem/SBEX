@@ -62,6 +62,7 @@ import { FiSend, FiUsers } from "react-icons/fi";
 import moment from "moment";
 import { toast } from "react-toastify";
 import { SocketContext } from "../App";
+import TicketReplies from "../components/tickets/TicketReplies";
 import "./TicketDetailsPage.css";
 
 const formatFileSize = (bytes) => {
@@ -647,6 +648,8 @@ const TicketDetailsPage = () => {
               )}
             </Card.Body>
           </Card>
+
+          <TicketReplies replies={replies} currentUser={user} ticket={ticket} />
 
           {isAdminView && isUserAdminOrSupport && ticket && (
             <Card className="shadow-sm border-0 mb-4 admin-ticket-actions-panel">

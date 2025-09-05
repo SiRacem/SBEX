@@ -864,7 +864,8 @@ const updateUserProfilePicture = async (req, res) => {
         }
         if (user.avatarUrl) {
             if (!user.avatarUrl.startsWith('http://') && !user.avatarUrl.startsWith('https://')) {
-                const oldAvatarPath = path.join(__dirname, '..', '..', user.avatarUrl);
+                // Construct the full path to the old avatar before deleting
+                const oldAvatarPath = path.join(__dirname, '..', user.avatarUrl);
                 if (fs.existsSync(oldAvatarPath)) {
                     fs.unlink(oldAvatarPath, (err) => {
                         if (err) console.error("Error deleting old avatar:", oldAvatarPath, err);
@@ -877,13 +878,18 @@ const updateUserProfilePicture = async (req, res) => {
                 console.log("Old avatar is an external URL, not deleting from server:", user.avatarUrl);
             }
         }
-        const relativePath = req.file.path.replace(/\\/g, '/').split('uploads/')[1];
-        user.avatarUrl = `uploads/${relativePath}`;
+
+        // --- THIS IS THE FIX: Simplify path creation ---
+        // The req.file.path from multer is already correct (e.g., "uploads/avatars/filename.png")
+        // We just need to ensure forward slashes for URL compatibility.
+        user.avatarUrl = req.file.path.replace(/\\/g, '/');
+        // --- END OF FIX ---
+
         await user.save();
         const userToReturn = user.toObject();
         delete userToReturn.password;
         console.log(`Avatar updated successfully for user ${userId}. New URL: ${user.avatarUrl}`);
-        // إرسال تحديث للمستخدم عبر Socket.IO
+
         const targetUserSocketId = req.onlineUsers[userId.toString()];
         if (targetUserSocketId && req.io) {
             req.io.to(targetUserSocketId).emit('user_profile_updated', {
@@ -1022,7 +1028,7 @@ module.exports = {
     adminApproveMediatorApplication,
     adminRejectMediatorApplication,
     updateMyMediatorStatus,
-    updateUserProfilePicture,
+    updateUserProfilePicture, // Make sure this is exported
     adminUpdateUserBlockStatus,
     sendUserStatsUpdate
 };

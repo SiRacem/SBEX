@@ -1,25 +1,21 @@
 // server/controllers/ticket.controller.js
 const mongoose = require('mongoose');
-const path = require('path'); // تأكد من استيراد 'path'
+const path = require('path');
 const Ticket = require('../models/Ticket');
 const TicketReply = require('../models/TicketReply');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 
-// Helper function to handle file uploads for tickets (النسخة النهائية المعدلة)
 function handleFileUploadsForTicket(reqFiles) {
     const attachments = [];
-    // تحقق مزدوج للتأكد من أن reqFiles.attachments هو المصفوفة التي نريدها
     const filesArray = reqFiles && reqFiles.attachments ? reqFiles.attachments : [];
 
     if (filesArray.length > 0) {
         filesArray.forEach(file => {
-            // بناء المسار النسبي الذي يمكن للـ frontend استخدامه
             const relativePath = `uploads/ticket_attachments/${file.filename}`;
-
             attachments.push({
                 fileName: file.originalname,
-                filePath: relativePath, // <--- سيتم الآن حفظ المسار الصحيح دائماً
+                filePath: relativePath,
                 fileType: file.mimetype,
                 fileSize: file.size,
             });
@@ -37,11 +33,10 @@ exports.createTicket = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const attachments = handleFileUploadsForTicket(req.files); // تمرير req.files مباشرة
+        const attachments = handleFileUploadsForTicket(req.files);
         let newTicket = new Ticket({ user: userId, title, description, category, priority: priority || 'Medium', attachments });
         await newTicket.save({ session });
 
-        // جلب بيانات المستخدم للتذكرة الجديدة قبل إرسالها عبر السوكيت
         newTicket = await newTicket.populate('user', 'fullName email avatarUrl');
 
         const admins = await User.find({ userRole: { $in: ['Admin', 'Support'] } }).select('_id').lean().session(session);
@@ -49,9 +44,8 @@ exports.createTicket = async (req, res) => {
             const notifications = admins.map(admin => ({
                 user: admin._id,
                 type: 'NEW_TICKET_CREATED',
-                title: 'notification_titles.NEW_TICKET_CREATED', // <-- استخدام مفتاح الترجمة
-                message: 'notification_messages.NEW_TICKET_CREATED', // <-- استخدام مفتاح الترجمة
-                // إضافة متغيرات الرسالة
+                title: 'notification_titles.NEW_TICKET_CREATED',
+                message: 'notification_messages.NEW_TICKET_CREATED',
                 messageParams: {
                     ticketId: newTicket.ticketId,
                     title: newTicket.title.substring(0, 30),
@@ -62,16 +56,14 @@ exports.createTicket = async (req, res) => {
             await Notification.create(notifications, { session });
         }
 
-        await session.commitTransaction(); // انهاء الـ transaction قبل إرسال السوكيت
+        await session.commitTransaction();
 
-        // إرسال حدث عبر Socket.IO إلى الأدمن/الدعم المتصلين
         if (req.io && req.onlineUsers) {
             const adminIds = admins.map(admin => admin._id.toString());
             adminIds.forEach(adminId => {
                 const adminSocketId = req.onlineUsers[adminId];
                 if (adminSocketId) {
                     req.io.to(adminSocketId).emit('new_ticket_created_for_admin', newTicket.toObject());
-                    console.log(`SOCKET: Emitted 'new_ticket_created_for_admin' to admin ${adminId} on socket ${adminSocketId}`);
                 }
             });
         }
@@ -110,7 +102,6 @@ exports.getUserTickets = async (req, res) => {
 exports.getTicketByIdForUser = async (req, res) => {
     const userId = req.user._id;
     const { ticketId: ticketIdFromParam } = req.params;
-    console.log(`[getTicketByIdForUser] Req for ticket: ${ticketIdFromParam}, by user: ${userId}`);
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketIdFromParam) ? { _id: ticketIdFromParam } : { ticketId: ticketIdFromParam };
         ticketQuery.user = userId;
@@ -127,11 +118,17 @@ exports.getTicketByIdForUser = async (req, res) => {
 
 exports.addReplyToTicket = async (req, res) => {
     const { ticketId: ticketIdFromParam } = req.params;
-    const { message } = req.body;
+    // --- THIS IS THE FIX ---
+    const { message = '' } = req.body; // Set default value to empty string
+    // --- END OF FIX ---
     const userId = req.user._id;
     const userRole = req.user.userRole;
 
-    if (!message || message.trim() === "") return res.status(400).json({ msg: "Reply message cannot be empty." });
+    const attachments = handleFileUploadsForTicket(req.files);
+
+    if ((!message || message.trim() === "") && attachments.length === 0) {
+        return res.status(400).json({ msg: "A reply must contain a message or at least one attachment." });
+    }
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -149,8 +146,6 @@ exports.addReplyToTicket = async (req, res) => {
         if (['Closed'].includes(ticket.status) && !isAdminOrSupport && isOwner) { await session.abortTransaction(); await session.endSession(); return res.status(400).json({ msg: "Cannot reply to a closed ticket." }); }
         if (['Closed', 'Resolved'].includes(ticket.status) && isOwner && !isAdminOrSupport && ticket.status === 'Closed') { await session.abortTransaction(); await session.endSession(); return res.status(400).json({ msg: "Cannot reply to a closed ticket." }); }
 
-
-        const attachments = handleFileUploadsForTicket(req.files);
         const newReply = new TicketReply({ ticket: ticket._id, user: userId, message, attachments, isSupportReply: isAdminOrSupport });
         await newReply.save({ session });
 
@@ -167,27 +162,38 @@ exports.addReplyToTicket = async (req, res) => {
                 ticket.status = 'PendingSupportReply';
             }
         }
-        if (oldStatus !== ticket.status) console.log(`Ticket ${ticket.ticketId} status changed: ${oldStatus} -> ${ticket.status}`);
         await ticket.save({ session });
 
         const senderName = req.user.fullName || (isAdminOrSupport ? 'Support Team' : 'User');
         const ticketTitleShort = ticket.title.substring(0, 30) + (ticket.title.length > 30 ? "..." : "");
         let recipientId = null;
-        if (isAdminOrSupport) recipientId = ticket.user;
-        else recipientId = ticket.assignedTo;
+        if (isAdminOrSupport) {
+            recipientId = ticket.user;
+        } else {
+            recipientId = ticket.assignedTo;
+        }
 
         if (recipientId && !recipientId.equals(userId)) {
-            await Notification.create([{ user: recipientId, type: 'TICKET_REPLY', title: `Reply on: #${ticket.ticketId}`, message: `${senderName} replied to "${ticketTitleShort}".`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+            await Notification.create([{
+                user: recipientId,
+                type: 'TICKET_REPLY',
+                title: 'notification_titles.TICKET_REPLY',
+                message: 'notification_messages.TICKET_REPLY',
+                messageParams: {
+                    ticketId: ticket.ticketId,
+                    senderName: senderName,
+                    ticketTitleShort: ticketTitleShort
+                },
+                relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+            }], { session });
         } else if (!isAdminOrSupport && !ticket.assignedTo) {
             const adminsToNotify = await User.find({ _id: { $ne: userId }, userRole: { $in: ['Admin', 'Support'] } }).select('_id').lean().session(session);
             if (adminsToNotify.length > 0) {
-                // ----- التعديل هنا -----
                 const adminNotifications = adminsToNotify.map(admin => ({
                     user: admin._id,
                     type: 'TICKET_REPLY_UNASSIGNED',
-                    title: 'notification_titles.TICKET_REPLY_UNASSIGNED', // <-- استخدام مفتاح الترجمة
-                    message: 'notification_messages.TICKET_REPLY_UNASSIGNED', // <-- استخدام مفتاح الترجمة
-                    // إضافة متغيرات الرسالة
+                    title: 'notification_titles.TICKET_REPLY_UNASSIGNED',
+                    message: 'notification_messages.TICKET_REPLY_UNASSIGNED',
                     messageParams: {
                         ticketId: ticket.ticketId,
                         senderName: senderName,
@@ -195,7 +201,6 @@ exports.addReplyToTicket = async (req, res) => {
                     },
                     relatedEntity: { id: ticket._id, modelName: 'Ticket' }
                 }));
-                // ----- نهاية التعديل -----
                 await Notification.create(adminNotifications, { session });
             }
         }
@@ -206,16 +211,12 @@ exports.addReplyToTicket = async (req, res) => {
         if (req.io) {
             const roomName = ticket._id.toString();
             req.io.to(roomName).emit('new_ticket_reply', { ticketId: ticket._id, reply: populatedReply, updatedTicketStatus: ticket.status });
-            console.log(`SOCKET: Emitted 'new_ticket_reply' to room ${roomName}`);
         }
         res.status(201).json({ msg: "Reply added.", reply: populatedReply, updatedTicketStatus: ticket.status });
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error adding reply:", error);
-        let errorMsg = "Failed to add reply.";
-        if (error.code === 112 || error.message.includes('WriteConflict')) errorMsg = "A temporary conflict occurred. Please try submitting your reply again.";
-        else if (error.message) errorMsg = error.message;
-        res.status(500).json({ msg: errorMsg, errorDetails: error.toString() });
+        res.status(500).json({ msg: "Failed to add reply.", errorDetails: error.message });
     } finally {
         if (session) await session.endSession();
     }
@@ -237,8 +238,20 @@ exports.closeTicketByUser = async (req, res) => {
         ticket.status = 'Closed'; ticket.closedAt = new Date();
         await ticket.save({ session });
 
-        if (ticket.assignedTo) await Notification.create([{ user: ticket.assignedTo, type: 'TICKET_CLOSED_BY_USER', title: `Ticket Closed: #${ticket.ticketId}`, message: `User ${req.user.fullName || 'User'} closed ticket "${ticket.title.substring(0, 30)}...".`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
-
+        if (ticket.assignedTo) {
+            await Notification.create([{
+                user: ticket.assignedTo,
+                type: 'TICKET_CLOSED_BY_USER',
+                title: 'notification_titles.TICKET_CLOSED_BY_USER',
+                message: 'notification_messages.TICKET_CLOSED_BY_USER',
+                messageParams: {
+                    ticketId: ticket.ticketId,
+                    userName: req.user.fullName || 'User',
+                    ticketTitleShort: ticket.title.substring(0, 30)
+                },
+                relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+            }], { session });
+        }
         await session.commitTransaction();
         res.status(200).json({ msg: "Ticket closed successfully.", ticket });
     } catch (error) {
@@ -257,7 +270,12 @@ exports.getAllTicketsForAdmin = async (req, res) => {
     if (status) query.status = status; if (category) query.category = category; if (priority) query.priority = priority;
     if (assignedTo) { if (assignedTo === 'unassigned') query.assignedTo = null; else if (mongoose.Types.ObjectId.isValid(assignedTo)) query.assignedTo = assignedTo; }
     if (search) query.$or = [{ title: { $regex: search, $options: 'i' } }, { description: { $regex: search, $options: 'i' } }, { ticketId: { $regex: search, $options: 'i' } }];
-    const options = { page: parseInt(page, 10), limit: parseInt(limit, 10), sort: { [sortBy]: order === 'asc' ? 1 : -1 }, populate: [{ path: 'user', select: 'fullName email avatarUrl' }, { path: 'assignedTo', select: 'fullName avatarUrl' }, { path: 'lastRepliedBy', select: 'fullName avatarUrl userRole' }], lean: true };
+    const options = {
+        page: parseInt(page, 10), limit: parseInt(limit, 10),
+        sort: { [sortBy]: order === 'asc' ? 1 : -1 },
+        populate: [{ path: 'user', select: 'fullName email avatarUrl' }, { path: 'assignedTo', select: 'fullName avatarUrl' }, { path: 'lastRepliedBy', select: 'fullName avatarUrl userRole' }],
+        lean: true
+    };
     try {
         const tickets = await Ticket.paginate(query, options);
         res.status(200).json(tickets);
@@ -269,7 +287,6 @@ exports.getAllTicketsForAdmin = async (req, res) => {
 
 exports.getTicketByIdForAdmin = async (req, res) => {
     const { ticketId: ticketIdFromParam } = req.params;
-    console.log(`[getTicketByIdForAdmin] Admin ${req.user._id} requesting ticket: ${ticketIdFromParam}`);
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketIdFromParam) ? { _id: ticketIdFromParam } : { ticketId: ticketIdFromParam };
         const ticket = await Ticket.findOne(ticketQuery).populate('user', 'fullName email avatarUrl userRole').populate('assignedTo', 'fullName avatarUrl userRole');
@@ -291,7 +308,6 @@ exports.updateTicketStatusBySupport = async (req, res) => {
     session.startTransaction();
     try {
         let ticketQuery = mongoose.Types.ObjectId.isValid(ticketId) ? { _id: ticketId } : { ticketId: ticketId };
-        // قم بعمل populate للمستخدم والمسؤول المعين للحصول على بياناتهم عند البث
         const ticket = await Ticket.findOne(ticketQuery).session(session).populate('user', 'fullName email avatarUrl').populate('assignedTo', 'fullName email avatarUrl');
         if (!ticket) {
             await session.abortTransaction();
@@ -308,20 +324,24 @@ exports.updateTicketStatusBySupport = async (req, res) => {
 
         await ticket.save({ session });
 
-        let notifTitle = `Ticket Status: #${ticket.ticketId}`;
-        let notifMessage = `Status of ticket "${ticket.title.substring(0, 30)}..." updated to ${status}.`;
-        if (status === 'Resolved') notifMessage = `Ticket "${ticket.title.substring(0, 30)}..." resolved. ${resolutionNotes ? 'Notes: ' + resolutionNotes.substring(0, 50) + '...' : ''}`;
-        else if (status === 'Closed') notifMessage = `Ticket "${ticket.title.substring(0, 30)}..." closed.`;
-
-        await Notification.create([{ user: ticket.user._id, type: 'TICKET_STATUS_UPDATED', title: notifTitle, message: notifMessage, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+        await Notification.create([{
+            user: ticket.user._id,
+            type: 'TICKET_STATUS_UPDATED',
+            title: 'notification_titles.TICKET_STATUS_UPDATED',
+            message: 'notification_messages.TICKET_STATUS_UPDATED',
+            messageParams: {
+                ticketId: ticket.ticketId,
+                status: status,
+                ticketTitleShort: ticket.title.substring(0, 30)
+            },
+            relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+        }], { session });
 
         await session.commitTransaction();
 
-        // بث الحدث إلى جميع المشتركين في غرفة التذكرة
         if (req.io) {
             const ticketRoomName = ticket._id.toString();
             req.io.to(ticketRoomName).emit('ticket_updated', { updatedTicket: ticket.toObject() });
-            console.log(`SOCKET: Emitted 'ticket_updated' to room ${ticketRoomName} after status change.`);
         }
 
         res.status(200).json({ msg: `Ticket status updated to ${status}.`, ticket });
@@ -347,10 +367,8 @@ exports.updateTicketPriorityBySupport = async (req, res) => {
 
         if (!ticket) return res.status(404).json({ msg: "Ticket not found." });
 
-        // بث الحدث بعد التحديث
         if (req.io) {
             req.io.to(ticket._id.toString()).emit('ticket_updated', { updatedTicket: ticket.toObject() });
-            console.log(`SOCKET: Emitted 'ticket_updated' to room ${ticket._id.toString()} after priority change.`);
         }
 
         res.status(200).json({ msg: `Ticket priority updated to ${priority}.`, ticket });
@@ -385,22 +403,33 @@ exports.assignTicketToSupport = async (req, res) => {
         await ticket.save({ session });
 
         if (assignedUser && (!oldAssignedTo || !oldAssignedTo.equals(assignedUser._id))) {
-            await Notification.create([{ user: assignedUser._id, type: 'TICKET_ASSIGNED_TO_YOU', title: `Assigned Ticket: #${ticket.ticketId}`, message: `Ticket "${ticket.title.substring(0, 30)}..." assigned to you.`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+            await Notification.create([{
+                user: assignedUser._id,
+                type: 'TICKET_ASSIGNED_TO_YOU',
+                title: 'notification_titles.TICKET_ASSIGNED_TO_YOU',
+                message: 'notification_messages.TICKET_ASSIGNED_TO_YOU',
+                messageParams: { ticketId: ticket.ticketId, ticketTitleShort: ticket.title.substring(0, 30) },
+                relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+            }], { session });
         }
-        await Notification.create([{ user: ticket.user, type: 'TICKET_ASSIGNMENT_UPDATED', title: `Ticket Update: #${ticket.ticketId}`, message: assignedUser ? `Ticket now handled by ${assignedUser.fullName}.` : `Ticket assignment updated.`, relatedEntity: { id: ticket._id, modelName: 'Ticket' } }], { session });
+        await Notification.create([{
+            user: ticket.user,
+            type: 'TICKET_ASSIGNMENT_UPDATED',
+            title: 'notification_titles.TICKET_ASSIGNMENT_UPDATED',
+            message: 'notification_messages.TICKET_ASSIGNMENT_UPDATED',
+            messageParams: { ticketId: ticket.ticketId, assignedToName: assignedUser ? assignedUser.fullName : 'unassigned' },
+            relatedEntity: { id: ticket._id, modelName: 'Ticket' }
+        }], { session });
 
         await session.commitTransaction();
 
-        // جلب النسخة النهائية من التذكرة مع البيانات المضمنة (populated)
         const populatedTicket = await Ticket.findById(ticket._id)
             .populate('user', 'fullName email avatarUrl')
             .populate('assignedTo', 'fullName email avatarUrl')
             .lean();
 
-        // بث الحدث بعد التحديث
         if (req.io && populatedTicket) {
             req.io.to(populatedTicket._id.toString()).emit('ticket_updated', { updatedTicket: populatedTicket });
-            console.log(`SOCKET: Emitted 'ticket_updated' to room ${populatedTicket._id.toString()} after assignment change.`);
         }
 
         res.status(200).json({ msg: assignedUser ? `Ticket assigned to ${assignedUser.fullName}.` : "Ticket assignment removed.", ticket: populatedTicket });

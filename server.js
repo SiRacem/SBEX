@@ -512,7 +512,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 5. الآن، قم بتطبيق Rate Limiter على كل ما تبقى (وهي مسارات الـ API فقط)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // حد معقول للاستخدام العادي
+    max: 500, // حد معقول للاستخدام العادي
     handler: (req, res, next, options) => {
         const retryAfter = Math.ceil(options.windowMs / 1000);
         res.status(options.statusCode).json({

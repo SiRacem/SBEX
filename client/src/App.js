@@ -1,17 +1,15 @@
 // src/App.js
-
 import React, { useState, useEffect, useRef, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
-import { getProfile, setOnlineUsers, logoutUser } from './redux/actions/userAction';
+import { getProfile, setOnlineUsers, logoutUser, clearUserErrors } from './redux/actions/userAction';
 import { Alert, Spinner, Button } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import i18n from './i18n';
 
 import RateLimitExceededPage from './pages/RateLimitExceededPage';
-
 import NotFound from './pages/NotFound';
 import UserListAd from './components/admin/UserListAd';
 import ProductListAdmin from './components/admin/ProductListAdmin';
@@ -64,7 +62,10 @@ const AppWrapper = () => (
 const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { isAuth, user, loading: userLoading, authChecked } = useSelector(state => state.userReducer);
+  const isAuth = useSelector(state => state.userReducer.isAuth);
+  const user = useSelector(state => state.userReducer.user);
+  const userLoading = useSelector(state => state.userReducer.loading);
+  const authChecked = useSelector(state => state.userReducer.authChecked);
 
   if (!authChecked || userLoading) {
     return (
@@ -81,8 +82,8 @@ const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => 
   }
 
   if (user.blocked) {
-    const allowedBlockedPaths = ['/dashboard/profile', '/dashboard/support'];
-    if (allowedBlockedPaths.includes(location.pathname)) {
+    const allowedBlockedPaths = ['/dashboard/profile', '/dashboard/support', '/dashboard/tickets', '/dashboard/support/tickets/:ticketId'];
+    if (allowedBlockedPaths.some(p => location.pathname.startsWith(p.replace(/:ticketId/, '')))) {
       return children;
     }
     toast.warn(t('auth.toast.accountBlocked'));
@@ -133,59 +134,39 @@ function App() {
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
 
-  const {
-    errors,
-    successMessage,
-    registrationStatus,
-    successMessageParams,
-    errorFromAPI
-  } = useSelector(state => ({
-    errors: state.userReducer.errors,
-    successMessage: state.userReducer.successMessage,
-    registrationStatus: state.userReducer.registrationStatus,
-    successMessageParams: state.userReducer.successMessageParams,
-    errorFromAPI: state.userReducer.errorMessage,
-  }));
+  // --- THIS IS THE FIX: Use individual selectors to prevent re-render loops ---
+  const errors = useSelector(state => state.userReducer.errors);
+  const successMessage = useSelector(state => state.userReducer.successMessage);
+  const successMessageParams = useSelector(state => state.userReducer.successMessageParams);
+  const errorFromAPI = useSelector(state => state.userReducer.errorMessage);
+  const isAuth = useSelector(state => state.userReducer.isAuth);
+  const user = useSelector(state => state.userReducer.user);
+  const authChecked = useSelector(state => state.userReducer.authChecked);
+  const userLoading = useSelector(state => state.userReducer.loading);
+  const userError = useSelector(state => state.userReducer.userError);
+  // --- END OF FIX ---
 
-  const { isAuth, user, authChecked, userLoading, userError } = useSelector(state => state.userReducer);
   const currentUserId = user?._id;
   const socketRef = useRef(null);
 
-  // [!!!] START OF THE FIX [!!!]
   useEffect(() => {
+    // This effect now handles ALL toasts and dispatches to clear them
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
       dispatch({ type: 'CLEAR_USER_MESSAGES' });
     } else if (errorFromAPI) {
-      // --- [!] التعديل الرئيسي هنا: تحقق من خطأ تحديد المعدل أولاً
-      // الخادم يرسل كائنًا مميزًا لهذا الخطأ، سنبحث عنه
-      if (typeof errorFromAPI === 'object' && errorFromAPI?.key === 'apiErrors.tooManyRequests') {
-        const resetTimeFromServer = errorFromAPI.rateLimit?.resetTime;
-        // قم بالتوجيه إلى صفحة الانتظار مع تمرير وقت إعادة التعيين
-        navigate('/rate-limit-exceeded', { state: { resetTime: resetTimeFromServer } });
-        dispatch({ type: 'CLEAR_USER_MESSAGES' });
-        return; // <-- مهم جدًا: إيقاف التنفيذ لتجنب عرض Toast والتسبب في الانهيار
+      // The rate-limit navigation is handled in Login.jsx, so we just prevent a duplicate toast here
+      if (errorFromAPI.key !== 'apiErrors.tooManyRequests') {
+        const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
+        toast.error(t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }));
       }
-      // --- نهاية التعديل الرئيسي ---
-
-      // الكود الأصلي للتعامل مع الأخطاء الأخرى يبقى كما هو
-      let finalErrorMessage;
-      if (typeof errorFromAPI === 'object' && errorFromAPI !== null && 'key' in errorFromAPI) {
-        finalErrorMessage = t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: errorFromAPI.fallback || t("apiErrors.unknownError") });
-      } else if (typeof errorFromAPI === 'string') {
-        finalErrorMessage = t(`apiErrors.${errorFromAPI}`, { defaultValue: errorFromAPI });
-      } else {
-        finalErrorMessage = t("apiErrors.unknownError");
-      }
-      toast.error(finalErrorMessage);
-      dispatch({ type: 'CLEAR_USER_MESSAGES' });
+      dispatch(clearUserErrors());
     } else if (errors) {
       const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
       toast.error(errorMessageText);
-      dispatch({ type: 'CLEAR_USER_ERRORS' });
+      dispatch(clearUserErrors());
     }
-  }, [successMessage, errorFromAPI, errors, dispatch, t, i18n, successMessageParams, navigate]);
-  // [!!!] END OF THE FIX [!!!]
+  }, [successMessage, errorFromAPI, errors, dispatch, t, successMessageParams]);
 
   useEffect(() => {
     const localToken = localStorage.getItem('token');
@@ -211,147 +192,39 @@ function App() {
         });
 
         newSocket.on("connect", () => {
-          console.log(`%c[Socket] CONNECTED! Socket ID: ${newSocket.id}`, "color: green; font-weight: bold;");
           newSocket.emit("addUser", currentUserId);
         });
 
-        newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
-          dispatch(setOnlineUsers(onlineUserIdsFromServer || []));
-        });
-
-        newSocket.on('user_balances_updated', (updatedBalanceData) => {
-          if (updatedBalanceData && updatedBalanceData._id === currentUserId) {
-            dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: updatedBalanceData });
-            toast.info(t('app.balanceUpdated'), { autoClose: 2500 });
-          }
-        });
-
-        newSocket.on('dashboard_transactions_updated', (data) => {
+        newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => dispatch(setOnlineUsers(onlineUserIdsFromServer || [])));
+        newSocket.on('user_balances_updated', (data) => { if (data?._id === currentUserId) dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data }); });
+        newSocket.on('dashboard_transactions_updated', () => {
           dispatch(getTransactionsForDashboard());
           dispatch(getTransactions());
           dispatch(getUserWithdrawalRequests());
           dispatch(getUserDepositRequests());
         });
-
-        newSocket.on('user_profile_updated', (updatedUserData) => {
-          if (updatedUserData && updatedUserData._id === currentUserId) {
-            dispatch(getProfile());
-            toast.info(t('app.profileUpdated'), { autoClose: 2500 });
-          }
-        });
-
-        newSocket.on('new_pending_mediator_application', (newApplicationData) => {
-          if (user && user.userRole === 'Admin' && newApplicationData?._id) {
-            dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: newApplicationData });
-            toast.info(t('app.newMediatorApp', { name: newApplicationData.fullName || 'a user' }));
-          }
-        });
-
-        newSocket.on('refresh_mediator_applications_list', () => {
-          if (user && user.userRole === 'Admin') {
-            dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' });
-            toast.info(t('app.mediatorListUpdated'));
-          }
-        });
-
-        newSocket.on('product_deleted', (data) => {
-          if (data && data.productId) {
-            dispatch({ type: 'DELETE_PRODUCT_SUCCESS', payload: { productId: data.productId } });
-          }
-        });
-
-        newSocket.on('new_mediation_request_for_buyer', (data) => {
-          if (isAuth && user && user.userRole !== 'Admin') {
-            dispatch(getBuyerMediationRequestsAction(1, 10));
-            toast.info(data.message || t('app.newMediationRequest'));
-          }
-        });
-
-        newSocket.on('mediation_request_updated', (data) => {
-          if (data && data.updatedMediationRequestData?._id) {
-            dispatch(updateMediationDetailsFromSocket(data.updatedMediationRequestData));
-            toast.info(t('app.mediationUpdated', { title: data.updatedMediationRequestData.product?.title || 'N/A' }));
-          }
-        });
-
-        newSocket.on('product_updated', (updatedProductData) => {
-          if (updatedProductData && updatedProductData._id) {
-            dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProductData });
-          }
-        });
-
-        newSocket.on('new_assignment_for_mediator', (data) => {
-          if (data && data.newAssignmentData) {
-            dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData });
-          }
-        });
-
+        newSocket.on('user_profile_updated', (data) => { if (data?._id === currentUserId) dispatch(getProfile()); });
+        newSocket.on('new_pending_mediator_application', (data) => { if (user?.userRole === 'Admin') dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: data }); });
+        newSocket.on('refresh_mediator_applications_list', () => { if (user?.userRole === 'Admin') dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' }); });
+        newSocket.on('product_deleted', (data) => { if (data?.productId) dispatch({ type: 'DELETE_PRODUCT_SUCCESS', payload: { productId: data.productId } }); });
+        newSocket.on('new_mediation_request_for_buyer', (data) => { if (user?.userRole !== 'Admin') dispatch(getBuyerMediationRequestsAction(1, 10)); });
+        newSocket.on('mediation_request_updated', (data) => { if (data?.updatedMediationRequestData?._id) dispatch(updateMediationDetailsFromSocket(data.updatedMediationRequestData)); });
+        newSocket.on('product_updated', (data) => { if (data?._id) dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: data }); });
+        newSocket.on('new_assignment_for_mediator', (data) => { if (data?.newAssignmentData) dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData }); });
         newSocket.on('new_notification', (notification) => {
-          toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right", autoClose: 3000 });
+          toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right" });
           dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
         });
-
-        newSocket.on('dispute_opened_for_admin', () => {
-          if (user && user.userRole === 'Admin') {
-            dispatch(adminGetDisputedMediationsAction(1, 1));
-          }
-        });
-
+        newSocket.on('dispute_opened_for_admin', () => { if (user?.userRole === 'Admin') dispatch(adminGetDisputedMediationsAction(1, 1)); });
         newSocket.on('update_unread_summary', (data) => {
           if (window.location.pathname !== `/dashboard/mediation-chat/${data.mediationId}`) {
-            toast.info(
-              <div>
-                <FaComments className="me-2" />
-                {t('app.newChatMessage', { title: data.productTitle || data.mediationId })}
-                {data.otherPartyForRecipient?.fullName && (
-                  <div className="small text-muted">{t('app.from')}: {data.otherPartyForRecipient.fullName}</div>
-                )}
-              </div>,
-              { position: "bottom-right", autoClose: 4000 }
-            );
             dispatch(updateUnreadCountFromSocket(data.mediationId, data.newUnreadCount));
           }
         });
-
-        newSocket.on('new_admin_sub_chat_message', (data) => {
-          if (data && data.message) {
-            dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId));
-          }
-        });
-
-        newSocket.on('new_ticket_created_for_admin', (newTicket) => {
-          if (user && (user.userRole === 'Admin' || user.userRole === 'Support')) {
-            toast.info(
-              <div>
-                <FaTicketAlt className="me-2" />
-                {t('app.newTicketCreated')}
-                <div className="small text-muted">{t('app.ticketTitle')}: {newTicket.title}</div>
-              </div>,
-              { position: "top-right", autoClose: 5000 }
-            );
-            dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: newTicket });
-          }
-        });
-
-        newSocket.on('ticket_updated', (data) => {
-          toast.info(t('app.ticketUpdated', { ticketId: data.updatedTicket.ticketId }), { autoClose: 3500 });
-          dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
-        });
-
-        newSocket.on('disconnect', (reason) => {
-          console.warn('[Socket] Disconnected:', reason);
-        });
-
-        newSocket.on('connect_error', (err) => {
-          if (err.message.includes('unauthorized') || err.message === 'Invalid token') {
-            dispatch(logoutUser());
-          }
-        });
-
-        newSocket.on('server_error', (data) => {
-          toast.error(data.message || t('apiErrors.unknownError'));
-        });
-
+        newSocket.on('new_admin_sub_chat_message', (data) => { if (data?.message) dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId)); });
+        newSocket.on('new_ticket_created_for_admin', (ticket) => { if (user?.userRole === 'Admin' || user?.userRole === 'Support') dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: ticket }); });
+        newSocket.on('ticket_updated', (data) => dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket }));
+        newSocket.on('connect_error', (err) => { if (err.message.includes('unauthorized')) dispatch(logoutUser()); });
         socketRef.current = newSocket;
       }
     } else {
