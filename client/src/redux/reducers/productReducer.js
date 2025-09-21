@@ -191,20 +191,44 @@ const productReducer = (state = initialState, { type, payload }) => {
                 productErrors: { ...state.productErrors, [payload.productId]: payload.error }
             };
 
-        // --- حالات المزايدة ---
+        // =========================================================================
+        // [!!!] START: حالات المزايدة المعدلة هنا [!!!]
+        // =========================================================================
         case PLACE_BID_REQUEST:
-            return { ...state, productLoading: { ...state.productLoading, [payload.productId]: true }, productErrors: { ...state.productErrors, [payload.productId]: null } };
-        case PLACE_BID_SUCCESS:
             return {
                 ...state,
-                loading: false, // أو productLoading
-                Products: state.Products.map(p => 
-                    p._id === updatedProduct._id ? updatedProduct : p
-                ),
+                productLoading: { ...state.productLoading, [payload.productId]: true },
                 productErrors: { ...state.productErrors, [payload.productId]: null }
             };
+        case PLACE_BID_SUCCESS: {
+            const { updatedProduct, productId } = payload;
+
+            if (!updatedProduct) {
+                console.error("Reducer Error: updatedProduct is missing in PLACE_BID_SUCCESS payload.");
+                return {
+                    ...state,
+                    productLoading: { ...state.productLoading, [productId]: false },
+                };
+            }
+
+            return {
+                ...state,
+                productLoading: { ...state.productLoading, [productId]: false },
+                Products: state.Products.map(p =>
+                    p._id === updatedProduct._id ? updatedProduct : p
+                ),
+                productErrors: { ...state.productErrors, [productId]: null }
+            };
+        }
         case PLACE_BID_FAIL:
-            return { ...state, productLoading: { ...state.productLoading, [payload.productId]: false }, productErrors: { ...state.productErrors, [payload.productId]: payload.error } };
+            return {
+                ...state,
+                productLoading: { ...state.productLoading, [payload.productId]: false },
+                productErrors: { ...state.productErrors, [payload.productId]: payload.errorMessage }
+            };
+        // =========================================================================
+        // [!!!] END: نهاية حالات المزايدة المعدلة [!!!]
+        // =========================================================================
 
         // --- مسح الخطأ ---
         case CLEAR_PRODUCT_ERROR:
@@ -227,17 +251,13 @@ const productReducer = (state = initialState, { type, payload }) => {
 
             if (!receivedUpdatedProduct || !receivedUpdatedProduct._id) {
                 console.error("REDUCER: ACCEPT_BID_SUCCESS - updatedProduct is missing or invalid in payload!");
-                // حاول إيقاف التحميل للمفتاح الأصلي إذا كان موجودًا في الـ payload الأولي للـ REQUEST
-                // هذا الجزء يحتاج إلى معرفة ما إذا كان payload الـ REQUEST لا يزال في الذاكرة أو إذا كان يجب تمريره
-                // الطريقة الأبسط هي مسح كل حالات التحميل المتعلقة بـ acceptBid عند الفشل أو إذا كانت البيانات غير كاملة
                 return {
                     ...state,
-                    acceptingBid: {}, // مسح كل عمليات التحميل لـ acceptBid
+                    acceptingBid: {},
                     errors: { ...state.errors, acceptBid: "Failed to process bid acceptance due to missing data." }
                 };
             }
 
-            // بناء مفتاح التحميل للإيقاف بناءً على المنتج المحدث (المشتري)
             const buyerIdFromUpdated = receivedUpdatedProduct.buyer?._id || receivedUpdatedProduct.buyer;
             const keyToStopLoadingAccept = `${receivedUpdatedProduct._id}_${buyerIdFromUpdated}`;
 
@@ -252,16 +272,15 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
 
         case ACCEPT_BID_FAIL:
-            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تأكد أن bidUserId موجود في payload الخطأ
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
             return {
                 ...state,
                 acceptingBid: { ...state.acceptingBid, [bidActionKey]: false },
                 productErrors: { ...state.productErrors, [payload.productId]: typeof payload.error === 'string' ? payload.error : "Failed to accept bid on this product." },
                 errors: { ...state.errors, acceptBid: typeof payload.error === 'string' ? payload.error : "Failed to accept bid." }
             };
-        // --- نهاية تعديل حالة ACCEPT_BID_SUCCESS ---
 
-        // --- [!!!] تعديل حالة REJECT_BID_SUCCESS (اختياري، إذا كان الـ API يعيد المنتج المحدث) ---
+        // --- حالات رفض المزايدة ---
         case REJECT_BID_REQUEST:
             bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
             return {
@@ -286,10 +305,9 @@ const productReducer = (state = initialState, { type, payload }) => {
                     productErrors: { ...state.productErrors, [updatedProductAfterReject._id]: null }
                 };
             } else {
-                // تحديث محلي إذا لم يتم إرجاع المنتج المحدث
                 console.log(`REDUCER: REJECT_BID_SUCCESS for key ${keyToStopLoadingReject}. Performing local bid removal.`);
                 const productsWithBidRemoved = state.Products.map(p => {
-                    if (p._id === rejectedProductId) { // استخدم productId من الـ payload الأصلي
+                    if (p._id === rejectedProductId) {
                         const remainingBids = (p.bids || []).filter(b => {
                             const bidderIdFromBid = String(b.user?._id || b.user);
                             return bidderIdFromBid !== String(rejectedBidUserId);
@@ -308,15 +326,14 @@ const productReducer = (state = initialState, { type, payload }) => {
             }
 
         case REJECT_BID_FAIL:
-            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId); // تأكد أن bidUserId موجود في payload الخطأ
+            bidActionKey = createBidActionKey(payload.productId, payload.bidUserId);
             return {
                 ...state,
                 rejectingBid: { ...state.rejectingBid, [bidActionKey]: false },
                 productErrors: { ...state.productErrors, [payload.productId]: payload.error }
             };
-        // --- نهاية تعديل حالة REJECT_BID_SUCCESS ---
 
-        // --- [!!!] حالة جديدة للتحديث المحلي المتفائل [!!!] ---
+        // --- حالات التحديث المحلي عبر السوكيت ---
         case UPDATE_SINGLE_PRODUCT_LOCALLY:
             if (!payload || !payload._id) {
                 console.warn("REDUCER: UPDATE_SINGLE_PRODUCT_LOCALLY - Invalid payload, cannot update product locally.");
@@ -325,7 +342,7 @@ const productReducer = (state = initialState, { type, payload }) => {
             return {
                 ...state,
                 Products: state.Products.map(p =>
-                    p._id === payload._id ? { ...p, ...payload } : p // دمج التغييرات مع الحفاظ على البيانات الأخرى للمنتج
+                    p._id === payload._id ? { ...p, ...payload } : p
                 ),
             };
 
@@ -337,61 +354,41 @@ const productReducer = (state = initialState, { type, payload }) => {
             const updatedProductData = payload;
             console.log("[productReducer] Updating product from PRODUCT_UPDATED. New product data:", updatedProductData);
 
-            let newProductsList = [...state.Products]; // ابدأ بنسخة من القائمة الحالية
-            let newPendingProductsList = [...(state.pendingProducts || [])]; // ابدأ بنسخة من القائمة الحالية
+            let newProductsList = [...state.Products];
+            let newPendingProductsList = [...(state.pendingProducts || [])];
 
             const existingProductIndexInProducts = newProductsList.findIndex(p => p._id === updatedProductData._id);
 
             if (existingProductIndexInProducts > -1) {
-                // المنتج موجود في القائمة الرئيسية، قم بتحديثه بالكامل
-                newProductsList[existingProductIndexInProducts] = updatedProductData; // استبدال الكائن بالكامل
-                console.log("REDUCER: Updated product in Products list:", updatedProductData._id, "New status:", updatedProductData.status);
+                newProductsList[existingProductIndexInProducts] = updatedProductData;
             } else {
-                // المنتج غير موجود في القائمة الرئيسية
-                // إذا كان المنتج المحدث معتمدًا (أو أي حالة يجب أن تكون في القائمة الرئيسية)، أضفه
-                // عادةً، إذا كان 'approved', 'sold', 'rejected' (من قبل الأدمن)
                 if (['approved', 'sold', 'rejected', 'PendingMediatorSelection', 'MediatorAssigned', 'InProgress', 'Disputed', 'Completed'].includes(updatedProductData.status)) {
-                    newProductsList = [updatedProductData, ...newProductsList]; // أضفه في بداية القائمة
-                    console.log("REDUCER: Added new product to Products list:", updatedProductData._id, "Status:", updatedProductData.status);
+                    newProductsList = [updatedProductData, ...newProductsList];
                 }
             }
 
-            // التعامل مع قائمة المنتجات المعلقة (pendingProducts)
             const existingInPendingIndex = newPendingProductsList.findIndex(p => p._id === updatedProductData._id);
 
             if (updatedProductData.status === 'pending') {
-                // إذا أصبح المنتج pending
                 if (existingInPendingIndex === -1) {
-                    // ولم يكن موجودًا في pending، أضفه
                     newPendingProductsList = [updatedProductData, ...newPendingProductsList];
-                    console.log("REDUCER: Added product to pendingProducts list:", updatedProductData._id);
                 } else {
-                    // إذا كان موجودًا في pending، قم بتحديثه
                     newPendingProductsList[existingInPendingIndex] = updatedProductData;
-                    console.log("REDUCER: Updated product in pendingProducts list:", updatedProductData._id);
                 }
             } else {
-                // إذا لم يعد المنتج pending (مثلاً أصبح approved أو rejected من قبل Admin, أو تم تعديله من قبل البائع وكان pending وأصبح شيئًا آخر)
                 if (existingInPendingIndex > -1) {
-                    // قم بإزالته من pendingProducts
                     newPendingProductsList = newPendingProductsList.filter(p => p._id !== updatedProductData._id);
-                    console.log("REDUCER: Removed product from pendingProducts list:", updatedProductData._id);
                 }
             }
-
-            // فرز قائمة pending (اختياري ولكن جيد)
             newPendingProductsList.sort((a, b) => new Date(a.date_added || a.createdAt || 0) - new Date(b.date_added || b.createdAt || 0));
-            // يمكنك أيضًا فرز newProductsList إذا أردت
 
             return {
                 ...state,
                 Products: newProductsList,
                 pendingProducts: newPendingProductsList,
             };
-        // --- نهاية تحديث المنتج محليًا ---
-        
+
         case ADD_PENDING_PRODUCT_SOCKET:
-            // Ensure we don't add a duplicate if it's already there
             const isAlreadyPending = state.pendingProducts.some(p => p._id === payload._id);
             if (isAlreadyPending) {
                 return state;
@@ -424,11 +421,11 @@ const productReducer = (state = initialState, { type, payload }) => {
                     p._id === updatedProductFromMediation._id ? updatedProductFromMediation : p
                 ),
             };
-            }
+        }
 
         default:
             return state;
     }
-    };
+};
 
 export default productReducer;

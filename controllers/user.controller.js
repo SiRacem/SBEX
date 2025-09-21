@@ -879,10 +879,10 @@ const updateUserProfilePicture = async (req, res) => {
             }
         }
 
-        // --- THIS IS THE FIX: Simplify path creation ---
+        // --- THIS IS THE FIX: Simplify path creation and add cache-busting timestamp ---
         // The req.file.path from multer is already correct (e.g., "uploads/avatars/filename.png")
-        // We just need to ensure forward slashes for URL compatibility.
-        user.avatarUrl = req.file.path.replace(/\\/g, '/');
+        // We ensure forward slashes for URL compatibility and add a timestamp to prevent caching issues.
+        user.avatarUrl = `${req.file.path.replace(/\\/g, '/')}?t=${new Date().getTime()}`;
         // --- END OF FIX ---
 
         await user.save();

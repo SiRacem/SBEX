@@ -40,6 +40,7 @@ import "./OfflineProdCard.css";
 import { useTranslation } from "react-i18next";
 
 const MINIMUM_BALANCE_TO_PARTICIPATE_BID = 6.0;
+const TND_USD_RATE = 3.0; // 1 USD = 3 TND
 
 const fallbackImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e9ecef"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%236c757d">Error</text></svg>';
@@ -114,7 +115,7 @@ const OfflineProdCard = ({ el: product }) => {
 
   useEffect(() => {
     if (error && !isLoadingOther && !isLiking) {
-      toast.error(t(error, { defaultValue: error }));
+      toast.error(t(error.key, error.params || {}));
       const timer = setTimeout(
         () => dispatch(clearProductError(product._id)),
         5000
@@ -136,11 +137,23 @@ const OfflineProdCard = ({ el: product }) => {
       navigate("/login", { state: { from: window.location.pathname } });
       return;
     }
+    if (
+      !loggedInUser ||
+      loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID
+    ) {
+      toast.error(
+        t("home.bidModal.balanceTooLowToOpenError", {
+          amount: MINIMUM_BALANCE_TO_PARTICIPATE_BID,
+        })
+      );
+      return;
+    }
     setIsEditingBid(!!currentUserBid);
     setBidAmount(currentUserBid ? currentUserBid.amount.toString() : "");
     setBidAmountError(null);
     setShowBidModal(true);
   };
+
   const handleCloseBidModal = () => setShowBidModal(false);
 
   const handleLikeToggle = (e) => {
@@ -166,38 +179,6 @@ const OfflineProdCard = ({ el: product }) => {
     });
   };
 
-  const handleConfirmBid = async () => {
-    const amount = parseFloat(bidAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setBidAmountError("Please enter a valid bid amount.");
-      return;
-    }
-    if (
-      loggedInUser &&
-      loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID
-    ) {
-      setBidAmountError("home.bidModal.balanceTooLowError");
-      return;
-    }
-
-    setBidAmountError(null);
-
-    try {
-      await dispatch(placeBid(product._id, amount, isEditingBid));
-      dispatch(getProfile());
-      toast.success(
-        t(isEditingBid ? "home.bidUpdatedSuccess" : "home.bidPlacedSuccess")
-      );
-      handleCloseBidModal();
-    } catch (error) {
-      console.error("Failed to place bid from component:", error);
-    }
-  };
-
-  const handleAddToCart = useCallback(() => {
-    // Logic for adding to cart
-  }, []);
-
   const formatCurrency = useCallback(
     (amount, currencyCode = "TND") => {
       const num = Number(amount);
@@ -211,16 +192,11 @@ const OfflineProdCard = ({ el: product }) => {
 
       let locale = i18n.language;
 
-      // [!!!] هذا هو التعديل الحاسم [!!!]
-      // إذا كانت العملة هي الدولار الأمريكي، نفرض استخدام اللغة الإنجليزية الأمريكية للتنسيق
-      // لضمان الحصول على الرمز "$" فقط بدلاً من "US$".
       if (currencyCode === "USD") {
-        locale = "en-US"; // استخدام لغة تضمن عرض الرمز بشكل صحيح
-        options.currencyDisplay = "symbol"; // كن صريحًا في طلب الرمز
+        locale = "en-US";
+        options.currencyDisplay = "symbol";
       }
 
-      // للحالات الأخرى (مثل TND)، سيتم استخدام لغة الواجهة الحالية (i18n.language)
-      // وهذا سيضمن عرض "د.ت." أو التنسيق المحلي الصحيح.
       return new Intl.NumberFormat(locale, options).format(num);
     },
     [i18n.language]
@@ -241,9 +217,77 @@ const OfflineProdCard = ({ el: product }) => {
     [i18n.language, t, formatCurrency]
   );
 
+  const handleConfirmBid = async () => {
+    const amount = parseFloat(bidAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      setBidAmountError(t("home.bidModal.invalidAmountError"));
+      return;
+    }
+
+    if (loggedInUser.balance < MINIMUM_BALANCE_TO_PARTICIPATE_BID) {
+      setBidAmountError(t("home.bidModal.balanceTooLowError"));
+      return;
+    }
+
+    let bidInTND = amount;
+    if (product.currency === "USD") {
+      bidInTND = amount * TND_USD_RATE;
+    }
+
+    if (bidInTND > loggedInUser.balance) {
+      setBidAmountError(
+        t("home.bidModal.insufficientBalanceError", {
+          requiredTND: formatCurrencyWithName(bidInTND, "TND"),
+          requiredOriginal: formatCurrency(amount, product.currency),
+          available: formatCurrencyWithName(loggedInUser.balance, "TND"),
+        })
+      );
+      return;
+    }
+
+    setBidAmountError(null);
+
+    try {
+      await dispatch(placeBid(product._id, amount, isEditingBid));
+      dispatch(getProfile());
+      toast.success(
+        t(isEditingBid ? "home.bidUpdatedSuccess" : "home.bidPlacedSuccess")
+      );
+      handleCloseBidModal();
+    } catch (error) {
+      console.error("Failed to place bid from component:", error);
+      const errorMessageKey = error?.error?.key || "apiErrors.unknownError";
+      const errorMessageParams = error?.error?.params || {};
+      setBidAmountError(t(errorMessageKey, errorMessageParams));
+    }
+  };
+
+  const handleAddToCart = useCallback(() => {
+    // Logic for adding to cart
+  }, []);
+
   const bidAmountLabel = isEditingBid
     ? t("home.bidModal.bidAmountLabel_new", { currency: product.currency })
     : t("home.bidModal.bidAmountLabel_your", { currency: product.currency });
+
+  // =========================================================================
+  // [!!!] START: حساب الرصيد الديناميكي هنا [!!!]
+  // =========================================================================
+  const displayedBalanceData = useMemo(() => {
+    if (!loggedInUser) {
+      return { amount: 0, currency: product.currency || "TND" };
+    }
+    if (product.currency === "USD") {
+      const balanceInUSD = loggedInUser.balance / TND_USD_RATE;
+      return { amount: balanceInUSD, currency: "USD" };
+    }
+    // الحالة الافتراضية هي الدينار التونسي
+    return { amount: loggedInUser.balance, currency: "TND" };
+  }, [loggedInUser, product.currency]);
+  // =========================================================================
+  // [!!!] END: نهاية حساب الرصيد الديناميكي [!!!]
+  // =========================================================================
 
   if (!product || !product._id) {
     return (
@@ -627,9 +671,7 @@ const OfflineProdCard = ({ el: product }) => {
                 )}
               </InputGroup>
               {bidAmountError && (
-                <Form.Text className="text-danger">
-                  {t(bidAmountError, { defaultValue: bidAmountError })}
-                </Form.Text>
+                <Form.Text className="text-danger">{bidAmountError}</Form.Text>
               )}
             </Form.Group>
 
@@ -641,7 +683,12 @@ const OfflineProdCard = ({ el: product }) => {
               <div>
                 {t("home.bidModal.currentBalance")}:{" "}
                 <strong>
-                  {formatCurrencyWithName(loggedInUser?.balance, "TND")}
+                  {/* [!!!] START: استخدام الرصيد الديناميكي هنا [!!!] */}
+                  {formatCurrencyWithName(
+                    displayedBalanceData.amount,
+                    displayedBalanceData.currency
+                  )}
+                  {/* [!!!] END: نهاية استخدام الرصيد الديناميكي [!!!] */}
                 </strong>
                 .
                 <span className="d-block text-muted">
@@ -672,7 +719,6 @@ const OfflineProdCard = ({ el: product }) => {
             disabled={
               isLoadingOther ||
               isLiking ||
-              !!bidAmountError ||
               !bidAmount ||
               parseFloat(bidAmount) <= 0
             }

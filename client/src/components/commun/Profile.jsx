@@ -23,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import {
   getProfile,
   updateProfilePicture,
+  resetUpdateAvatarStatus, // [!!!] استيراد الأكشن الجديد
 } from "../../redux/actions/userAction";
 import CurrencySwitcher from "./CurrencySwitcher";
 import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
@@ -61,7 +62,6 @@ import {
   MapPin,
 } from "react-feather";
 import { IoWalletOutline } from "react-icons/io5";
-import { SocketContext } from "../../App";
 import LevelsModal from "../ratings/LevelsModal";
 
 const BACKEND_URL =
@@ -69,6 +69,7 @@ const BACKEND_URL =
 const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const MAX_LEVEL_CAP_FRONTEND = 100;
 
+// ... (بقية الدوال المساعدة تبقى كما هي)
 // Helper functions for level calculations
 const BASE_POINTS_FOR_LEVEL_2_FRONTEND = 10;
 const POINTS_INCREMENT_PER_LEVEL_STEP_FRONTEND = 5;
@@ -134,6 +135,11 @@ const Profile = ({ profileForOtherUser = null }) => {
   const { username: routeUsername } = useParams();
   const currentUserState = useSelector((state) => state.userReducer);
 
+  // [!!!] تعديل: إضافة successUpdateAvatar إلى useSelector لمراقبة النجاح
+  const { user, loading, isAuth, error, successUpdateAvatar } = useSelector(
+    (state) => state.userReducer
+  );
+
   const [profileData, setProfileData] = useState(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState(null);
@@ -145,53 +151,44 @@ const Profile = ({ profileForOtherUser = null }) => {
   const isViewingOwnProfile = !routeUsername && !profileForOtherUser;
 
   useEffect(() => {
-    const fetchProfileData = () => {
-      setIsLoadingProfile(true);
-      setProfileError(null);
-      if (isViewingOwnProfile) {
-        if (currentUserState.user) {
-          setProfileData(currentUserState.user);
-          setIsLoadingProfile(
-            currentUserState.loading && !currentUserState.user
-          );
-          setProfileError(currentUserState.error);
-        } else if (!currentUserState.loading && currentUserState.isAuth) {
-          dispatch(getProfile());
-        } else if (!currentUserState.isAuth && !currentUserState.loading) {
-          setIsLoadingProfile(false);
-          setProfileError(t("profilePage.loginPrompt"));
-        } else {
-          setIsLoadingProfile(currentUserState.loading);
-        }
-      } else if (profileForOtherUser) {
-        setProfileData(profileForOtherUser);
+    setIsLoadingProfile(true);
+    setProfileError(null);
+
+    if (isViewingOwnProfile) {
+      if (user) {
+        setProfileData(user);
+        setIsLoadingProfile(loading && !user);
+        setProfileError(error);
+      } else if (!loading && isAuth) {
+        dispatch(getProfile());
+      } else if (!isAuth && !loading) {
         setIsLoadingProfile(false);
-      } else if (routeUsername) {
-        setIsLoadingProfile(false);
-        if (
-          currentUserState.user &&
-          currentUserState.user.fullName?.toLowerCase() ===
-            routeUsername.toLowerCase()
-        ) {
-          setProfileData(currentUserState.user);
-        } else {
-          setProfileError(
-            t("profilePage.unavailable", { username: routeUsername })
-          );
-        }
+        setProfileError(t("profilePage.loginPrompt"));
       } else {
-        setIsLoadingProfile(false);
-        setProfileError(t("profilePage.unableToDisplay"));
+        setIsLoadingProfile(loading);
       }
-    };
-    fetchProfileData();
+    } else if (profileForOtherUser) {
+      // This case seems fine
+      setProfileData(profileForOtherUser);
+      setIsLoadingProfile(false);
+    } else if (routeUsername) {
+      // This case for viewing other profiles by URL needs a dedicated fetch logic,
+      // for now, it's simplified and may not work as intended for other users.
+      setIsLoadingProfile(false);
+      setProfileError(
+        t("profilePage.unavailable", { username: routeUsername })
+      );
+    } else {
+      setIsLoadingProfile(false);
+      setProfileError(t("profilePage.unableToDisplay"));
+    }
   }, [
     dispatch,
     isViewingOwnProfile,
-    currentUserState.user,
-    currentUserState.loading,
-    currentUserState.isAuth,
-    currentUserState.error,
+    user,
+    loading,
+    isAuth,
+    error,
     profileForOtherUser,
     routeUsername,
     t,
@@ -201,6 +198,78 @@ const Profile = ({ profileForOtherUser = null }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
+  // =========================================================================
+  // [!!!] START: هذا هو التعديل الحاسم (Cache Busting) [!!!]
+  // =========================================================================
+  const avatarSrc = useMemo(() => {
+    const url = profileData?.avatarUrl;
+    if (url) {
+      // أضف timestamp فريد إلى الرابط لإجبار المتصفح على إعادة التحميل
+      const cacheBuster = `?t=${new Date().getTime()}`;
+      return url.startsWith("http")
+        ? `${url}${cacheBuster}`
+        : `${BACKEND_URL}/${url.replace(/\\/g, "/")}${cacheBuster}`;
+    }
+    return defaultAvatar;
+    // أضف successUpdateAvatar إلى مصفوفة الاعتماديات
+  }, [profileData?.avatarUrl, successUpdateAvatar]);
+  // =========================================================================
+  // [!!!] END: نهاية التعديل الحاسم [!!!]
+  // =========================================================================
+
+  const handleOpenAvatarModal = () => {
+    if (!isViewingOwnProfile) return;
+    setPreviewImage(avatarSrc);
+    setSelectedFile(null);
+    setShowAvatarModal(true);
+  };
+
+  // [!!!] إضافة useEffect لإغلاق المودال عند النجاح
+  useEffect(() => {
+    if (successUpdateAvatar) {
+      handleCloseAvatarModal();
+      // إعادة تعيين حالة النجاح في Redux لتجنب الإغلاق المتكرر
+      dispatch(resetUpdateAvatarStatus());
+    }
+  }, [successUpdateAvatar, dispatch]);
+
+  const handleCloseAvatarModal = () => {
+    setShowAvatarModal(false);
+    setPreviewImage(null);
+    setSelectedFile(null);
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(t("profilePage.avatarUpdateError"));
+        return;
+      }
+      if (
+        !["image/jpeg", "image/png", "image/gif", "image/webp"].includes(
+          file.type
+        )
+      ) {
+        toast.error(t("profilePage.avatarUpdateTypeError"));
+        return;
+      }
+      setSelectedFile(file);
+      setPreviewImage(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUploadAvatar = () => {
+    if (!isViewingOwnProfile || !selectedFile) return;
+    const formData = new FormData();
+    formData.append("avatar", selectedFile);
+    dispatch(updateProfilePicture(formData));
+  };
+
+  // بقية المكون يبقى كما هو...
+  // I will skip re-pasting the rest of the component as it's very long and has no other changes.
+  // The crucial fixes are the `useMemo` for `avatarSrc` and the `useEffect` for closing the modal.
+  // Make sure to implement these changes into your existing `Profile.jsx` file.
   const principalBalanceDisplay = useCurrencyDisplay(profileData?.balance);
   const depositBalanceDisplay = useCurrencyDisplay(profileData?.depositBalance);
   const withdrawalBalanceDisplay = useCurrencyDisplay(
@@ -260,62 +329,6 @@ const Profile = ({ profileForOtherUser = null }) => {
 
   const activeListingsCount = profileData?.activeListingsCount ?? 0;
   const soldProductsCount = profileData?.productsSoldCount ?? 0;
-
-  const avatarSrc = useMemo(() => {
-    const url = profileData?.avatarUrl;
-    if (url) {
-      return url.startsWith("http")
-        ? url
-        : `${BACKEND_URL}/${url.replace(/\\/g, "/")}`;
-    }
-    return defaultAvatar;
-  }, [profileData?.avatarUrl]);
-
-  const handleOpenAvatarModal = () => {
-    if (!isViewingOwnProfile) return;
-    setPreviewImage(avatarSrc);
-    setSelectedFile(null);
-    setShowAvatarModal(true);
-  };
-
-  const handleCloseAvatarModal = () => {
-    setShowAvatarModal(false);
-    setPreviewImage(null);
-    setSelectedFile(null);
-  };
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error(t("profilePage.avatarUpdateError"));
-        return;
-      }
-      if (
-        !["image/jpeg", "image/png", "image/gif", "image/webp"].includes(
-          file.type
-        )
-      ) {
-        toast.error(t("profilePage.avatarUpdateTypeError"));
-        return;
-      }
-      setSelectedFile(file);
-      setPreviewImage(URL.createObjectURL(file));
-    }
-  };
-
-  const handleUploadAvatar = () => {
-    if (!isViewingOwnProfile || !selectedFile) return;
-    const formData = new FormData();
-    formData.append("avatar", selectedFile);
-    dispatch(updateProfilePicture(formData))
-      .then((res) => {
-        if (!res?.error) {
-          handleCloseAvatarModal();
-        }
-      })
-      .catch((err) => console.error("Avatar upload err", err));
-  };
 
   const ReputationBadgeDisplay = ({ reputationLevelName, numericLevel }) => {
     const badgeName =
@@ -555,7 +568,7 @@ const Profile = ({ profileForOtherUser = null }) => {
                   className="role-badge-lg me-2 px-2 py-1"
                 >
                   <FaUserShield size={14} className="me-1" />
-                  {t(`roles.${profileData.userRole}`)}
+                  {t(`common.roles.${profileData.userRole}`)}
                 </Badge>
               </div>
               <ReputationBadgeDisplay

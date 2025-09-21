@@ -252,7 +252,7 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
     }
     try {
         const { data } = await axios.put("/user/profile/avatar", formData, config);
-        dispatch({ type: UPDATE_AVATAR_SUCCESS, payload: { ...data, successMessage: 'profilePage.avatarUpdateSuccess' } });
+        dispatch({ type: UPDATE_AVATAR_SUCCESS, payload: { ...data, successMessage: 'profilePage.avatar.updateSuccess' } });
         return Promise.resolve(data);
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'profilePage.avatarUpdateFail');

@@ -53,7 +53,6 @@ const userReducer = (state = initialState, action) => {
     case LOGIN_REQUEST:
     case GET_PROFILE_REQUEST:
     case APPLY_MEDIATOR_REQUEST:
-    case UPDATE_AVATAR_REQUEST:
     case ADMIN_GET_MEDIATORS_REQUEST:
     case UPDATE_MEDIATOR_STATUS_REQUEST:
       return {
@@ -61,6 +60,15 @@ const userReducer = (state = initialState, action) => {
         loading: true,
         errorMessage: null,
         successMessage: null
+      };
+
+    // [!!!] حالة التحميل الخاصة بالصورة يجب أن تكون منفصلة [!!!]
+    case UPDATE_AVATAR_REQUEST:
+      return {
+        ...state,
+        loadingUpdateAvatar: true,
+        errorUpdateAvatar: null,
+        successUpdateAvatar: false,
       };
 
     case ADMIN_GET_MEDIATOR_APPS_REQUEST:
@@ -162,18 +170,24 @@ const userReducer = (state = initialState, action) => {
         authChecked: true,
       };
 
-    // --- THIS IS THE FIX ---
+    // =========================================================================
+    // [!!!] START: الكود المعدل والمصحح هنا [!!!]
+    // =========================================================================
     case UPDATE_AVATAR_SUCCESS:
+      // الـ payload يحتوي على { user: { ... }, msg: "..." }
+      // لذا، يجب أن ندمج payload.user
       return {
         ...state,
-        loading: false,
+        loadingUpdateAvatar: false,
         successUpdateAvatar: true,
-        // Safely merge the new user data with the existing user data
+        // دمج بيانات المستخدم الجديدة (بما في ذلك avatarUrl) مع الحالة الحالية
         user: { ...state.user, ...payload.user },
         successMessage: payload.successMessage,
         errorUpdateAvatar: null,
       };
-    // --- END OF FIX ---
+    // =========================================================================
+    // [!!!] END: نهاية الكود المعدل [!!!]
+    // =========================================================================
 
     case APPLY_MEDIATOR_SUCCESS:
       return {
@@ -185,13 +199,20 @@ const userReducer = (state = initialState, action) => {
         successMessage: payload.successMessage
       };
 
+    // حالة الفشل الخاصة بالصورة يجب أن تكون منفصلة
+    case UPDATE_AVATAR_FAIL:
+      return {
+        ...state,
+        loadingUpdateAvatar: false,
+        errorUpdateAvatar: payload.errorMessage,
+      };
+
     case LOGIN_FAIL:
     case REGISTER_FAIL:
     case GET_PROFILE_FAIL:
     case APPLY_MEDIATOR_FAIL:
     case ADMIN_GET_MEDIATORS_FAIL:
     case UPDATE_MEDIATOR_STATUS_FAIL:
-    case UPDATE_AVATAR_FAIL:
       return {
         ...state,
         loading: false,
