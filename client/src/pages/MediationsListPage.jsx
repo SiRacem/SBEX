@@ -1,7 +1,7 @@
 // client/src/pages/MediationsListPage.jsx
-import React, { useEffect } from "react"; // تمت إزالة useState إذا لم تعد هناك حاجة له
+import React, { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router-dom"; // تمت إزالة Link إذا لم تستخدمه مباشرة هنا
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Row,
@@ -13,32 +13,27 @@ import {
   Alert,
   Badge,
 } from "react-bootstrap";
-import { FaComments, FaUserFriends, FaBoxOpen } from "react-icons/fa"; // FaEye تمت إزالتها
+import { FaComments, FaUserFriends, FaBoxOpen } from "react-icons/fa";
 import {
   getMyMediationSummaries,
   markMediationAsReadInList,
-} from "../redux/actions/mediationAction"; // استيراد الـ action
+} from "../redux/actions/mediationAction";
+import { useTranslation } from "react-i18next";
 
 const MediationsListPage = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const {
-    requests, // تم تغيير الاسم إلى requests ليطابق الـ reducer
-    loading,
-    error,
-    totalUnreadMessagesCount, // يمكن استخدامه لعرض إجمالي إذا أردت
-  } = useSelector((state) => state.mediationReducer.myMediationSummaries); // تعديل المسار في الـ state
-
-  // const currentUserId = useSelector(state => state.userReducer.user?._id); // ليس ضروريًا هنا مباشرة
+  const { requests, loading, error, totalUnreadMessagesCount } = useSelector(
+    (state) => state.mediationReducer.myMediationSummaries
+  );
 
   useEffect(() => {
-    console.log("MediationsListPage: Fetching summaries...");
     dispatch(getMyMediationSummaries());
   }, [dispatch]);
 
   const handleOpenChat = (mediationId) => {
-    // (اختياري) تحديث فوري لعدد الرسائل غير المقروءة في القائمة لهذه المحادثة
     dispatch(markMediationAsReadInList(mediationId));
     navigate(`/dashboard/mediation-chat/${mediationId}`);
   };
@@ -47,7 +42,7 @@ const MediationsListPage = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2">Loading your mediations...</p>
+        <p className="mt-2">{t("mediationsListPage.loading")}</p>
       </Container>
     );
   }
@@ -56,7 +51,7 @@ const MediationsListPage = () => {
     return (
       <Container className="py-5">
         <Alert variant="danger">
-          Error loading mediations:{" "}
+          {t("mediationsListPage.error")}{" "}
           {typeof error === "object"
             ? error.message || JSON.stringify(error)
             : error}
@@ -65,7 +60,7 @@ const MediationsListPage = () => {
           onClick={() => dispatch(getMyMediationSummaries())}
           variant="outline-primary"
         >
-          Try Again
+          {t("mediationsListPage.tryAgain")}
         </Button>
       </Container>
     );
@@ -73,38 +68,32 @@ const MediationsListPage = () => {
 
   return (
     <Container fluid className="py-4 px-md-4">
-      {" "}
-      {/* تعديل الحشو للشاشات المختلفة */}
       <Row className="mb-3 align-items-center">
         <Col>
-          <h2 className="h4">My Mediation Chats</h2>
+          <h2 className="h4">{t("mediationsListPage.title")}</h2>
         </Col>
         {totalUnreadMessagesCount > 0 && (
           <Col xs="auto">
             <Badge bg="primary" pill className="fs-6">
-              {totalUnreadMessagesCount} Total Unread
+              {t("mediationsListPage.totalUnread", {
+                count: totalUnreadMessagesCount,
+              })}
             </Badge>
           </Col>
         )}
       </Row>
       {requests && requests.length > 0 ? (
         <ListGroup variant="flush">
-          {" "}
-          {/* variant flush لإزالة الحدود الافتراضية */}
           {requests.map((mediation) => (
             <ListGroup.Item
               key={mediation._id}
-              action // يجعل العنصر قابلاً للنقر بصريًا
-              onClick={() => handleOpenChat(mediation._id)} // فتح الدردشة عند النقر على العنصر بأكمله
-              className="mb-2 shadow-sm rounded mediation-list-item p-3" // إضافة حشو وتصميم
+              action
+              onClick={() => handleOpenChat(mediation._id)}
+              className="mb-2 shadow-sm rounded mediation-list-item p-3"
               style={{ cursor: "pointer" }}
             >
               <Row className="align-items-center g-2">
-                {" "}
-                {/* g-2 لتباعد صغير بين الأعمدة */}
                 <Col md="auto" xs={2} className="text-center d-none d-md-block">
-                  {" "}
-                  {/* إخفاء الأيقونة الكبيرة على الشاشات الصغيرة جدًا */}
                   <div
                     className={`status-indicator-dot me-2 ${
                       mediation.unreadMessagesCount > 0 ? "unread" : "read"
@@ -125,7 +114,8 @@ const MediationsListPage = () => {
                       className="mb-1 fs-6 fw-bold text-truncate"
                       style={{ maxWidth: "80%" }}
                     >
-                      {mediation.product?.title || "Mediation Session"}
+                      {mediation.product?.title ||
+                        t("mediationsListPage.mediationSession")}
                     </h5>
                     {mediation.unreadMessagesCount > 0 && (
                       <Badge pill bg="danger" className="ms-2 flex-shrink-0">
@@ -135,10 +125,14 @@ const MediationsListPage = () => {
                   </div>
                   <p className="mb-1 text-muted small">
                     <FaUserFriends className="me-1" />
-                    With: {mediation.otherParty?.fullName || "N/A"}
+                    {t("mediationsListPage.with")}{" "}
+                    {mediation.otherParty?.fullName || "N/A"}
                     <span className="d-none d-sm-inline">
                       {" "}
-                      ({mediation.otherParty?.roleLabel || "Participant"})
+                      (
+                      {mediation.otherParty?.roleLabel ||
+                        t("mediationsListPage.participant")}
+                      )
                     </span>
                   </p>
                   <div className="d-flex justify-content-between align-items-center">
@@ -157,7 +151,7 @@ const MediationsListPage = () => {
                     </Badge>
                     <span className="text-muted small">
                       {mediation.lastMessageTimestamp
-                        ? `Last: ${new Date(
+                        ? `${t("mediationsListPage.last")} ${new Date(
                             mediation.lastMessageTimestamp
                           ).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -168,21 +162,12 @@ const MediationsListPage = () => {
                             day: "2-digit",
                             month: "short",
                           })}`
-                        : `Updated: ${new Date(
+                        : `${t("mediationsListPage.updated")} ${new Date(
                             mediation.updatedAt
                           ).toLocaleDateString()}`}
                     </span>
                   </div>
                 </Col>
-                {/* <Col md={2} xs={3} className="text-end">
-                                    <Button 
-                                        variant="outline-primary" 
-                                        size="sm"
-                                        onClick={(e) => { e.stopPropagation(); handleOpenChat(mediation._id); }} // منع انتشار الحدث
-                                    >
-                                        <FaComments className="me-sm-1" /> <span className="d-none d-sm-inline">Chat</span>
-                                    </Button>
-                                </Col> */}
               </Row>
             </ListGroup.Item>
           ))}
@@ -191,9 +176,9 @@ const MediationsListPage = () => {
         <Card className="text-center p-4 p-md-5 shadow-sm mt-4">
           <Card.Body>
             <FaComments size={48} className="text-muted opacity-50 mb-3" />
-            <h4 className="h5">No Mediation Chats Found</h4>
+            <h4 className="h5">{t("mediationsListPage.noChats")}</h4>
             <p className="text-muted">
-              You are not currently involved in any mediation processes.
+              {t("mediationsListPage.noChatsDetails")}
             </p>
           </Card.Body>
         </Card>

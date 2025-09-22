@@ -35,6 +35,7 @@ import {
   FaHourglassHalf,
 } from "react-icons/fa";
 import "./MediatorDashboardPage.css";
+import { useTranslation } from "react-i18next";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -65,6 +66,7 @@ const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
 const MediatorDashboardPage = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const {
     pendingDecisionAssignments: pendingData,
@@ -131,36 +133,45 @@ const MediatorDashboardPage = () => {
 
   useEffect(() => {
     if (currentUser && currentUser.isMediatorQualified) {
-        // --- [!!!] جلب بيانات جميع التبويبات عند التحميل الأول أو عند تغير المستخدم [!!!] ---
-        // هذا الجزء سيعمل مرة واحدة عند تحميل المكون (أو عند تغير currentUser)
-        // ويمكنك الاحتفاظ به إذا أردت تحديثًا دوريًا لجميع الأعداد.
-        // أو يمكنك نقله إلى useEffect منفصل بمصفوفة اعتماديات [dispatch, currentUser] فقط.
+      // --- [!!!] جلب بيانات جميع التبويبات عند التحميل الأول أو عند تغير المستخدم [!!!] ---
+      // هذا الجزء سيعمل مرة واحدة عند تحميل المكون (أو عند تغير currentUser)
+      // ويمكنك الاحتفاظ به إذا أردت تحديثًا دوريًا لجميع الأعداد.
+      // أو يمكنك نقله إلى useEffect منفصل بمصفوفة اعتماديات [dispatch, currentUser] فقط.
 
-        console.log("[MediatorDashboardPage Effect] Fetching initial counts for all tabs...");
-        dispatch(getMediatorAssignments(1)); // جلب الصفحة الأولى دائمًا للعدد
-        dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
-        dispatch(getMediatorDisputedCasesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
+      console.log(
+        "[MediatorDashboardPage Effect] Fetching initial counts for all tabs..."
+      );
+      dispatch(getMediatorAssignments(1)); // جلب الصفحة الأولى دائمًا للعدد
+      dispatch(getMediatorAcceptedAwaitingPartiesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
+      dispatch(getMediatorDisputedCasesAction(1)); // جلب الصفحة الأولى دائمًا للعدد
     }
-}, [dispatch, currentUser]); // <--- اعتماديات هذا الـ useEffect
+  }, [dispatch, currentUser]); // <--- اعتماديات هذا الـ useEffect
 
   useEffect(() => {
     if (currentUser && currentUser.isMediatorQualified) {
-        console.log(`[MediatorDashboardPage Effect] Fetching data for active tab: ${activeTabKey}`);
-        if (activeTabKey === 'pendingDecision') {
-            dispatch(getMediatorAssignments(currentPagePendingLocal));
-        } else if (activeTabKey === 'activeMediations') {
-            dispatch(getMediatorAcceptedAwaitingPartiesAction(currentPageActiveLocal));
-        } else if (activeTabKey === 'disputedCases') {
-            dispatch(getMediatorDisputedCasesAction(currentPageDisputedLocal));
-        }
+      console.log(
+        `[MediatorDashboardPage Effect] Fetching data for active tab: ${activeTabKey}`
+      );
+      if (activeTabKey === "pendingDecision") {
+        dispatch(getMediatorAssignments(currentPagePendingLocal));
+      } else if (activeTabKey === "activeMediations") {
+        dispatch(
+          getMediatorAcceptedAwaitingPartiesAction(currentPageActiveLocal)
+        );
+      } else if (activeTabKey === "disputedCases") {
+        dispatch(getMediatorDisputedCasesAction(currentPageDisputedLocal));
+      }
     }
     // الاعتماديات يجب أن تكون ما يُشغل هذا الـ Effect بشكل صحيح
     // عندما يتغير التبويب النشط، أو عندما تتغير الصفحة المحلية للتبويب النشط.
-}, [dispatch, currentUser, activeTabKey, 
-    (activeTabKey === 'pendingDecision' ? currentPagePendingLocal : undefined),
-    (activeTabKey === 'activeMediations' ? currentPageActiveLocal : undefined),
-    (activeTabKey === 'disputedCases' ? currentPageDisputedLocal : undefined)
-]);
+  }, [
+    dispatch,
+    currentUser,
+    activeTabKey,
+    activeTabKey === "pendingDecision" ? currentPagePendingLocal : undefined,
+    activeTabKey === "activeMediations" ? currentPageActiveLocal : undefined,
+    activeTabKey === "disputedCases" ? currentPageDisputedLocal : undefined,
+  ]);
 
   const handleShowImageModal = useCallback((images, index = 0) => {
     setSelectedAssignmentImages(
@@ -239,7 +250,10 @@ const MediatorDashboardPage = () => {
         );
         return (
           <Alert variant="warning" className="my-3">
-            Assignment data is incomplete.
+            {t(
+              "mediatorDashboard.incompleteData",
+              "Assignment data is incomplete."
+            )}
           </Alert>
         );
       }
@@ -247,33 +261,48 @@ const MediatorDashboardPage = () => {
       let statusBadgeBg = "secondary";
       let statusText = assignment.status
         ? assignment.status.replace(/([A-Z])/g, " $1").trim()
-        : "Unknown";
+        : t("mediatorDashboard.unknown", "Unknown");
       const currentStatus = assignment.status;
 
       if (currentStatus === "Disputed") {
         statusBadgeBg = "danger";
-        statusText = "Dispute Active";
+        statusText = t("mediatorDashboard.disputeActive", "Dispute Active");
       } else {
         switch (currentStatus) {
           case "MediatorAssigned":
             statusBadgeBg = "warning";
-            statusText = "Pending Your Decision";
+            statusText = t(
+              "mediatorDashboard.pendingDecision",
+              "Pending Your Decision"
+            );
             break;
           case "MediationOfferAccepted":
             statusBadgeBg = "info";
-            statusText = "Awaiting Parties' Confirmation";
+            statusText = t(
+              "mediatorDashboard.awaitingParties",
+              "Awaiting Parties' Confirmation"
+            );
             break;
           case "EscrowFunded":
             statusBadgeBg = "primary";
-            statusText = "Buyer Confirmed & Escrowed";
+            statusText = t(
+              "mediatorDashboard.buyerConfirmed",
+              "Buyer Confirmed & Escrowed"
+            );
             break;
           case "PartiesConfirmed":
             statusBadgeBg = "info";
-            statusText = "All Parties Confirmed";
+            statusText = t(
+              "mediatorDashboard.allPartiesConfirmed",
+              "All Parties Confirmed"
+            );
             break;
           case "InProgress":
             statusBadgeBg = "success";
-            statusText = "Mediation In Progress";
+            statusText = t(
+              "mediatorDashboard.inProgress",
+              "Mediation In Progress"
+            );
             break;
           default:
             break;
@@ -290,7 +319,10 @@ const MediatorDashboardPage = () => {
             as="h5"
             className="d-flex justify-content-between align-items-center assignment-card-header"
           >
-            <span>Product: {assignment.product.title || "N/A"}</span>
+            <span>
+              {t("mediatorDashboard.product", "Product:")}{" "}
+              {assignment.product.title || "N/A"}
+            </span>
             <Badge
               bg={statusBadgeBg}
               text={
@@ -339,18 +371,24 @@ const MediatorDashboardPage = () => {
                     onClick={() => handleShowImageModal(productImages, 0)}
                     className="position-absolute bottom-0 start-50 translate-middle-x mb-2 view-gallery-btn"
                   >
-                    <BsImage className="me-1" /> View ({productImages.length})
+                    <BsImage className="me-1" />{" "}
+                    {t("mediatorDashboard.view", "View")} (
+                    {productImages.length})
                   </Button>
                 )}
               </Col>
               <Col md={8} lg={9}>
                 <div className="assignment-details">
                   <p className="mb-1">
-                    <small className="text-muted">Transaction ID:</small>{" "}
+                    <small className="text-muted">
+                      {t("mediatorDashboard.transactionId", "Transaction ID:")}
+                    </small>{" "}
                     {assignment._id}
                   </p>
                   <p className="mb-1">
-                    <small className="text-muted">Seller:</small>{" "}
+                    <small className="text-muted">
+                      {t("mediatorDashboard.seller", "Seller:")}
+                    </small>{" "}
                     {assignment.seller?.fullName ? (
                       <Link
                         to={`/profile/${assignment.seller._id}`}
@@ -364,7 +402,9 @@ const MediatorDashboardPage = () => {
                     )}
                   </p>
                   <p className="mb-1">
-                    <small className="text-muted">Buyer:</small>{" "}
+                    <small className="text-muted">
+                      {t("mediatorDashboard.buyer", "Buyer:")}
+                    </small>{" "}
                     {assignment.buyer?.fullName ? (
                       <Link
                         to={`/profile/${assignment.buyer._id}`}
@@ -378,7 +418,9 @@ const MediatorDashboardPage = () => {
                     )}
                   </p>
                   <p className="mb-1">
-                    <small className="text-muted">Agreed Price:</small>{" "}
+                    <small className="text-muted">
+                      {t("mediatorDashboard.agreedPrice", "Agreed Price:")}
+                    </small>{" "}
                     <strong>
                       {formatCurrency(
                         assignment.bidAmount,
@@ -387,7 +429,9 @@ const MediatorDashboardPage = () => {
                     </strong>
                   </p>
                   <p className="mb-0">
-                    <small className="text-muted">Last Update:</small>{" "}
+                    <small className="text-muted">
+                      {t("mediatorDashboard.lastUpdate", "Last Update:")}
+                    </small>{" "}
                     {new Date(
                       assignment.updatedAt || assignment.createdAt
                     ).toLocaleString("en-GB", {
@@ -411,7 +455,7 @@ const MediatorDashboardPage = () => {
                       ) : (
                         <FaCheck />
                       )}{" "}
-                      Accept
+                      {t("mediatorDashboard.accept", "Accept")}
                     </Button>
                     <Button
                       variant="outline-danger"
@@ -425,7 +469,7 @@ const MediatorDashboardPage = () => {
                       ) : (
                         <FaTimes />
                       )}{" "}
-                      Reject
+                      {t("mediatorDashboard.reject", "Reject")}
                     </Button>
                   </div>
                 )}
@@ -435,19 +479,28 @@ const MediatorDashboardPage = () => {
                     {currentStatus === "MediationOfferAccepted" && (
                       <Alert variant="light" className="small p-2">
                         <FaHourglassHalf className="me-1" />
-                        You accepted. Waiting for parties to confirm.
+                        {t(
+                          "mediatorDashboard.waitingForParties",
+                          "You accepted. Waiting for parties to confirm."
+                        )}
                       </Alert>
                     )}
                     {currentStatus === "EscrowFunded" && (
                       <Alert variant="light" className="small p-2">
                         <FaHourglassHalf className="me-1" />
-                        Buyer confirmed & escrowed. Waiting for seller.
+                        {t(
+                          "mediatorDashboard.waitingForSeller",
+                          "Buyer confirmed & escrowed. Waiting for seller."
+                        )}
                       </Alert>
                     )}
                     {currentStatus === "PartiesConfirmed" && (
                       <Alert variant="light" className="small p-2">
                         <FaCheck className="me-1" />
-                        Parties confirmed. Chat starting soon.
+                        {t(
+                          "mediatorDashboard.startingSoon",
+                          "Parties confirmed. Chat starting soon."
+                        )}
                       </Alert>
                     )}
 
@@ -463,8 +516,11 @@ const MediatorDashboardPage = () => {
                       >
                         <BsChatDotsFill className="me-1" />
                         {currentStatus === "Disputed"
-                          ? "Review Dispute"
-                          : "Open Chat"}
+                          ? t(
+                              "mediatorDashboard.reviewDispute",
+                              "Review Dispute"
+                            )
+                          : t("mediatorDashboard.openChat", "Open Chat")}
                       </Button>
                     )}
                   </div>
@@ -483,6 +539,7 @@ const MediatorDashboardPage = () => {
       openRejectModal,
       handleShowImageModal,
       handleImageError,
+      t,
       // لا تحتاج لإضافة dispatch هنا إذا كانت الدوال أعلاه لا تستدعي dispatch مباشرةً في هذا الـ useCallback
       // وإنما dispatch يتم داخل الدوال نفسها (handleAccept, openRejectModal)
     ]
@@ -492,16 +549,21 @@ const MediatorDashboardPage = () => {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" />
-        <p>Loading user data...</p>
+        <p>{t("mediatorDashboard.loadingUserData", "Loading user data...")}</p>
       </Container>
     );
   if (!currentUser.isMediatorQualified)
     return (
       <Container className="py-5 text-center">
         <Alert variant="danger">
-          Access Denied. You are not a qualified mediator.
+          {t(
+            "mediatorDashboard.accessDenied",
+            "Access Denied. You are not a qualified mediator."
+          )}
         </Alert>
-        <Link to="/dashboard">Go to Dashboard</Link>
+        <Link to="/dashboard">
+          {t("mediatorDashboard.goToDashboard", "Go to Dashboard")}
+        </Link>
       </Container>
     );
 
@@ -509,7 +571,9 @@ const MediatorDashboardPage = () => {
     <Container fluid className="py-4 mediator-dashboard-page px-md-4">
       <Row className="mb-4 align-items-center">
         <Col>
-          <h2 className="page-title mb-0">Mediator Hub</h2>
+          <h2 className="page-title mb-0">
+            {t("mediatorDashboard.title", "Mediator Hub")}
+          </h2>
         </Col>
       </Row>
       <Tabs
@@ -523,7 +587,8 @@ const MediatorDashboardPage = () => {
           eventKey="pendingDecision"
           title={
             <>
-              <FaHourglassHalf className="me-1" /> Pending My Decision{" "}
+              <FaHourglassHalf className="me-1" />{" "}
+              {t("mediatorDashboard.pendingTab", "Pending My Decision")}{" "}
               <Badge bg="warning" text="dark" pill className="ms-1">
                 {totalPending}
               </Badge>
@@ -534,7 +599,12 @@ const MediatorDashboardPage = () => {
             pendingDecisionAssignments.length === 0 && (
               <div className="text-center my-5">
                 <Spinner />
-                <p>Loading pending assignments...</p>
+                <p>
+                  {t(
+                    "mediatorDashboard.loadingPending",
+                    "Loading pending assignments..."
+                  )}
+                </p>
               </div>
             )}
           {!loadingPendingDecision && errorPendingDecision && (
@@ -546,7 +616,10 @@ const MediatorDashboardPage = () => {
             pendingDecisionAssignments.length === 0 &&
             !errorPendingDecision && (
               <Alert variant="light" className="text-center mt-3 py-4">
-                No assignments currently pending your decision.
+                {t(
+                  "mediatorDashboard.noPending",
+                  "No assignments currently pending your decision."
+                )}
               </Alert>
             )}
           {pendingDecisionAssignments.map((assignment) =>
@@ -571,7 +644,8 @@ const MediatorDashboardPage = () => {
           eventKey="activeMediations"
           title={
             <>
-              <FaCheck className="me-1" /> Active Mediations{" "}
+              <FaCheck className="me-1" />{" "}
+              {t("mediatorDashboard.activeTab", "Active Mediations")}{" "}
               <Badge bg="primary" pill className="ms-1">
                 {totalActive}
               </Badge>
@@ -582,7 +656,12 @@ const MediatorDashboardPage = () => {
             activeMediationsList.length === 0 && (
               <div className="text-center my-5">
                 <Spinner />
-                <p>Loading active mediations...</p>
+                <p>
+                  {t(
+                    "mediatorDashboard.loadingActive",
+                    "Loading active mediations..."
+                  )}
+                </p>
               </div>
             )}
           {!loadingAcceptedAwaitingParties && errorAcceptedAwaitingParties && (
@@ -594,7 +673,10 @@ const MediatorDashboardPage = () => {
             activeMediationsList.length === 0 &&
             !errorAcceptedAwaitingParties && (
               <Alert variant="light" className="text-center mt-3 py-4">
-                No active mediations assigned to you.
+                {t(
+                  "mediatorDashboard.noActive",
+                  "No active mediations assigned to you."
+                )}
               </Alert>
             )}
           {activeMediationsList.map((assignment) =>
@@ -619,7 +701,8 @@ const MediatorDashboardPage = () => {
           eventKey="disputedCases"
           title={
             <>
-              <FaGavel className="me-1" /> Disputed Cases{" "}
+              <FaGavel className="me-1" />{" "}
+              {t("mediatorDashboard.disputedTab", "Disputed Cases")}{" "}
               <Badge bg="danger" pill className="ms-1">
                 {totalDisputed}
               </Badge>
@@ -629,7 +712,12 @@ const MediatorDashboardPage = () => {
           {loadingDisputedCases && disputedCasesList.length === 0 && (
             <div className="text-center my-5">
               <Spinner />
-              <p>Loading disputed cases...</p>
+              <p>
+                {t(
+                  "mediatorDashboard.loadingDisputed",
+                  "Loading disputed cases..."
+                )}
+              </p>
             </div>
           )}
           {!loadingDisputedCases && errorDisputedCases && (
@@ -641,7 +729,10 @@ const MediatorDashboardPage = () => {
             disputedCasesList.length === 0 &&
             !errorDisputedCases && (
               <Alert variant="light" className="text-center mt-3 py-4">
-                No disputed cases assigned to you currently.
+                {t(
+                  "mediatorDashboard.noDisputed",
+                  "No disputed cases assigned to you currently."
+                )}
               </Alert>
             )}
           {disputedCasesList.map((assignment) =>
@@ -700,7 +791,7 @@ const MediatorDashboardPage = () => {
             </Carousel>
           ) : (
             <Alert variant="dark" className="m-5">
-              Image not available.
+              {t("mediatorDashboard.imageNotAvailable", "Image not available.")}
             </Alert>
           )}
           <Button

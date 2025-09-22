@@ -1,6 +1,3 @@
-// src/pages/MyProducts.jsx
-// *** إضافة قسم عرض المزايدات وأزرار القبول/الرفض ***
-
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -40,6 +37,7 @@ import {
 // استيراد action جلب البروفايل (لتحديث الرصيد بعد القبول)
 import { getProfile } from "../redux/actions/userAction";
 import OfflineProdCard from "../components/commun/OfflineProdCard"; // قد تعرض المنتجات المعتمدة هنا أيضاً
+import { useTranslation } from "react-i18next";
 // import './Comptes.css'; // ملف CSS الخاص بالصفحة
 
 // دالة تنسيق العملة (يمكن وضعها في ملف helpers)
@@ -57,6 +55,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
 const noImageUrl = "/path/to/default-image.jpg"; // Replace with the actual path to your default image
 
 const MyProducts = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -138,12 +137,12 @@ const MyProducts = () => {
         dispatch(rejectBid(bidToReject.productId, bidderId, rejectReason));
         setShowRejectReasonModal(false);
       } else {
-        toast.error("Could not identify bidder ID.");
+        toast.error(t("couldNotIdentifyBidder"));
       }
     } else {
-      toast.warn("Please provide a rejection reason.");
+      toast.warn(t("pleaseProvideRejectionReason"));
     }
-  }, [dispatch, bidToReject, rejectReason]);
+  }, [dispatch, bidToReject, rejectReason, t]);
 
   // --- Handler للحذف ---
   const handleDeleteProduct = useCallback(
@@ -159,17 +158,15 @@ const MyProducts = () => {
     (productId, bid) => {
       const bidderId = bid.user?._id || bid.user;
       if (!bidderId) {
-        toast.error("Could not identify bidder ID.");
+        toast.error(t("couldNotIdentifyBidder"));
         return;
       }
       if (
         window.confirm(
-          `Are you sure you want to accept the bid of ${formatCurrency(
-            bid.amount,
-            bid.currency
-          )} from ${
-            bid.user?.fullName || "this user"
-          }? This will mark the product as sold and hold the funds.`
+          t("acceptBidConfirmation", {
+            amount: formatCurrency(bid.amount, bid.currency),
+            user: bid.user?.fullName || t("thisUser"),
+          })
         )
       ) {
         dispatch(acceptBid(productId, bidderId, bid.amount))
@@ -183,7 +180,7 @@ const MyProducts = () => {
           });
       }
     },
-    [dispatch]
+    [dispatch, t]
   );
 
   // --- العرض ---
@@ -191,7 +188,7 @@ const MyProducts = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2">Loading your products...</p>
+        <p className="mt-2">{t("loadingYourProducts")}</p>
       </Container>
     );
   }
@@ -199,26 +196,28 @@ const MyProducts = () => {
   if (errors) {
     return (
       <Container className="py-5">
-        <Alert variant="danger">Error loading products: {errors}</Alert>
+        <Alert variant="danger">
+          {t("errorLoadingProducts")} {errors}
+        </Alert>
       </Container>
     );
   }
 
   return (
     <Container fluid className="py-4 comptes-page">
-      <h2 className="page-title mb-4">My Accounts / Products</h2>
+      <h2 className="page-title mb-4">{t("myAccountsProducts")}</h2>
 
       {/* --- قسم المنتجات المعتمدة (مع المزايدات) --- */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-success text-white">
           <h4 className="mb-0">
-            Approved Products ({approvedProducts.length})
+            {t("approvedProducts")} ({approvedProducts.length})
           </h4>
         </Card.Header>
         <Card.Body>
           {approvedProducts.length === 0 ? (
             <p className="text-muted text-center py-3">
-              No approved products yet.
+              {t("noApprovedProductsYet")}
             </p>
           ) : (
             approvedProducts.map((product) => {
@@ -240,15 +239,18 @@ const MyProducts = () => {
                     <Col md={4} className="p-3">
                       <h5 className="mb-1">{product.title}</h5>
                       <p className="mb-1 small text-muted">
-                        Base Price:{" "}
+                        {t("basePrice")}{" "}
                         {formatCurrency(product.price, product.currency)}
                       </p>
                       <p className="mb-0 small text-muted">
-                        Status: <Badge bg="success">{product.status}</Badge>
+                        {t("status")}:{" "}
+                        <Badge bg="success">{product.status}</Badge>
                       </p>
                     </Col>
                     <Col md={6} className="p-3 bids-section">
-                      <h6>Received Bids ({sortedBids.length})</h6>
+                      <h6>
+                        {t("receivedBids")} ({sortedBids.length})
+                      </h6>
                       {sortedBids.length > 0 ? (
                         <ListGroup
                           variant="flush"
@@ -273,7 +275,7 @@ const MyProducts = () => {
                                     className="text-decoration-none me-2"
                                     target="_blank"
                                   >
-                                    {bid.user?.fullName || "Bidder"}
+                                    {bid.user?.fullName || t("bidder")}
                                   </Link>
                                   <Badge bg="info">
                                     {formatCurrency(bid.amount, bid.currency)}
@@ -288,7 +290,7 @@ const MyProducts = () => {
                                       handleAcceptBid(product._id, bid)
                                     }
                                     disabled={isProcessing}
-                                    title="Accept Bid"
+                                    title={t("acceptBid")}
                                   >
                                     {isAccepting ? (
                                       <Spinner size="sm" animation="border" />
@@ -304,7 +306,7 @@ const MyProducts = () => {
                                       openRejectModal(product._id, bid)
                                     }
                                     disabled={isProcessing}
-                                    title="Reject Bid"
+                                    title={t("rejectBid")}
                                   >
                                     {isRejecting ? (
                                       <Spinner size="sm" animation="border" />
@@ -319,7 +321,7 @@ const MyProducts = () => {
                         </ListGroup>
                       ) : (
                         <p className="text-muted small">
-                          No bids received yet.
+                          {t("noBidsReceivedYet")}
                         </p>
                       )}
                     </Col>
@@ -331,25 +333,25 @@ const MyProducts = () => {
                       size="sm"
                       className="me-2"
                       onClick={() => navigate(`/edit-product/${product._id}`)}
-                      title="Edit Product"
+                      title={t("editProduct")}
                     >
                       {" "}
                       {/* افترض وجود مسار للتعديل */}
-                      <FaEdit /> Edit
+                      <FaEdit /> {t("edit")}
                     </Button>
                     <Button
                       variant="outline-danger"
                       size="sm"
                       onClick={() => handleDeleteProduct(product._id)}
                       disabled={loadingDelete[product._id]}
-                      title="Delete Product"
+                      title={t("deleteProduct")}
                     >
                       {loadingDelete[product._id] ? (
                         <Spinner size="sm" animation="border" />
                       ) : (
                         <FaTrashAlt />
                       )}{" "}
-                      Delete
+                      {t("delete")}
                     </Button>
                   </Card.Footer>
                 </Card>
@@ -362,12 +364,14 @@ const MyProducts = () => {
       {/* --- قسم المنتجات المعلقة --- */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-warning text-dark">
-          <h4 className="mb-0">Pending Approval ({pendingProducts.length})</h4>
+          <h4 className="mb-0">
+            {t("pendingApproval")} ({pendingProducts.length})
+          </h4>
         </Card.Header>
         <Card.Body>
           {pendingProducts.length === 0 ? (
             <p className="text-muted text-center py-3">
-              No products pending approval.
+              {t("noProductsPendingApproval")}
             </p>
           ) : (
             pendingProducts.map((product) => (
@@ -385,7 +389,7 @@ const MyProducts = () => {
                   <Col xs={7} md={8} className="ps-3">
                     <h6 className="mb-0">{product.title}</h6>
                     <small className="text-muted">
-                      Submitted:{" "}
+                      {t("submitted")}:{" "}
                       {new Date(
                         product.date_added || product.createdAt
                       ).toLocaleDateString()}
@@ -398,7 +402,7 @@ const MyProducts = () => {
                       size="sm"
                       className="me-2"
                       onClick={() => navigate(`/edit-product/${product._id}`)}
-                      title="Edit Product"
+                      title={t("editProduct")}
                     >
                       <FaEdit />
                     </Button>
@@ -407,7 +411,7 @@ const MyProducts = () => {
                       size="sm"
                       onClick={() => handleDeleteProduct(product._id)}
                       disabled={loadingDelete[product._id]}
-                      title="Delete Product"
+                      title={t("deleteProduct")}
                     >
                       {loadingDelete[product._id] ? (
                         <Spinner size="sm" animation="border" />
@@ -426,11 +430,15 @@ const MyProducts = () => {
       {/* --- أقسام المنتجات المباعة والمرفوضة (عرض مبسط) --- */}
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-secondary text-white">
-          <h4 className="mb-0">Sold Products ({soldProducts.length})</h4>
+          <h4 className="mb-0">
+            {t("soldProducts")} ({soldProducts.length})
+          </h4>
         </Card.Header>
         <Card.Body>
           {soldProducts.length === 0 ? (
-            <p className="text-muted text-center py-3">No sold products yet.</p>
+            <p className="text-muted text-center py-3">
+              {t("noSoldProductsYet")}
+            </p>
           ) : (
             soldProducts.map((product) => (
               <p key={product._id}>{product.title}</p> // Replace with your desired JSX for sold products
@@ -441,12 +449,14 @@ const MyProducts = () => {
       <Card className="mb-4 shadow-sm">
         <Card.Header className="bg-danger text-white">
           <h4 className="mb-0">
-            Rejected Products ({rejectedProducts.length})
+            {t("rejectedProducts")} ({rejectedProducts.length})
           </h4>
         </Card.Header>
         <Card.Body>
           {rejectedProducts.length === 0 ? (
-            <p className="text-muted text-center py-3">No rejected products.</p>
+            <p className="text-muted text-center py-3">
+              {t("noRejectedProducts")}
+            </p>
           ) : (
             rejectedProducts.map((product) => (
               <p key={product._id}>{product.title}</p> // Replace with your desired JSX for rejected products
@@ -462,12 +472,12 @@ const MyProducts = () => {
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Reject Bid</Modal.Title>
+          <Modal.Title>{t("rejectBid")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p>
-            Reason for rejecting bid from{" "}
-            <strong>{bidToReject?.bid?.user?.fullName}</strong> for{" "}
+            {t("reasonForRejectingBid")}
+            <strong>{bidToReject?.bid?.user?.fullName}</strong> {t("for")}{" "}
             <strong>
               {formatCurrency(
                 bidToReject?.bid?.amount,
@@ -481,7 +491,7 @@ const MyProducts = () => {
             rows={3}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Rejection reason (required)"
+            placeholder={t("rejectionReasonRequired")}
             required
           />
         </Modal.Body>
@@ -490,7 +500,7 @@ const MyProducts = () => {
             variant="secondary"
             onClick={() => setShowRejectReasonModal(false)}
           >
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             variant="danger"
@@ -507,7 +517,7 @@ const MyProducts = () => {
             ] ? (
               <Spinner size="sm" animation="border" />
             ) : (
-              "Confirm Rejection"
+              t("confirmRejection")
             )}
           </Button>
         </Modal.Footer>

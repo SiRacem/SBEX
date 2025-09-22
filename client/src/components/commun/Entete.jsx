@@ -3,8 +3,10 @@ import { Button, Container, Form, Nav, Navbar, Spinner } from "react-bootstrap";
 import { Link, NavLink } from "react-router-dom"; // Use NavLink
 import { logoutUser } from "../../redux/actions/userAction"; // تأكد من المسار
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 
 const Entete = ({ search, setSearch }) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const { user, isAuth, loading } = useSelector((state) => state.userReducer);
 
@@ -13,14 +15,16 @@ const Entete = ({ search, setSearch }) => {
       <Navbar expand="lg" className="bg-body-tertiary">
         <Container fluid>
           <Navbar.Brand as={Link} to="/dashboard">
-            Loading User...
+            {t("entete.loadingUser", "Loading User...")}
             <Spinner
               animation="border"
               size="sm"
               role="status"
               className="ms-2"
             >
-              <span className="visually-hidden">Loading...</span>
+              <span className="visually-hidden">
+                {t("entete.loading", "Loading...")}
+              </span>
             </Spinner>
           </Navbar.Brand>
         </Container>
@@ -37,12 +41,14 @@ const Entete = ({ search, setSearch }) => {
     return (
       <Navbar expand="lg" className="bg-body-tertiary">
         <Container fluid>
-          <Navbar.Brand>Error loading user data</Navbar.Brand>
+          <Navbar.Brand>
+            {t("entete.errorLoading", "Error loading user data")}
+          </Navbar.Brand>
           <Button
             variant="outline-danger"
             onClick={() => dispatch(logoutUser())}
           >
-            Logout
+            {t("entete.logout", "Logout")}
           </Button>
         </Container>
       </Navbar>
@@ -68,50 +74,50 @@ const Entete = ({ search, setSearch }) => {
               {user.userRole === "Admin" && (
                 <>
                   <Nav.Link as={NavLink} to="/dashboard" end>
-                    Dashboard
+                    {t("entete.dashboard", "Dashboard")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/admin/products">
-                    Products
+                    {t("entete.products", "Products")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/admin/users">
-                    Users
+                    {t("entete.users", "Users")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/admin/orders">
-                    Orders
+                    {t("entete.orders", "Orders")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/profile">
-                    Profile
+                    {t("entete.profile", "Profile")}
                   </Nav.Link>
                 </>
               )}
               {user.userRole === "Vendor" && (
                 <>
                   <Nav.Link as={NavLink} to="/dashboard" end>
-                    Dashboard
+                    {t("entete.dashboard", "Dashboard")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/vendor/products">
-                    My Products
+                    {t("entete.myProducts", "My Products")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/vendor/orders">
-                    My Orders
+                    {t("entete.myOrders", "My Orders")}
                   </Nav.Link>
                   <Nav.Link as={NavLink} to="/dashboard/profile">
-                    Profile
+                    {t("entete.profile", "Profile")}
                   </Nav.Link>
                 </>
               )}
               {user.userRole === "User" && ( // افترض وجود دور "User" عادي
                 <>
                   <Nav.Link as={NavLink} to="/dashboard" end>
-                    Dashboard
+                    {t("entete.dashboard", "Dashboard")}
                   </Nav.Link>
                   {/* أضف روابط المستخدم العادي هنا */}
                   <Nav.Link as={NavLink} to="/dashboard/orders">
-                    My Orders
+                    {t("entete.myOrders", "My Orders")}
                   </Nav.Link>
                   {/* مثال */}
                   <Nav.Link as={NavLink} to="/dashboard/profile">
-                    Profile
+                    {t("entete.profile", "Profile")}
                   </Nav.Link>
                 </>
               )}
@@ -125,9 +131,9 @@ const Entete = ({ search, setSearch }) => {
               >
                 <Form.Control
                   type="search"
-                  placeholder="Search..." // General search placeholder
+                  placeholder={t("entete.search", "Search...")}
                   className="me-2"
-                  aria-label="Search"
+                  aria-label={t("entete.search", "Search")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />

@@ -344,7 +344,7 @@ const MainDashboard = () => {
           {t("pleaseLogin", "Please login to continue.")}
         </Alert>
         <Button as={Link} to="/login" variant="primary">
-          Login
+          {t("loginButton", "Login")}
         </Button>
       </Container>
     );

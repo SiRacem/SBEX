@@ -17,6 +17,7 @@ import {
   FaRedo,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const noMediatorImageUrl = "https://bootdey.com/img/Content/avatar/avatar7.png";
 
@@ -25,6 +26,7 @@ const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
 const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
+  const { t } = useTranslation();
   console.log("MediatorCard - received mediator:", mediator);
   const calculatedRating = mediator.calculatedRating;
 
@@ -73,9 +75,11 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
               </h6>
             </Link>
             <small className="text-muted">
-              Level: {mediator.level || "N/A"} | Rep:
+              {t("selectMediatorModal.level", "Level")}:{" "}
+              {mediator.level || "N/A"} |{" "}
+              {t("selectMediatorModal.reputation", "Rep")}:
               {mediator.reputationPoints || 0} {/* استخدام reputationPoints */}
-              pts
+              {t("selectMediatorModal.points", "pts")}
             </small>
             <div>
               <FaStar className="text-warning me-1" />
@@ -86,7 +90,8 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
               {/* إذا كان الرقم موجوداً، قم بتنسيقه، وإلا اعرض 0.0 */}
               {/* -------------------- */}
               <FaCheckCircle className="text-success ms-2 me-1" />
-              {mediator.successfulMediationsCount || 0} successful
+              {mediator.successfulMediationsCount || 0}{" "}
+              {t("selectMediatorModal.successful", "successful")}
             </div>
           </Col>
           <Col xs="auto">
@@ -114,7 +119,7 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
                   aria-hidden="true"
                 />
               ) : (
-                "Select"
+                t("selectMediatorModal.select", "Select")
               )}
               {mediator.mediatorStatus !== "Available" && (
                 <small className="d-block text-danger">
@@ -139,35 +144,51 @@ const SelectMediatorModal = ({
   onRequestNewSuggestions,
   suggestionsUsedOnce,
 }) => {
+  const { t } = useTranslation();
   if (!product) return null;
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered backdrop="static">
       <Modal.Header closeButton>
-        <Modal.Title>Select a Mediator for "{product.title}"</Modal.Title>
+        <Modal.Title>
+          {t(
+            "selectMediatorModal.title",
+            'Select a Mediator for "{{productTitle}}"',
+            { productTitle: product.title }
+          )}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {loading &&
           (!availableMediators || availableMediators.length === 0) && (
             <div className="text-center my-5">
               <Spinner animation="border" variant="primary" />
-              <p className="mt-2">Loading available mediators...</p>
+              <p className="mt-2">
+                {t(
+                  "selectMediatorModal.loading",
+                  "Loading available mediators..."
+                )}
+              </p>
             </div>
           )}
 
         {!loading && availableMediators && availableMediators.length === 0 && (
           <Alert variant="warning" className="text-center">
             <FaExclamationTriangle className="me-2" />
-            No available mediators found matching the criteria. You might try
-            requesting new suggestions or check back later.
+            {t(
+              "selectMediatorModal.noMediators",
+              "No available mediators found matching the criteria. You might try requesting new suggestions or check back later."
+            )}
           </Alert>
         )}
 
         {availableMediators && availableMediators.length > 0 && (
           <>
             <p>
-              Please choose one of the following mediators for your transaction.
-              You can request new suggestions once.
+              {t(
+                "selectMediatorModal.description",
+                "Please choose one of the following mediators for your transaction. You can request new suggestions once."
+              )}
             </p>
             {availableMediators.map((mediator) => (
               <MediatorCard
@@ -191,11 +212,12 @@ const SelectMediatorModal = ({
             (availableMediators && availableMediators.length === 0)
           }
         >
-          <FaRedo className="me-1" /> Request New Suggestions
-          {suggestionsUsedOnce && "(Used)"}
+          <FaRedo className="me-1" />{" "}
+          {t("selectMediatorModal.newSuggestions", "Request New Suggestions")}
+          {suggestionsUsedOnce && `(${t("selectMediatorModal.used", "Used")})`}
         </Button>
         <Button variant="secondary" onClick={onHide} disabled={loading}>
-          Cancel
+          {t("common.cancel", "Cancel")}
         </Button>
       </Modal.Footer>
     </Modal>

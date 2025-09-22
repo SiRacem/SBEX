@@ -64,7 +64,8 @@ import "./MediationChatPage.css";
 import RatingForm from "../components/ratings/RatingForm";
 import { getRatingsForMediationAction } from "../redux/actions/ratingAction";
 import TypingIndicator from "../components/chat/TypingIndicator";
-import DOMPurify from "dompurify"; // <--- [تعديل] إضافة هذا الاستيراد
+import DOMPurify from "dompurify";
+import { useTranslation } from "react-i18next";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -90,7 +91,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
   }
 };
 
-const formatMessageTimestampForDisplay = (timestamp) => {
+const formatMessageTimestampForDisplay = (timestamp, t) => {
   if (!timestamp) return "";
   const messageDate = new Date(timestamp);
   const now = new Date();
@@ -104,7 +105,8 @@ const formatMessageTimestampForDisplay = (timestamp) => {
     });
   if (messageDate.toDateString() === yesterday.toDateString())
     return (
-      "Yesterday, " +
+      t("mediationChatPage.yesterday") +
+      ", " +
       messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
   if (now.getFullYear() === messageDate.getFullYear())
@@ -124,14 +126,11 @@ const formatMessageTimestampForDisplay = (timestamp) => {
   );
 };
 
-// --- [تعديل] إضافة مكون جديد لتحليل وعرض الرسائل الآمن
 const SafeHtmlRenderer = ({ htmlContent }) => {
-  // تطهير الـ HTML كإجراء وقائي
   const cleanHtml = DOMPurify.sanitize(htmlContent, {
     USE_PROFILES: { html: true },
   });
 
-  // تقسيم النص بناءً على الأنماط التي نريد التعامل معها
   const parts = cleanHtml.split(/(\*\*.*?\*\*|🛡️)/g).filter(Boolean);
 
   return (
@@ -149,7 +148,7 @@ const SafeHtmlRenderer = ({ htmlContent }) => {
   );
 };
 
-const ParticipantAvatar = ({ participant, size = 40 }) => {
+const ParticipantAvatar = ({ participant, size = 40, t }) => {
   if (!participant) return null;
 
   const getRole = (p) => {
@@ -168,24 +167,30 @@ const ParticipantAvatar = ({ participant, size = 40 }) => {
   let roleIcon = null;
   if (role.includes("admin")) {
     roleIcon = (
-      <FaCrown className="participant-role-icon admin-icon" title="Admin" />
+      <FaCrown
+        className="participant-role-icon admin-icon"
+        title={t("mediationChatPage.admin")}
+      />
     );
   } else if (role.includes("mediator")) {
     roleIcon = (
       <FaShieldAlt
         className="participant-role-icon mediator-icon"
-        title="Mediator"
+        title={t("mediationChatPage.mediator")}
       />
     );
   } else if (role.includes("seller")) {
     roleIcon = (
-      <FaStore className="participant-role-icon seller-icon" title="Seller" />
+      <FaStore
+        className="participant-role-icon seller-icon"
+        title={t("mediationChatPage.seller")}
+      />
     );
   } else if (role.includes("buyer")) {
     roleIcon = (
       <PiHandCoinsDuotone
         className="participant-role-icon buyer-icon"
-        title="buyer"
+        title={t("mediationChatPage.buyer")}
       />
     );
   }
@@ -200,7 +205,7 @@ const ParticipantAvatar = ({ participant, size = 40 }) => {
         roundedCircle
         width={size}
         height={size}
-        alt={participant.fullName || "User"}
+        alt={participant.fullName || t("mediationChatPage.user")}
         onError={(e) => {
           e.target.onerror = null;
           e.target.src = noUserAvatar;
@@ -213,6 +218,7 @@ const ParticipantAvatar = ({ participant, size = 40 }) => {
 };
 
 const MediationChatPage = () => {
+  const { t } = useTranslation();
   const { mediationRequestId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -286,7 +292,7 @@ const MediationChatPage = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File is too large. Maximum size is 5MB.");
+        toast.error(t("mediationChatPage.fileTooLarge"));
         return;
       }
       setSubChatFile(file);
@@ -324,7 +330,7 @@ const MediationChatPage = () => {
     setChatError(null);
     try {
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("Auth token missing.");
+      if (!token) throw new Error(t("mediationChatPage.authTokenMissing"));
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const response = await axios.get(
         `${BACKEND_URL}/mediation/chat/${mediationRequestId}/history`,
@@ -332,12 +338,14 @@ const MediationChatPage = () => {
       );
       setMessages(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setChatError(err.response?.data?.msg || "Failed to load chat history.");
+      setChatError(
+        err.response?.data?.msg || t("mediationChatPage.failedToLoadHistory")
+      );
       setMessages([]);
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [mediationRequestId]);
+  }, [mediationRequestId, t]);
 
   useEffect(() => {
     if (mediationDetails) {
@@ -564,7 +572,7 @@ const MediationChatPage = () => {
         );
     };
     const handleSocketDisconnect = () => {
-      setChatError("Connection lost.");
+      setChatError(t("mediationChatPage.connectionLost"));
       setHasJoinedRoom(false);
     };
     socket.on("mediation_request_updated", handleMediationDetailsUpdate);
@@ -573,7 +581,7 @@ const MediationChatPage = () => {
       socket.off("mediation_request_updated", handleMediationDetailsUpdate);
       socket.off("disconnect", handleSocketDisconnect);
     };
-  }, [socket, mediationRequestId, dispatch]);
+  }, [socket, mediationRequestId, dispatch, t]);
 
   const participants = useMemo(() => {
     if (!mediationDetails) return [];
@@ -583,20 +591,23 @@ const MediationChatPage = () => {
         parts.push({ ...p, roleLabel });
       }
     };
-    addParticipant(mediationDetails.seller, "Seller");
-    addParticipant(mediationDetails.buyer, "Buyer");
-    addParticipant(mediationDetails.mediator, "Mediator");
+    addParticipant(mediationDetails.seller, t("mediationChatPage.seller"));
+    addParticipant(mediationDetails.buyer, t("mediationChatPage.buyer"));
+    addParticipant(mediationDetails.mediator, t("mediationChatPage.mediator"));
     (mediationDetails.disputeOverseers || []).forEach((admin) =>
-      addParticipant(admin, "Admin")
+      addParticipant(admin, t("mediationChatPage.admin"))
     );
     if (
       currentUserRole === "Admin" &&
       !parts.some((p) => p._id === currentUserId)
     ) {
-      addParticipant(currentUser, "Admin (You)");
+      addParticipant(
+        currentUser,
+        `${t("mediationChatPage.admin")} (${t("mediationChatPage.you")})`
+      );
     }
     return parts;
-  }, [mediationDetails, currentUser, currentUserId, currentUserRole]);
+  }, [mediationDetails, currentUser, currentUserId, currentUserRole, t]);
 
   const otherParticipants = useMemo(
     () => participants.filter((p) => p._id !== currentUserId),
@@ -724,7 +735,7 @@ const MediationChatPage = () => {
   const handleImageUpload = async (fileToUpload, forSubChat = false) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.error("Authentication required.");
+      toast.error(t("mediationChatPage.authError"));
       return;
     }
     const formData = new FormData();
@@ -753,7 +764,9 @@ const MediationChatPage = () => {
         }
       }
     } catch (error) {
-      toast.error(error.response?.data?.msg || "Image upload failed.");
+      toast.error(
+        error.response?.data?.msg || t("mediationChatPage.imageUploadFailed")
+      );
     }
   };
 
@@ -788,7 +801,7 @@ const MediationChatPage = () => {
     const textToSend = newSubChatMessage.trim();
     if (!textToSend && !subChatFile) return;
     if (!socket?.connected || !activeSubChatId) {
-      toast.error("Not connected to chat.");
+      toast.error(t("mediationChatPage.notConnected"));
       return;
     }
     if (subChatTypingTimeoutRef.current) {
@@ -817,7 +830,8 @@ const MediationChatPage = () => {
         imageUrlToSend = response.data.imageUrl;
       } catch (uploadError) {
         toast.error(
-          uploadError.response?.data?.msg || "Sub-chat image upload failed."
+          uploadError.response?.data?.msg ||
+            t("mediationChatPage.subChatImageUploadFailed")
         );
       }
     }
@@ -906,31 +920,34 @@ const MediationChatPage = () => {
       setCurrentImageInModal(imageUrl);
       setShowImageModal(true);
     } else {
-      toast.error("Could not load image.");
+      toast.error(t("mediationChatPage.couldNotLoadImage"));
     }
   };
 
   const handleCloseImageModal = () => setShowImageModal(false);
 
-  const handleImageErrorInModal = useCallback((e) => {
-    toast.error("Failed to load full-size image.");
-    e.target.src = fallbackProductImageUrl;
-  }, []);
+  const handleImageErrorInModal = useCallback(
+    (e) => {
+      toast.error(t("mediationChatPage.failedToLoadFullSizeImage"));
+      e.target.src = fallbackProductImageUrl;
+    },
+    [t]
+  );
 
   const handleConfirmReceipt = useCallback(async () => {
     if (!mediationDetails?._id || isConfirmingReceipt) return;
-    if (window.confirm("Confirm receipt? This action is final.")) {
+    if (window.confirm(t("mediationChatPage.confirmReceiptFinal"))) {
       setIsConfirmingReceipt(true);
       try {
         await dispatch(buyerConfirmReceipt(mediationDetails._id));
-        toast.success("Receipt confirmed!");
+        toast.success(t("mediationChatPage.receiptConfirmed"));
       } catch (error) {
         console.error("Error confirming receipt:", error);
       } finally {
         setIsConfirmingReceipt(false);
       }
     }
-  }, [dispatch, mediationDetails?._id, isConfirmingReceipt]);
+  }, [dispatch, mediationDetails?._id, isConfirmingReceipt, t]);
 
   const handleOpenDispute = useCallback(async () => {
     if (
@@ -939,11 +956,11 @@ const MediationChatPage = () => {
       mediationDetails.status !== "InProgress"
     )
       return;
-    if (window.confirm("Open a dispute? This involves an admin.")) {
+    if (window.confirm(t("mediationChatPage.openDisputeAdmin"))) {
       setIsOpeningDispute(true);
       try {
         await dispatch(openDisputeAction(mediationDetails._id));
-        toast.info("Dispute opened.");
+        toast.info(t("mediationChatPage.disputeOpened"));
       } catch (error) {
         console.error("Error opening dispute:", error);
       } finally {
@@ -955,6 +972,7 @@ const MediationChatPage = () => {
     mediationDetails?._id,
     mediationDetails?.status,
     isOpeningDispute,
+    t,
   ]);
 
   const handleResolveDispute = async (winnerRole) => {
@@ -966,7 +984,7 @@ const MediationChatPage = () => {
     )
       return;
     if (!resolutionNotes.trim()) {
-      toast.warn("Resolution notes required.");
+      toast.warn(t("mediationChatPage.resolutionNotesRequired"));
       return;
     }
     let winnerId, loserId;
@@ -978,12 +996,15 @@ const MediationChatPage = () => {
       loserId = mediationDetails.buyer?._id;
     } else return;
     if (!winnerId || !loserId) {
-      toast.error("Cannot determine winner/loser.");
+      toast.error(t("mediationChatPage.cannotDetermineWinner"));
       return;
     }
     if (
       !window.confirm(
-        `Rule in favor of ${winnerRole}? Notes: "${resolutionNotes}". Final.`
+        t("mediationChatPage.confirmRuleInFavor", {
+          winnerRole,
+          notes: resolutionNotes,
+        })
       )
     )
       return;
@@ -1011,11 +1032,18 @@ const MediationChatPage = () => {
       isResolvingDispute
     )
       return;
-    if (!window.confirm(`Cancel mediation? Notes: "${resolutionNotes}"`))
+    if (
+      !window.confirm(
+        t("mediationChatPage.confirmCancelMediation", {
+          notes: resolutionNotes,
+        })
+      )
+    )
       return;
     setIsResolvingDispute(true);
     const resData = {
-      resolutionNotes: resolutionNotes.trim() || "Cancelled by admin.",
+      resolutionNotes:
+        resolutionNotes.trim() || t("mediationChatPage.cancelledByAdmin"),
       cancelMediation: true,
     };
     try {
@@ -1033,19 +1061,20 @@ const MediationChatPage = () => {
     if (isLoadingSpecificRatings && !mediationRatings[mediationRequestId])
       return (
         <div className="text-center p-3">
-          <Spinner animation="border" size="sm" /> Loading ratings...
+          <Spinner animation="border" size="sm" />{" "}
+          {t("mediationChatPage.loadingRatings")}
         </div>
       );
     if (!mediationDetails)
       return (
         <Alert variant="warning" className="m-3">
-          Details unavailable.
+          {t("mediationChatPage.detailsUnavailable")}
         </Alert>
       );
     if (mediationDetails.status !== "Completed")
       return (
         <Alert variant="info" className="m-3">
-          Ratings available once completed.
+          {t("mediationChatPage.ratingsAvailableOnCompletion")}
         </Alert>
       );
     return (
@@ -1054,13 +1083,13 @@ const MediationChatPage = () => {
           className="d-flex justify-content-between align-items-center mb-0 p-3 border-bottom sticky-top bg-light"
           style={{ zIndex: 1 }}
         >
-          <h5 className="mb-0">Rate Participants</h5>
+          <h5 className="mb-0">{t("mediationChatPage.rateParticipants")}</h5>
           <Button
             variant="outline-secondary"
             size="sm"
             onClick={() => setSidebarView("details")}
           >
-            <FaArrowLeft className="me-1" /> Back
+            <FaArrowLeft className="me-1" /> {t("mediationChatPage.back")}
           </Button>
         </div>
         <div
@@ -1081,7 +1110,7 @@ const MediationChatPage = () => {
             ))
           ) : (
             <Alert variant="success" className="m-0">
-              All participants rated. Thank you!
+              {t("mediationChatPage.allParticipantsRated")}
             </Alert>
           )}
           {isLoadingSpecificRatings && (
@@ -1103,7 +1132,9 @@ const MediationChatPage = () => {
 
   const handleOpenCreateSubChatModalWithParticipant = (participantUser) => {
     if (!participantUser || !participantUser._id) return;
-    setSubChatTitle(`Discussion with ${participantUser.fullName}`);
+    setSubChatTitle(
+      t("mediationChatPage.discussionWith", { name: participantUser.fullName })
+    );
     setSelectedParticipants([participantUser._id]);
     setShowCreateSubChatModal(true);
     dispatch(adminResetCreateSubChat());
@@ -1117,12 +1148,12 @@ const MediationChatPage = () => {
   const handleCreateSubChat = async (e) => {
     e.preventDefault();
     if (selectedParticipants.length === 0) {
-      toast.warn("Select at least one participant.");
+      toast.warn(t("mediationChatPage.selectOneParticipant"));
       return;
     }
     const subChatData = {
       participantUserIds: selectedParticipants,
-      title: subChatTitle.trim() || `Private Discussion`,
+      title: subChatTitle.trim() || t("mediationChatPage.privateDiscussion"),
     };
     try {
       const createdSubChat = await dispatch(
@@ -1144,7 +1175,7 @@ const MediationChatPage = () => {
 
   const handleOpenSubChatModal = (subChat) => {
     if (!subChat || !subChat.subChatId) {
-      toast.error("Could not open private chat.");
+      toast.error(t("mediationChatPage.couldNotOpenPrivateChat"));
       return;
     }
     if (subChat.unreadMessagesCount > 0) {
@@ -1180,7 +1211,9 @@ const MediationChatPage = () => {
     return (
       <>
         <div className="flex-grow-1 sidebar-scrollable-content">
-          <h5 className="mb-3 sidebar-section-title">Participants</h5>
+          <h5 className="mb-3 sidebar-section-title">
+            {t("mediationChatPage.participants")}
+          </h5>
           <ListGroup variant="flush" className="mb-4 participant-list">
             {participants.map((p) => {
               if (!p?._id) return null;
@@ -1193,12 +1226,16 @@ const MediationChatPage = () => {
                   className="d-flex align-items-center bg-transparent border-0 px-0 py-2 participant-item"
                 >
                   <div className="position-relative me-3">
-                    <ParticipantAvatar participant={p} size={35} />
+                    <ParticipantAvatar participant={p} size={35} t={t} />
                     <span
                       className={`online-status-indicator-sidebar ${
                         isOnline ? "online" : "offline"
                       }`}
-                      title={isOnline ? "Online" : "Offline"}
+                      title={
+                        isOnline
+                          ? t("mediationChatPage.online")
+                          : t("mediationChatPage.offline")
+                      }
                     ></span>
                   </div>
                   <div className="participant-info flex-grow-1">
@@ -1212,7 +1249,9 @@ const MediationChatPage = () => {
                         placement="top"
                         overlay={
                           <Tooltip id={`tooltip-chat-${p._id}`}>
-                            Start private chat with {p.fullName}
+                            {t("mediationChatPage.startPrivateChatWith", {
+                              name: p.fullName,
+                            })}
                           </Tooltip>
                         }
                       >
@@ -1232,37 +1271,40 @@ const MediationChatPage = () => {
               );
             })}
           </ListGroup>
-          <h5 className="mb-3 sidebar-section-title">Transaction Details</h5>
+          <h5 className="mb-3 sidebar-section-title">
+            {t("mediationChatPage.transactionDetails")}
+          </h5>
           {mediationDetails?.product ? (
             <div className="transaction-details-widget mb-4 small">
               <p className="mb-1">
-                <strong>Product:</strong> {mediationDetails.product.title}
+                <strong>{t("mediationChatPage.product")}</strong>{" "}
+                {mediationDetails.product.title}
               </p>
               <p className="mb-1">
-                <strong>Agreed Price:</strong>
+                <strong>{t("mediationChatPage.agreedPrice")}</strong>
                 {formatCurrency(
                   mediationDetails.bidAmount,
                   mediationDetails.bidCurrency
                 )}
               </p>
               <p className="mb-1">
-                <strong>Escrowed:</strong>
+                <strong>{t("mediationChatPage.escrowed")}</strong>
                 {mediationDetails.escrowedAmount
                   ? formatCurrency(
                       mediationDetails.escrowedAmount,
                       mediationDetails.escrowedCurrency
                     )
-                  : "Not yet"}
+                  : t("mediationChatPage.notYet")}
               </p>
               <p className="mb-1">
-                <strong>Mediator Fee:</strong>
+                <strong>{t("mediationChatPage.mediatorFee")}</strong>
                 {formatCurrency(
                   mediationDetails.calculatedMediatorFee,
                   mediationDetails.mediationFeeCurrency
                 )}
               </p>
               <p className="mb-1">
-                <strong>Status:</strong>
+                <strong>{t("mediationChatPage.status")}</strong>
                 <Badge
                   bg={
                     mediationDetails.status === "InProgress"
@@ -1279,26 +1321,30 @@ const MediationChatPage = () => {
               </p>
             </div>
           ) : (
-            <p>Loading transaction details...</p>
+            <p>{t("mediationChatPage.loadingTransactionDetails")}</p>
           )}
           {currentUserRole === "Admin" && isDisputed && (
             <div className="admin-dispute-tools mt-4 pt-3 border-top">
               <h5 className="mb-3 text-danger sidebar-section-title">
-                Admin Dispute Controls
+                {t("mediationChatPage.adminDisputeControls")}
               </h5>
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-bold">
-                  Resolution Notes (Visible to parties):
+                  {t("mediationChatPage.resolutionNotes")}
                 </Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
-                  placeholder="Explain the decision rationale here..."
+                  placeholder={t(
+                    "mediationChatPage.resolutionNotesPlaceholder"
+                  )}
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                 />
               </Form.Group>
-              <p className="text-muted small mb-1">Decision:</p>
+              <p className="text-muted small mb-1">
+                {t("mediationChatPage.decision")}
+              </p>
               <div className="d-grid gap-2">
                 <Button
                   variant="success"
@@ -1312,7 +1358,7 @@ const MediationChatPage = () => {
                   {isResolvingDispute ? (
                     <Spinner size="sm" />
                   ) : (
-                    "Rule in Favor of Buyer"
+                    t("mediationChatPage.ruleInFavorOfBuyer")
                   )}
                 </Button>
                 <Button
@@ -1327,7 +1373,7 @@ const MediationChatPage = () => {
                   {isResolvingDispute ? (
                     <Spinner size="sm" />
                   ) : (
-                    "Rule in Favor of Seller"
+                    t("mediationChatPage.ruleInFavorOfSeller")
                   )}
                 </Button>
                 <Button
@@ -1342,7 +1388,7 @@ const MediationChatPage = () => {
                   {isResolvingDispute ? (
                     <Spinner size="sm" />
                   ) : (
-                    "Cancel Mediation"
+                    t("mediationChatPage.cancelMediation")
                   )}
                 </Button>
               </div>
@@ -1352,14 +1398,15 @@ const MediationChatPage = () => {
             <div className="subchats-section mt-4 pt-3 border-top">
               <div className="d-flex justify-content-between align-items-center mb-2">
                 <h5 className="mb-0 sidebar-section-title text-info">
-                  <FaComments className="me-1" /> Private Chats
+                  <FaComments className="me-1" />{" "}
+                  {t("mediationChatPage.privateChats")}
                 </h5>
                 {currentUserRole === "Admin" && (
                   <OverlayTrigger
                     placement="top"
                     overlay={
                       <Tooltip id="tooltip-new-subchat">
-                        Create a new private discussion
+                        {t("mediationChatPage.createPrivateChat")}
                       </Tooltip>
                     }
                   >
@@ -1376,7 +1423,7 @@ const MediationChatPage = () => {
               </div>
               {!subChatsList || subChatsList.length === 0 ? (
                 <p className="text-muted small fst-italic mt-2">
-                  No private chats initiated by admin yet.
+                  {t("mediationChatPage.noPrivateChats")}
                 </p>
               ) : (
                 <ListGroup variant="flush" className="subchat-display-list">
@@ -1387,14 +1434,15 @@ const MediationChatPage = () => {
                     let chatDisplayName =
                       subChat.title ||
                       (otherUsersInSubChat?.length === 1
-                        ? `Chat with ${otherUsersInSubChat[0]}`
+                        ? t("mediationChatPage.chatWith", {
+                            name: otherUsersInSubChat[0],
+                          })
                         : otherUsersInSubChat?.length > 1
-                        ? `Group: ${otherUsersInSubChat
-                            .slice(0, 1)
-                            .join(", ")} & ${
-                            otherUsersInSubChat.length - 1
-                          } other(s)`
-                        : "Private Discussion");
+                        ? t("mediationChatPage.groupChat", {
+                            name: otherUsersInSubChat.slice(0, 1).join(", "),
+                            count: otherUsersInSubChat.length - 1,
+                          })
+                        : t("mediationChatPage.privateDiscussion"));
                     const unreadCount = subChat.unreadMessagesCount || 0;
                     return (
                       <ListGroup.Item
@@ -1419,6 +1467,7 @@ const MediationChatPage = () => {
                                       key={p.userId._id}
                                       participant={p.userId}
                                       size={24}
+                                      t={t}
                                     />
                                   )
                               )}
@@ -1435,7 +1484,8 @@ const MediationChatPage = () => {
                             {subChat.lastMessageAt && (
                               <small className="text-muted d-block subchat-timestamp">
                                 {formatMessageTimestampForDisplay(
-                                  subChat.lastMessageAt
+                                  subChat.lastMessageAt,
+                                  t
                                 )}
                               </small>
                             )}
@@ -1470,10 +1520,10 @@ const MediationChatPage = () => {
                 {isConfirmingReceipt ? (
                   <>
                     <Spinner as="span" animation="border" size="sm" />
-                    Confirming...
+                    {t("mediationChatPage.confirming")}
                   </>
                 ) : (
-                  "Confirm Product Received"
+                  t("mediationChatPage.confirmReceipt")
                 )}
               </Button>
             )}
@@ -1489,16 +1539,16 @@ const MediationChatPage = () => {
                 {isOpeningDispute ? (
                   <>
                     <Spinner as="span" animation="border" size="sm" />
-                    Opening...
+                    {t("mediationChatPage.opening")}
                   </>
                 ) : (
-                  "Open Dispute"
+                  t("mediationChatPage.openDispute")
                 )}
               </Button>
             )}
           {isDisputed && mediationDetails?.status === "Disputed" && (
             <Button variant="outline-secondary" className="w-100" disabled>
-              Dispute In Progress
+              {t("mediationChatPage.disputeInProgress")}
             </Button>
           )}
           {mediationDetails?.status === "Completed" && (
@@ -1514,7 +1564,8 @@ const MediationChatPage = () => {
                 loadingMediationRatings[mediationRequestId]
               }
             >
-              <FaStar className="me-1" /> Rate Participants
+              <FaStar className="me-1" />{" "}
+              {t("mediationChatPage.rateParticipants")}
               {unratedPartiesCount > 0 && (
                 <Badge pill bg="danger" className="ms-2">
                   {unratedPartiesCount}
@@ -1535,30 +1586,37 @@ const MediationChatPage = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" />
-        <p>Loading user...</p>
+        <p>{t("mediationChatPage.loadingUser")}</p>
       </Container>
     );
   if (loadingDetails && !mediationDetails)
     return (
       <Container className="text-center py-5">
-        <Spinner animation="border" /> <p>Loading mediation details...</p>
+        <Spinner animation="border" />{" "}
+        <p>{t("mediationChatPage.loadingDetails")}</p>
       </Container>
     );
   if (errorDetails && !mediationDetails)
     return (
       <Container className="py-5">
         <Alert variant="danger">
-          <h4>Error</h4>
+          <h4>{t("mediationChatPage.error")}</h4>
           <p>{errorDetails}</p>
-          <Button onClick={() => navigate(-1)}>Back</Button>
+          <Button onClick={() => navigate(-1)}>
+            {t("mediationChatPage.back")}
+          </Button>
         </Alert>
       </Container>
     );
   if (!mediationDetails && !loadingDetails && !errorDetails)
     return (
       <Container className="py-5 text-center">
-        <Alert variant="warning">Details unavailable.</Alert>
-        <Button onClick={() => navigate(-1)}>Back</Button>
+        <Alert variant="warning">
+          {t("mediationChatPage.detailsUnavailable")}
+        </Alert>
+        <Button onClick={() => navigate(-1)}>
+          {t("mediationChatPage.back")}
+        </Button>
       </Container>
     );
 
@@ -1575,10 +1633,12 @@ const MediationChatPage = () => {
               <Row className="align-items-center">
                 <Col>
                   <h5 className="mb-0">
-                    Mediation: {mediationDetails?.product?.title || "Chat"}
+                    {t("mediationChatPage.mediation")}{" "}
+                    {mediationDetails?.product?.title ||
+                      t("mediationChatPage.chat")}
                   </h5>
                   <small className="text-muted">
-                    ID: {mediationRequestId.slice(-6)}
+                    {t("mediationChatPage.id")} {mediationRequestId.slice(-6)}
                   </small>
                 </Col>
                 <Col xs="auto" className="d-md-none">
@@ -1587,7 +1647,7 @@ const MediationChatPage = () => {
                     size="sm"
                     onClick={handleShowDetailsOffcanvas}
                   >
-                    Details
+                    {t("mediationChatPage.details")}
                   </Button>
                 </Col>
                 <Col xs="auto">
@@ -1596,7 +1656,7 @@ const MediationChatPage = () => {
                     size="sm"
                     onClick={() => navigate(-1)}
                   >
-                    Back
+                    {t("mediationChatPage.back")}
                   </Button>
                 </Col>
               </Row>
@@ -1605,7 +1665,7 @@ const MediationChatPage = () => {
                   variant="warning"
                   className="mt-2 mb-0 text-center small p-2"
                 >
-                  <strong>This mediation is currently in dispute.</strong>
+                  <strong>{t("mediationChatPage.inDispute")}</strong>
                 </Alert>
               )}
             </Card.Header>
@@ -1620,13 +1680,13 @@ const MediationChatPage = () => {
               )}
               {isLoadingHistory && messages.length === 0 && !chatError && (
                 <div className="text-center p-5">
-                  <Spinner size="sm" /> Loading history...
+                  <Spinner size="sm" /> {t("mediationChatPage.loadingHistory")}
                 </div>
               )}
               <ListGroup variant="flush" className="p-3">
                 {!isLoadingHistory && messages.length === 0 && !chatError && (
                   <ListGroup.Item className="text-center text-muted border-0 py-5">
-                    No messages yet.
+                    {t("mediationChatPage.noMessages")}
                   </ListGroup.Item>
                 )}
                 {messages.map((msg, index) => {
@@ -1650,7 +1710,7 @@ const MediationChatPage = () => {
                         <div className="d-inline-block p-2 rounded bg-light-subtle text-muted small">
                           <SafeHtmlRenderer htmlContent={msg.message} />
                           <div className="message-timestamp mt-1">
-                            {formatMessageTimestampForDisplay(msg.timestamp)}
+                            {formatMessageTimestampForDisplay(msg.timestamp, t)}
                           </div>
                         </div>
                       </ListGroup.Item>
@@ -1677,6 +1737,7 @@ const MediationChatPage = () => {
                               <ParticipantAvatar
                                 participant={senderInfo}
                                 size={40}
+                                t={t}
                               />
                             )}
                           </div>
@@ -1691,7 +1752,8 @@ const MediationChatPage = () => {
                           <div className="message-bubble">
                             {showAvatar && !isMyMessage && senderInfo && (
                               <strong className="d-block mb-1">
-                                {senderInfo?.fullName || "User"}
+                                {senderInfo?.fullName ||
+                                  t("mediationChatPage.user")}
                               </strong>
                             )}
                             {msg.type === "image" && msg.imageUrl ? (
@@ -1726,13 +1788,16 @@ const MediationChatPage = () => {
                             } align-items-center mt-1`}
                           >
                             <small className="text-muted message-timestamp">
-                              {formatMessageTimestampForDisplay(msg.timestamp)}
+                              {formatMessageTimestampForDisplay(
+                                msg.timestamp,
+                                t
+                              )}
                             </small>
                             {isMyMessage &&
                               (!avatarsForThisMessage ||
                                 avatarsForThisMessage.length === 0) && (
                                 <FaCheck
-                                  title="Sent"
+                                  title={t("mediationChatPage.sent")}
                                   className="text-muted ms-1"
                                 />
                               )}
@@ -1747,13 +1812,18 @@ const MediationChatPage = () => {
                                 key={reader.readerId || `reader-${idx}`}
                                 placement="top"
                                 overlay={
-                                  <Tooltip>Seen by {reader.fullName}</Tooltip>
+                                  <Tooltip>
+                                    {t("mediationChatPage.seenBy", {
+                                      name: reader.fullName,
+                                    })}
+                                  </Tooltip>
                                 }
                               >
                                 <div className="d-inline-block">
                                   <ParticipantAvatar
                                     participant={reader}
                                     size={16}
+                                    t={t}
                                   />
                                 </div>
                               </OverlayTrigger>
@@ -1812,8 +1882,8 @@ const MediationChatPage = () => {
                       type="text"
                       placeholder={
                         isChatActuallyActiveForInput
-                          ? "Type message..."
-                          : "Chat not active..."
+                          ? t("mediationChatPage.typeMessage")
+                          : t("mediationChatPage.chatNotActive")
                       }
                       value={newMessage}
                       onChange={handleInputChange}
@@ -1875,7 +1945,9 @@ const MediationChatPage = () => {
         className="d-md-none"
       >
         <Offcanvas.Header closeButton>
-          <Offcanvas.Title>Details & Actions</Offcanvas.Title>
+          <Offcanvas.Title>
+            {t("mediationChatPage.detailsAndActions")}
+          </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body className="d-flex flex-column p-0">
           {mediationDetails ? (
@@ -1886,7 +1958,9 @@ const MediationChatPage = () => {
             )
           ) : (
             <div className="p-3">
-              <Alert variant="warning">Details unavailable.</Alert>
+              <Alert variant="warning">
+                {t("mediationChatPage.detailsUnavailable")}
+              </Alert>
             </div>
           )}
         </Offcanvas.Body>
@@ -1914,7 +1988,7 @@ const MediationChatPage = () => {
         dialogClassName="themed-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Create New Private Chat</Modal.Title>
+          <Modal.Title>{t("mediationChatPage.createPrivateChat")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {errorCreatingSubChat && (
@@ -1922,7 +1996,9 @@ const MediationChatPage = () => {
           )}
           <Form onSubmit={handleCreateSubChat}>
             <Form.Group className="mb-3">
-              <Form.Label>Chat Title (Optional)</Form.Label>
+              <Form.Label>
+                {t("mediationChatPage.chatTitleOptional")}
+              </Form.Label>
               <Form.Control
                 type="text"
                 value={subChatTitle}
@@ -1930,7 +2006,9 @@ const MediationChatPage = () => {
               />
             </Form.Group>
             <Form.Group className="mb-3">
-              <Form.Label>Select Participants</Form.Label>
+              <Form.Label>
+                {t("mediationChatPage.selectParticipants")}
+              </Form.Label>
               {participants
                 .filter((p) => p._id !== currentUserId)
                 .map((party) => (
@@ -1941,7 +2019,11 @@ const MediationChatPage = () => {
                     className="participant-checkbox-item"
                     label={
                       <>
-                        <ParticipantAvatar participant={party} size={24} />
+                        <ParticipantAvatar
+                          participant={party}
+                          size={24}
+                          t={t}
+                        />
                         <span className="ms-2">{party.fullName}</span>
                       </>
                     }
@@ -1956,7 +2038,11 @@ const MediationChatPage = () => {
               disabled={creatingSubChat || selectedParticipants.length === 0}
               className="w-100"
             >
-              {creatingSubChat ? <Spinner size="sm" /> : "Start Private Chat"}
+              {creatingSubChat ? (
+                <Spinner size="sm" />
+              ) : (
+                t("mediationChatPage.startPrivateChat")
+              )}
             </Button>
           </Form>
         </Modal.Body>
@@ -1972,7 +2058,8 @@ const MediationChatPage = () => {
         <Modal.Header closeButton>
           <Modal.Title>
             <FaComments className="me-2 text-primary" />
-            {activeSubChatDetails?.title || "Private Chat"}
+            {activeSubChatDetails?.title ||
+              t("mediationChatPage.privateDiscussion")}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-0">
@@ -1988,7 +2075,7 @@ const MediationChatPage = () => {
             {!loadingActiveSubChatMessages &&
               activeSubChatMessages.length === 0 && (
                 <ListGroup.Item className="text-center text-muted border-0">
-                  No messages yet.
+                  {t("mediationChatPage.noMessages")}
                 </ListGroup.Item>
               )}
             {activeSubChatMessages.map((msg, index) => {
@@ -2026,7 +2113,10 @@ const MediationChatPage = () => {
                     {!isMySubChatMessage && (
                       <div className="avatar-container me-2">
                         {showSubChatAvatar && subChatSenderInfo && (
-                          <ParticipantAvatar participant={subChatSenderInfo} />
+                          <ParticipantAvatar
+                            participant={subChatSenderInfo}
+                            t={t}
+                          />
                         )}
                       </div>
                     )}
@@ -2055,7 +2145,7 @@ const MediationChatPage = () => {
                       </div>
                       <div className="message-meta d-flex">
                         <small className="text-muted">
-                          {formatMessageTimestampForDisplay(msg.timestamp)}
+                          {formatMessageTimestampForDisplay(msg.timestamp, t)}
                         </small>
                         {isMySubChatMessage &&
                           (!subChatAvatarsForThisMessage ||
@@ -2073,6 +2163,7 @@ const MediationChatPage = () => {
                             key={r.readerId}
                             participant={r}
                             size={16}
+                            t={t}
                           />
                         ))}
                       </div>
@@ -2107,7 +2198,7 @@ const MediationChatPage = () => {
                 size="sm"
                 className="subchat-preview-remove"
                 onClick={handleRemoveSubChatImage}
-                title="Remove image"
+                title={t("mediationChatPage.removeImage")}
               >
                 <FaTimes />
               </Button>
@@ -2145,7 +2236,9 @@ const MediationChatPage = () => {
                   type="text"
                   className="subchat-input-field"
                   placeholder={
-                    subChatFile ? "Add a caption..." : "Type message..."
+                    subChatFile
+                      ? t("mediationChatPage.addCaption")
+                      : t("mediationChatPage.typeMessage")
                   }
                   value={newSubChatMessage}
                   onChange={handleSubChatInputChange}

@@ -25,6 +25,7 @@ import {
   adminGetAvailableMediators,
 } from "../../redux/actions/mediationAction";
 import { Link } from "react-router-dom"; // <-- إضافة هذا الاستيراد
+import { useTranslation } from "react-i18next";
 
 const PAGE_LIMIT = 15; // Or your preferred limit
 
@@ -54,6 +55,7 @@ const formatCurrency = (amount, currencyCode = "TND") => {
 };
 
 const AssignMediatorRequests = () => {
+  const { t } = useTranslation();
   const dispatch = useDispatch();
 
   // --- Selectors ---
@@ -103,7 +105,9 @@ const AssignMediatorRequests = () => {
 
   const handleAssignConfirm = () => {
     if (!selectedRequestToAssign || !selectedMediator) {
-      toast.warn("Please select a mediator."); // Added user feedback
+      toast.warn(
+        t("assignMediator.selectMediator", "Please select a mediator.")
+      ); // Added user feedback
       return;
     }
     dispatch(
@@ -122,22 +126,38 @@ const AssignMediatorRequests = () => {
 
   // --- Render ---
   const renderMediatorOptions = () => {
-    if (loadingMediators) return <option disabled>Loading mediators...</option>;
+    if (loadingMediators)
+      return (
+        <option disabled>
+          {t("assignMediator.loadingMediators", "Loading mediators...")}
+        </option>
+      );
     if (errorMediators)
-      return <option disabled>Error loading mediators</option>;
+      return (
+        <option disabled>
+          {t("assignMediator.errorLoadingMediators", "Error loading mediators")}
+        </option>
+      );
     if (!availableMediators || availableMediators.length === 0)
-      return <option disabled>No available mediators found</option>;
+      return (
+        <option disabled>
+          {t("assignMediator.noMediators", "No available mediators found")}
+        </option>
+      );
 
     return availableMediators.map((med) => (
       <option key={med._id} value={med._id}>
-        {med.fullName} ({med.email}) - Level: {med.level || "N/A"}
+        {med.fullName} ({med.email}) - {t("assignMediator.level", "Level")}:{" "}
+        {med.level || "N/A"}
       </option>
     ));
   };
 
   return (
     <Container fluid className="py-4">
-      <h2 className="page-title mb-4">Assign Mediators to Requests</h2>
+      <h2 className="page-title mb-4">
+        {t("assignMediator.title", "Assign Mediators to Requests")}
+      </h2>
 
       {/* Display assignment errors */}
       {errorAssign && (
@@ -146,7 +166,8 @@ const AssignMediatorRequests = () => {
           onClose={() => dispatch(adminResetAssignMediatorStatus())}
           dismissible
         >
-          Error assigning mediator: {errorAssign}
+          {t("assignMediator.errorAssigning", "Error assigning mediator:")}{" "}
+          {errorAssign}
         </Alert>
       )}
 
@@ -154,13 +175,21 @@ const AssignMediatorRequests = () => {
       {loadingPending ? (
         <div className="text-center p-5">
           <Spinner animation="border" variant="primary" />
-          <p className="mt-2 text-muted">Loading Requests...</p>
+          <p className="mt-2 text-muted">
+            {t("assignMediator.loadingRequests", "Loading Requests...")}
+          </p>
         </div>
       ) : errorPending ? (
-        <Alert variant="danger">Error loading requests: {errorPending}</Alert>
+        <Alert variant="danger">
+          {t("assignMediator.errorLoadingRequests", "Error loading requests:")}{" "}
+          {errorPending}
+        </Alert>
       ) : !pendingAssignments?.requests || pendingAssignments.length === 0 ? (
         <Alert variant="info">
-          No pending mediation requests require assignment.
+          {t(
+            "assignMediator.noPendingRequests",
+            "No pending mediation requests require assignment."
+          )}
         </Alert>
       ) : (
         <>
@@ -174,12 +203,12 @@ const AssignMediatorRequests = () => {
             >
               <thead className="table-light">
                 <tr className="text-center">
-                  <th>Req. Date</th>
-                  <th>Product</th>
-                  <th>Seller</th>
-                  <th>Buyer</th>
-                  <th>Bid Amount</th>
-                  <th>Actions</th>
+                  <th>{t("assignMediator.reqDate", "Req. Date")}</th>
+                  <th>{t("assignMediator.product", "Product")}</th>
+                  <th>{t("assignMediator.seller", "Seller")}</th>
+                  <th>{t("assignMediator.buyer", "Buyer")}</th>
+                  <th>{t("assignMediator.bidAmount", "Bid Amount")}</th>
+                  <th>{t("assignMediator.actions", "Actions")}</th>
                 </tr>
               </thead>
               <tbody className="text-center">
@@ -218,7 +247,12 @@ const AssignMediatorRequests = () => {
                         ) : (
                           <FaUserCheck />
                         )}
-                        <span className="visually-hidden">Assign Mediator</span>
+                        <span className="visually-hidden">
+                          {t(
+                            "assignMediator.assignMediator",
+                            "Assign Mediator"
+                          )}
+                        </span>
                       </Button>
                     </td>
                   </tr>
@@ -257,31 +291,36 @@ const AssignMediatorRequests = () => {
       {/* Assign Mediator Modal */}
       <Modal show={showAssignModal} onHide={handleCloseAssignModal} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Assign Mediator</Modal.Title>
+          <Modal.Title>
+            {t("assignMediator.assignMediator", "Assign Mediator")}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {/* --- [!!!] إضافة عرض تفاصيل الطلب هنا [!!!] --- */}
           {selectedRequestToAssign && (
             <Card className="mb-3 border-secondary">
               <Card.Header className="bg-light small py-1 px-2">
-                Request Details
+                {t("assignMediator.requestDetails", "Request Details")}
               </Card.Header>
               <ListGroup variant="flush">
                 <ListGroup.Item className="d-flex justify-content-between small py-1 px-2">
-                  <span>Product:</span>
+                  <span>{t("assignMediator.product", "Product")}:</span>
                   <strong>
                     {selectedRequestToAssign.product?.title || "N/A"}
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between small py-1 px-2">
-                  <span>Seller:</span>
+                  <span>{t("assignMediator.seller", "Seller")}:</span>
                   <strong>
                     {selectedRequestToAssign.seller?._id ? (
                       <Link
                         to={`/profile/${selectedRequestToAssign.seller._id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="View Seller Profile"
+                        title={t(
+                          "assignMediator.viewSellerProfile",
+                          "View Seller Profile"
+                        )}
                       >
                         {selectedRequestToAssign.seller.fullName || "N/A"}
                       </Link>
@@ -291,14 +330,17 @@ const AssignMediatorRequests = () => {
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between small py-1 px-2">
-                  <span>Buyer:</span>
+                  <span>{t("assignMediator.buyer", "Buyer")}:</span>
                   <strong>
                     {selectedRequestToAssign.buyer?._id ? (
                       <Link
                         to={`/profile/${selectedRequestToAssign.buyer._id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="View Buyer Profile"
+                        title={t(
+                          "assignMediator.viewBuyerProfile",
+                          "View Buyer Profile"
+                        )}
                       >
                         {selectedRequestToAssign.buyer.fullName || "N/A"}
                       </Link>
@@ -308,7 +350,7 @@ const AssignMediatorRequests = () => {
                   </strong>
                 </ListGroup.Item>
                 <ListGroup.Item className="d-flex justify-content-between small py-1 px-2">
-                  <span>Bid Amount:</span>
+                  <span>{t("assignMediator.bidAmount", "Bid Amount")}:</span>
                   <strong>
                     {formatCurrency(
                       selectedRequestToAssign.bidAmount,
@@ -322,9 +364,14 @@ const AssignMediatorRequests = () => {
           {/* ------------------------------------------- */}
 
           <Form.Group controlId="mediatorSelect">
-            <Form.Label>Select Available Mediator</Form.Label>
+            <Form.Label>
+              {t(
+                "assignMediator.selectMediatorLabel",
+                "Select Available Mediator"
+              )}
+            </Form.Label>
             <Form.Select
-              aria-label="Select Mediator"
+              aria-label={t("assignMediator.selectMediator", "Select Mediator")}
               value={selectedMediator}
               onChange={(e) => setSelectedMediator(e.target.value)}
               disabled={
@@ -332,7 +379,11 @@ const AssignMediatorRequests = () => {
                 assigningMediator[selectedRequestToAssign?._id]
               }
             >
-              <option value="">-- Select a Mediator --</option>
+              <option value="">
+                --{" "}
+                {t("assignMediator.selectMediatorOption", "Select a Mediator")}{" "}
+                --
+              </option>
               {renderMediatorOptions()}
             </Form.Select>
             {errorMediators && (
@@ -344,7 +395,7 @@ const AssignMediatorRequests = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseAssignModal}>
-            Cancel
+            {t("common.cancel", "Cancel")}
           </Button>
           <Button
             variant="primary"
@@ -363,10 +414,10 @@ const AssignMediatorRequests = () => {
                   role="status"
                   aria-hidden="true"
                 />
-                Assigning...
+                {t("assignMediator.assigning", "Assigning...")}
               </>
             ) : (
-              "Assign Mediator"
+              t("assignMediator.assignMediator", "Assign Mediator")
             )}
           </Button>
         </Modal.Footer>

@@ -1,4 +1,3 @@
-// client/src/pages/ViewMediationDetailsModal.jsx (أو المسار الذي تستخدمه)
 import React from "react";
 import {
   Modal,
@@ -11,8 +10,8 @@ import {
   Card,
   Accordion,
 } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
-  FaUserCircle,
   FaShoppingBag,
   FaBalanceScale,
   FaFileInvoiceDollar,
@@ -32,29 +31,26 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import { BsArrowRepeat } from "react-icons/bs";
-import './ViewMediationDetailsModal.css';
+import "./ViewMediationDetailsModal.css";
 
-// دالة تنسيق العملة مع toFixed(2)
 const formatCurrencyForHistory = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null)
-    return <span className="text-muted">N/A</span>; // عرض N/A كـ span إذا أردت
+    return <span className="text-muted">N/A</span>;
 
   let safeCurrencyCode = currencyCode;
   if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-    safeCurrencyCode = "TND"; // عملة افتراضية
+    safeCurrencyCode = "TND";
   }
 
   try {
     return num.toLocaleString("fr-TN", {
-      // يمكنك تغيير 'fr-TN' إلى 'en-US' أو ما تفضله
       style: "currency",
       currency: safeCurrencyCode,
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2, // ضمان رقمين عشريين فقط
+      maximumFractionDigits: 2,
     });
   } catch (error) {
-    // في حالة خطأ في رمز العملة، اعرض القيمة مع رمز العملة الافتراضي أو المُمرر
     console.warn(
       `Currency formatting error for code '${safeCurrencyCode}'. Using fallback. Error:`,
       error
@@ -73,7 +69,8 @@ const ViewMediationDetailsModal = ({
   request,
   currentUserId,
 }) => {
-  // افترض أن currentUserId يتم تمريره
+  const { t } = useTranslation();
+
   if (!request) {
     return null;
   }
@@ -82,7 +79,11 @@ const ViewMediationDetailsModal = ({
     const lowerStatus = status?.toLowerCase();
     if (lowerStatus?.includes("progress")) return "success";
     if (lowerStatus?.includes("completed")) return "dark";
-    if (lowerStatus?.includes("cancelled") || lowerStatus?.includes("rejected") || lowerStatus?.includes("dispute"))
+    if (
+      lowerStatus?.includes("cancelled") ||
+      lowerStatus?.includes("rejected") ||
+      lowerStatus?.includes("dispute")
+    )
       return "danger";
     if (lowerStatus?.includes("pending") || lowerStatus?.includes("assigned"))
       return "info";
@@ -142,8 +143,9 @@ const ViewMediationDetailsModal = ({
               isCurrentUserParticipant ? "text-primary" : ""
             }`}
           >
-            {participant.fullName || "User"}
-            {isCurrentUserParticipant && "(You)"}
+            {participant.fullName || t("viewMediationDetailsModal.user")}
+            {isCurrentUserParticipant &&
+              ` (${t("viewMediationDetailsModal.you")})`}
           </span>
           <small className="d-block text-muted">{roleLabel}</small>
         </div>
@@ -168,7 +170,7 @@ const ViewMediationDetailsModal = ({
     if (text.includes("chat initiated") || text.includes("message"))
       return <FaCommentDots className="text-info me-2" />;
     if (text.includes("selected mediator") || text.includes("assigned"))
-      return <FaUserCog className="text-dark me-2" />; // Darker for assignment
+      return <FaUserCog className="text-dark me-2" />;
     if (
       text.includes("status changed") ||
       text.includes("updated") ||
@@ -192,7 +194,7 @@ const ViewMediationDetailsModal = ({
         <Modal.Title className="text-primary fw-bold d-flex align-items-center">
           <FaInfoCircle size={24} className="me-2" />
           <span>
-            Mediation Details:
+            {t("viewMediationDetailsModal.title")}
             <span className="text-dark fw-normal">
               {request.product?.title || "N/A"}
             </span>
@@ -204,19 +206,23 @@ const ViewMediationDetailsModal = ({
           <Col md={7} className="mb-3 mb-md-0">
             <Card className="shadow-sm border-0 h-100">
               <Card.Header className="bg-secondary text-white rounded-top">
-                <FaShoppingBag className="me-2" /> Transaction Overview
+                <FaShoppingBag className="me-2" />{" "}
+                {t("viewMediationDetailsModal.overview")}
               </Card.Header>
               <ListGroup variant="flush">
                 <ListGroup.Item>
                   <FaFileInvoiceDollar className="me-2 text-muted" />
-                  <strong>Transaction ID:</strong> <br />
+                  <strong>
+                    {t("viewMediationDetailsModal.transactionId")}
+                  </strong>{" "}
+                  <br />
                   <small className="text-monospace user-select-all text-break">
                     {request._id || "N/A"}
                   </small>
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <FaShieldAlt className="me-2 text-muted" />
-                  <strong>Status:</strong>
+                  <strong>{t("viewMediationDetailsModal.status")}</strong>
                   <Badge
                     bg={getStatusBadgeBg(request.status)}
                     className="ms-1"
@@ -230,12 +236,12 @@ const ViewMediationDetailsModal = ({
                   >
                     {request.status
                       ? request.status.replace(/([A-Z])/g, " $1").trim()
-                      : "Unknown"}
+                      : t("viewMediationDetailsModal.unknown")}
                   </Badge>
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <FaBalanceScale className="me-2 text-muted" />
-                  <strong>Agreed Price:</strong>
+                  <strong>{t("viewMediationDetailsModal.agreedPrice")}</strong>
                   <span className="fw-bold">
                     {formatCurrencyForHistory(
                       request.bidAmount,
@@ -246,7 +252,7 @@ const ViewMediationDetailsModal = ({
                 {request.escrowedAmount > 0 && (
                   <ListGroup.Item>
                     <FaPiggyBank className="me-2 text-muted" />
-                    <strong>Amount in Escrow:</strong>
+                    <strong>{t("viewMediationDetailsModal.inEscrow")}</strong>
                     <span className="fw-bold">
                       {formatCurrencyForHistory(
                         request.escrowedAmount,
@@ -258,7 +264,9 @@ const ViewMediationDetailsModal = ({
                 {request.calculatedMediatorFee > 0 && (
                   <ListGroup.Item>
                     <FaUserShield className="me-2 text-muted" />
-                    <strong>Calculated Mediator Fee:</strong>
+                    <strong>
+                      {t("viewMediationDetailsModal.mediatorFee")}
+                    </strong>
                     <span className="fw-bold">
                       {formatCurrencyForHistory(
                         request.calculatedMediatorFee,
@@ -270,7 +278,7 @@ const ViewMediationDetailsModal = ({
                 {request.calculatedBuyerFeeShare > 0 && (
                   <ListGroup.Item>
                     <small className="text-muted">
-                      (Your Fee Share if Buyer):
+                      ({t("viewMediationDetailsModal.yourFeeShare")})
                     </small>
                     <span className="fw-bold">
                       {formatCurrencyForHistory(
@@ -282,7 +290,7 @@ const ViewMediationDetailsModal = ({
                 )}
                 <ListGroup.Item>
                   <FaCalendarAlt className="me-2 text-muted" />
-                  <strong>Last Updated:</strong>
+                  <strong>{t("viewMediationDetailsModal.lastUpdated")}</strong>
                   {new Date(
                     request.updatedAt || request.createdAt
                   ).toLocaleString("en-GB", {
@@ -300,12 +308,22 @@ const ViewMediationDetailsModal = ({
           <Col md={5}>
             <Card className="shadow-sm border-0 h-100">
               <Card.Header className="bg-info text-white rounded-top">
-                <FaUsers className="me-2" /> Participants
+                <FaUsers className="me-2" />{" "}
+                {t("viewMediationDetailsModal.participants")}
               </Card.Header>
               <ListGroup variant="flush" className="p-3">
-                {renderParticipant(request.seller, "Seller")}
-                {renderParticipant(request.buyer, "Buyer")}
-                {renderParticipant(request.mediator, "Mediator")}
+                {renderParticipant(
+                  request.seller,
+                  t("viewMediationDetailsModal.seller")
+                )}
+                {renderParticipant(
+                  request.buyer,
+                  t("viewMediationDetailsModal.buyer")
+                )}
+                {renderParticipant(
+                  request.mediator,
+                  t("viewMediationDetailsModal.mediator")
+                )}
               </ListGroup>
             </Card>
           </Col>
@@ -318,8 +336,10 @@ const ViewMediationDetailsModal = ({
           >
             <Accordion.Item eventKey="0" className="border-0">
               <Accordion.Header>
-                <FaHistory className="me-2 text-primary" /> Transaction History
-                ({request.history.length} Entries)
+                <FaHistory className="me-2 text-primary" />{" "}
+                {t("viewMediationDetailsModal.history")}(
+                {request.history.length}{" "}
+                {t("viewMediationDetailsModal.entries")})
               </Accordion.Header>
               <Accordion.Body className="p-0">
                 <ListGroup
@@ -357,7 +377,7 @@ const ViewMediationDetailsModal = ({
                                   year: "numeric",
                                 }
                               )}
-                              {" at "}
+                              {` ${t("viewMediationDetailsModal.at")} `}
                               {new Date(entry.timestamp).toLocaleTimeString(
                                 [],
                                 {
@@ -485,7 +505,7 @@ const ViewMediationDetailsModal = ({
       </Modal.Body>
       <Modal.Footer className="border-top-0 bg-light pt-2 pb-2">
         <Button variant="outline-secondary" onClick={onHide} size="sm">
-          Close
+          {t("common.close")}
         </Button>
       </Modal.Footer>
     </Modal>
