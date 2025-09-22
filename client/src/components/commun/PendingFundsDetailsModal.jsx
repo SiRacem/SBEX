@@ -1,5 +1,5 @@
 // src/components/commun/PendingFundsDetailsModal.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import {
   Modal,
@@ -32,6 +32,7 @@ import {
 import { Link } from "react-router-dom"; // إذا أردت روابط للمنتجات/الوساطات
 import useCurrencyDisplay from "../../hooks/useCurrencyDisplay"; // لعرض الأرصدة الإجمالية
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -56,35 +57,16 @@ const formatCurrency = (amount, currencyCode = "TND") => {
   }
 };
 
-// دالة مساعدة لتنسيق الوقت المتبقي
-const formatTimeRemaining = (releaseDate) => {
-  if (!releaseDate) return "N/A";
-  const now = new Date();
-  const release = new Date(releaseDate);
-  const diff = differenceInMilliseconds(release, now);
-
-  if (diff <= 0) {
-    return (
-      <Badge bg="success-soft" text="success" pill>
-        <FaCheckCircle className="me-1" />
-        Ready for Release
-      </Badge>
-    );
-  }
-
-  return formatDistanceToNowStrict(release, { addSuffix: true });
-};
-
 const PendingFundsDetailsModal = ({ show, onHide }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [details, setDetails] = useState(null);
 
   const platformBaseCurrencyGlobal = useSelector(
     (state) => state.ui?.platformBaseCurrency || "TND"
-  ); // افترض أن عملة المنصة الأساسية في Redux
+  );
 
-  // استخدام الهوك لعرض الأرصدة الإجمالية من المودال
   const totalPendingDisplay = useCurrencyDisplay(
     details?.totalPendingBalance,
     details?.platformBaseCurrency || platformBaseCurrencyGlobal
@@ -94,41 +76,66 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
     details?.platformBaseCurrency || platformBaseCurrencyGlobal
   );
 
-  const fetchDetails = async () => {
+  const formatTimeRemaining = useCallback(
+    (releaseDate) => {
+      if (!releaseDate) return "N/A";
+      const now = new Date();
+      const release = new Date(releaseDate);
+      const diff = differenceInMilliseconds(release, now);
+
+      if (diff <= 0) {
+        return (
+          <Badge bg="success-soft" text="success" pill>
+            <FaCheckCircle className="me-1" />
+            {t("pendingFunds.readyForRelease", "Ready for Release")}
+          </Badge>
+        );
+      }
+
+      return formatDistanceToNowStrict(release, { addSuffix: true });
+    },
+    [t]
+  );
+
+  const fetchDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("Authentication token not found.");
+      if (!token)
+        throw new Error(
+          t("pendingFunds.errors.noAuth", "Authentication token not found.")
+        );
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // --- [!!!] تأكد من أن هذا المسار صحيح ويتطابق مع ما أنشأته في الـ Backend [!!!] ---
       const { data } = await axios.get(
         "/wallet/seller-pending-details",
         config
       );
       setDetails(data);
     } catch (err) {
-      setError(
+      const errorMessage =
         err.response?.data?.msg ||
-          err.message ||
+        err.message ||
+        t(
+          "pendingFunds.errors.fetchFailed",
           "Failed to fetch pending funds details."
-      );
-      toast.error(err.response?.data?.msg || "Could not load details.");
+        );
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     if (show) {
       fetchDetails();
     } else {
-      // إعادة تعيين الحالة عند إغلاق المودال
       setDetails(null);
       setError(null);
     }
-  }, [show]);
+  }, [show, fetchDetails]);
 
   const handleRefresh = () => {
     fetchDetails();
@@ -138,8 +145,8 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
     <Modal show={show} onHide={onHide} size="xl" centered backdrop="static">
       <Modal.Header closeButton>
         <Modal.Title>
-          <FaHourglassHalf className="me-2 text-warning" /> On Hold & Available
-          Funds Details
+          <FaHourglassHalf className="me-2 text-warning" />{" "}
+          {t("pendingFunds.title", "On Hold & Available Funds Details")}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body style={{ maxHeight: "70vh", overflowY: "auto" }}>
@@ -150,7 +157,9 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
               variant="primary"
               style={{ width: "3rem", height: "3rem" }}
             />
-            <p className="mt-2">Loading details...</p>
+            <p className="mt-2">
+              {t("pendingFunds.loading", "Loading details...")}
+            </p>
           </div>
         )}
         {error && <Alert variant="danger">{error}</Alert>}
@@ -162,7 +171,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <Card bg="warning" text="white" className="h-100 shadow">
                   <Card.Body>
                     <Card.Subtitle className="mb-2 text-white-75">
-                      Total On Hold Balance
+                      {t("pendingFunds.totalOnHold", "Total On Hold Balance")}
                     </Card.Subtitle>
                     <Card.Title className="display-6">
                       {totalPendingDisplay.displayValue}
@@ -175,7 +184,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <Card bg="success" text="white" className="h-100 shadow">
                   <Card.Body>
                     <Card.Subtitle className="mb-2 text-white-75">
-                      Total Available (from Sales)
+                      {t(
+                        "pendingFunds.totalAvailable",
+                        "Total Available (from Sales)"
+                      )}
                     </Card.Subtitle>
                     <Card.Title className="display-6">
                       {totalAvailableDisplay.displayValue}
@@ -188,7 +200,8 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
 
             <h5 className="mt-4 mb-3">
               <FaHourglassHalf className="me-2" />
-              Currently On Hold ({details.pendingItems?.length || 0})
+              {t("pendingFunds.currentlyOnHold", "Currently On Hold")} (
+              {details.pendingItems?.length || 0})
             </h5>
             {details.pendingItems && details.pendingItems.length > 0 ? (
               <Table
@@ -202,11 +215,17 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <thead className="table-light">
                   <tr>
                     <th>#</th>
-                    <th>Product</th>
-                    <th>Sale Amount</th>
-                    <th>On Hold Since</th>
-                    <th>Releases In / At</th>
-                    <th>Mediation Ref.</th>
+                    <th>{t("pendingFunds.table.product", "Product")}</th>
+                    <th>{t("pendingFunds.table.saleAmount", "Sale Amount")}</th>
+                    <th>
+                      {t("pendingFunds.table.onHoldSince", "On Hold Since")}
+                    </th>
+                    <th>
+                      {t("pendingFunds.table.releasesIn", "Releases In / At")}
+                    </th>
+                    <th>
+                      {t("pendingFunds.table.mediationRef", "Mediation Ref.")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,7 +238,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                           <Link
                             to={`/dashboard/mediation-chat/${item.mediationRequest._id}`}
                             className="ms-2 small"
-                            title="View Mediation"
+                            title={t(
+                              "pendingFunds.viewMediation",
+                              "View Mediation"
+                            )}
                           >
                             <FaExternalLinkAlt size="0.8em" />
                           </Link>
@@ -233,7 +255,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                           placement="top"
                           overlay={
                             <Tooltip>
-                              Scheduled Release:
+                              {t(
+                                "pendingFunds.scheduledRelease",
+                                "Scheduled Release:"
+                              )}
                               {format(new Date(item.releaseAt), "PPpp")}
                             </Tooltip>
                           }
@@ -254,7 +279,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
               </Table>
             ) : (
               <Alert variant="info" className="text-center">
-                No funds are currently on hold from sales.
+                {t(
+                  "pendingFunds.noFundsOnHold",
+                  "No funds are currently on hold from sales."
+                )}
               </Alert>
             )}
 
@@ -263,7 +291,8 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <>
                   <h5 className="mt-5 mb-3">
                     <FaCheckCircle className="me-2 text-success" />
-                    Recently Released ({details.recentlyReleasedItems.length})
+                    {t("pendingFunds.recentlyReleased", "Recently Released")} (
+                    {details.recentlyReleasedItems.length})
                   </h5>
                   <Table
                     striped
@@ -275,10 +304,22 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                   >
                     <thead className="table-light">
                       <tr>
-                        <th>Product</th>
-                        <th>Amount Released</th>
-                        <th>Released On</th>
-                        <th>Mediation Ref.</th>
+                        <th>{t("pendingFunds.table.product", "Product")}</th>
+                        <th>
+                          {t(
+                            "pendingFunds.table.amountReleased",
+                            "Amount Released"
+                          )}
+                        </th>
+                        <th>
+                          {t("pendingFunds.table.releasedOn", "Released On")}
+                        </th>
+                        <th>
+                          {t(
+                            "pendingFunds.table.mediationRef",
+                            "Mediation Ref."
+                          )}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -290,7 +331,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                               <Link
                                 to={`/dashboard/mediation-chat/${item.mediationRequest._id}`}
                                 className="ms-2 small"
-                                title="View Mediation"
+                                title={t(
+                                  "pendingFunds.viewMediation",
+                                  "View Mediation"
+                                )}
                               >
                                 <FaExternalLinkAlt size="0.8em" />
                               </Link>
@@ -317,7 +361,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
         )}
         {!loading && !error && !details && (
           <Alert variant="light" className="text-center">
-            No data available.
+            {t("pendingFunds.noData", "No data available.")}
           </Alert>
         )}
       </Modal.Body>
@@ -327,10 +371,10 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
           onClick={handleRefresh}
           disabled={loading}
         >
-          <FaUndoAlt className="me-1" /> Refresh
+          <FaUndoAlt className="me-1" /> {t("common.refresh", "Refresh")}
         </Button>
         <Button variant="primary" onClick={onHide}>
-          Close
+          {t("common.close", "Close")}
         </Button>
       </Modal.Footer>
     </Modal>

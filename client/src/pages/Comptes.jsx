@@ -192,59 +192,69 @@ const Comptes = () => {
     []
   );
 
-  const linkOptions = useMemo(
-    () => [
+  const linkOptions = useMemo(() => {
+    const options = [
       {
-        value: "Konami ID ✅ Gmail ❌ Mail ✅",
-        parts: [
-          { text: "Konami ID", icon: "✅" },
-          { text: "Gmail", icon: "❌" },
-          { text: "Mail", icon: "✅" },
-        ],
+        key: "k&m",
+        konami: "✅",
+        gmail: "❌",
+        mail: "✅",
       },
       {
-        value: "Konami ID ✅ Gmail ❌ Mail ❌",
-        parts: [
-          { text: "Konami ID", icon: "✅" },
-          { text: "Gmail", icon: "❌" },
-          { text: "Mail", icon: "❌" },
-        ],
+        key: "k",
+        konami: "✅",
+        gmail: "❌",
+        mail: "❌",
       },
       {
-        value: "Konami ID ✅ Gmail ✅ Mail ✅",
-        parts: [
-          { text: "Konami ID", icon: "✅" },
-          { text: "Gmail", icon: "✅" },
-          { text: "Mail", icon: "✅" },
-        ],
+        key: "k&g&m",
+        konami: "✅",
+        gmail: "✅",
+        mail: "✅",
       },
       {
-        value: "Konami ID ✅ Gmail ✅ Mail ❌",
-        parts: [
-          { text: "Konami ID", icon: "✅" },
-          { text: "Gmail", icon: "✅" },
-          { text: "Mail", icon: "❌" },
-        ],
+        key: "k&g",
+        konami: "✅",
+        gmail: "✅",
+        mail: "❌",
       },
       {
-        value: "Konami ID ❌ Gmail ✅ Mail ✅",
-        parts: [
-          { text: "Konami ID", icon: "❌" },
-          { text: "Gmail", icon: "✅" },
-          { text: "Mail", icon: "✅" },
-        ],
+        key: "g&m",
+        konami: "❌",
+        gmail: "✅",
+        mail: "✅",
       },
       {
-        value: "Konami ID ❌ Gmail ✅ Mail ❌",
-        parts: [
-          { text: "Konami ID", icon: "❌" },
-          { text: "Gmail", icon: "✅" },
-          { text: "Mail", icon: "❌" },
-        ],
+        key: "g",
+        konami: "❌",
+        gmail: "✅",
+        mail: "❌",
       },
-    ],
-    []
-  );
+    ];
+
+    return options.map((opt) => {
+      const parts = [
+        {
+          text: t("comptes.linkOptions.konamiId"),
+          icon: opt.konami,
+        },
+        {
+          text: t("comptes.linkOptions.gmail"),
+          icon: opt.gmail,
+        },
+        {
+          text: t("comptes.linkOptions.mail"),
+          icon: opt.mail,
+        },
+      ];
+      const value = parts.map((p) => `${p.text} ${p.icon}`).join(" ");
+      return {
+        key: opt.key,
+        value: value,
+        parts: parts,
+      };
+    });
+  }, [t]);
 
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.userReducer);

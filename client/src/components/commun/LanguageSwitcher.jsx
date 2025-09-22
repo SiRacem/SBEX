@@ -8,15 +8,16 @@ import flagAr from "../../assets/flags/sa.svg";
 import flagTn from "../../assets/flags/tn.svg";
 import flagFr from "../../assets/flags/fr.svg";
 
-const languages = [
-  { code: "en", name: "English", flag: flagEn },
-  { code: "ar", name: "العربية", flag: flagAr },
-  { code: "fr", name: "Français", flag: flagFr },
-  { code: "tn", name: "تونسي", flag: flagTn },
-];
-
 const LanguageSwitcher = ({ as = "dropdown" }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const languages = [
+    { code: "en", name: t("languages.en", "English"), flag: flagEn },
+    { code: "ar", name: t("languages.ar", "العربية"), flag: flagAr },
+    { code: "fr", name: t("languages.fr", "Français"), flag: flagFr },
+    { code: "tn", name: t("languages.tn", "تونسي"), flag: flagTn },
+  ];
+
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
   };
@@ -88,7 +89,7 @@ const LanguageSwitcher = ({ as = "dropdown" }) => {
             </span>
           </>
         ) : (
-          "Lang"
+          t("languages.lang", "Lang")
         )}
       </Dropdown.Toggle>
       <Dropdown.Menu variant="dark">
