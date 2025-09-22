@@ -1,6 +1,7 @@
 // client/src/components/mediator/RejectAssignmentModal.jsx
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form, Spinner } from "react-bootstrap"; // Alert ليست مستخدمة حاليًا
+import { Modal, Button, Form, Spinner } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 
 const RejectAssignmentModal = ({
   show,
@@ -9,8 +10,9 @@ const RejectAssignmentModal = ({
   onConfirmReject,
   loading,
 }) => {
+  const { t } = useTranslation();
   const [reason, setReason] = useState("");
-  const [error, setError] = useState(""); // خطأ محلي للمودال
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!show) {
@@ -21,11 +23,11 @@ const RejectAssignmentModal = ({
 
   const handleSubmit = () => {
     if (!reason.trim()) {
-      setError("Rejection reason is required.");
+      setError(t("rejectAssignmentModal.reasonRequired"));
       return;
     }
     setError("");
-    onConfirmReject(assignment._id, reason); // تمرير ID المهمة والسبب
+    onConfirmReject(assignment._id, reason);
   };
 
   return (
@@ -37,18 +39,19 @@ const RejectAssignmentModal = ({
       keyboard={!loading}
     >
       <Modal.Header closeButton={!loading}>
-        <Modal.Title>Reject Mediation Assignment</Modal.Title>
+        <Modal.Title>{t("rejectAssignmentModal.title")}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {assignment && (
           <p>
-            You are about to reject the assignment for product: <br />
-            <strong>{assignment.product?.title || "N/A"}</strong>
+            {t("rejectAssignmentModal.aboutToReject")}{" "}
+            <strong>{assignment.product?.title || t("common.na")}</strong>
           </p>
         )}
         <Form.Group controlId="rejectionReason">
           <Form.Label>
-            Reason for Rejection <span className="text-danger">*</span>
+            {t("rejectAssignmentModal.reasonLabel")}{" "}
+            <span className="text-danger">*</span>
           </Form.Label>
           <Form.Control
             as="textarea"
@@ -58,7 +61,7 @@ const RejectAssignmentModal = ({
               setReason(e.target.value);
               if (e.target.value.trim()) setError("");
             }}
-            placeholder="Please provide a clear reason for rejecting this assignment."
+            placeholder={t("rejectAssignmentModal.placeholder")}
             isInvalid={!!error}
             disabled={loading}
             autoFocus
@@ -68,7 +71,7 @@ const RejectAssignmentModal = ({
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide} disabled={loading}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="danger"
@@ -84,10 +87,10 @@ const RejectAssignmentModal = ({
                 role="status"
                 aria-hidden="true"
               />
-              Rejecting...
+              {t("rejectAssignmentModal.rejecting")}
             </>
           ) : (
-            "Confirm Rejection"
+            t("rejectAssignmentModal.confirmRejection")
           )}
         </Button>
       </Modal.Footer>

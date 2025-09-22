@@ -1808,5 +1808,30 @@
     "thisUser": "this user",
     "couldNotIdentifyBidder": "Could not identify bidder ID.",
     "pleaseProvideRejectionReason": "Please provide a rejection reason."
+  },
+  "mediationDetailsModal": {
+    "title": "Mediation Details:",
+    "overallStatus": "Overall Status:",
+    "buyer": "Buyer:",
+    "mediator": "Mediator:",
+    "awaitingResponse": "Awaiting Mediator's Response",
+    "acceptedAssignment": "Accepted Assignment",
+    "originalPrice": "Original Listing Price:",
+    "agreedPrice": "Agreed Bid Price:",
+    "mediatorFee": "Calculated Mediator Fee:",
+    "sellerFee": "Seller's Share of Fee:",
+    "buyerFee": "Buyer's Share of Fee:",
+    "netForSeller": "Net Amount for Seller:",
+    "netForSellerFormula": "(Agreed Price - Seller's Fee Share)",
+    "totalForBuyer": "Total Price for Buyer:",
+    "totalForBuyerFormula": "(Agreed Price + Buyer's Fee Share)",
+    "requestId": "Mediation Request ID:",
+    "sellerConfirmed": "Seller Confirmed Readiness",
+    "buyerConfirmed": "Buyer Confirmed Readiness",
+    "fundsInEscrow": "Funds are in Escrow",
+    "viewProfile": "View Profile",
+    "buyerIdOnly": "Buyer (ID only)",
+    "feeError": "Price or fee function missing",
+    "productImage": "Product Image"
   }
 }
