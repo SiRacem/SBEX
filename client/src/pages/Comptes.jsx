@@ -35,7 +35,7 @@ import "./Comptes.css";
 
 // --- مكون بطاقة الحساب (يبقى كما هو) ---
 const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const fallbackImageUrl = useMemo(
     () =>
       'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>',
@@ -46,15 +46,18 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
       'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>',
     []
   );
-  const formatCurrency = (amount, currencyCode = "TND") => {
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount)) return "N/A";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-    }).format(numericAmount);
-  };
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const numericAmount = Number(amount);
+      if (isNaN(numericAmount)) return "N/A";
+      return new Intl.NumberFormat(i18n.language, {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(numericAmount);
+    },
+    [i18n.language]
+  );
   const handleImageError = (e) => {
     if (e.target.src !== fallbackImageUrl) {
       e.target.onerror = null;

@@ -49,17 +49,20 @@ const FALLBACK_IMAGE_URL =
 
 // --- مكون مودال تفاصيل المستخدم ---
 const UserDetailsModal = ({ show, onHide, user }) => {
-  const { t } = useTranslation(); // <-- [!] تم الإضافة
+  const { t, i18n } = useTranslation(); // <-- [!] تم الإضافة
 
-  const formatCurrency = useCallback((amount, currencyCode = "TND") => {
-    const num = Number(amount);
-    if (isNaN(num)) return "N/A";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-    }).format(num);
-  }, []);
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num)) return "N/A";
+      return new Intl.NumberFormat(i18n.language, {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(num);
+    },
+    [i18n.language]
+  );
 
   const handleImageError = (e) => {
     if (e.target.src !== FALLBACK_IMAGE_URL) {
@@ -87,7 +90,9 @@ const UserDetailsModal = ({ show, onHide, user }) => {
             bg={user.blocked ? "danger" : "success"}
             className="ms-2 align-middle"
           >
-            {user.blocked ? t("common.statuses.blocked") : t("common.statuses.active")}
+            {user.blocked
+              ? t("common.statuses.blocked")
+              : t("common.statuses.active")}
           </Badge>
         </Modal.Title>
       </Modal.Header>
@@ -103,19 +108,25 @@ const UserDetailsModal = ({ show, onHide, user }) => {
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaEnvelope className="me-2 text-primary" />{" "}
-                <strong>{t("admin.users.detailsModal.email")}:</strong> {user.email}
+                <strong>{t("admin.users.detailsModal.email")}:</strong>{" "}
+                {user.email}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaPhone className="me-2 text-primary" />{" "}
-                <strong>{t("admin.users.detailsModal.phone")}:</strong> {user.phone || "N/A"}
+                <strong>{t("admin.users.detailsModal.phone")}:</strong>{" "}
+                {user.phone || "N/A"}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaMapMarkerAlt className="me-2 text-primary" />{" "}
-                <strong>{t("admin.users.detailsModal.address")}:</strong> {user.address || "N/A"}
+                <strong>{t("admin.users.detailsModal.address")}:</strong>{" "}
+                {user.address || "N/A"}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaUserTag className="me-2 text-primary" />{" "}
-                <strong>{t("admin.users.detailsModal.role")}:</strong> {t(`common.roles.${user.userRole}`, { defaultValue: user.userRole })}
+                <strong>{t("admin.users.detailsModal.role")}:</strong>{" "}
+                {t(`common.roles.${user.userRole}`, {
+                  defaultValue: user.userRole,
+                })}
               </ListGroup.Item>
               <ListGroup.Item>
                 <FaCalendarAlt className="me-2 text-primary" />{" "}
@@ -125,23 +136,28 @@ const UserDetailsModal = ({ show, onHide, user }) => {
             </ListGroup>
           </Col>
           <Col md={6}>
-            <h5 className="mt-3 mt-md-0 mb-3 text-center">{t("admin.users.detailsModal.balances")}</h5>
+            <h5 className="mt-3 mt-md-0 mb-3 text-center">
+              {t("admin.users.detailsModal.balances")}
+            </h5>
             <ListGroup variant="flush">
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaPiggyBank className="me-1 text-success" /> {t("admin.users.detailsModal.principal")}:
+                  <FaPiggyBank className="me-1 text-success" />{" "}
+                  {t("admin.users.detailsModal.principal")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.balance)}</strong>
               </ListGroup.Item>
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaUniversity className="me-1 text-info" /> {t("admin.users.detailsModal.deposit")}:
+                  <FaUniversity className="me-1 text-info" />{" "}
+                  {t("admin.users.detailsModal.deposit")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.depositBalance)}</strong>
               </ListGroup.Item>
               <ListGroup.Item className="d-flex justify-content-between">
                 <span>
-                  <FaDollarSign className="me-1 text-danger" /> {t("admin.users.detailsModal.withdrawal")}:
+                  <FaDollarSign className="me-1 text-danger" />{" "}
+                  {t("admin.users.detailsModal.withdrawal")}:
                 </span>{" "}
                 <strong>{formatCurrency(user.withdrawalBalance)}</strong>
               </ListGroup.Item>
@@ -149,7 +165,8 @@ const UserDetailsModal = ({ show, onHide, user }) => {
                 <>
                   <ListGroup.Item className="d-flex justify-content-between mt-2 border-top pt-2">
                     <span>
-                      <FaBalanceScale className="me-1 text-success" /> {t("admin.users.detailsModal.sellerAvailable")}:
+                      <FaBalanceScale className="me-1 text-success" />{" "}
+                      {t("admin.users.detailsModal.sellerAvailable")}:
                     </span>{" "}
                     <strong>
                       {formatCurrency(user.sellerAvailableBalance)}
@@ -157,7 +174,8 @@ const UserDetailsModal = ({ show, onHide, user }) => {
                   </ListGroup.Item>
                   <ListGroup.Item className="d-flex justify-content-between">
                     <span>
-                      <FaHourglassHalf className="me-1 text-warning" /> {t("admin.users.detailsModal.sellerOnHold")}:
+                      <FaHourglassHalf className="me-1 text-warning" />{" "}
+                      {t("admin.users.detailsModal.sellerOnHold")}:
                     </span>{" "}
                     <strong>{formatCurrency(user.sellerPendingBalance)}</strong>
                   </ListGroup.Item>
@@ -240,7 +258,9 @@ const EditUserModal = ({ show, onHide, user, onSave }) => {
   return (
     <Modal show={show} onHide={onHide} centered backdrop="static">
       <Modal.Header closeButton>
-        <Modal.Title>{t("admin.users.editModal.title", { name: user.fullName })}</Modal.Title>
+        <Modal.Title>
+          {t("admin.users.editModal.title", { name: user.fullName })}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {saveError && (
@@ -426,10 +446,16 @@ const UserListAd = ({ search }) => {
   const dispatch = useDispatch();
 
   const users = useSelector((state) => state.adminUserReducer?.users ?? []);
-  const loading = useSelector((state) => state.adminUserReducer?.loading ?? false);
+  const loading = useSelector(
+    (state) => state.adminUserReducer?.loading ?? false
+  );
   const error = useSelector((state) => state.adminUserReducer?.error ?? null);
-  const loadingStatusChange = useSelector((state) => state.adminUserReducer?.loadingStatusChange || {});
-  const loadingDataChange = useSelector((state) => state.adminUserReducer?.loadingDataChange || {});
+  const loadingStatusChange = useSelector(
+    (state) => state.adminUserReducer?.loadingStatusChange || {}
+  );
+  const loadingDataChange = useSelector(
+    (state) => state.adminUserReducer?.loadingDataChange || {}
+  );
   const currentUser = useSelector((state) => state.userReducer?.user);
 
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -454,18 +480,25 @@ const UserListAd = ({ search }) => {
     setShowEditUserModal(true);
   }, []);
   const handleCloseEdit = useCallback(() => setShowEditUserModal(false), []);
-  const handleToggleBlock = useCallback((user) => {
-    if (loadingStatusChange[user._id]) return;
-    if (user.blocked) {
-      if (window.confirm(t('admin.users.actions.confirmUnblock', { name: user.fullName }))) {
-        dispatch(adminUpdateUserStatus(user._id, false, null));
+  const handleToggleBlock = useCallback(
+    (user) => {
+      if (loadingStatusChange[user._id]) return;
+      if (user.blocked) {
+        if (
+          window.confirm(
+            t("admin.users.actions.confirmUnblock", { name: user.fullName })
+          )
+        ) {
+          dispatch(adminUpdateUserStatus(user._id, false, null));
+        }
+      } else {
+        setUserToBlock(user);
+        setBlockReason("");
+        setShowBlockReasonModal(true);
       }
-    } else {
-      setUserToBlock(user);
-      setBlockReason("");
-      setShowBlockReasonModal(true);
-    }
-  }, [dispatch, loadingStatusChange, t]);
+    },
+    [dispatch, loadingStatusChange, t]
+  );
 
   const handleConfirmBlock = () => {
     if (!userToBlock || !blockReason.trim()) {
@@ -544,12 +577,16 @@ const UserListAd = ({ search }) => {
               <thead className="table-light">
                 <tr>
                   <th>#</th>
-                  <th style={{ width: "60px" }}>{t("admin.users.table.avatar")}</th>
+                  <th style={{ width: "60px" }}>
+                    {t("admin.users.table.avatar")}
+                  </th>
                   <th>{t("admin.users.table.nameEmail")}</th>
                   <th>{t("admin.users.table.role")}</th>
                   <th>{t("admin.users.table.status")}</th>
                   <th>{t("admin.users.table.registered")}</th>
-                  <th className="text-center">{t("admin.users.table.actions")}</th>
+                  <th className="text-center">
+                    {t("admin.users.table.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -588,12 +625,16 @@ const UserListAd = ({ search }) => {
                                 : "secondary"
                             }
                           >
-                            {t(`common.roles.${u.userRole}`, { defaultValue: u.userRole })}
+                            {t(`common.roles.${u.userRole}`, {
+                              defaultValue: u.userRole,
+                            })}
                           </Badge>
                         </td>
                         <td>
                           <Badge pill bg={u.blocked ? "danger" : "success"}>
-                            {u.blocked ? t("common.statuses.blocked") : t("common.statuses.active")}
+                            {u.blocked
+                              ? t("common.statuses.blocked")
+                              : t("common.statuses.active")}
                           </Badge>
                         </td>
                         <td>{new Date(u.registerDate).toLocaleDateString()}</td>
@@ -626,7 +667,11 @@ const UserListAd = ({ search }) => {
                             className="action-btn"
                             onClick={() => handleToggleBlock(u)}
                             disabled={isChangingStatus || isChangingData}
-                            title={u.blocked ? t("admin.users.actions.unblockUser") : t("admin.users.actions.blockUser")}
+                            title={
+                              u.blocked
+                                ? t("admin.users.actions.unblockUser")
+                                : t("admin.users.actions.blockUser")
+                            }
                           >
                             {isChangingStatus ? (
                               <Spinner size="sm" animation="border" />
@@ -658,12 +703,15 @@ const UserListAd = ({ search }) => {
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>{t("admin.users.blockModal.title", { name: userToBlock?.fullName })}</Modal.Title>
+          <Modal.Title>
+            {t("admin.users.blockModal.title", { name: userToBlock?.fullName })}
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group>
             <Form.Label>
-              {t("admin.users.blockModal.reasonLabel")} <span className="text-danger">*</span>
+              {t("admin.users.blockModal.reasonLabel")}{" "}
+              <span className="text-danger">*</span>
             </Form.Label>
             <Form.Control
               as="textarea"

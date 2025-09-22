@@ -20,7 +20,8 @@
       "title": "Account Suspended",
       "body": "Your account is currently blocked. Some features may be unavailable. If you believe this is an error, please",
       "contactSupport": "contact support",
-      "logout": "Logout"
+      "logout": "Logout",
+      "orSeparator": " OR "
     }
   },
   "entete": {
@@ -157,7 +158,32 @@
     "mediationLink": "Mediation Link",
     "viewMediation": "View Mediation",
     "buyer": "Buyer",
-    "seller": "Seller"
+    "seller": "Seller",
+    "fundsSent": "Funds Sent",
+    "fundsReceived": "Funds Received",
+    "fundTransfer": "Fund Transfer",
+    "deposit": "Deposit",
+    "withdrawal": "Withdrawal",
+    "genericTitle": "Transaction ({{type}})",
+    "unspecifiedDetails": "Details for this transaction type are not fully specified.",
+    "summary": "Summary",
+    "statusLabel": "Status:",
+    "amountLabel": "Amount:",
+    "dateLabel": "Date:",
+    "idLabel": "ID:",
+    "details": "Details",
+    "senderLabel": "Sender",
+    "recipientLabel": "Recipient",
+    "descriptionLabel": "Description",
+    "closeButton": "Close",
+    "you": "You",
+    "unknownUser": "Unknown User",
+    "sentToUser": "You sent funds to {{name}}.",
+    "receivedFromUser": "You received funds from {{name}}.",
+    "transferBetweenUsers": "Transfer from {{sender}} to {{recipient}}.",
+    "fundsDeposited": "Funds deposited into your account.",
+    "fundsWithdrawn": "Funds withdrawn from your account.",
+    "statusUnknown": "UNKNOWN"
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "Funds Released",
@@ -1152,6 +1178,46 @@
       "totalPointsTooltip": "Total Reputation Points"
     }
   },
+  "mediatorDashboard": {
+    "notAvailable": "N/A",
+    "productImageAlt": "Product Image",
+    "imageNotAvailable": "Image not available.",
+    "incompleteData": "Assignment data is incomplete.",
+    "unknown": "Unknown",
+    "disputeActive": "Dispute Active",
+    "pendingDecision": "Pending Your Decision",
+    "awaitingParties": "Awaiting Parties' Confirmation",
+    "buyerConfirmed": "Buyer Confirmed & Escrowed",
+    "allPartiesConfirmed": "All Parties Confirmed",
+    "inProgress": "Mediation In Progress",
+    "product": "Product:",
+    "transactionId": "Transaction ID:",
+    "seller": "Seller:",
+    "buyer": "Buyer:",
+    "agreedPrice": "Agreed Price:",
+    "lastUpdate": "Last Update:",
+    "view": "View",
+    "accept": "Accept",
+    "reject": "Reject",
+    "waitingForParties": "You accepted. Waiting for parties to confirm.",
+    "waitingForSeller": "Buyer confirmed & escrowed. Waiting for seller.",
+    "startingSoon": "Parties confirmed. Chat starting soon.",
+    "reviewDispute": "Review Dispute",
+    "openChat": "Open Chat",
+    "loadingUserData": "Loading user data...",
+    "accessDenied": "Access Denied. You are not a qualified mediator.",
+    "goToDashboard": "Go to Dashboard",
+    "title": "Mediator Hub",
+    "pendingTab": "Pending My Decision",
+    "loadingPending": "Loading pending assignments...",
+    "noPending": "No assignments currently pending your decision.",
+    "activeTab": "Active Mediations",
+    "loadingActive": "Loading active mediations...",
+    "noActive": "No active mediations assigned to you.",
+    "disputedTab": "Disputed Cases",
+    "loadingDisputed": "Loading disputed cases...",
+    "noDisputed": "No disputed cases assigned to you currently."
+  },
   "mediatorApplication": {
     "qualified": {
       "title": "Mediator Status",
@@ -1641,7 +1707,12 @@
     "saveChanges": "Save Changes",
     "imagePreview": "Image Preview",
     "viewImage": "View Image",
-    "removeImage": "Remove Image"
+    "removeImage": "Remove Image",
+    "linkOptions": {
+      "konamiId": "Konami ID",
+      "gmail": "Gmail",
+      "mail": "Mail"
+    }
   },
   "levelsModal": {
     "title": "Your Progression Path",
@@ -1729,6 +1800,40 @@
       "fileExists": "File \"{{name}}\" is already selected.",
       "fileCount": "Max {{count}} files allowed."
     }
+  },
+  "myProducts": {
+    "loadingYourProducts": "Loading your products...",
+    "errorLoadingProducts": "Error loading products:",
+    "myAccountsProducts": "My Accounts / Products",
+    "approvedProducts": "Approved Products",
+    "noApprovedProductsYet": "No approved products yet.",
+    "basePrice": "Base Price:",
+    "status": "Status:",
+    "receivedBids": "Received Bids",
+    "bidder": "Bidder",
+    "acceptBid": "Accept Bid",
+    "rejectBid": "Reject Bid",
+    "noBidsReceivedYet": "No bids received yet.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editProduct": "Edit Product",
+    "deleteProduct": "Delete Product",
+    "pendingApproval": "Pending Approval",
+    "noProductsPendingApproval": "No products pending approval.",
+    "submitted": "Submitted:",
+    "soldProducts": "Sold Products",
+    "noSoldProductsYet": "No sold products yet.",
+    "rejectedProducts": "Rejected Products",
+    "noRejectedProducts": "No rejected products.",
+    "reasonForRejectingBid": "Reason for rejecting bid from ",
+    "for": "for",
+    "rejectionReasonRequired": "Rejection reason (required)",
+    "cancel": "Cancel",
+    "confirmRejection": "Confirm Rejection",
+    "acceptBidConfirmation": "Are you sure you want to accept the bid of {{amount}} from {{user}}? This will mark the product as sold and hold the funds.",
+    "thisUser": "this user",
+    "couldNotIdentifyBidder": "Could not identify bidder ID.",
+    "pleaseProvideRejectionReason": "Please provide a rejection reason."
   },
   "ticketDetails": {
     "fileTypes": {

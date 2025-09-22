@@ -31,27 +31,30 @@ import { Link } from "react-router-dom";
 
 const PAGE_LIMIT = 15;
 
-const formatCurrencyForTable = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (amount == null || isNaN(num)) {
-    return "N/A";
-  }
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  } catch (e) {
-    console.error("Error formatting currency:", e);
-    return `${num.toFixed(2)} ${currencyCode}`;
-  }
-};
-
 const ReviewMediatorApplications = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+
+  const formatCurrencyForTable = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (amount == null || isNaN(num)) {
+        return "N/A";
+      }
+      try {
+        return new Intl.NumberFormat(i18n.language, {
+          style: "currency",
+          currency: currencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(num);
+      } catch (e) {
+        console.error("Error formatting currency:", e);
+        return `${num.toFixed(2)} ${currencyCode}`;
+      }
+    },
+    [i18n.language]
+  );
 
   const {
     pendingMediatorApplications: pendingMediatorApps,

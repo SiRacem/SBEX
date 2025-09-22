@@ -1,8 +1,8 @@
 // src/components/commun/TransactionDetailsModal.jsx
-// *** Complete Code for Transaction Details Modal ***
 
-import React, { useCallback } from "react"; // Import useCallback if needed, otherwise just React
+import React, { useCallback } from "react";
 import { Modal, Button, Row, Col, Badge, ListGroup } from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 import {
   FaArrowUp,
   FaArrowDown,
@@ -13,18 +13,7 @@ import {
   FaDollarSign,
   FaInfoCircle,
 } from "react-icons/fa";
-import { Link } from "react-router-dom"; // To link to user profiles
-
-// Helper function to format currency
-const formatCurrencyInternal = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num)) return "N/A";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-  }).format(num);
-};
+import { Link } from "react-router-dom";
 
 const TransactionDetailsModal = ({
   show,
@@ -32,76 +21,87 @@ const TransactionDetailsModal = ({
   transaction,
   currentUserId,
 }) => {
-  // Don't render if no transaction is selected
+  const { t, i18n } = useTranslation();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num)) return "N/A";
+      return new Intl.NumberFormat(i18n.language, {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(num);
+    },
+    [i18n.language]
+  );
+
   if (!transaction) {
     return null;
   }
 
-  // Determine transaction details based on type and relation to current user
   const isSender = transaction.sender?._id === currentUserId;
   const isReceiver = transaction.recipient?._id === currentUserId;
-  const transactionType = transaction.type || "UNKNOWN"; // Default type
-  let title = "Transaction Details";
+  const transactionType = transaction.type || "UNKNOWN";
+  let title = t("transactionModal.title");
   let icon = <FaExchangeAlt className="text-muted" />;
   let amountColor = "text-dark";
   let amountPrefix = "";
-  let peerUser = null; // The other user involved
-  let description = transaction.description || ""; // Use provided description or calculate default
+  let peerUser = null;
+  let description = transaction.description || "";
 
   switch (transactionType) {
     case "TRANSFER":
       if (isSender) {
-        title = "Funds Sent";
+        title = t("transactionModal.fundsSent");
         icon = <FaArrowUp className="text-danger" />;
         amountColor = "text-danger";
         amountPrefix = "- ";
         peerUser = transaction.recipient;
         description =
           description ||
-          `You sent funds to ${peerUser?.fullName || "another user"}.`;
+          t("transactionModal.sentToUser", {
+            name: peerUser?.fullName || t("transactionModal.unknownUser"),
+          });
       } else if (isReceiver) {
-        title = "Funds Received";
+        title = t("transactionModal.fundsReceived");
         icon = <FaArrowDown className="text-success" />;
         amountColor = "text-success";
         amountPrefix = "+ ";
         peerUser = transaction.sender;
         description =
           description ||
-          `You received funds from ${peerUser?.fullName || "another user"}.`;
+          t("transactionModal.receivedFromUser", {
+            name: peerUser?.fullName || t("transactionModal.unknownUser"),
+          });
       } else {
-        // Case where current user is neither sender nor receiver (e.g., admin view)
-        title = "Fund Transfer";
+        title = t("transactionModal.fundTransfer");
         icon = <FaExchangeAlt className="text-primary" />;
         description =
           description ||
-          `Transfer from ${transaction.sender?.fullName || "?"} to ${
-            transaction.recipient?.fullName || "?"
-          }.`;
+          t("transactionModal.transferBetweenUsers", {
+            sender: transaction.sender?.fullName || "?",
+            recipient: transaction.recipient?.fullName || "?",
+          });
       }
       break;
     case "DEPOSIT":
-      title = "Deposit";
+      title = t("transactionModal.deposit");
       icon = <FaArrowDown className="text-success" />;
       amountColor = "text-success";
       amountPrefix = "+ ";
-      description = description || "Funds deposited into your account.";
+      description = description || t("transactionModal.fundsDeposited");
       break;
     case "WITHDRAWAL":
-      title = "Withdrawal";
+      title = t("transactionModal.withdrawal");
       icon = <FaArrowUp className="text-danger" />;
       amountColor = "text-danger";
       amountPrefix = "- ";
-      description = description || "Funds withdrawn from your account.";
+      description = description || t("transactionModal.fundsWithdrawn");
       break;
-    // Add cases for PRODUCT_PURCHASE, PRODUCT_SALE etc. if needed
-    // case 'PRODUCT_PURCHASE': ... break;
-    // case 'PRODUCT_SALE': ... break;
     default:
-      // Keep generic title for unknown or other types
-      title = `Transaction (${transactionType})`;
-      // You might assign a default icon or color based on amount sign if possible
+      title = t("transactionModal.genericTitle", { type: transactionType });
       if (transaction.amount < 0) {
-        // Example check (adjust based on your data)
         icon = <FaArrowUp className="text-warning" />;
         amountColor = "text-warning";
       } else {
@@ -111,9 +111,8 @@ const TransactionDetailsModal = ({
       break;
   }
 
-  // Fallback description if still empty
   if (!description) {
-    description = "Details for this transaction type are not fully specified.";
+    description = t("transactionModal.unspecifiedDetails");
   }
 
   return (
@@ -126,14 +125,15 @@ const TransactionDetailsModal = ({
       </Modal.Header>
       <Modal.Body>
         <Row>
-          {/* Left Side: Key Details */}
           <Col md={6} className="mb-3 mb-md-0">
-            <h5 className="mb-3 text-muted fw-light">Summary</h5>
+            <h5 className="mb-3 text-muted fw-light">
+              {t("transactionModal.summary")}
+            </h5>
             <ListGroup variant="flush">
               <ListGroup.Item className="px-0 py-2">
                 <Row>
                   <Col xs={4} sm={3} className="text-muted small">
-                    Status:
+                    {t("transactionModal.statusLabel")}
                   </Col>
                   <Col xs={8} sm={9}>
                     <Badge
@@ -146,7 +146,11 @@ const TransactionDetailsModal = ({
                           : "danger"
                       }
                     >
-                      {transaction.status || "UNKNOWN"}
+                      {t(`transactionStatuses.${transaction.status}`, {
+                        defaultValue:
+                          transaction.status ||
+                          t("transactionModal.statusUnknown"),
+                      })}
                     </Badge>
                   </Col>
                 </Row>
@@ -154,25 +158,24 @@ const TransactionDetailsModal = ({
               <ListGroup.Item className="px-0 py-2">
                 <Row>
                   <Col xs={4} sm={3} className="text-muted small">
-                    Amount:
+                    {t("transactionModal.amountLabel")}
                   </Col>
                   <Col xs={8} sm={9} className={`fw-bold fs-5 ${amountColor}`}>
                     {amountPrefix}
-                    {formatCurrencyInternal(
-                      transaction.amount,
-                      transaction.currency
-                    )}
+                    {formatCurrency(transaction.amount, transaction.currency)}
                   </Col>
                 </Row>
               </ListGroup.Item>
               <ListGroup.Item className="px-0 py-2">
                 <Row>
                   <Col xs={4} sm={3} className="text-muted small">
-                    Date:
+                    {t("transactionModal.dateLabel")}
                   </Col>
                   <Col xs={8} sm={9}>
                     {transaction.createdAt
-                      ? new Date(transaction.createdAt).toLocaleString()
+                      ? new Date(transaction.createdAt).toLocaleString(
+                          i18n.language
+                        )
                       : "N/A"}
                   </Col>
                 </Row>
@@ -180,7 +183,7 @@ const TransactionDetailsModal = ({
               <ListGroup.Item className="px-0 py-2">
                 <Row>
                   <Col xs={4} sm={3} className="text-muted small">
-                    ID:
+                    {t("transactionModal.idLabel")}
                   </Col>
                   <Col xs={8} sm={9}>
                     <code className="small user-select-all">
@@ -192,30 +195,34 @@ const TransactionDetailsModal = ({
             </ListGroup>
           </Col>
 
-          {/* Right Side: Parties Involved & Description */}
           <Col md={6}>
-            <h5 className="mb-3 text-muted fw-light">Details</h5>
+            <h5 className="mb-3 text-muted fw-light">
+              {t("transactionModal.details")}
+            </h5>
             <ListGroup variant="flush">
-              {/* Conditionally render Sender */}
               {transaction.sender && (
                 <ListGroup.Item className="px-0 py-2 d-flex align-items-center">
                   <FaArrowUp className="me-2 text-danger opacity-75 flex-shrink-0" />
                   <div className="w-100">
-                    <span className="text-muted small d-block">Sender</span>
+                    <span className="text-muted small d-block">
+                      {t("transactionModal.senderLabel")}
+                    </span>
                     {isSender ? (
-                      <strong>You</strong>
+                      <strong>{t("transactionModal.you")}</strong>
                     ) : transaction.sender._id ? (
                       <Link
                         to={`/profile/${transaction.sender._id}`}
                         onClick={onHide}
                         className="fw-medium text-decoration-none profile-link"
                       >
-                        {transaction.sender.fullName || "Unknown User"}
+                        {transaction.sender.fullName ||
+                          t("transactionModal.unknownUser")}
                       </Link>
                     ) : (
                       <span>
-                        {transaction.sender.fullName || "Unknown User"}
-                      </span> // Display name if no ID
+                        {transaction.sender.fullName ||
+                          t("transactionModal.unknownUser")}
+                      </span>
                     )}
                     {transaction.sender.email && (
                       <small className="d-block text-muted">
@@ -225,25 +232,28 @@ const TransactionDetailsModal = ({
                   </div>
                 </ListGroup.Item>
               )}
-              {/* Conditionally render Recipient */}
               {transaction.recipient && (
                 <ListGroup.Item className="px-0 py-2 d-flex align-items-center">
                   <FaArrowDown className="me-2 text-success opacity-75 flex-shrink-0" />
                   <div className="w-100">
-                    <span className="text-muted small d-block">Recipient</span>
+                    <span className="text-muted small d-block">
+                      {t("transactionModal.recipientLabel")}
+                    </span>
                     {isReceiver ? (
-                      <strong>You</strong>
+                      <strong>{t("transactionModal.you")}</strong>
                     ) : transaction.recipient._id ? (
                       <Link
                         to={`/profile/${transaction.recipient._id}`}
                         onClick={onHide}
                         className="fw-medium text-decoration-none profile-link"
                       >
-                        {transaction.recipient.fullName || "Unknown User"}
+                        {transaction.recipient.fullName ||
+                          t("transactionModal.unknownUser")}
                       </Link>
                     ) : (
                       <span>
-                        {transaction.recipient.fullName || "Unknown User"}
+                        {transaction.recipient.fullName ||
+                          t("transactionModal.unknownUser")}
                       </span>
                     )}
                     {transaction.recipient.email && (
@@ -254,25 +264,22 @@ const TransactionDetailsModal = ({
                   </div>
                 </ListGroup.Item>
               )}
-              {/* Description */}
               <ListGroup.Item className="px-0 py-2 d-flex align-items-start">
                 <FaInfoCircle className="me-2 text-info opacity-75 flex-shrink-0 mt-1" />
                 <div>
-                  <span className="text-muted small d-block">Description</span>
+                  <span className="text-muted small d-block">
+                    {t("transactionModal.descriptionLabel")}
+                  </span>
                   {description}
                 </div>
               </ListGroup.Item>
-              {/* You could add relatedEntity details here if needed */}
-              {/* {transaction.relatedEntity && transaction.relatedEntity.id && (
-                                <ListGroup.Item className="px-0 py-2 d-flex align-items-start"> ... </ListGroup.Item>
-                             )} */}
             </ListGroup>
           </Col>
         </Row>
       </Modal.Body>
       <Modal.Footer>
         <Button variant="outline-secondary" onClick={onHide}>
-          Close
+          {t("transactionModal.closeButton")}
         </Button>
       </Modal.Footer>
     </Modal>

@@ -20,7 +20,8 @@
       "title": "الكونت مبلوكي",
       "body": "كونتك مبلوكي توّا. فما حاجات تنجم تكون ما تخدمش. كان تحس فما غلطة، يرحم والديك",
       "contactSupport": "اكلم الدعم",
-      "logout": "اخرج"
+      "logout": "اخرج",
+      "orSeparator": " ولا "
     }
   },
   "entete": {
@@ -157,7 +158,32 @@
     "mediationLink": "رابط الوساطة",
     "viewMediation": "شوف الوساطة",
     "buyer": "الشاري",
-    "seller": "البايع"
+    "seller": "البايع",
+    "fundsSent": "فلوس تبعثت",
+    "fundsReceived": "فلوس وصلت",
+    "fundTransfer": "تحويل فلوس",
+    "deposit": "صبّان",
+    "withdrawal": "جبدان",
+    "genericTitle": "معاملة ({{type}})",
+    "unspecifiedDetails": "تفاصيل النوع هذا متاع المعاملات موش محددة بالكامل.",
+    "summary": "ملخص",
+    "statusLabel": "الحالة:",
+    "amountLabel": "المبلغ:",
+    "dateLabel": "التاريخ:",
+    "idLabel": "المعرّف:",
+    "details": "التفاصيل",
+    "senderLabel": "الباعث",
+    "recipientLabel": "المستقبل",
+    "descriptionLabel": "الوصف",
+    "closeButton": "سكر",
+    "you": "إنت",
+    "unknownUser": "مستخدم موش معروف",
+    "sentToUser": "بعثت فلوس لـ {{name}}.",
+    "receivedFromUser": "جاتك فلوس من عند {{name}}.",
+    "transferBetweenUsers": "تحويل من {{sender}} لـ {{recipient}}.",
+    "fundsDeposited": "تصبّت الفلوس في كونتّك.",
+    "fundsWithdrawn": "تجبدت الفلوس من كونتّك.",
+    "statusUnknown": "موش معروف"
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "الفلوس اللي تصبت مالبيعة",
@@ -1153,6 +1179,46 @@
       "viewAllTooltip": "انزل باش تشوف المستويات والكادوات الكل"
     }
   },
+  "mediatorDashboard": {
+    "notAvailable": "موش موجود",
+    "productImageAlt": "تصويرة المنتوج",
+    "imageNotAvailable": "التصويرة موش موجودة.",
+    "incompleteData": "معلومات المهمة ناقصة.",
+    "unknown": "موش معروف",
+    "disputeActive": "فما مشكلة",
+    "pendingDecision": "تستنى في قرارك",
+    "awaitingParties": "نستناو في تاكيد الأطراف",
+    "buyerConfirmed": "الشاري أكد وخلص",
+    "allPartiesConfirmed": "الأطراف الكل أكدو",
+    "inProgress": "الوساطة قاعدة تخدم",
+    "product": "المنتوج:",
+    "transactionId": "رقم المعاملة:",
+    "seller": "البايع:",
+    "buyer": "الشاري:",
+    "agreedPrice": "السوم المتفاهم عليه:",
+    "lastUpdate": "آخر تحديث:",
+    "view": "شوف",
+    "accept": "اقبل",
+    "reject": "ارفض",
+    "waitingForParties": "إنت قبلت. نستناو في الأطراف باش يأكدو.",
+    "waitingForSeller": "الشاري أكد وخلص. نستناو في البايع.",
+    "startingSoon": "الأطراف أكدو. المحادثة باش تبدا.",
+    "reviewDispute": "راجع المشكلة",
+    "openChat": "حل المحادثة",
+    "loadingUserData": "قاعدين نحملو في بيانات المستخدم...",
+    "accessDenied": "الدخول ممنوع. مانكش وسيط مؤهل.",
+    "goToDashboard": "أمشي لوحة القيادة",
+    "title": "مركز الوسيط",
+    "pendingTab": "نستنى في قراري",
+    "loadingPending": "قاعدين نحملو في المهام اللي تستنى...",
+    "noPending": "ما فماش مهام تستنى في قرارك.",
+    "activeTab": "الوساطات اللي تخدم",
+    "loadingActive": "قاعدين نحملو في الوساطات اللي تخدم...",
+    "noActive": "ما عندك حتى وساطة تخدم.",
+    "disputedTab": "القضايا اللي عليها مشاكل",
+    "loadingDisputed": "قاعدين نحملو في القضايا اللي عليها مشاكل...",
+    "noDisputed": "ما عندك حتى قضية عليها مشكلة."
+  },
   "mediatorApplication": {
     "qualified": {
       "title": "حالة الوسيط",
@@ -1642,7 +1708,12 @@
     "saveChanges": "سجل التغييرات",
     "imagePreview": "معاينة التصويرة",
     "viewImage": "شوف التصويرة",
-    "removeImage": "نحّي التصويرة"
+    "removeImage": "نحّي التصويرة",
+    "linkOptions": {
+      "konamiId": "معرف كونامي",
+      "gmail": "جيمايل",
+      "mail": "بريد"
+    }
   },
   "rateLimit": {
     "title": "برشا محاولات",
@@ -1738,6 +1809,40 @@
       "fileExists": "الفيشي \"{{name}}\" موجود ديجا.",
       "fileCount": "أكثر حاجة تنجم تبعثها هي {{count}} فيشيات."
     }
+  },
+  "myProducts": {
+    "loadingYourProducts": "جاري تحميل منتجاتك...",
+    "errorLoadingProducts": "خطأ في تحميل المنتجات:",
+    "myAccountsProducts": "حساباتي / منتجاتي",
+    "approvedProducts": "المنتجات المقبولة",
+    "noApprovedProductsYet": "ما فماش منتجات مقبولة.",
+    "basePrice": "السعر الأساسي:",
+    "status": "الحالة:",
+    "receivedBids": "العروض المستلمة",
+    "bidder": "المزايد",
+    "acceptBid": "قبول العرض",
+    "rejectBid": "رفض العرض",
+    "noBidsReceivedYet": "ما فماش عروض.",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "editProduct": "تعديل المنتج",
+    "deleteProduct": "حذف المنتج",
+    "pendingApproval": "في انتظار الموافقة",
+    "noProductsPendingApproval": "ما فماش منتجات في انتظار الموافقة.",
+    "submitted": "تقدمت:",
+    "soldProducts": "المنتجات المباعة",
+    "noSoldProductsYet": "ما فماش منتجات مباعة.",
+    "rejectedProducts": "المنتجات المرفوضة",
+    "noRejectedProducts": "ما فماش منتجات مرفوضة.",
+    "reasonForRejectingBid": "سبب رفض العرض من",
+    "for": "لـ",
+    "rejectionReasonRequired": "سبب الرفض (مطلوب)",
+    "cancel": "إلغاء",
+    "confirmRejection": "تأكيد الرفض",
+    "acceptBidConfirmation": "متأكد تحب تقبل عرض {{amount}} من {{user}}؟ هذا بش يخلي المنتج يتباع و الفلوس تتشد.",
+    "thisUser": "هذا المستخدم",
+    "couldNotIdentifyBidder": "ما نجمناش نعرفو شكون المزايد.",
+    "pleaseProvideRejectionReason": "يرجى تقديم سبب للرفض."
   },
   "ticketDetails": {
     "fileTypes": {

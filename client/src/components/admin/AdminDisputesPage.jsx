@@ -17,21 +17,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { adminGetDisputedMediationsAction } from "../../redux/actions/mediationAction";
 import { FaCommentDots, FaExclamationTriangle } from "react-icons/fa";
 
-const formatCurrency = (amount, currencyCode = "TND") => {
-  if (amount === undefined || amount === null) return "N/A";
-  const options = {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  };
-  return new Intl.NumberFormat("en-US", options).format(amount);
-};
-
 const AdminDisputesPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      if (amount === undefined || amount === null) return "N/A";
+      const options = {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      };
+      return new Intl.NumberFormat(i18n.language, options).format(amount);
+    },
+    [i18n.language]
+  );
 
   const { adminDisputedMediations, loadingAdminDisputed, errorAdminDisputed } =
     useSelector((state) => state.mediationReducer);

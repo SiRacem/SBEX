@@ -73,59 +73,6 @@ const noUserAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
-const formatCurrency = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num) || amount == null) return "N/A";
-  let safeCurrencyCode = currencyCode;
-  if (typeof currencyCode !== "string" || currencyCode.trim() === "")
-    safeCurrencyCode = "TND";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: safeCurrencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  } catch (error) {
-    return `${num.toFixed(2)} ${safeCurrencyCode}`;
-  }
-};
-
-const formatMessageTimestampForDisplay = (timestamp, t) => {
-  if (!timestamp) return "";
-  const messageDate = new Date(timestamp);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (messageDate.toDateString() === today.toDateString())
-    return messageDate.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  if (messageDate.toDateString() === yesterday.toDateString())
-    return (
-      t("mediationChatPage.yesterday") +
-      ", " +
-      messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    );
-  if (now.getFullYear() === messageDate.getFullYear())
-    return (
-      messageDate.toLocaleDateString([], { month: "short", day: "numeric" }) +
-      ", " +
-      messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    );
-  return (
-    messageDate.toLocaleDateString([], {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }) +
-    ", " +
-    messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  );
-};
-
 const SafeHtmlRenderer = ({ htmlContent }) => {
   const cleanHtml = DOMPurify.sanitize(htmlContent, {
     USE_PROFILES: { html: true },
@@ -218,9 +165,65 @@ const ParticipantAvatar = ({ participant, size = 40, t }) => {
 };
 
 const MediationChatPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num) || amount == null) return "N/A";
+      let safeCurrencyCode = currencyCode;
+      if (typeof currencyCode !== "string" || currencyCode.trim() === "")
+        safeCurrencyCode = "TND";
+      try {
+        return new Intl.NumberFormat(i18n.language, {
+          style: "currency",
+          currency: safeCurrencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(num);
+      } catch (error) {
+        return `${num.toFixed(2)} ${safeCurrencyCode}`;
+      }
+    },
+    [i18n.language]
+  );
+
   const { mediationRequestId } = useParams();
   const navigate = useNavigate();
+
+  const formatMessageTimestampForDisplay = useCallback(
+    (timestamp) => {
+      if (!timestamp) return "";
+      const messageDate = new Date(timestamp);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const timeOptions = { hour: "2-digit", minute: "2-digit" };
+
+      if (messageDate.toDateString() === today.toDateString()) {
+        return messageDate.toLocaleTimeString(i18n.language, timeOptions);
+      }
+      if (messageDate.toDateString() === yesterday.toDateString()) {
+        return `${t(
+          "mediationChatPage.yesterday"
+        )}, ${messageDate.toLocaleTimeString(i18n.language, timeOptions)}`;
+      }
+      if (now.getFullYear() === messageDate.getFullYear()) {
+        return `${messageDate.toLocaleDateString(i18n.language, {
+          month: "short",
+          day: "numeric",
+        })}, ${messageDate.toLocaleTimeString(i18n.language, timeOptions)}`;
+      }
+      return `${messageDate.toLocaleDateString(i18n.language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })}, ${messageDate.toLocaleTimeString(i18n.language, timeOptions)}`;
+    },
+    [t, i18n.language]
+  );
   const dispatch = useDispatch();
   const socket = useContext(SocketContext);
   const currentUser = useSelector((state) => state.userReducer.user);

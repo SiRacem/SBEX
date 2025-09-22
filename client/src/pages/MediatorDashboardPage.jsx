@@ -40,34 +40,40 @@ import { useTranslation } from "react-i18next";
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-const formatCurrency = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num) || amount == null) return "N/A";
-  let safeCurrencyCode = currencyCode;
-  if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-    safeCurrencyCode = "TND";
-  }
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: safeCurrencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(num);
-  } catch (error) {
-    console.warn(`Currency formatting error for ${safeCurrencyCode}:`, error);
-    return `${num.toFixed(2)} ${safeCurrencyCode}`;
-  }
-};
-
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23aaa">No Image</text></svg>';
 const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
 const MediatorDashboardPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num) || amount == null) return "N/A";
+      let safeCurrencyCode = currencyCode;
+      if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
+        safeCurrencyCode = "TND";
+      }
+      try {
+        return new Intl.NumberFormat(i18n.language, {
+          style: "currency",
+          currency: safeCurrencyCode,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(num);
+      } catch (error) {
+        console.warn(
+          `Currency formatting error for ${safeCurrencyCode}:`,
+          error
+        );
+        return `${num.toFixed(2)} ${safeCurrencyCode}`;
+      }
+    },
+    [i18n.language]
+  );
   const {
     pendingDecisionAssignments: pendingData,
     loadingPendingDecision,
@@ -350,7 +356,10 @@ const MediatorDashboardPage = () => {
                         : `${BACKEND_URL}/${productImages[0]}`
                       : noProductImageUrl
                   }
-                  alt={assignment.product.title || "Product Image"}
+                  alt={
+                    assignment.product.title ||
+                    t("mediatorDashboard.productImageAlt")
+                  }
                   style={{
                     width: "100%",
                     maxHeight: "150px",
@@ -434,7 +443,7 @@ const MediatorDashboardPage = () => {
                     </small>{" "}
                     {new Date(
                       assignment.updatedAt || assignment.createdAt
-                    ).toLocaleString("en-GB", {
+                    ).toLocaleString(i18n.language, {
                       dateStyle: "medium",
                       timeStyle: "short",
                     })}
@@ -783,7 +792,9 @@ const MediatorDashboardPage = () => {
                     fluid
                     className="lightbox-image"
                     onError={handleImageError}
-                    alt={`Image ${index + 1}`}
+                    alt={`${t("mediatorDashboard.productImageAlt")} ${
+                      index + 1
+                    }`}
                     style={{ maxHeight: "80vh", objectFit: "contain" }}
                   />
                 </Carousel.Item>

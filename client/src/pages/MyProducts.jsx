@@ -40,23 +40,25 @@ import OfflineProdCard from "../components/commun/OfflineProdCard"; // قد تع
 import { useTranslation } from "react-i18next";
 // import './Comptes.css'; // ملف CSS الخاص بالصفحة
 
-// دالة تنسيق العملة (يمكن وضعها في ملف helpers)
-const formatCurrency = (amount, currencyCode = "TND") => {
-  const num = Number(amount);
-  if (isNaN(num)) return "N/A";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 2,
-  }).format(num);
-};
-
 // Default image URL for products without an image
 const noImageUrl = "/path/to/default-image.jpg"; // Replace with the actual path to your default image
 
 const MyProducts = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+
+  const formatCurrency = useCallback(
+    (amount, currencyCode = "TND") => {
+      const num = Number(amount);
+      if (isNaN(num)) return "N/A";
+      return new Intl.NumberFormat(i18n.language, {
+        style: "currency",
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+      }).format(num);
+    },
+    [i18n.language]
+  );
   const navigate = useNavigate();
 
   // --- Selectors ---
@@ -188,7 +190,7 @@ const MyProducts = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2">{t("loadingYourProducts")}</p>
+        <p className="mt-2">{t("myProducts.loadingYourProducts")}</p>
       </Container>
     );
   }

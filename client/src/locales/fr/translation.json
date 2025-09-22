@@ -20,7 +20,8 @@
       "title": "Compte Suspendu",
       "body": "Votre compte est actuellement bloqué. Certaines fonctionnalités peuvent être indisponibles. Si vous pensez qu'il s'agit d'une erreur, veuillez",
       "contactSupport": "contacter le support",
-      "logout": "Déconnexion"
+      "logout": "Déconnexion",
+      "orSeparator": " OU "
     }
   },
   "entete": {
@@ -157,7 +158,32 @@
     "mediationLink": "Lien de Médiation",
     "viewMediation": "Voir Médiation",
     "buyer": "Acheteur",
-    "seller": "Vendeur"
+    "seller": "Vendeur",
+    "fundsSent": "Fonds envoyés",
+    "fundsReceived": "Fonds reçus",
+    "fundTransfer": "Transfert de fonds",
+    "deposit": "Dépôt",
+    "withdrawal": "Retrait",
+    "genericTitle": "Transaction ({{type}})",
+    "unspecifiedDetails": "Les détails pour ce type de transaction ne sont pas entièrement spécifiés.",
+    "summary": "Résumé",
+    "statusLabel": "Statut :",
+    "amountLabel": "Montant :",
+    "dateLabel": "Date :",
+    "idLabel": "ID :",
+    "details": "Détails",
+    "senderLabel": "Expéditeur",
+    "recipientLabel": "Destinataire",
+    "descriptionLabel": "Description",
+    "closeButton": "Fermer",
+    "you": "Vous",
+    "unknownUser": "Utilisateur inconnu",
+    "sentToUser": "Vous avez envoyé des fonds à {{name}}.",
+    "receivedFromUser": "Vous avez reçu des fonds de {{name}}.",
+    "transferBetweenUsers": "Transfert de {{sender}} à {{recipient}}.",
+    "fundsDeposited": "Fonds déposés sur votre compte.",
+    "fundsWithdrawn": "Fonds retirés de votre compte.",
+    "statusUnknown": "INCONNU"
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "Fonds libérés",
@@ -1152,6 +1178,46 @@
       "totalPointsTooltip": "Total des points de réputation"
     }
   },
+  "mediatorDashboard": {
+    "notAvailable": "N/A",
+    "productImageAlt": "Image du produit",
+    "imageNotAvailable": "Image non disponible.",
+    "incompleteData": "Données de la mission incomplètes.",
+    "unknown": "Inconnu",
+    "disputeActive": "Litige actif",
+    "pendingDecision": "En attente de votre décision",
+    "awaitingParties": "En attente de la confirmation des parties",
+    "buyerConfirmed": "Acheteur a confirmé & payé",
+    "allPartiesConfirmed": "Toutes les parties ont confirmé",
+    "inProgress": "Médiation en cours",
+    "product": "Produit :",
+    "transactionId": "ID de transaction :",
+    "seller": "Vendeur :",
+    "buyer": "Acheteur :",
+    "agreedPrice": "Prix convenu :",
+    "lastUpdate": "Dernière mise à jour :",
+    "view": "Voir",
+    "accept": "Accepter",
+    "reject": "Rejeter",
+    "waitingForParties": "Vous avez accepté. En attente de la confirmation des parties.",
+    "waitingForSeller": "L'acheteur a confirmé et payé. En attente du vendeur.",
+    "startingSoon": "Les parties ont confirmé. Le chat va bientôt commencer.",
+    "reviewDispute": "Examiner le litige",
+    "openChat": "Ouvrir le chat",
+    "loadingUserData": "Chargement des données utilisateur...",
+    "accessDenied": "Accès refusé. Vous n'êtes pas un médiateur qualifié.",
+    "goToDashboard": "Aller au tableau de bord",
+    "title": "Pôle Médiateur",
+    "pendingTab": "En attente de ma décision",
+    "loadingPending": "Chargement des missions en attente...",
+    "noPending": "Aucune mission en attente de votre décision.",
+    "activeTab": "Médiations actives",
+    "loadingActive": "Chargement des médiations actives...",
+    "noActive": "Aucune médiation active ne vous est assignée.",
+    "disputedTab": "Cas en litige",
+    "loadingDisputed": "Chargement des cas en litige...",
+    "noDisputed": "Aucun cas en litige ne vous est actuellement assigné."
+  },
   "mediatorApplication": {
     "qualified": {
       "title": "Statut de Médiateur",
@@ -1641,7 +1707,12 @@
     "saveChanges": "Enregistrer les Modifications",
     "imagePreview": "Aperçu de l'image",
     "viewImage": "Voir l'image",
-    "removeImage": "Supprimer l'image"
+    "removeImage": "Supprimer l'image",
+    "linkOptions": {
+      "konamiId": "ID Konami",
+      "gmail": "Gmail",
+      "mail": "Mail"
+    }
   },
   "rateLimit": {
     "title": "Trop de tentatives",
@@ -1737,6 +1808,40 @@
       "fileExists": "Le fichier \"{{name}}\" est déjà sélectionné.",
       "fileCount": "Max {{count}} fichiers autorisés."
     }
+  },
+  "myProducts": {
+    "loadingYourProducts": "Chargement de vos produits...",
+    "errorLoadingProducts": "Erreur lors du chargement des produits :",
+    "myAccountsProducts": "Mes comptes / Produits",
+    "approvedProducts": "Produits approuvés",
+    "noApprovedProductsYet": "Aucun produit approuvé pour le moment.",
+    "basePrice": "Prix de base :",
+    "status": "Statut :",
+    "receivedBids": "Offres reçues",
+    "bidder": "Enchérisseur",
+    "acceptBid": "Accepter l'offre",
+    "rejectBid": "Rejeter l'offre",
+    "noBidsReceivedYet": "Aucune offre reçue pour le moment.",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editProduct": "Modifier le produit",
+    "deleteProduct": "Supprimer le produit",
+    "pendingApproval": "En attente d'approbation",
+    "noProductsPendingApproval": "Aucun produit en attente d'approbation.",
+    "submitted": "Soumis le :",
+    "soldProducts": "Produits vendus",
+    "noSoldProductsYet": "Aucun produit vendu pour le moment.",
+    "rejectedProducts": "Produits rejetés",
+    "noRejectedProducts": "Aucun produit rejeté.",
+    "reasonForRejectingBid": "Raison du rejet de l'offre de ",
+    "for": "pour",
+    "rejectionReasonRequired": "Raison du rejet (requise)",
+    "cancel": "Annuler",
+    "confirmRejection": "Confirmer le rejet",
+    "acceptBidConfirmation": "Êtes-vous sûr de vouloir accepter l'offre de {{amount}} de {{user}} ? Cela marquera le produit comme vendu et retiendra les fonds.",
+    "thisUser": "cet utilisateur",
+    "couldNotIdentifyBidder": "Impossible d'identifier l'ID de l'enchérisseur.",
+    "pleaseProvideRejectionReason": "Veuillez fournir une raison pour le rejet."
   },
   "ticketDetails": {
     "fileTypes": {

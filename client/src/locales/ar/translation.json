@@ -20,7 +20,8 @@
       "title": "الحساب معلق",
       "body": "حسابك محظور حالياً. قد تكون بعض الميزات غير متاحة. إذا كنت تعتقد أن هذا خطأ، يرجى",
       "contactSupport": "الاتصال بالدعم",
-      "logout": "تسجيل الخروج"
+      "logout": "تسجيل الخروج",
+      "orSeparator": " أو "
     }
   },
   "entete": {
@@ -157,7 +158,32 @@
     "mediationLink": "رابط الوساطة",
     "viewMediation": "عرض الوساطة",
     "buyer": "المشتري",
-    "seller": "البائع"
+    "seller": "البائع",
+    "fundsSent": "أموال مرسلة",
+    "fundsReceived": "أموال مستلمة",
+    "fundTransfer": "تحويل أموال",
+    "deposit": "إيداع",
+    "withdrawal": "سحب",
+    "genericTitle": "معاملة ({{type}})",
+    "unspecifiedDetails": "تفاصيل هذا النوع من المعاملات غير محددة بالكامل.",
+    "summary": "ملخص",
+    "statusLabel": "الحالة:",
+    "amountLabel": "المبلغ:",
+    "dateLabel": "التاريخ:",
+    "idLabel": "المعرّف:",
+    "details": "التفاصيل",
+    "senderLabel": "المرسل",
+    "recipientLabel": "المستلم",
+    "descriptionLabel": "الوصف",
+    "closeButton": "إغلاق",
+    "you": "أنت",
+    "unknownUser": "مستخدم غير معروف",
+    "sentToUser": "لقد أرسلت أموالاً إلى {{name}}.",
+    "receivedFromUser": "لقد استلمت أموالاً من {{name}}.",
+    "transferBetweenUsers": "تحويل من {{sender}} إلى {{recipient}}.",
+    "fundsDeposited": "تم إيداع الأموال في حسابك.",
+    "fundsWithdrawn": "تم سحب الأموال من حسابك.",
+    "statusUnknown": "غير معروف"
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "أموال محررة",
@@ -1153,6 +1179,46 @@
       "viewAllTooltip": "انقر لعرض كل المستويات والمكافآت"
     }
   },
+  "mediatorDashboard": {
+    "notAvailable": "غير متاح",
+    "productImageAlt": "صورة المنتج",
+    "imageNotAvailable": "الصورة غير متوفرة.",
+    "incompleteData": "بيانات المهمة غير كاملة.",
+    "unknown": "غير معروف",
+    "disputeActive": "نزاع نشط",
+    "pendingDecision": "بانتظار قرارك",
+    "awaitingParties": "بانتظار تأكيد الأطراف",
+    "buyerConfirmed": "المشتري أكد ودفع",
+    "allPartiesConfirmed": "جميع الأطراف أكدوا",
+    "inProgress": "الوساطة قيد التنفيذ",
+    "product": "المنتج:",
+    "transactionId": "معرّف المعاملة:",
+    "seller": "البائع:",
+    "buyer": "المشتري:",
+    "agreedPrice": "السعر المتفق عليه:",
+    "lastUpdate": "آخر تحديث:",
+    "view": "عرض",
+    "accept": "قبول",
+    "reject": "رفض",
+    "waitingForParties": "لقد قبلت. بانتظار تأكيد الأطراف.",
+    "waitingForSeller": "المشتري أكد ودفع. بانتظار البائع.",
+    "startingSoon": "الأطراف أكدوا. ستبدأ المحادثة قريبًا.",
+    "reviewDispute": "مراجعة النزاع",
+    "openChat": "فتح المحادثة",
+    "loadingUserData": "جاري تحميل بيانات المستخدم...",
+    "accessDenied": "الوصول مرفوض. أنت لست وسيطًا مؤهلاً.",
+    "goToDashboard": "الذهاب إلى لوحة التحكم",
+    "title": "مركز الوسيط",
+    "pendingTab": "بانتظار قراري",
+    "loadingPending": "جاري تحميل المهام المعلقة...",
+    "noPending": "لا توجد مهام حاليًا بانتظار قرارك.",
+    "activeTab": "الوساطات النشطة",
+    "loadingActive": "جاري تحميل الوساطات النشطة...",
+    "noActive": "لا توجد وساطات نشطة معينة لك.",
+    "disputedTab": "القضايا المتنازع عليها",
+    "loadingDisputed": "جاري تحميل القضايا المتنازع عليها...",
+    "noDisputed": "لا توجد قضايا متنازع عليها معينة لك حاليًا."
+  },
   "mediatorApplication": {
     "qualified": {
       "title": "حالة الوسيط",
@@ -1642,7 +1708,12 @@
     "saveChanges": "حفظ التغييرات",
     "imagePreview": "معاينة الصورة",
     "viewImage": "عرض الصورة",
-    "removeImage": "إزالة الصورة"
+    "removeImage": "إزالة الصورة",
+    "linkOptions": {
+      "konamiId": "معرف كونامي",
+      "gmail": "جيمايل",
+      "mail": "بريد"
+    }
   },
   "rateLimit": {
     "title": "محاولات كثيرة جداً",
@@ -1738,6 +1809,40 @@
       "fileExists": "الملف \"{{name}}\" محدد بالفعل.",
       "fileCount": "الحد الأقصى المسموح به هو {{count}} ملفات."
     }
+  },
+  "myProducts": {
+    "loadingYourProducts": "جاري تحميل منتجاتك...",
+    "errorLoadingProducts": "خطأ في تحميل المنتجات:",
+    "myAccountsProducts": "حساباتي / منتجاتي",
+    "approvedProducts": "المنتجات المعتمدة",
+    "noApprovedProductsYet": "لا توجد منتجات معتمدة بعد.",
+    "basePrice": "السعر الأساسي:",
+    "status": "الحالة:",
+    "receivedBids": "العروض المستلمة",
+    "bidder": "المزايد",
+    "acceptBid": "قبول العرض",
+    "rejectBid": "رفض العرض",
+    "noBidsReceivedYet": "لم يتم استلام أي عروض بعد.",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "editProduct": "تعديل المنتج",
+    "deleteProduct": "حذف المنتج",
+    "pendingApproval": "في انتظار الموافقة",
+    "noProductsPendingApproval": "لا توجد منتجات في انتظار الموافقة.",
+    "submitted": "تم التقديم:",
+    "soldProducts": "المنتجات المباعة",
+    "noSoldProductsYet": "لا توجد منتجات مباعة بعد.",
+    "rejectedProducts": "المنتجات المرفوضة",
+    "noRejectedProducts": "لا توجد منتجات مرفوضة.",
+    "reasonForRejectingBid": "سبب رفض العرض من",
+    "for": "لـ",
+    "rejectionReasonRequired": "سبب الرفض (مطلوب)",
+    "cancel": "إلغاء",
+    "confirmRejection": "تأكيد الرفض",
+    "acceptBidConfirmation": "هل أنت متأكد من أنك تريد قبول عرض {{amount}} من {{user}}؟ سيؤدي هذا إلى تمييز المنتج على أنه مباع وحجز الأموال.",
+    "thisUser": "هذا المستخدم",
+    "couldNotIdentifyBidder": "تعذر تحديد هوية المزايد.",
+    "pleaseProvideRejectionReason": "يرجى تقديم سبب للرفض."
   },
   "ticketDetails": {
     "fileTypes": {
