@@ -117,7 +117,8 @@
     "listUpdated": "La liste a été mise à jour.",
     "article": "article",
     "articles": "articles",
-    "loadError": "Erreur : Échec du chargement de la FAQ. {{error}}"
+    "loadError": "Erreur : Échec du chargement de la FAQ. {{error}}",
+    "defaultCategoryDescription": "Trouvez des réponses liées à {{category}}"
   },
   "faqCategories": {
     "Mediation & Disputes": {
@@ -1598,7 +1599,21 @@
     "yesterday": "Hier",
     "user": "Utilisateur",
     "chat": "Chat",
-    "yesterday": "Hier"
+    "imageError": "Erreur",
+    "notAvailable": "N/A",
+    "imageUploadError": "Échec du téléchargement de l'image. Veuillez réessayer.",
+    "imageLoadError": "Impossible de charger l'image.",
+    "fullSizeImageLoadError": "Échec du chargement de l'image en taille réelle.",
+    "confirmReceiptMessage": "Êtes-vous sûr de vouloir confirmer la réception du produit ? Cette action est irréversible.",
+    "openDisputeMessage": "Êtes-vous sûr de vouloir ouvrir un litige ? Cela impliquera un administrateur.",
+    "resolveDisputeMessage": "Êtes-vous sûr de vouloir statuer en faveur de {{winnerRole}} ? Cette action est finale.",
+    "cancelMediationMessage": "Êtes-vous sûr de vouloir annuler cette médiation ? Cette action est finale.",
+    "defaultCancellationReason": "Annulé par l'administrateur.",
+    "loadingRatingsMessage": "Chargement des évaluations...",
+    "ratingsUnavailable": "Les évaluations seront disponibles une fois la médiation terminée.",
+    "noParticipantsSelected": "Veuillez sélectionner au moins un participant.",
+    "couldNotOpenPrivateChatMessage": "Impossible d'ouvrir la discussion privée.",
+    "defaultPrivateChatTitle": "Discussion privée"
   },
   "tickets": {
     "createSuccess": "Ticket de support créé avec succès !",
@@ -1658,6 +1673,10 @@
     "link": "Lien",
     "editAccount": "Modifier le Compte",
     "deleteAccount": "Supprimer le Compte",
+    "imageError": "Erreur",
+    "noImage": "Pas d'image",
+    "slide": "Diapositive",
+    "notAvailable": "N/A",
     "status": {
       "approved": "Approuvé",
       "pending": "En attente",
@@ -1676,7 +1695,8 @@
       "fillAllFields": "Veuillez remplir correctement tous les champs obligatoires.",
       "addError": "Erreur lors de la soumission du compte.",
       "invalidPrice": "Le prix doit être un nombre valide.",
-      "updateError": "Échec de la mise à jour du compte."
+      "updateError": "Échec de la mise à jour du compte.",
+      "uploadError": "Erreur lors du téléversement du fichier '{{fileName}}': {{error}}"
     },
     "addForm": {
       "title": "Ajouter les Détails d'un Nouveau Compte",
@@ -1807,6 +1827,16 @@
       "fileType": "Le type de fichier de \"{{name}}\" n'est pas autorisé.",
       "fileExists": "Le fichier \"{{name}}\" est déjà sélectionné.",
       "fileCount": "Max {{count}} fichiers autorisés."
+    }
+  },
+  "fileUtils": {
+    "zeroBytes": "0 Octets",
+    "sizes": {
+      "bytes": "Octets",
+      "kb": "Ko",
+      "mb": "Mo",
+      "gb": "Go",
+      "tb": "To"
     }
   },
   "myProducts": {

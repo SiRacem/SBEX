@@ -75,7 +75,9 @@ const CategoryCard = ({ categoryName, faqs, onCategoryClick }) => {
           </Card.Title>
           <Card.Text className="text-muted flex-grow-1">
             {t(`faqCategories.${categoryName}.description`, {
-              defaultValue: `Find answers related to ${categoryName.toLowerCase()}`,
+              defaultValue: t("faq.defaultCategoryDescription", {
+                category: categoryName.toLowerCase(),
+              }),
             })}
           </Card.Text>
           <div className="mt-3 articles-count">

@@ -117,7 +117,8 @@
     "listUpdated": "القائمة تحدثت.",
     "article": "مقالة",
     "articles": "مقالات",
-    "loadError": "غلطة: فما مشكلة في تحميل الأسئلة الشايعة. {{error}}"
+    "loadError": "غلطة: فما مشكلة في تحميل الأسئلة الشايعة. {{error}}",
+    "defaultCategoryDescription": "القى جوابات على {{category}}"
   },
   "faqCategories": {
     "Mediation & Disputes": {
@@ -1599,7 +1600,21 @@
     "yesterday": "البارح",
     "user": "مستخدم",
     "chat": "محادثة",
-    "yesterday": "البارح"
+    "imageError": "غلطة",
+    "notAvailable": "موش موجود",
+    "imageUploadError": "فشل تحميل الصورة. يرحم والديك عاود.",
+    "imageLoadError": "ما نجمناش نحملو التصويرة.",
+    "fullSizeImageLoadError": "فشل تحميل التصويرة بحجمها الكامل.",
+    "confirmReceiptMessage": "بالرسمي تحب تأكد اللي وصلك المنتوج؟ ما تنجمش ترجع باللوالي.",
+    "openDisputeMessage": "بالرسمي تحب تحل مشكلة؟ هذا باش يدخل فيه أدمن.",
+    "resolveDisputeMessage": "بالرسمي تحب تحكم لصالح {{winnerRole}}؟ هذا قرار نهائي.",
+    "cancelMediationMessage": "بالرسمي تحب تلغي الوساطة هاذي؟ هذا قرار نهائي.",
+    "defaultCancellationReason": "الأدمن لغاها.",
+    "loadingRatingsMessage": "قاعدين نحملو في التقييمات...",
+    "ratingsUnavailable": "التقييمات تولي موجودة كي تكمل الوساطة.",
+    "noParticipantsSelected": "يرحم والديك اختار مشارك على الأقل.",
+    "couldNotOpenPrivateChatMessage": "ما نجمناش نحلّو المحادثة الخاصة.",
+    "defaultPrivateChatTitle": "مناقشة خاصة"
   },
   "tickets": {
     "createSuccess": "تذكرة الدعم تحلت بالصحيح!",
@@ -1659,6 +1674,10 @@
     "link": "الربط",
     "editAccount": "بدّل الكونت",
     "deleteAccount": "فسّخ الكونت",
+    "imageError": "غلطة",
+    "noImage": "ما فماش تصويرة",
+    "slide": "تصويرة",
+    "notAvailable": "موش موجود",
     "status": {
       "approved": "موافق عليه",
       "pending": "يستنى",
@@ -1677,7 +1696,8 @@
       "fillAllFields": "يرحم والديك عمر الخانات الكل.",
       "addError": "صارت غلطة وقت بعثت الكونت.",
       "invalidPrice": "لازم السوم يكون عدد صحيح.",
-      "updateError": "فشل تبديل الكونت."
+      "updateError": "فشل تبديل الكونت.",
+      "uploadError": "غلطة في تحميل الفيشي '{{fileName}}': {{error}}"
     },
     "addForm": {
       "title": "زيد تفاصيل كونت جديد",
@@ -1808,6 +1828,16 @@
       "fileType": "نوع الفيشي \"{{name}}\" موش مسموح بيه.",
       "fileExists": "الفيشي \"{{name}}\" موجود ديجا.",
       "fileCount": "أكثر حاجة تنجم تبعثها هي {{count}} فيشيات."
+    }
+  },
+  "fileUtils": {
+    "zeroBytes": "0 بايت",
+    "sizes": {
+      "bytes": "بايت",
+      "kb": "كيلوبايت",
+      "mb": "ميجابايت",
+      "gb": "جيجابايت",
+      "tb": "تيرابايت"
     }
   },
   "myProducts": {

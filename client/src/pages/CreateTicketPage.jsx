@@ -59,11 +59,17 @@ const ALLOWED_FILE_TYPES_FRONTEND = [
 const ALLOWED_EXTENSIONS_FRONTEND =
   /\.(jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar|mp4|webm|mov|mp3|wav)$/i;
 
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return "0 Bytes";
+const formatFileSize = (bytes, t) => {
+  if (bytes === 0) return t("fileUtils.zeroBytes");
   const k = 1024;
   const dm = 2;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizes = [
+    t("fileUtils.sizes.bytes"),
+    t("fileUtils.sizes.kb"),
+    t("fileUtils.sizes.mb"),
+    t("fileUtils.sizes.gb"),
+    t("fileUtils.sizes.tb"),
+  ];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 };
@@ -514,7 +520,7 @@ const CreateTicketPage = () => {
                               pill
                               className="flex-shrink-0"
                             >
-                              {formatFileSize(att.file.size)}
+                              {formatFileSize(att.file.size, t)}
                             </Badge>
                           </div>
                           <Button

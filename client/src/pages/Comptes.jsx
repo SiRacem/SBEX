@@ -38,25 +38,29 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
   const { t, i18n } = useTranslation();
   const fallbackImageUrl = useMemo(
     () =>
-      'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>',
-    []
+      `data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">${t(
+        "comptes.imageError"
+      )}</text></svg>`,
+    [t]
   );
   const noImageUrl = useMemo(
     () =>
-      'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>',
-    []
+      `data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">${t(
+        "comptes.noImage"
+      )}</text></svg>`,
+    [t]
   );
   const formatCurrency = useCallback(
     (amount, currencyCode = "TND") => {
       const numericAmount = Number(amount);
-      if (isNaN(numericAmount)) return "N/A";
+      if (isNaN(numericAmount)) return t("comptes.notAvailable");
       return new Intl.NumberFormat(i18n.language, {
         style: "currency",
         currency: currencyCode,
         minimumFractionDigits: 2,
       }).format(numericAmount);
     },
-    [i18n.language]
+    [i18n.language, t]
   );
   const handleImageError = (e) => {
     if (e.target.src !== fallbackImageUrl) {
@@ -108,9 +112,9 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
                 <img
                   className="d-block w-100 account-card-img"
                   src={url || noImageUrl}
-                  alt={`${product.title || t("comptes.account")} - Slide ${
-                    index + 1
-                  }`}
+                  alt={`${product.title || t("comptes.account")} - ${t(
+                    "comptes.slide"
+                  )} ${index + 1}`}
                   onError={handleImageError}
                 />
               </Carousel.Item>
@@ -128,7 +132,8 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
             {product.description || t("comptes.noDescription")}
           </Card.Text>
           <p className="small mb-1">
-            <strong>{t("comptes.link")}:</strong> {product.linkType || "N/A"}
+            <strong>{t("comptes.link")}:</strong>{" "}
+            {product.linkType || t("comptes.notAvailable")}
           </p>
           <p className="fw-bold mb-0">
             {formatCurrency(product.price, product.currency)}
@@ -172,7 +177,7 @@ const Comptes = () => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    linkType: "Konami ID ✅ Gmail ❌ Mail ❌",
+    linkType: "",
     price: "",
     currency: "TND",
     quantity: 1,
@@ -322,7 +327,9 @@ const Comptes = () => {
             setFormError(
               t("comptes.errors.uploadError", {
                 fileName: file.name,
-                error: uploadError.response?.data?.error?.message || "",
+                error:
+                  uploadError.response?.data?.error?.message ||
+                  "Unknown upload error",
               })
             );
             return null;

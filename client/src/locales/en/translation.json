@@ -117,7 +117,8 @@
     "listUpdated": "The list has been updated.",
     "article": "article",
     "articles": "articles",
-    "loadError": "Error: Failed to load FAQs. {{error}}"
+    "loadError": "Error: Failed to load FAQs. {{error}}",
+    "defaultCategoryDescription": "Find answers related to {{category}}"
   },
   "faqCategories": {
     "Mediation & Disputes": {
@@ -1598,7 +1599,21 @@
     "yesterday": "Yesterday",
     "user": "User",
     "chat": "Chat",
-    "yesterday": "Yesterday"
+    "imageError": "Error",
+    "notAvailable": "N/A",
+    "imageUploadError": "Image upload failed. Please try again.",
+    "imageLoadError": "Could not load image.",
+    "fullSizeImageLoadError": "Failed to load full-size image.",
+    "confirmReceiptMessage": "Are you sure you want to confirm receipt of the product? This action cannot be undone.",
+    "openDisputeMessage": "Are you sure you want to open a dispute? This will involve an administrator.",
+    "resolveDisputeMessage": "Are you sure you want to rule in favor of the {{winnerRole}}? This action is final.",
+    "cancelMediationMessage": "Are you sure you want to cancel this mediation? This action is final.",
+    "defaultCancellationReason": "Cancelled by administrator.",
+    "loadingRatingsMessage": "Loading ratings...",
+    "ratingsUnavailable": "Ratings will be available once the mediation is completed.",
+    "noParticipantsSelected": "Please select at least one participant.",
+    "couldNotOpenPrivateChatMessage": "Could not open private chat.",
+    "defaultPrivateChatTitle": "Private Discussion"
   },
   "tickets": {
     "createSuccess": "Support ticket created successfully!",
@@ -1658,6 +1673,10 @@
     "link": "Link",
     "editAccount": "Edit Account",
     "deleteAccount": "Delete Account",
+    "imageError": "Error",
+    "noImage": "No Image",
+    "slide": "Slide",
+    "notAvailable": "N/A",
     "status": {
       "approved": "Approved",
       "pending": "Pending",
@@ -1676,7 +1695,8 @@
       "fillAllFields": "Please fill all required fields correctly.",
       "addError": "Error submitting account.",
       "invalidPrice": "Price must be a valid number.",
-      "updateError": "Failed to update account."
+      "updateError": "Failed to update account.",
+      "uploadError": "Error uploading '{{fileName}}': {{error}}"
     },
     "addForm": {
       "title": "Add New Account Details",
@@ -1913,6 +1933,16 @@
     "thisUser": "this user",
     "couldNotIdentifyBidder": "Could not identify bidder ID.",
     "pleaseProvideRejectionReason": "Please provide a rejection reason."
+  },
+  "fileUtils": {
+    "zeroBytes": "0 Bytes",
+    "sizes": {
+      "bytes": "Bytes",
+      "kb": "KB",
+      "mb": "MB",
+      "gb": "GB",
+      "tb": "TB"
+    }
   },
   "mediationDetailsModal": {
     "title": "Mediation Details:",

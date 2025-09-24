@@ -117,7 +117,8 @@
     "listUpdated": "تم تحديث القائمة.",
     "article": "مقالة",
     "articles": "مقالات",
-    "loadError": "خطأ: فشل تحميل الأسئلة الشائعة. {{error}}"
+    "loadError": "خطأ: فشل تحميل الأسئلة الشائعة. {{error}}",
+    "defaultCategoryDescription": "اعثر على إجابات تتعلق بـ {{category}}"
   },
   "faqCategories": {
     "Mediation & Disputes": {
@@ -1599,7 +1600,21 @@
     "yesterday": "أمس",
     "user": "المستخدم",
     "chat": "محادثة",
-    "yesterday": "أمس"
+    "imageError": "خطأ",
+    "notAvailable": "غير متاح",
+    "imageUploadError": "فشل تحميل الصورة. يرجى المحاولة مرة أخرى.",
+    "imageLoadError": "تعذر تحميل الصورة.",
+    "fullSizeImageLoadError": "فشل تحميل الصورة بالحجم الكامل.",
+    "confirmReceiptMessage": "هل أنت متأكد من أنك تريد تأكيد استلام المنتج؟ لا يمكن التراجع عن هذا الإجراء.",
+    "openDisputeMessage": "هل أنت متأكد من أنك تريد فتح نزاع؟ هذا سيتضمن مسؤولاً.",
+    "resolveDisputeMessage": "هل أنت متأكد من أنك تريد الحكم لصالح {{winnerRole}}؟ هذا الإجراء نهائي.",
+    "cancelMediationMessage": "هل أنت متأكد من أنك تريد إلغاء هذه الوساطة؟ هذا الإجراء نهائي.",
+    "defaultCancellationReason": "تم الإلغاء بواسطة المسؤول.",
+    "loadingRatingsMessage": "جاري تحميل التقييمات...",
+    "ratingsUnavailable": "ستكون التقييمات متاحة بمجرد اكتمال الوساطة.",
+    "noParticipantsSelected": "الرجاء اختيار مشارك واحد على الأقل.",
+    "couldNotOpenPrivateChatMessage": "تعذر فتح محادثة خاصة.",
+    "defaultPrivateChatTitle": "مناقشة خاصة"
   },
   "tickets": {
     "createSuccess": "تم إنشاء تذكرة الدعم بنجاح!",
@@ -1659,6 +1674,10 @@
     "link": "الربط",
     "editAccount": "تعديل الحساب",
     "deleteAccount": "حذف الحساب",
+    "imageError": "خطأ",
+    "noImage": "لا توجد صورة",
+    "slide": "شريحة",
+    "notAvailable": "غير متاح",
     "status": {
       "approved": "موافق عليه",
       "pending": "قيد الانتظار",
@@ -1677,7 +1696,8 @@
       "fillAllFields": "الرجاء ملء جميع الحقول المطلوبة بشكل صحيح.",
       "addError": "خطأ في تقديم الحساب.",
       "invalidPrice": "يجب أن يكون السعر رقمًا صالحًا.",
-      "updateError": "فشل تحديث الحساب."
+      "updateError": "فشل تحديث الحساب.",
+      "uploadError": "خطأ في تحميل الملف '{{fileName}}': {{error}}"
     },
     "addForm": {
       "title": "إضافة تفاصيل حساب جديد",
@@ -1808,6 +1828,16 @@
       "fileType": "نوع الملف \"{{name}}\" غير مسموح به.",
       "fileExists": "الملف \"{{name}}\" محدد بالفعل.",
       "fileCount": "الحد الأقصى المسموح به هو {{count}} ملفات."
+    }
+  },
+  "fileUtils": {
+    "zeroBytes": "0 بايت",
+    "sizes": {
+      "bytes": "بايت",
+      "kb": "كيلوبايت",
+      "mb": "ميجابايت",
+      "gb": "جيجابايت",
+      "tb": "تيرابايت"
     }
   },
   "myProducts": {
