@@ -1,3 +1,5 @@
+// src/components/LanguageSwitcher.jsx
+
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Dropdown, Image, ListGroup } from "react-bootstrap";
@@ -11,11 +13,12 @@ import flagFr from "../../assets/flags/fr.svg";
 const LanguageSwitcher = ({ as = "dropdown" }) => {
   const { t, i18n } = useTranslation();
 
+  // الآن نستخدم مفاتيح الترجمة لأسماء اللغات
   const languages = [
-    { code: "en", name: t("languages.en", "English"), flag: flagEn },
-    { code: "ar", name: t("languages.ar", "العربية"), flag: flagAr },
-    { code: "fr", name: t("languages.fr", "Français"), flag: flagFr },
-    { code: "tn", name: t("languages.tn", "تونسي"), flag: flagTn },
+    { code: "en", name: t("languages.en"), flag: flagEn },
+    { code: "ar", name: t("languages.ar"), flag: flagAr },
+    { code: "fr", name: t("languages.fr"), flag: flagFr },
+    { code: "tn", name: t("languages.tn"), flag: flagTn },
   ];
 
   const changeLanguage = (lng) => {
@@ -24,6 +27,7 @@ const LanguageSwitcher = ({ as = "dropdown" }) => {
 
   React.useEffect(() => {
     const currentLang = i18n.language;
+    // تم التعديل ليشمل "tn" بشكل صحيح
     const rtlLanguages = ["ar", "tn"];
     document.documentElement.lang = currentLang;
     document.documentElement.dir = rtlLanguages.includes(
@@ -47,7 +51,6 @@ const LanguageSwitcher = ({ as = "dropdown" }) => {
             className="d-flex justify-content-between align-items-center"
           >
             <div className="d-flex align-items-center">
-              {/* نستخدم me-3 بشكل طبيعي. الـ CSS سيهتم بعكسها */}
               <Image
                 src={lang.flag}
                 roundedCircle
@@ -89,7 +92,7 @@ const LanguageSwitcher = ({ as = "dropdown" }) => {
             </span>
           </>
         ) : (
-          t("languages.lang", "Lang")
+          t("languages.lang") // استخدام الترجمة لكلمة "Lang"
         )}
       </Dropdown.Toggle>
       <Dropdown.Menu variant="dark">

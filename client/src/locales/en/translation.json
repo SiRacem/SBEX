@@ -765,9 +765,25 @@
         "unblockUser": "Unblock User",
         "confirmUnblock": "Are you sure you want to unblock {{name}}?"
       },
+      "detailsModal": {
+        "title": "User Details: {{name}}",
+        "userInfo": "User Information",
+        "id": "ID",
+        "email": "Email",
+        "phone": "Phone",
+        "address": "Address",
+        "role": "Role",
+        "registered": "Registered On",
+        "balances": "Account Balances",
+        "principal": "Principal",
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "sellerAvailable": "Seller Available",
+        "sellerOnHold": "Seller On Hold"
+      },
       "editModal": {
         "title": "Edit User: {{name}}",
-        "saveHandlerMissing": "onSave handler is missing.",
+        "saveHandlerMissing": "Save handler is missing.",
         "saveFailed": "Failed to save changes.",
         "fullName": "Full Name",
         "emailReadOnly": "Email (Read Only)",
@@ -1302,7 +1318,7 @@
         "sellerActionRequired": "<strong>Action Required:</strong> Confirm your readiness.",
         "sellerActionInfo": "After you confirm, buyer will confirm & pay.",
         "buyerActionInfo": "Buyer confirmed & paid.",
-        "sellerConfirmed": "You confirmed. <small class=\"text-muted\">Waiting for buyer to confirm & pay.</small>",
+        "sellerConfirmed": "You confirmed. <small>Waiting for buyer to confirm & pay.</small>",
         "mediationInProgress": "Mediation is in progress.",
         "disputeActive": "Dispute is active.",
         "communicate": "Communicate with buyer and mediator."
@@ -1968,5 +1984,17 @@
     "buyerIdOnly": "Buyer (ID only)",
     "feeError": "Price or fee function missing",
     "productImage": "Product Image"
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "message": "Sorry, the page you are looking for does not exist.",
+    "goHome": "Go to Homepage"
+  },
+  "languages": {
+    "lang": "Lang",
+    "en": "English",
+    "ar": "Arabic",
+    "fr": "French",
+    "tn": "Tunisian"
   }
 }

@@ -765,22 +765,38 @@
         "unblockUser": "نحّي البلوك",
         "confirmUnblock": "بالرسمي تحب تنحي البلوك على {{name}}؟"
       },
+      "detailsModal": {
+        "title": "تفاصيل المستخدم: {{name}}",
+        "userInfo": "معلومات المستخدم",
+        "id": "النومرو",
+        "email": "الإيميل",
+        "phone": "النومرو",
+        "address": "العنوان",
+        "role": "الدور",
+        "registered": "تسجل نهار",
+        "balances": "أرصدة الكونت",
+        "principal": "الرصيد الأساسي",
+        "deposit": "رصيد الصبان",
+        "withdrawal": "رصيد الجبدان",
+        "sellerAvailable": "فلوس البايع الموجودة",
+        "sellerOnHold": "فلوس البايع المجمّدة"
+      },
       "editModal": {
-        "title": "بدّل المستخدم: {{name}}",
+        "title": "تعديل المستخدم: {{name}}",
         "saveHandlerMissing": "معالج الحفظ ناقص.",
         "saveFailed": "فشل تسجيل التغييرات.",
         "fullName": "الاسم الكامل",
         "emailReadOnly": "الإيميل (ما يتبدلش)",
         "phone": "النومرو",
         "address": "العنوان",
-        "balancesWarning": "بدّل الأرصدة (رد بالك!)"
+        "balancesWarning": "تعديل الأرصدة (رد بالك!)"
       },
       "blockModal": {
-        "title": "بلّوكي المستخدم: {{name}}",
-        "reasonLabel": "سبب البلوك",
-        "reasonPlaceholder": "اكتب علاش باش تبلّوكي المستخدم هذا...",
-        "confirmButton": "أكد البلوك",
-        "reasonRequiredAlert": "لازم تكتب سبب البلوك."
+        "title": "بلوكاج المستخدم: {{name}}",
+        "reasonLabel": "سبب البلوكاج",
+        "reasonPlaceholder": "اكتب علاش بش تبلّوكي المستخدم هذا...",
+        "confirmButton": "أكد البلوكاج",
+        "reasonRequiredAlert": "لازم تكتب سبب البلوكاج."
       }
     },
     "mediatorApps": {
@@ -1952,5 +1968,17 @@
     "thisUser": "هذا المستخدم",
     "couldNotIdentifyBidder": "ما نجمناش نعرفو شكون المزايد.",
     "pleaseProvideRejectionReason": "يرجى تقديم سبب للرفض."
+  },
+  "notFound": {
+    "title": "الصفحة موش موجودة",
+    "message": "سامحنا، الصفحة اللي تلوّج عليها ما فماش.",
+    "goHome": "ارجع للصفحة الرئيسية"
+  },
+  "languages": {
+    "lang": "اللغة",
+    "en": "English",
+    "ar": "العربية",
+    "fr": "Français",
+    "tn": "تونسي"
   }
 }

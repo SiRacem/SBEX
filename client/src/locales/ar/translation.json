@@ -765,6 +765,22 @@
         "unblockUser": "إلغاء حظر المستخدم",
         "confirmUnblock": "هل أنت متأكد من رغبتك في إلغاء حظر {{name}}؟"
       },
+      "detailsModal": {
+        "title": "تفاصيل المستخدم: {{name}}",
+        "userInfo": "معلومات المستخدم",
+        "id": "المعرّف",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "address": "العنوان",
+        "role": "الدور",
+        "registered": "تاريخ التسجيل",
+        "balances": "أرصدة الحساب",
+        "principal": "الرصيد الأساسي",
+        "deposit": "رصيد الإيداع",
+        "withdrawal": "رصيد السحب",
+        "sellerAvailable": "رصيد البائع المتاح",
+        "sellerOnHold": "رصيد البائع المعلّق"
+      },
       "editModal": {
         "title": "تعديل المستخدم: {{name}}",
         "saveHandlerMissing": "معالج الحفظ مفقود.",
@@ -1952,5 +1968,17 @@
     "thisUser": "هذا المستخدم",
     "couldNotIdentifyBidder": "تعذر تحديد هوية المزايد.",
     "pleaseProvideRejectionReason": "يرجى تقديم سبب للرفض."
+  },
+  "notFound": {
+    "title": "الصفحة غير موجودة",
+    "message": "عذراً، الصفحة التي تبحث عنها غير موجودة.",
+    "goHome": "العودة إلى الصفحة الرئيسية"
+  },
+  "languages": {
+    "lang": "اللغة",
+    "en": "الإنجليزية",
+    "ar": "العربية",
+    "fr": "الفرنسية",
+    "tn": "التونسية"
   }
 }

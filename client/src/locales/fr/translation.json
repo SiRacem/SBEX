@@ -765,15 +765,31 @@
         "unblockUser": "Débloquer l'utilisateur",
         "confirmUnblock": "Êtes-vous sûr de vouloir débloquer {{name}} ?"
       },
+      "detailsModal": {
+        "title": "Détails de l'utilisateur : {{name}}",
+        "userInfo": "Informations sur l'utilisateur",
+        "id": "ID",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "address": "Adresse",
+        "role": "Rôle",
+        "registered": "Inscrit le",
+        "balances": "Soldes du compte",
+        "principal": "Solde principal",
+        "deposit": "Solde de dépôt",
+        "withdrawal": "Solde de retrait",
+        "sellerAvailable": "Solde vendeur disponible",
+        "sellerOnHold": "Solde vendeur en attente"
+      },
       "editModal": {
         "title": "Modifier l'utilisateur : {{name}}",
-        "saveHandlerMissing": "Le gestionnaire onSave est manquant.",
+        "saveHandlerMissing": "Le gestionnaire de sauvegarde est manquant.",
         "saveFailed": "Échec de l'enregistrement des modifications.",
         "fullName": "Nom complet",
         "emailReadOnly": "E-mail (Lecture seule)",
         "phone": "Téléphone",
         "address": "Adresse",
-        "balancesWarning": "Modifier les soldes (À utiliser avec prudence !)"
+        "balancesWarning": "Modifier les soldes (Utiliser avec précaution !)"
       },
       "blockModal": {
         "title": "Bloquer l'utilisateur : {{name}}",
@@ -1951,5 +1967,17 @@
     "thisUser": "cet utilisateur",
     "couldNotIdentifyBidder": "Impossible d'identifier l'ID de l'enchérisseur.",
     "pleaseProvideRejectionReason": "Veuillez fournir une raison pour le rejet."
+  },
+  "notFound": {
+    "title": "Page non trouvée",
+    "message": "Désolé, la page que vous recherchez n'existe pas.",
+    "goHome": "Retour à l'accueil"
+  },
+  "languages": {
+    "lang": "Langue",
+    "en": "Anglais",
+    "ar": "Arabe",
+    "fr": "Français",
+    "tn": "Tunisien"
   }
 }
