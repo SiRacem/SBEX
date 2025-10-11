@@ -452,6 +452,8 @@
     "confirmBid": "أكد المزايدة",
     "level": "مستوى {{level}}",
     "saveChanges": "سجل التغييرات",
+    "accept": "قبول",
+    "reject": "رفض",
     "statuses": {
       "active": "يخدم",
       "blocked": "مبلوكي",
@@ -1980,5 +1982,30 @@
     "ar": "العربية",
     "fr": "Français",
     "tn": "تونسي"
+  },
+  "mediationDetailsModal": {
+    "title": "تفاصيل الوساطة:",
+    "overallStatus": "الحالة العامة:",
+    "buyer": "الشاري:",
+    "mediator": "الوسيط:",
+    "awaitingResponse": "نستناو في جواب الوسيط",
+    "acceptedAssignment": "تقبلت المهمة",
+    "originalPrice": "السوم الأصلي:",
+    "agreedPrice": "سوم المزايدة المتفاهم عليه:",
+    "mediatorFee": "فلوس الوسيط:",
+    "sellerFee": "قسم البايع من الفلوس:",
+    "buyerFee": "قسم الشاري من الفلوس:",
+    "netForSeller": "الصافي للبايع:",
+    "netForSellerFormula": "(السوم المتفاهم عليه - قسم البايع)",
+    "totalForBuyer": "الجملة للشاري:",
+    "totalForBuyerFormula": "(السوم المتفاهم عليه + قسم الشاري)",
+    "requestId": "رقم طلب الوساطة:",
+    "sellerConfirmed": "البايع أكد اللي هو حاضر",
+    "buyerConfirmed": "الشاري أكد اللي هو حاضر",
+    "fundsInEscrow": "الفلوس في الضمان",
+    "viewProfile": "شوف البروفيل",
+    "buyerIdOnly": "الشاري (رقم فقط)",
+    "feeError": "السوم ولا دالة الرسوم ناقصة",
+    "productImage": "تصويرة المنتوج"
   }
 }

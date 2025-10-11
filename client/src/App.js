@@ -116,7 +116,7 @@ const BlockedWarning = ({ isAuth, user }) => {
     <Alert variant="danger" className="blocked-warning-banner m-3">
       <Alert.Heading>{t('app.blockedWarning.title')}</Alert.Heading>
       {t('app.blockedWarning.body')}
-      <Alert.Link as={Link} to="/dashboard/support">{t('app.blockedWarning.contactSupport')}</Alert.Link>
+      <Alert.Link as={Link} to="/dashboard/tickets">{t('app.blockedWarning.contactSupport')}</Alert.Link>
       {t('app.blockedWarning.orSeparator')}
       <Alert.Link href="#" onClick={handleLogoutClick} style={{ cursor: 'pointer', fontWeight: 'bold' }}>{t('app.blockedWarning.logout')}</Alert.Link>
     </Alert>

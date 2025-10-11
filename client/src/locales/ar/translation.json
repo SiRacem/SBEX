@@ -452,6 +452,8 @@
     "confirmBid": "تأكيد المزايدة",
     "level": "المستوى {{level}}",
     "saveChanges": "حفظ التغييرات",
+    "accept": "قبول",
+    "reject": "رفض",
     "statuses": {
       "active": "نشط",
       "blocked": "محظور",
@@ -1980,5 +1982,30 @@
     "ar": "العربية",
     "fr": "الفرنسية",
     "tn": "التونسية"
+    },
+  "mediationDetailsModal": {
+    "title": "تفاصيل الوساطة:",
+    "overallStatus": "الحالة العامة:",
+    "buyer": "المشتري:",
+    "mediator": "الوسيط:",
+    "awaitingResponse": "في انتظار رد الوسيط",
+    "acceptedAssignment": "تم قبول المهمة",
+    "originalPrice": "السعر الأصلي:",
+    "agreedPrice": "سعر المزايدة المتفق عليه:",
+    "mediatorFee": "رسوم الوسيط المحسوبة:",
+    "sellerFee": "حصة البائع من الرسوم:",
+    "buyerFee": "حصة المشتري من الرسوم:",
+    "netForSeller": "المبلغ الصافي للبائع:",
+    "netForSellerFormula": "(السعر المتفق عليه - حصة البائع من الرسوم)",
+    "totalForBuyer": "السعر الإجمالي للمشتري:",
+    "totalForBuyerFormula": "(السعر المتفق عليه + حصة المشتري من الرسوم)",
+    "requestId": "معرف طلب الوساطة:",
+    "sellerConfirmed": "أكد البائع جاهزيته",
+    "buyerConfirmed": "أكد المشتري جاهزيته",
+    "fundsInEscrow": "الأموال في الضمان",
+    "viewProfile": "عرض الملف الشخصي",
+    "buyerIdOnly": "المشتري (معرف فقط)",
+    "feeError": "السعر أو دالة الرسوم مفقودة",
+    "productImage": "صورة المنتج"
   }
 }

@@ -452,6 +452,8 @@
     "confirmBid": "Confirmer l'enchère",
     "level": "Niveau {{level}}",
     "saveChanges": "Enregistrer les modifications",
+    "accept": "Accepter",
+    "reject": "Rejeter",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -1979,5 +1981,30 @@
     "ar": "Arabe",
     "fr": "Français",
     "tn": "Tunisien"
+  },
+  "mediationDetailsModal": {
+    "title": "Détails de la médiation :",
+    "overallStatus": "Statut général :",
+    "buyer": "Acheteur :",
+    "mediator": "Médiateur :",
+    "awaitingResponse": "En attente de la réponse du médiateur",
+    "acceptedAssignment": "Mission acceptée",
+    "originalPrice": "Prix d'origine :",
+    "agreedPrice": "Prix de l'offre convenue :",
+    "mediatorFee": "Frais de médiateur calculés :",
+    "sellerFee": "Part des frais du vendeur :",
+    "buyerFee": "Part des frais de l'acheteur :",
+    "netForSeller": "Montant net pour le vendeur :",
+    "netForSellerFormula": "(Prix convenu - Part des frais du vendeur)",
+    "totalForBuyer": "Prix total pour l'acheteur :",
+    "totalForBuyerFormula": "(Prix convenu + Part des frais de l'acheteur)",
+    "requestId": "ID de la demande de médiation :",
+    "sellerConfirmed": "Le vendeur a confirmé sa disponibilité",
+    "buyerConfirmed": "L'acheteur a confirmé sa disponibilité",
+    "fundsInEscrow": "Les fonds sont en séquestre",
+    "viewProfile": "Voir le profil",
+    "buyerIdOnly": "Acheteur (ID uniquement)",
+    "feeError": "Fonction de prix ou de frais manquante",
+    "productImage": "Image du produit"
   }
 }

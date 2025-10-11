@@ -32,8 +32,8 @@ const ProductSchema = new Schema({
     linkType: {
         type: String, required: [true, "Account link type is required"],
         enum: {
-            values: ["Konami ID ✅ Gmail ❌ Mail ✅", "Konami ID ✅ Gmail ❌ Mail ❌", "Konami ID ✅ Gmail ✅ Mail ✅", "Konami ID ✅ Gmail ✅ Mail ❌", "Konami ID ❌ Gmail ✅ Mail ✅", "Konami ID ❌ Gmail ✅ Mail ❌"],
-            message: '{VALUE} is not a supported link type'
+            values: ["k&m", "k", "k&g&m", "k&g", "g&m", "g"],
+            message: '"{VALUE}" is not a supported link type'
         }
     },
     price: { type: Number, required: [true, "Price is required"], min: [0, "Price cannot be negative"] },

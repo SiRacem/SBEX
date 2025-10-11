@@ -105,7 +105,7 @@ exports.addProduct = async (req, res) => {
         res.status(201).json(populatedProduct || savedProduct.toObject());
     } catch (error) {
         console.error("Error adding product:", error);
-        res.status(500).json({ errors: "Failed to add product due to server error." });
+        res.status(500).json({ msg: "Failed to add product due to server error." });
     }
 };
 

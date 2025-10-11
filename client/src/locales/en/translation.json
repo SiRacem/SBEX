@@ -448,6 +448,8 @@
     "close": "Close",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
+    "accept": "Accept",
+    "reject": "Reject",
     "loading": "Loading...",
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",

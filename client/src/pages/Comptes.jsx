@@ -174,14 +174,7 @@ const Comptes = () => {
   const [editFormData, setEditFormData] = useState({});
   const [editImageFiles, setEditImageFiles] = useState([]);
   const [editImagePreviews, setEditImagePreviews] = useState([]);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    linkType: "",
-    price: "",
-    currency: "TND",
-    quantity: 1,
-  });
+
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [formError, setFormError] = useState(null);
@@ -263,6 +256,14 @@ const Comptes = () => {
       };
     });
   }, [t]);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    linkType: linkOptions[0]?.key || "",
+    price: "",
+    currency: "TND",
+    quantity: 1,
+  });
 
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.userReducer);
@@ -284,6 +285,42 @@ const Comptes = () => {
       errors: productState.errors ?? null,
     };
   });
+
+  // =========================================================================
+  // [!!!] START: هذا هو التعديل الأول: إضافة دالة مساعدة لعرض الأخطاء [!!!]
+  // =========================================================================
+  const getDisplayError = (errorObject) => {
+    if (!errorObject) return null;
+
+    // الحالة 1: الخطأ هو مجرد نص (string)
+    if (typeof errorObject === "string") {
+      return errorObject;
+    }
+
+    // الحالة 2: الخطأ هو كائن من Redux (له بنية محددة)
+    if (errorObject.errorMessage) {
+      // إذا كان لدى الكائن مفتاح ترجمة (key)، نستخدمه
+      if (
+        typeof errorObject.errorMessage === "object" &&
+        errorObject.errorMessage.key
+      ) {
+        return t(
+          errorObject.errorMessage.key,
+          errorObject.errorMessage.fallback || "An unknown error occurred."
+        );
+      }
+      // إذا كان errorMessage مجرد نص
+      if (typeof errorObject.errorMessage === "string") {
+        return errorObject.errorMessage;
+      }
+    }
+
+    // الحالة 3: كقيمة احتياطية لأي نوع آخر من الكائنات
+    return t("comptes.errors.addError", "Failed to perform the operation.");
+  };
+  // =========================================================================
+  // [!!!] END: نهاية التعديل الأول [!!!]
+  // =========================================================================
 
   useEffect(() => {
     if (user?._id) dispatch(getProducts());
@@ -411,12 +448,18 @@ const Comptes = () => {
           !productData.currency
         )
           throw new Error(t("comptes.errors.fillAllFields"));
+
+        // [!!!] هذا هو الجزء المُعدل [!!!]
+        // نستخدم try/catch حول الـ dispatch مباشرة
+        // إذا نجح الـ dispatch، سيكمل الكود. إذا فشل، سيقفز إلى قسم الـ catch.
         await dispatch(addProduct(productData));
+
+        // هذا الكود لن يعمل إلا إذا نجح الـ dispatch
         setFormSuccess(t("comptes.alerts.addSuccess"));
         setFormData({
           title: "",
           description: "",
-          linkType: linkOptions[0].value,
+          linkType: linkOptions[0]?.key || "",
           price: "",
           currency: "TND",
           quantity: 1,
@@ -425,9 +468,11 @@ const Comptes = () => {
         setImagePreviews([]);
         setShowAddForm(false);
       } catch (error) {
-        setFormError(
-          error?.message || productErrors || t("comptes.errors.addError")
-        );
+        // الـ dispatch سيرسل الخطأ إلى هنا عند الفشل
+        // productErrors من Redux سيحتوي على تفاصيل الخطأ
+        // نستخدمه لتحديث حالة الخطأ في النموذج
+        const errorFromState = productErrors || error; // نستخدم الخطأ من Redux إذا كان متاحاً
+        setFormError(errorFromState);
       } finally {
         setIsSubmittingAdd(false);
       }
@@ -436,10 +481,10 @@ const Comptes = () => {
       dispatch,
       formData,
       imageFiles,
-      productErrors,
       uploadImages,
       t,
       linkOptions,
+      productErrors, // [!] إضافة productErrors هنا
     ]
   );
 
@@ -561,12 +606,16 @@ const Comptes = () => {
           !dataToSend.currency
         )
           throw new Error(t("comptes.errors.fillAllFields"));
-        await dispatch(updateProduct(_id, dataToSend));
-        handleEditModalClose();
+
+        const resultAction = await dispatch(updateProduct(_id, dataToSend));
+        if (updateProduct.fulfilled.match(resultAction)) {
+          handleEditModalClose();
+        } else {
+          setFormError(resultAction.payload);
+        }
       } catch (error) {
-        setFormError(
-          error?.message || productErrors || t("comptes.errors.updateError")
-        );
+        const errorMessage = error?.message || t("comptes.errors.updateError");
+        setFormError(errorMessage);
       } finally {
         setIsSubmittingEdit(false);
       }
@@ -577,7 +626,6 @@ const Comptes = () => {
       editImageFiles,
       editImagePreviews,
       handleEditModalClose,
-      productErrors,
       uploadImages,
       t,
     ]
@@ -604,7 +652,7 @@ const Comptes = () => {
       setFormData({
         title: "",
         description: "",
-        linkType: linkOptions[0].value,
+        linkType: linkOptions[0]?.key || "",
         price: "",
         currency: "TND",
         quantity: 1,
@@ -613,6 +661,14 @@ const Comptes = () => {
       setImagePreviews([]);
     }
   }, [showAddForm, linkOptions]);
+
+  useEffect(() => {
+    // [!!!] التعديل هنا: مراقبة productErrors وتحديث formError
+    // هذا يضمن أن أخطاء Redux تظهر في النموذج
+    if (productErrors) {
+      setFormError(productErrors);
+    }
+  }, [productErrors]);
 
   return (
     <div className="comptes-page container-fluid py-4">
@@ -634,15 +690,21 @@ const Comptes = () => {
         <Card className="shadow-sm mb-4 add-form-card">
           <Card.Body>
             <h4 className="mb-3 text-center">{t("comptes.addForm.title")}</h4>
+            {/* // ========================================================================= */}
+            {/* // [!!!] START: هذا هو التعديل الثاني: استخدام الدالة المساعدة هنا [!!!] */}
+            {/* // ========================================================================= */}
             {formError && (
               <Alert
                 variant="danger"
                 onClose={() => setFormError(null)}
                 dismissible
               >
-                {formError}
+                {getDisplayError(formError)}
               </Alert>
             )}
+            {/* // ========================================================================= */}
+            {/* // [!!!] END: نهاية التعديل الثاني [!!!] */}
+            {/* // ========================================================================= */}
             {formSuccess && <Alert variant="success">{formSuccess}</Alert>}
             <Form onSubmit={handleAddSubmit}>
               <Row>
@@ -727,19 +789,19 @@ const Comptes = () => {
                   <Form.Label>{t("comptes.addForm.linkType")}</Form.Label>
                   <Row xs={1} md={2} className="g-2">
                     {linkOptions.map((option) => (
-                      <Col key={option.value}>
+                      <Col key={option.key}>
                         <Card
                           className={`link-type-card ${
-                            formData.linkType === option.value ? "selected" : ""
+                            formData.linkType === option.key ? "selected" : ""
                           }`}
                           onClick={() =>
                             handleInputChange({
-                              target: { name: "linkType", value: option.value },
+                              target: { name: "linkType", value: option.key },
                             })
                           }
                         >
                           <Card.Body>
-                            {formData.linkType === option.value && (
+                            {formData.linkType === option.key && (
                               <FaCheckCircle className="selected-check" />
                             )}
                             <div className="link-type-content">
@@ -817,13 +879,15 @@ const Comptes = () => {
           {t("comptes.loading")}
         </div>
       )}
-      {!productsLoading && productErrors && (
-        <Alert variant="danger" className="text-center">
-          {productErrors}
-        </Alert>
-      )}
 
-      {!productsLoading && !productErrors && (
+      {/* هذا القسم كان يعرض الخطأ العام، ولكنه غير ضروري الآن لأن الخطأ يظهر في النموذج */}
+      {/* {!productsLoading && productErrors && (
+        <Alert variant="danger" className="text-center">
+          {getDisplayError(productErrors)}
+        </Alert>
+      )} */}
+
+      {!productsLoading && (
         <>
           <div className="account-section mb-4">
             <h4 className="section-title pending-title">
@@ -919,7 +983,7 @@ const Comptes = () => {
               onClose={() => setFormError(null)}
               dismissible
             >
-              {formError}
+              {getDisplayError(formError)}
             </Alert>
           )}
           <Form onSubmit={handleEditSubmit}>
@@ -1015,21 +1079,19 @@ const Comptes = () => {
                 <Form.Label>{t("comptes.addForm.linkType")}</Form.Label>
                 <Row xs={1} md={2} className="g-2">
                   {linkOptions.map((option) => (
-                    <Col key={option.value}>
+                    <Col key={option.key}>
                       <Card
                         className={`link-type-card ${
-                          editFormData.linkType === option.value
-                            ? "selected"
-                            : ""
+                          editFormData.linkType === option.key ? "selected" : ""
                         }`}
                         onClick={() =>
                           handleEditInputChange({
-                            target: { name: "linkType", value: option.value },
+                            target: { name: "linkType", value: option.key },
                           })
                         }
                       >
                         <Card.Body>
-                          {editFormData.linkType === option.value && (
+                          {editFormData.linkType === option.key && (
                             <FaCheckCircle className="selected-check" />
                           )}
                           <div className="link-type-content">
