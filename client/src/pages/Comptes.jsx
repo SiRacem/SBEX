@@ -1,4 +1,4 @@
-// src/pages/Comptes.jsx
+// src/pages/Compts.jsx
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Button,
@@ -33,9 +33,28 @@ import {
 } from "../redux/actions/productAction";
 import "./Comptes.css";
 
-// --- مكون بطاقة الحساب (يبقى كما هو) ---
+// --- مكون بطاقة الحساب مع التعديل لعرض نوع الربط الكامل ---
 const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
   const { t, i18n } = useTranslation();
+
+  // [!] إضافة خريطة الترجمة لأنواع الربط
+  const linkTypeMap = useMemo(
+    () => ({
+      "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
+      k: t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
+      "k&g&m": t("comptes.linkTypes.k&g&m", "Konami ID ✅ Gmail ✅ Mail ✅"),
+      "k&g": t("comptes.linkTypes.k&g", "Konami ID ✅ Gmail ✅ Mail ❌"),
+      "g&m": t("comptes.linkTypes.g&m", "Konami ID ❌ Gmail ✅ Mail ✅"),
+      g: t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
+    }),
+    [t]
+  );
+
+  const displayLinkType =
+    linkTypeMap[product.linkType] ||
+    product.linkType ||
+    t("comptes.notAvailable");
+
   const fallbackImageUrl = useMemo(
     () =>
       `data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">${t(
@@ -133,7 +152,8 @@ const AccountCard = React.memo(({ product, onDelete, onEdit }) => {
           </Card.Text>
           <p className="small mb-1">
             <strong>{t("comptes.link")}:</strong>{" "}
-            {product.linkType || t("comptes.notAvailable")}
+            {/* [!] استخدام المتغير الجديد هنا لعرض النص الكامل */}
+            {displayLinkType}
           </p>
           <p className="fw-bold mb-0">
             {formatCurrency(product.price, product.currency)}
@@ -286,20 +306,12 @@ const Comptes = () => {
     };
   });
 
-  // =========================================================================
-  // [!!!] START: هذا هو التعديل الأول: إضافة دالة مساعدة لعرض الأخطاء [!!!]
-  // =========================================================================
   const getDisplayError = (errorObject) => {
     if (!errorObject) return null;
-
-    // الحالة 1: الخطأ هو مجرد نص (string)
     if (typeof errorObject === "string") {
       return errorObject;
     }
-
-    // الحالة 2: الخطأ هو كائن من Redux (له بنية محددة)
     if (errorObject.errorMessage) {
-      // إذا كان لدى الكائن مفتاح ترجمة (key)، نستخدمه
       if (
         typeof errorObject.errorMessage === "object" &&
         errorObject.errorMessage.key
@@ -309,18 +321,12 @@ const Comptes = () => {
           errorObject.errorMessage.fallback || "An unknown error occurred."
         );
       }
-      // إذا كان errorMessage مجرد نص
       if (typeof errorObject.errorMessage === "string") {
         return errorObject.errorMessage;
       }
     }
-
-    // الحالة 3: كقيمة احتياطية لأي نوع آخر من الكائنات
     return t("comptes.errors.addError", "Failed to perform the operation.");
   };
-  // =========================================================================
-  // [!!!] END: نهاية التعديل الأول [!!!]
-  // =========================================================================
 
   useEffect(() => {
     if (user?._id) dispatch(getProducts());
@@ -449,12 +455,8 @@ const Comptes = () => {
         )
           throw new Error(t("comptes.errors.fillAllFields"));
 
-        // [!!!] هذا هو الجزء المُعدل [!!!]
-        // نستخدم try/catch حول الـ dispatch مباشرة
-        // إذا نجح الـ dispatch، سيكمل الكود. إذا فشل، سيقفز إلى قسم الـ catch.
         await dispatch(addProduct(productData));
 
-        // هذا الكود لن يعمل إلا إذا نجح الـ dispatch
         setFormSuccess(t("comptes.alerts.addSuccess"));
         setFormData({
           title: "",
@@ -468,10 +470,7 @@ const Comptes = () => {
         setImagePreviews([]);
         setShowAddForm(false);
       } catch (error) {
-        // الـ dispatch سيرسل الخطأ إلى هنا عند الفشل
-        // productErrors من Redux سيحتوي على تفاصيل الخطأ
-        // نستخدمه لتحديث حالة الخطأ في النموذج
-        const errorFromState = productErrors || error; // نستخدم الخطأ من Redux إذا كان متاحاً
+        const errorFromState = productErrors || error;
         setFormError(errorFromState);
       } finally {
         setIsSubmittingAdd(false);
@@ -484,7 +483,7 @@ const Comptes = () => {
       uploadImages,
       t,
       linkOptions,
-      productErrors, // [!] إضافة productErrors هنا
+      productErrors,
     ]
   );
 
@@ -515,6 +514,7 @@ const Comptes = () => {
     setEditImagePreviews([]);
     setEditImageFiles([]);
   }, []);
+
   const handleEditInputChange = useCallback(
     (e) =>
       setEditFormData((prev) => ({ ...prev, [e.target.name]: e.target.value })),
@@ -572,6 +572,7 @@ const Comptes = () => {
     [editImagePreviews, t]
   );
 
+  // [!!!] الدالة المُعدلة بالكامل مع إصلاح خطأ .match
   const handleEditSubmit = useCallback(
     async (e) => {
       e.preventDefault();
@@ -607,15 +608,12 @@ const Comptes = () => {
         )
           throw new Error(t("comptes.errors.fillAllFields"));
 
-        const resultAction = await dispatch(updateProduct(_id, dataToSend));
-        if (updateProduct.fulfilled.match(resultAction)) {
-          handleEditModalClose();
-        } else {
-          setFormError(resultAction.payload);
-        }
+        await dispatch(updateProduct(_id, dataToSend));
+
+        handleEditModalClose();
       } catch (error) {
-        const errorMessage = error?.message || t("comptes.errors.updateError");
-        setFormError(errorMessage);
+        const errorFromState = productErrors || error;
+        setFormError(errorFromState);
       } finally {
         setIsSubmittingEdit(false);
       }
@@ -628,6 +626,7 @@ const Comptes = () => {
       handleEditModalClose,
       uploadImages,
       t,
+      productErrors,
     ]
   );
 
@@ -663,8 +662,6 @@ const Comptes = () => {
   }, [showAddForm, linkOptions]);
 
   useEffect(() => {
-    // [!!!] التعديل هنا: مراقبة productErrors وتحديث formError
-    // هذا يضمن أن أخطاء Redux تظهر في النموذج
     if (productErrors) {
       setFormError(productErrors);
     }
@@ -690,9 +687,6 @@ const Comptes = () => {
         <Card className="shadow-sm mb-4 add-form-card">
           <Card.Body>
             <h4 className="mb-3 text-center">{t("comptes.addForm.title")}</h4>
-            {/* // ========================================================================= */}
-            {/* // [!!!] START: هذا هو التعديل الثاني: استخدام الدالة المساعدة هنا [!!!] */}
-            {/* // ========================================================================= */}
             {formError && (
               <Alert
                 variant="danger"
@@ -702,9 +696,6 @@ const Comptes = () => {
                 {getDisplayError(formError)}
               </Alert>
             )}
-            {/* // ========================================================================= */}
-            {/* // [!!!] END: نهاية التعديل الثاني [!!!] */}
-            {/* // ========================================================================= */}
             {formSuccess && <Alert variant="success">{formSuccess}</Alert>}
             <Form onSubmit={handleAddSubmit}>
               <Row>
@@ -879,13 +870,6 @@ const Comptes = () => {
           {t("comptes.loading")}
         </div>
       )}
-
-      {/* هذا القسم كان يعرض الخطأ العام، ولكنه غير ضروري الآن لأن الخطأ يظهر في النموذج */}
-      {/* {!productsLoading && productErrors && (
-        <Alert variant="danger" className="text-center">
-          {getDisplayError(productErrors)}
-        </Alert>
-      )} */}
 
       {!productsLoading && (
         <>

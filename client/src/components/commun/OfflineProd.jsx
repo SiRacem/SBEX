@@ -12,12 +12,26 @@ import { useTranslation } from "react-i18next";
 const TND_TO_USD_RATE = 3.0;
 
 const OfflineProd = () => {
-  const { t } = useTranslation(); // <-- [!] دالة الترجمة
+  const { t } = useTranslation();
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("");
   const [selectedSort, setSelectedSort] = useState("newest");
   const productsFetched = useRef(false);
+
+  // [!!!] START: إضافة خريطة الترجمة هنا
+  const linkTypeMap = useMemo(
+    () => ({
+      "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
+      k: t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
+      "k&g&m": t("comptes.linkTypes.k&g&m", "Konami ID ✅ Gmail ✅ Mail ✅"),
+      "k&g": t("comptes.linkTypes.k&g", "Konami ID ✅ Gmail ✅ Mail ❌"),
+      "g&m": t("comptes.linkTypes.g&m", "Konami ID ❌ Gmail ✅ Mail ✅"),
+      g: t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
+    }),
+    [t]
+  );
+  // [!!!] END: نهاية الإضافة
 
   const Products = useSelector((state) => state.productReducer?.Products ?? []);
   const loading = useSelector(
@@ -101,7 +115,7 @@ const OfflineProd = () => {
     content = (
       <Col xs={12} className="text-center mt-5 pt-5 loading-placeholder">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">{t("home.loading")}</p> {/* [!] مترجم */}
+        <p className="mt-2 text-muted">{t("home.loading")}</p>
       </Col>
     );
   } else if (errors) {
@@ -111,7 +125,7 @@ const OfflineProd = () => {
           variant="danger"
           className="w-75 mt-4 mx-auto text-center shadow-sm"
         >
-          <h4>{t("home.errorTitle")}</h4> {/* [!] مترجم */}
+          <h4>{t("home.errorTitle")}</h4>
           <p>{t(errors.key, errors.params)}</p>
         </Alert>
       </Col>
@@ -137,7 +151,6 @@ const OfflineProd = () => {
           variant="secondary"
           className="mt-4 text-center no-results-alert"
         >
-          {/* [!] مترجم مع متغير */}
           {searchTerm || selectedFilter
             ? t("home.noProductsMatch", {
                 criteria: searchTerm || selectedFilter,
@@ -178,11 +191,13 @@ const OfflineProd = () => {
                 className="filter-select"
               >
                 <option value="">{t("home.allLinkTypes")}</option>
+                {/* [!!!] START: التعديل هنا لعرض النص الكامل */}
                 {availableLinkTypes.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {linkTypeMap[type] || type}
                   </option>
                 ))}
+                {/* [!!!] END: نهاية التعديل */}
               </Form.Select>
             </Form.Group>
           </Col>

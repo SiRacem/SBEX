@@ -266,8 +266,11 @@ exports.updateProducts = async (req, res) => {
             const notificationsForBidders = uniqueBidders.map(bidderId => ({
                 user: bidderId,
                 type: 'BID_CANCELLED_BY_UPDATE',
-                title: 'Bid Cancelled Due to Product Update',
-                message: `Your bid on "${product.title}" has been cancelled because the seller updated the product details. You can place a new bid if you are still interested.`,
+                title: 'notification_titles.BID_CANCELLED_BY_UPDATE',
+                message: 'notification_messages.BID_CANCELLED_BY_UPDATE',
+                messageParams: {
+                    productName: product.title
+                },
                 relatedEntity: { id: productId, modelName: 'Product' }
             }));
 
@@ -289,8 +292,12 @@ exports.updateProducts = async (req, res) => {
             if (admins.length > 0) {
                 const notifications = admins.map(admin => ({
                     user: admin._id, type: 'PRODUCT_UPDATE_PENDING',
-                    title: 'Product Update Requires Re-Approval',
-                    message: `Vendor "${req.user.fullName || 'Unknown'}" updated product "${productAfterUpdate.title}". It now requires re-approval.`,
+                    title: 'notification_titles.PRODUCT_UPDATE_PENDING',
+                    message: 'notification_messages.PRODUCT_UPDATE_PENDING',
+                    messageParams: {
+                        vendorName: req.user.fullName || 'Unknown',
+                        productName: productAfterUpdate.title
+                    },
                     relatedEntity: { id: productAfterUpdate._id, modelName: 'Product' }
                 }));
                 const createdAdminNotifications = await Notification.insertMany(notifications);
@@ -370,8 +377,13 @@ exports.deleteProducts = async (req, res) => {
                 const deletionNotification = new Notification({
                     user: productOwnerId,
                     type: 'PRODUCT_DELETED',
-                    title: `Product Deleted: ${product.title}`, // استخدم product.title من الكائن الذي تم جلبه قبل الحذف
-                    message: `Your product "${product.title}" was deleted by administrator "${req.user.fullName}". Reason: ${reason || 'No specific reason provided.'}`,
+                    title: 'notification_titles.PRODUCT_DELETED',
+                    message: 'notification_messages.PRODUCT_DELETED',
+                    messageParams: {
+                        productName: product.title,
+                        adminName: req.user.fullName,
+                        reason: reason
+                    },
                     relatedEntity: { id: productId, modelName: 'Product' }
                 });
                 await deletionNotification.save();

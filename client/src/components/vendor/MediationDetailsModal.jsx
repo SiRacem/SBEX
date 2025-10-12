@@ -1,5 +1,5 @@
 // src/components/vendor/MediationDetailsModal.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   Button,
@@ -11,13 +11,15 @@ import {
 } from "react-bootstrap";
 import { FaCheck } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next"; // [!!!] استيراد useTranslation
 
-// دالة تنسيق العملة
-const formatCurrencyLocal = (amount, currencyCode = "TND") => {
+// دالة تنسيق العملة تبقى كما هي، لكنها الآن تستخدم i18n
+const formatCurrencyLocal = (amount, currencyCode = "TND", i18nInstance) => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
   try {
-    return num.toLocaleString("fr-TN", {
+    return num.toLocaleString(i18nInstance.language, {
+      // استخدام لغة i18n
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -32,28 +34,25 @@ const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
 
 const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
+  const { t, i18n } = useTranslation(); // [!!!] استخدام hook الترجمة
+
   if (!product) return null;
 
-  // استخراج بيانات طلب الوساطة
-  const mediationRequest = product.currentMediationRequest; // افترض أن هذا الكائن موجود ومُمرر
-  const mediatorInfo = mediationRequest?.mediator; // الوسيط من طلب الوساطة
+  const mediationRequest = product.currentMediationRequest;
+  const mediatorInfo = mediationRequest?.mediator;
 
-  // استخراج السعر المتفق عليه
-  let agreedPrice = product.agreedPrice; // من المنتج (يتم تعيينه عند قبول المزايدة)
+  let agreedPrice = product.agreedPrice;
   if (
     agreedPrice == null &&
     mediationRequest &&
     mediationRequest.bidAmount != null
   ) {
-    // كحل احتياطي، خذ السعر من طلب الوساطة إذا لم يكن موجودًا في المنتج مباشرة
     agreedPrice = mediationRequest.bidAmount;
   } else if (agreedPrice == null && product.bids && product.bids.length > 0) {
-    // أو أعلى مزايدة كحل احتياطي أخير جدًا (يفضل أن يكون agreedPrice محددًا)
     const sortedBids = [...product.bids].sort((a, b) => b.amount - a.amount);
     agreedPrice = sortedBids[0].amount;
   }
 
-  // الحسابات (تأكد من أن calculateFee تتعامل مع agreedPrice = null أو undefined)
   const feeDetails =
     agreedPrice != null && calculateFee
       ? calculateFee(
@@ -66,17 +65,18 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
           buyerShare: 0,
           totalForBuyer: agreedPrice || 0,
           netForSeller: agreedPrice || 0,
-          error: "Price or fee function missing",
+          error: t(
+            "mediationDetailsModal.feeError",
+            "Price or fee function missing"
+          ), // مترجم
         };
 
-  // استخراج اسم الشاري
   let buyerInfo = null;
   if (
     product.buyer &&
     typeof product.buyer === "object" &&
     product.buyer.fullName
   ) {
-    // إذا كان المشتري populated في المنتج
     buyerInfo = product.buyer;
   } else if (
     mediationRequest &&
@@ -84,22 +84,24 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
     typeof mediationRequest.buyer === "object" &&
     mediationRequest.buyer.fullName
   ) {
-    // إذا كان المشتري populated في طلب الوساطة
     buyerInfo = mediationRequest.buyer;
   } else if (product.buyer) {
-    // إذا كان معرف المشتري فقط موجودًا في المنتج
-    buyerInfo = { _id: product.buyer, fullName: "Buyer (ID only)" };
+    buyerInfo = {
+      _id: product.buyer,
+      fullName: t("mediationDetailsModal.buyerIdOnly", "Buyer (ID only)"),
+    }; // مترجم
   } else if (mediationRequest && mediationRequest.buyer) {
-    // إذا كان معرف المشتري فقط موجودًا في طلب الوساطة
-    buyerInfo = { _id: mediationRequest.buyer, fullName: "Buyer (ID only)" };
+    buyerInfo = {
+      _id: mediationRequest.buyer,
+      fullName: t("mediationDetailsModal.buyerIdOnly", "Buyer (ID only)"),
+    }; // مترجم
   }
 
-  // تحديد حالة الوساطة الفعلية للعرض
   let displayStatus = product.status;
   let displayStatusBg = "secondary";
 
   if (mediationRequest && mediationRequest.status) {
-    displayStatus = mediationRequest.status; // الأولوية لحالة طلب الوساطة
+    displayStatus = mediationRequest.status;
     if (displayStatus === "PendingMediatorSelection") {
       displayStatusBg = "info text-dark";
     } else if (displayStatus === "MediatorAssigned") {
@@ -118,12 +120,14 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
   } else if (product.status === "MediatorAssigned") {
     displayStatusBg = "primary";
   }
-  // يمكنك إضافة المزيد من الحالات هنا
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
+    <Modal show={show} onHide={onHide} size="lg" centered dir={i18n.dir()}>
       <Modal.Header closeButton>
-        <Modal.Title>Mediation Details: {product.title || "N/A"}</Modal.Title>
+        <Modal.Title>
+          {t("mediationDetailsModal.title", "Mediation Details:")}{" "}
+          {product.title || "N/A"}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Row>
@@ -136,14 +140,19 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
               onError={(e) => {
                 e.target.src = noProductImageUrl;
               }}
-              alt={product.title || "Product Image"}
+              alt={
+                product.title ||
+                t("mediationDetailsModal.productImage", "Product Image")
+              }
             />
           </Col>
           <Col md={8}>
             <h4>{product.title || "N/A"}</h4>
             <ListGroup variant="flush">
               <ListGroup.Item>
-                <strong className="mx-1">Overall Status:</strong>
+                <strong className="mx-1">
+                  {t("mediationDetailsModal.overallStatus", "Overall Status:")}
+                </strong>
                 <Badge bg={displayStatusBg}>
                   {displayStatus.replace(/([A-Z])/g, " $1").trim()}
                 </Badge>
@@ -151,23 +160,27 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
 
               {buyerInfo && buyerInfo._id && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Buyer:</strong>
+                  <strong className="mx-1">
+                    {t("mediationDetailsModal.buyer", "Buyer:")}
+                  </strong>
                   <Link
                     to={`/profile/${buyerInfo._id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {buyerInfo.fullName || "View Profile"}
+                    {buyerInfo.fullName ||
+                      t("mediationDetailsModal.viewProfile", "View Profile")}
                   </Link>
                 </ListGroup.Item>
               )}
 
-              {/* --- [!!!] إضافة معلومات الوسيط [!!!] --- */}
               {mediatorInfo && mediatorInfo._id && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Mediator:</strong>
+                  <strong className="mx-1">
+                    {t("mediationDetailsModal.mediator", "Mediator:")}
+                  </strong>
                   <Link
-                    to={`/profile/${mediatorInfo._id}`} // افترض أن هذا المسار صحيح
+                    to={`/profile/${mediatorInfo._id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -175,94 +188,153 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                   </Link>
                   {mediationRequest?.status === "MediatorAssigned" && (
                     <Badge bg="info text-dark" className="ms-2">
-                      Awaiting Mediator's Response
+                      {t(
+                        "mediationDetailsModal.awaitingResponse",
+                        "Awaiting Mediator's Response"
+                      )}
                     </Badge>
                   )}
                   {mediationRequest?.status === "MediationOfferAccepted" && (
                     <Badge bg="success" className="ms-2">
-                      Accepted Assignment
+                      {t(
+                        "mediationDetailsModal.acceptedAssignment",
+                        "Accepted Assignment"
+                      )}
                     </Badge>
                   )}
                 </ListGroup.Item>
               )}
-              {/* ------------------------------------ */}
 
               {product.price != null && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Original Listing Price:</strong>
-                  {formatCurrencyLocal(product.price, product.currency)}
+                  <strong className="mx-1">
+                    {t(
+                      "mediationDetailsModal.originalPrice",
+                      "Original Listing Price:"
+                    )}
+                  </strong>
+                  {formatCurrencyLocal(product.price, product.currency, i18n)}
                 </ListGroup.Item>
               )}
 
               {agreedPrice != null && (
                 <ListGroup.Item>
-                  <strong className="mx-1">Agreed Bid Price:</strong>
+                  <strong className="mx-1">
+                    {t(
+                      "mediationDetailsModal.agreedPrice",
+                      "Agreed Bid Price:"
+                    )}
+                  </strong>
                   <span className="fw-bold text-success">
                     {formatCurrencyLocal(
                       agreedPrice,
-                      product.currency || mediationRequest?.bidCurrency || "TND"
+                      product.currency ||
+                        mediationRequest?.bidCurrency ||
+                        "TND",
+                      i18n
                     )}
                   </span>
                 </ListGroup.Item>
               )}
 
-              {/* عرض تفاصيل العمولة إذا كانت محسوبة */}
               {feeDetails && !feeDetails.error && feeDetails.fee > 0 && (
                 <>
                   <ListGroup.Item>
-                    <strong className="mx-1">Calculated Mediator Fee:</strong>
+                    <strong className="mx-1">
+                      {t(
+                        "mediationDetailsModal.mediatorFee",
+                        "Calculated Mediator Fee:"
+                      )}
+                    </strong>
                     {formatCurrencyLocal(
                       feeDetails.fee,
-                      feeDetails.currencyUsed
+                      feeDetails.currencyUsed,
+                      i18n
                     )}
                     {feeDetails.currencyUsed !== "TND" &&
                       feeDetails.feeInTND > 0 && (
                         <small className="text-muted ms-2">
-                          (~{formatCurrencyLocal(feeDetails.feeInTND, "TND")})
+                          (~
+                          {formatCurrencyLocal(
+                            feeDetails.feeInTND,
+                            "TND",
+                            i18n
+                          )}
+                          )
                         </small>
                       )}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong className="mx-1">Seller's Share of Fee:</strong>
+                    <strong className="mx-1">
+                      {t(
+                        "mediationDetailsModal.sellerFee",
+                        "Seller's Share of Fee:"
+                      )}
+                    </strong>
                     {formatCurrencyLocal(
                       feeDetails.sellerShare,
-                      feeDetails.currencyUsed
+                      feeDetails.currencyUsed,
+                      i18n
                     )}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong className="mx-1">Buyer's Share of Fee:</strong>
+                    <strong className="mx-1">
+                      {t(
+                        "mediationDetailsModal.buyerFee",
+                        "Buyer's Share of Fee:"
+                      )}
+                    </strong>
                     {formatCurrencyLocal(
                       feeDetails.buyerShare,
-                      feeDetails.currencyUsed
+                      feeDetails.currencyUsed,
+                      i18n
                     )}
                   </ListGroup.Item>
                   <ListGroup.Item className="bg-light">
-                    <strong className="mx-1">Net Amount for Seller:</strong>
+                    <strong className="mx-1">
+                      {t(
+                        "mediationDetailsModal.netForSeller",
+                        "Net Amount for Seller:"
+                      )}
+                    </strong>
                     <span className="fw-bold text-primary p-1">
                       {formatCurrencyLocal(
                         feeDetails.netForSellerAfterFee ||
                           feeDetails.netForSeller,
-                        feeDetails.currencyUsed
+                        feeDetails.currencyUsed,
+                        i18n
                       )}
                     </span>
                     <div>
                       <small className="fw-bold text-primary">
-                        (Agreed Price - Seller's Fee Share)
+                        {t(
+                          "mediationDetailsModal.netForSellerFormula",
+                          "(Agreed Price - Seller's Fee Share)"
+                        )}
                       </small>
                     </div>
                   </ListGroup.Item>
                   <ListGroup.Item className="bg-light">
-                    <strong className="mx-1">Total Price for Buyer:</strong>
+                    <strong className="mx-1">
+                      {t(
+                        "mediationDetailsModal.totalForBuyer",
+                        "Total Price for Buyer:"
+                      )}
+                    </strong>
                     <span className="fw-bold text-danger p-1">
                       {formatCurrencyLocal(
                         feeDetails.totalForBuyerAfterFee ||
                           feeDetails.totalForBuyer,
-                        feeDetails.currencyUsed
+                        feeDetails.currencyUsed,
+                        i18n
                       )}
                     </span>
                     <div>
                       <small className="fw-bold text-danger">
-                        (Agreed Price + Buyer's Fee Share)
+                        {t(
+                          "mediationDetailsModal.totalForBuyerFormula",
+                          "(Agreed Price + Buyer's Fee Share)"
+                        )}
                       </small>
                     </div>
                   </ListGroup.Item>
@@ -271,22 +343,38 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
               {mediationRequest && (
                 <ListGroup.Item>
                   <small className="text-muted">
-                    Mediation Request ID: {mediationRequest._id}
+                    {t(
+                      "mediationDetailsModal.requestId",
+                      "Mediation Request ID:"
+                    )}{" "}
+                    {mediationRequest._id}
                   </small>
                   <br />
                   {mediationRequest.sellerConfirmedStart && (
                     <small className="text-success d-block">
-                      <FaCheck /> Seller Confirmed Readiness
+                      <FaCheck />{" "}
+                      {t(
+                        "mediationDetailsModal.sellerConfirmed",
+                        "Seller Confirmed Readiness"
+                      )}
                     </small>
                   )}
                   {mediationRequest.buyerConfirmedStart && (
                     <small className="text-success d-block">
-                      <FaCheck /> Buyer Confirmed Readiness
+                      <FaCheck />{" "}
+                      {t(
+                        "mediationDetailsModal.buyerConfirmed",
+                        "Buyer Confirmed Readiness"
+                      )}
                     </small>
                   )}
                   {mediationRequest.status === "EscrowFunded" && (
                     <small className="text-primary d-block">
-                      <FaCheck /> Funds are in Escrow
+                      <FaCheck />{" "}
+                      {t(
+                        "mediationDetailsModal.fundsInEscrow",
+                        "Funds are in Escrow"
+                      )}
                     </small>
                   )}
                 </ListGroup.Item>
@@ -297,7 +385,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>
-          Close
+          {t("common.close", "Close")}
         </Button>
       </Modal.Footer>
     </Modal>

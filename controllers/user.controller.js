@@ -453,31 +453,23 @@ const applyForMediator = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
-    // --- [!!! تعريف المتغير هنا في بداية الدالة ليكون متاحًا دائمًا !!!] ---
     let createdAdminNotifications = [];
-    let admins = []; // تعريف admins هنا أيضًا
+    let admins = [];
 
     try {
         const user = await User.findById(userId).session(session);
         if (!user) {
-            // لا حاجة لـ abort و end هنا، سيتم في finally أو catch
             return res.status(404).json({ msg: "User not found." });
         }
         if (user.isMediatorQualified) {
             return res.status(400).json({ msg: "You are already a qualified mediator." });
         }
-        // السماح بإعادة التقديم إذا كان الطلب السابق مرفوضًا
         if (user.mediatorApplicationStatus === 'Pending') {
             return res.status(400).json({ msg: "You already have a pending application." });
         }
 
         let basisForApplication = 'Unknown';
-        let previousApplicationStatus = user.mediatorApplicationStatus; // حفظ الحالة السابقة
-        let previousRejectionReason = user.mediatorApplicationNotes; // حفظ سبب الرفض السابق
-
-        // إعادة تعيين ملاحظات التطبيق القديمة قبل التقديم الجديد
         user.mediatorApplicationNotes = undefined;
-
 
         if (applicationType === 'reputation') {
             if (user.level >= MEDIATOR_REQUIRED_LEVEL) {
@@ -499,35 +491,50 @@ const applyForMediator = async (req, res) => {
 
         user.mediatorApplicationStatus = 'Pending';
         user.mediatorApplicationBasis = basisForApplication;
-        user.mediatorApplicationSubmittedAt = new Date(); // <--- أضف هذا
+        user.mediatorApplicationSubmittedAt = new Date();
         await user.save({ session });
         console.log(`   User ${userId} application status set to Pending. Basis: ${basisForApplication}.`);
 
-        // إشعار للمستخدم نفسه
-        let userMessage = `Your application to become a mediator (based on ${basisForApplication}) is now pending review.`;
+        // [!!!] START: هذا هو الإصلاح الرئيسي. تعريف المتغيرات هنا.
+        let userMessageKey = 'notification_messages.MEDIATOR_APP_PENDING';
+        let userMessageParams = {
+            basis: basisForApplication
+        };
         if (applicationType === 'guarantee') {
-            userMessage += ` ${formatCurrency(MEDIATOR_ESCROW_AMOUNT_TND, "TND")} has been reserved from your balance.`;
+            userMessageKey = 'notification_messages.MEDIATOR_APP_PENDING_GUARANTEE';
+            userMessageParams.amount = formatCurrency(MEDIATOR_ESCROW_AMOUNT_TND, "TND");
         }
-        const userAppNotifications = await Notification.create([{ user: userId, type: 'MEDIATOR_APP_PENDING', title: 'Mediator Application Submitted', message: userMessage }], { session, ordered: true }); // أضفت ordered: true هنا أيضًا
+
+        const userAppNotifications = await Notification.create([{
+            user: userId,
+            type: 'MEDIATOR_APP_PENDING',
+            title: 'notification_titles.MEDIATOR_APP_PENDING',
+            message: userMessageKey,
+            messageParams: userMessageParams
+        }], { session });
+        // [!!!] END: نهاية الإصلاح.
+
         console.log(`   User notification created: ${userAppNotifications[0]._id}`);
         if (req.io && req.onlineUsers && req.onlineUsers[userId.toString()]) {
             req.io.to(req.onlineUsers[userId.toString()]).emit('new_notification', userAppNotifications[0].toObject());
         }
 
-        // إشعارات للمسؤولين
-        admins = await User.find({ userRole: 'Admin' }).select('_id').session(session); // إعطاء قيمة لـ admins المعرفة في الأعلى
+        admins = await User.find({ userRole: 'Admin' }).select('_id').session(session);
         if (admins.length > 0) {
             const adminNotificationsData = admins.map(admin => ({
-                user: admin._id, type: 'NEW_MEDIATOR_APPLICATION',
-                title: 'New Mediator Application',
-                message: `User "${user.fullName || user.email}" has applied to become a mediator (Basis: ${basisForApplication}). Please review.`,
+                user: admin._id,
+                type: 'NEW_MEDIATOR_APPLICATION',
+                title: 'notification_titles.NEW_MEDIATOR_APPLICATION',
+                message: 'notification_messages.NEW_MEDIATOR_APPLICATION',
+                messageParams: {
+                    userName: user.fullName || user.email,
+                    basis: basisForApplication
+                },
                 relatedEntity: { id: userId, modelName: 'User' }
             }));
-            createdAdminNotifications = await Notification.insertMany(adminNotificationsData, { session, ordered: true }); // إعطاء قيمة لـ createdAdminNotifications
-            console.log(`   ${createdAdminNotifications.length} Admin notifications created in DB.`);
+            createdAdminNotifications = await Notification.insertMany(adminNotificationsData, { session });
         }
 
-        // إرسال تحديث رصيد المستخدم إذا كان guarantee
         if (applicationType === 'guarantee') {
             const targetUserSocketId = req.onlineUsers[userId.toString()];
             if (targetUserSocketId && req.io) {
@@ -541,22 +548,17 @@ const applyForMediator = async (req, res) => {
         }
 
         await session.commitTransaction();
-        // session.endSession() ستستدعى في finally
 
-        // --- إرسال حدث Socket.IO للمسؤولين بعد الـ Commit ---
-        // هذا الجزء الآن يستخدم createdAdminNotifications و admins المعرفة في نطاق الدالة
         if (req.io && req.onlineUsers) {
             const applicantDataForSocket = {
                 _id: user._id, fullName: user.fullName, email: user.email,
                 mediatorApplicationStatus: user.mediatorApplicationStatus,
                 mediatorApplicationBasis: user.mediatorApplicationBasis,
-                // أضف الحقول التي تحتاجها واجهة المراجعة مثل الرصيد والمستوى وتاريخ التقديم
                 level: user.level,
-                balance: user.balance, // الرصيد الحالي بعد أي خصم للضمان
+                balance: user.balance,
                 mediatorEscrowGuarantee: user.mediatorEscrowGuarantee,
-                // استخدم تاريخ التقديم الفعلي إذا سجلته، أو updatedAt
-                updatedAt: user.updatedAt, // أو mediatorApplicationSubmittedAt إذا أضفته
-                createdAt: user.createdAt // قد يكون مفيدًا
+                updatedAt: user.updatedAt,
+                createdAt: user.createdAt
             };
 
             if (createdAdminNotifications.length > 0) {
@@ -568,7 +570,7 @@ const applyForMediator = async (req, res) => {
                         console.log(`   [Socket] Emitted 'new_notification' and 'new_pending_mediator_application' to admin ${adminNotification.user}`);
                     }
                 });
-            } else if (admins.length > 0) { // إذا كان هناك مسؤولون ولكن لم يتم إنشاء إشعارات (نادر)
+            } else if (admins.length > 0) {
                 admins.forEach(admin => {
                     const adminSocketId = req.onlineUsers[admin._id.toString()];
                     if (adminSocketId) {
@@ -577,7 +579,6 @@ const applyForMediator = async (req, res) => {
                 });
             }
         }
-        // --- نهاية إرسال السوكيت ---
 
         res.status(200).json({ msg: "Your application has been submitted successfully and is pending review." });
 
@@ -585,7 +586,6 @@ const applyForMediator = async (req, res) => {
         if (session.inTransaction()) {
             await session.abortTransaction();
         }
-        // session.endSession(); // ستستدعى في finally
         console.error("[applyForMediator] Error:", error.message, error.stack);
         if (!res.headersSent) {
             res.status(400).json({ msg: error.message || 'Failed to submit application.' });
@@ -668,8 +668,13 @@ const adminApproveMediatorApplication = async (req, res) => {
 
         const userMessage = `Congratulations! Your application to become a mediator has been approved by admin "${adminFullName}". You can now be assigned mediation tasks when your status is 'Available'.`;
         await Notification.create([{
-            user: userId, type: 'MEDIATOR_APP_APPROVED',
-            title: 'Mediator Application Approved!', message: userMessage
+            user: userId,
+            type: 'MEDIATOR_APP_APPROVED',
+            title: 'notification_titles.MEDIATOR_APP_APPROVED',
+            message: 'notification_messages.MEDIATOR_APP_APPROVED',
+            messageParams: {
+                adminName: adminFullName
+            }
         }], { session });
         console.log(`   Approval notification created for user ${userId}.`);
 
@@ -753,13 +758,20 @@ const adminRejectMediatorApplication = async (req, res) => {
         await user.save({ session });
         console.log(`   User ${userId} mediator application rejected.`);
 
-        let userMessage = `We regret to inform you that your application to become a mediator was rejected by admin "${adminFullName}". Reason: ${reason.trim()}`;
+        let messageKey = 'notification_messages.MEDIATOR_APP_REJECTED';
         if (balanceUpdated) {
-            userMessage += ` The guarantee amount has been returned to your main balance.`;
+            messageKey = 'notification_messages.MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED'; // مفتاح جديد
         }
+
         await Notification.create([{
-            user: userId, type: 'MEDIATOR_APP_REJECTED',
-            title: 'Mediator Application Rejected', message: userMessage
+            user: userId,
+            type: 'MEDIATOR_APP_REJECTED',
+            title: 'notification_titles.MEDIATOR_APP_REJECTED',
+            message: messageKey,
+            messageParams: {
+                adminName: adminFullName,
+                reason: reason.trim()
+            }
         }], { session });
         console.log(`   Rejection notification created for user ${userId}.`);
 

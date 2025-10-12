@@ -342,7 +342,9 @@
     "TICKET_ASSIGNED_TO_YOU": "You have been assigned to handle ticket '#{{ticketId}}' from {{userName}}.",
     "TICKET_ASSIGNMENT_UPDATED": "The assignment for ticket '#{{ticketId}}' has been updated. It is now handled by {{supportName}}.",
     "ACCOUNT_BLOCKED": "Your account has been blocked by an administrator. Reason: {{reason}}",
-    "ACCOUNT_UNBLOCKED": "Your account has been unblocked by an administrator. Welcome back!"
+    "ACCOUNT_UNBLOCKED": "Your account has been unblocked by an administrator. Welcome back!",
+    "MEDIATOR_APP_PENDING_GUARANTEE": "Your application to become a mediator (based on Guarantee) is now pending review. {{amount}} has been reserved from your balance.",
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "We regret to inform you that your application to become a mediator was rejected by admin \"{{adminName}}\". Reason: {{reason}}. The guarantee amount has been returned to your main balance."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -450,6 +452,8 @@
     "saveChanges": "Save Changes",
     "accept": "Accept",
     "reject": "Reject",
+    "edit": "Edit",
+    "delete": "Delete",
     "loading": "Loading...",
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",

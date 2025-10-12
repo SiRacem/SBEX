@@ -1,6 +1,4 @@
 // src/components/admin/ProductListAdmin.jsx
-// (الكود الكامل من الرد السابق، لأنه كان بالفعل كاملاً ومعدلاً)
-// للتأكيد، سأقوم بإدراجه هنا مرة أخرى بدون أي اختصارات.
 import React, {
   useState,
   useEffect,
@@ -40,12 +38,32 @@ import "./ProductListAdmin.css";
 import { SocketContext } from "../../App";
 
 const fallbackImageUrl =
-  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>';
+  'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23ffffff">Error</text></svg>';
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
 
+// [!!!] START: الكود المُعدل للمودال
 const ProductDetailsModal = ({ show, onHide, product }) => {
   const { t, i18n } = useTranslation();
+
+  // إضافة خريطة الترجمة لأنواع الربط
+  const linkTypeMap = useMemo(
+    () => ({
+      "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
+      k: t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
+      "k&g&m": t("comptes.linkTypes.k&g&m", "Konami ID ✅ Gmail ✅ Mail ✅"),
+      "k&g": t("comptes.linkTypes.k&g", "Konami ID ✅ Gmail ✅ Mail ❌"),
+      "g&m": t("comptes.linkTypes.g&m", "Konami ID ❌ Gmail ✅ Mail ✅"),
+      g: t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
+    }),
+    [t]
+  );
+
+  // استخدام الخريطة لترجمة القيمة
+  const displayLinkType = product
+    ? linkTypeMap[product.linkType] || product.linkType || "N/A"
+    : "N/A";
+
   const formatCurrency = useCallback(
     (amount, currencyCode = "TND") => {
       const numericAmount = Number(amount);
@@ -139,7 +157,7 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
             </div>
             <p className="mt-2">
               <strong>{t("adminProducts.detailsModal.linkType")}:</strong>{" "}
-              {product.linkType || "N/A"}
+              {displayLinkType}
             </p>
             <p>
               <strong>{t("adminProducts.detailsModal.price")}:</strong>{" "}
@@ -168,6 +186,7 @@ const ProductDetailsModal = ({ show, onHide, product }) => {
     </Modal>
   );
 };
+// [!!!] END: نهاية الكود المُعدل للمودال
 
 const ProductListAdmin = ({ search }) => {
   const { t, i18n } = useTranslation();

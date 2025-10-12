@@ -342,7 +342,9 @@
     "TICKET_ASSIGNED_TO_YOU": "تحطتلك خدمة التذكرة '#{{ticketId}}' متاع {{userName}}.",
     "TICKET_ASSIGNMENT_UPDATED": "تبدل تعيين التذكرة '#{{ticketId}}'. توّا يشدها {{supportName}}.",
     "ACCOUNT_BLOCKED": "الكونت متاعك تبلوكا من عند الأدمن. السبب: {{reason}}",
-    "ACCOUNT_UNBLOCKED": "الأدمن حللك الكونت. أهلا بيك من جديد!"
+    "ACCOUNT_UNBLOCKED": "الأدمن حللك الكونت. أهلا بيك من جديد!",
+    "MEDIATOR_APP_PENDING_GUARANTEE": "الطلب متاعك باش تولي وسيط (بالضمان) يستنى في المراجعة. تجمد مبلغ {{amount}} من رصيدك.",
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "للأسف، طلبك باش تولي وسيط ترفض من عند الأدمن \"{{adminName}}\". السبب: {{reason}}. فلوس الضمان رجعت لرصيدك الأساسي."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -454,6 +456,8 @@
     "saveChanges": "سجل التغييرات",
     "accept": "قبول",
     "reject": "رفض",
+    "edit": "بدّل",
+    "delete": "فسّخ",
     "statuses": {
       "active": "يخدم",
       "blocked": "مبلوكي",

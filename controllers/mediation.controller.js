@@ -251,54 +251,101 @@ exports.adminAssignMediator = async (req, res) => {
 
 // --- Seller: Get Available Random Mediators ---
 exports.getAvailableRandomMediators = async (req, res) => {
-    // ... (الكود الكامل لهذه الدالة كما قدمته سابقاً، مع تعديل حساب التقييم ليشمل 0.0) ...
+    console.log("<<<<< RUNNING LATEST VERSION OF getAvailableRandomMediators >>>>>");
     const { mediationRequestId } = req.params;
     const requestingUserId = req.user._id;
     const { refresh, exclude } = req.query;
+
     try {
-        const mediationRequest = await MediationRequest.findById(mediationRequestId).select('seller buyer previouslySuggestedMediators suggestionRefreshCount status').lean();
-        if (!mediationRequest) return res.status(404).json({ msg: "Mediation request not found." });
-        if (!mediationRequest.seller.equals(requestingUserId)) return res.status(403).json({ msg: "Forbidden: You are not the seller." });
-        if (mediationRequest.status !== 'PendingMediatorSelection') return res.status(400).json({ msg: `Cannot select mediator. Status: ${mediationRequest.status}.` });
+        const mediationRequest = await MediationRequest.findById(mediationRequestId)
+            .select('seller buyer previouslySuggestedMediators suggestionRefreshCount status')
+            .lean();
+
+        if (!mediationRequest) {
+            return res.status(404).json({ msg: "Mediation request not found." });
+        }
+
+        if (!mediationRequest.seller.equals(requestingUserId)) {
+            return res.status(403).json({ msg: "Forbidden: You are not the seller." });
+        }
+
+        // [!!!] START: هذا هو الإصلاح الرئيسي
+        // الآن، نحن نتحقق من أن الحالة هي 'PendingMediatorSelection' في جميع الأحوال (سواء الجلب الأولي أو إعادة الجلب).
+        // هذا يمنع أي دالة أخرى من استدعاء هذا المسار في حالة خاطئة، ويحل الخطأ الذي رأيته.
+        if (mediationRequest.status !== 'PendingMediatorSelection') {
+            return res.status(400).json({
+                msg: `Action not allowed for seller at current request status: '${mediationRequest.status}'. Expected 'PendingMediatorSelection'.`
+            });
+        }
+
+        // التحقق من عدد مرات إعادة الجلب المسموح بها
+        if (refresh === 'true' && (mediationRequest.suggestionRefreshCount || 0) >= 1) {
+            return res.status(400).json({ msg: "You have already used your one-time request for new suggestions." });
+        }
+        // [!!!] END: نهاية الإصلاح الرئيسي
 
         let exclusionIds = [mediationRequest.seller, mediationRequest.buyer];
-        if (refresh === 'true' && mediationRequest.previouslySuggestedMediators?.length) {
+        // عند إعادة الجلب، قم بإضافة الوسطاء المقترحين سابقاً إلى قائمة الاستبعاد
+        if (mediationRequest.previouslySuggestedMediators?.length) {
             exclusionIds = [...exclusionIds, ...mediationRequest.previouslySuggestedMediators];
         }
+
         if (exclude) {
-            const excludeArray = exclude.split(',').filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
+            const excludeArray = exclude.split(',').filter(id => mongoose.Types.ObjectId.isValid(id));
             exclusionIds = [...new Set([...exclusionIds, ...excludeArray])];
         }
-        const finalExclusionObjectIds = exclusionIds.filter(id => id).map(id => new mongoose.Types.ObjectId(id.toString()));
 
-        const query = { isMediatorQualified: true, mediatorStatus: 'Available', blocked: false, _id: { $nin: finalExclusionObjectIds } };
+        const finalExclusionObjectIds = exclusionIds.map(id => new mongoose.Types.ObjectId(id.toString()));
+
+        const query = {
+            isMediatorQualified: true,
+            mediatorStatus: 'Available',
+            blocked: false,
+            _id: { $nin: finalExclusionObjectIds }
+        };
+
         const allAvailableMediators = await User.find(query).select('fullName avatarUrl mediatorStatus successfulMediationsCount reputationPoints level positiveRatings negativeRatings').lean();
 
         if (allAvailableMediators.length === 0) {
             const message = refresh === 'true' ? "No new distinct mediators found." : "No available mediators found.";
-            return res.status(200).json({ mediators: [], message, refreshCountRemaining: Math.max(0, 1 - (mediationRequest.suggestionRefreshCount + (refresh === 'true' ? 1 : 0))) });
+            return res.status(200).json({
+                mediators: [],
+                message,
+                refreshCountRemaining: Math.max(0, 1 - (mediationRequest.suggestionRefreshCount || 0))
+            });
         }
 
         const shuffledMediators = [...allAvailableMediators].sort(() => 0.5 - Math.random());
         const selectedMediatorsRaw = shuffledMediators.slice(0, 3);
+
         const selectedMediatorsWithRating = selectedMediatorsRaw.map(mediator => {
             const totalRatings = (mediator.positiveRatings || 0) + (mediator.negativeRatings || 0);
-            let calculatedRatingValue = 0.0; // Default to 0.0
+            let calculatedRatingValue = 0.0;
             if (totalRatings > 0) {
                 calculatedRatingValue = parseFloat((((mediator.positiveRatings || 0) / totalRatings) * 5).toFixed(1));
             }
             return { ...mediator, calculatedRating: calculatedRatingValue };
         });
 
-        if (refresh !== 'true' && selectedMediatorsWithRating.length > 0) {
-            await MediationRequest.findByIdAndUpdate(mediationRequestId, { $addToSet: { previouslySuggestedMediators: { $each: selectedMediatorsWithRating.map(m => m._id) } } });
-        }
+        // تحديث قاعدة البيانات بالوسطاء المقترحين والعداد
+        const updateOperations = {
+            $addToSet: { previouslySuggestedMediators: { $each: selectedMediatorsWithRating.map(m => m._id) } }
+        };
+
         let currentRefreshCount = mediationRequest.suggestionRefreshCount || 0;
-        if (refresh === 'true' && currentRefreshCount < 1) {
-            await MediationRequest.findByIdAndUpdate(mediationRequestId, { $inc: { suggestionRefreshCount: 1 } });
+        if (refresh === 'true') {
+            updateOperations.$inc = { suggestionRefreshCount: 1 };
             currentRefreshCount++;
         }
-        res.status(200).json({ mediators: selectedMediatorsWithRating, suggestionsRefreshed: refresh === 'true', refreshCountRemaining: Math.max(0, 1 - currentRefreshCount) });
+
+        await MediationRequest.findByIdAndUpdate(mediationRequestId, updateOperations);
+
+        res.status(200).json({
+            mediators: selectedMediatorsWithRating,
+            suggestionsRefreshed: refresh === 'true',
+            refreshCountRemaining: Math.max(0, 1 - currentRefreshCount)
+        });
+
     } catch (error) {
         console.error("Error fetching available mediators:", error);
         res.status(500).json({ msg: "Server error fetching mediators.", errorDetails: error.message });

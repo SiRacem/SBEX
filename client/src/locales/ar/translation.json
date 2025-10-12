@@ -342,7 +342,9 @@
     "TICKET_ASSIGNED_TO_YOU": "تم تعيينك للتعامل مع التذكرة '#{{ticketId}}' من {{userName}}.",
     "TICKET_ASSIGNMENT_UPDATED": "تم تحديث تعيين التذكرة '#{{ticketId}}'. يتولى أمرها الآن {{supportName}}.",
     "ACCOUNT_BLOCKED": "تم حظر حسابك من قبل مسؤول. السبب: {{reason}}",
-    "ACCOUNT_UNBLOCKED": "تم فك حظر حسابك من قبل مسؤول. أهلاً بعودتك!"
+    "ACCOUNT_UNBLOCKED": "تم فك حظر حسابك من قبل مسؤول. أهلاً بعودتك!",
+    "MEDIATOR_APP_PENDING_GUARANTEE": "طلبك لتصبح وسيطًا (على أساس الضمان) قيد المراجعة الآن. تم حجز مبلغ {{amount}} من رصيدك.",
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "نأسف لإبلاغك بأن طلبك لتصبح وسيطًا قد تم رفضه من قبل المسؤول \"{{adminName}}\". السبب: {{reason}}. تم إعادة مبلغ الضمان إلى رصيدك الرئيسي."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -454,6 +456,8 @@
     "saveChanges": "حفظ التغييرات",
     "accept": "قبول",
     "reject": "رفض",
+    "edit": "تعديل",
+    "delete" : "حذف",
     "statuses": {
       "active": "نشط",
       "blocked": "محظور",

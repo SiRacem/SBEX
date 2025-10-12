@@ -342,7 +342,9 @@
     "TICKET_ASSIGNED_TO_YOU": "Vous avez été assigné pour traiter le ticket '#{{ticketId}}' de {{userName}}.",
     "TICKET_ASSIGNMENT_UPDATED": "L'assignation du ticket '#{{ticketId}}' a été mise à jour. Il est maintenant traité par {{supportName}}.",
     "ACCOUNT_BLOCKED": "Votre compte a été bloqué par un administrateur. Raison : {{reason}}",
-    "ACCOUNT_UNBLOCKED": "Votre compte a été débloqué par un administrateur. Bon retour !"
+    "ACCOUNT_UNBLOCKED": "Votre compte a été débloqué par un administrateur. Bon retour !",
+    "MEDIATOR_APP_PENDING_GUARANTEE": "Votre candidature pour devenir médiateur (basée sur la Garantie) est en cours d'examen. Un montant de {{amount}} a été réservé sur votre solde.",
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "Nous avons le regret de vous informer que votre candidature pour devenir médiateur a été rejetée par l'administrateur \"{{adminName}}\". Raison : {{reason}}. Le montant de la garantie a été restitué à votre solde principal."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -454,6 +456,8 @@
     "saveChanges": "Enregistrer les modifications",
     "accept": "Accepter",
     "reject": "Rejeter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",

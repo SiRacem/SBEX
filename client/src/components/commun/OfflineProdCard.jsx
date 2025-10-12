@@ -67,6 +67,24 @@ const OfflineProdCard = ({ el: product }) => {
     (state) => state.productReducer?.productErrors?.[product?._id] ?? null
   );
 
+  // [!!!] START: هذا هو الكود الجديد الذي يجب إضافته
+  const linkTypeMap = useMemo(
+    () => ({
+      "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
+      "k": t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
+      "k&g&m": t("comptes.linkTypes.k&g&m", "Konami ID ✅ Gmail ✅ Mail ✅"),
+      "k&g": t("comptes.linkTypes.k&g", "Konami ID ✅ Gmail ✅ Mail ❌"),
+      "g&m": t("comptes.linkTypes.g&m", "Konami ID ❌ Gmail ✅ Mail ✅"),
+      "g": t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
+    }),
+    [t]
+  );
+
+  const displayLinkType = product
+    ? linkTypeMap[product.linkType] || product.linkType
+    : "";
+  // [!!!] END: نهاية الكود الجديد
+
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showBidModal, setShowBidModal] = useState(false);
@@ -271,9 +289,6 @@ const OfflineProdCard = ({ el: product }) => {
     ? t("home.bidModal.bidAmountLabel_new", { currency: product.currency })
     : t("home.bidModal.bidAmountLabel_your", { currency: product.currency });
 
-  // =========================================================================
-  // [!!!] START: حساب الرصيد الديناميكي هنا [!!!]
-  // =========================================================================
   const displayedBalanceData = useMemo(() => {
     if (!loggedInUser) {
       return { amount: 0, currency: product.currency || "TND" };
@@ -282,12 +297,8 @@ const OfflineProdCard = ({ el: product }) => {
       const balanceInUSD = loggedInUser.balance / TND_USD_RATE;
       return { amount: balanceInUSD, currency: "USD" };
     }
-    // الحالة الافتراضية هي الدينار التونسي
     return { amount: loggedInUser.balance, currency: "TND" };
   }, [loggedInUser, product.currency]);
-  // =========================================================================
-  // [!!!] END: نهاية حساب الرصيد الديناميكي [!!!]
-  // =========================================================================
 
   if (!product || !product._id) {
     return (
@@ -356,6 +367,16 @@ const OfflineProdCard = ({ el: product }) => {
               <span className="text-muted">{t("home.unknownSeller")}</span>
             )}
           </Card.Text>
+
+          {/* لم أجد عرضاً صريحاً لنوع الربط هنا، إذا كان موجوداً، يجب تعديله.
+              إذا كنت تريد إضافته، يمكنك وضع هذا الكود في المكان المناسب:
+          */}
+          {/*
+          <Badge bg="light" text="dark" className="mb-2 align-self-start">
+             {displayLinkType}
+          </Badge>
+          */}
+
           <div className="product-price-section mb-3">
             <div className="price-current fw-bold">
               {formatCurrency(product.price, product.currency)}
@@ -683,12 +704,10 @@ const OfflineProdCard = ({ el: product }) => {
               <div>
                 {t("home.bidModal.currentBalance")}:{" "}
                 <strong>
-                  {/* [!!!] START: استخدام الرصيد الديناميكي هنا [!!!] */}
                   {formatCurrencyWithName(
                     displayedBalanceData.amount,
                     displayedBalanceData.currency
                   )}
-                  {/* [!!!] END: نهاية استخدام الرصيد الديناميكي [!!!] */}
                 </strong>
                 .
                 <span className="d-block text-muted">

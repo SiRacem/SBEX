@@ -11,7 +11,7 @@ exports.isSellerOfMediation = async (req, res, next) => {
             return res.status(400).json({ msg: "Invalid Mediation Request ID." });
         }
 
-        const request = await MediationRequest.findById(mediationRequestId).select('seller status'); // يمكنك جلب buyerConfirmedStart أيضاً إذا احتجت للتحقق منه هنا
+        const request = await MediationRequest.findById(mediationRequestId).select('seller status');
         if (!request) {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
@@ -19,17 +19,30 @@ exports.isSellerOfMediation = async (req, res, next) => {
             return res.status(403).json({ msg: "Forbidden: You are not the seller for this request." });
         }
 
-        // --- التعديل هنا ---
-        // الحالات المسموح بها للبائع لاتخاذ إجراء (مثل تأكيد الاستعداد)
-        const allowedStatusesForSellerAction = ['MediationOfferAccepted', 'EscrowFunded'];
-        if (!allowedStatusesForSellerAction.includes(request.status)) {
-            return res.status(400).json({
-                msg: `Action not allowed for seller at current request status: '${request.status}'. Expected one of: ${allowedStatusesForSellerAction.join(', ')}.`
-            });
-        }
-        // --- نهاية التعديل ---
+        // [!!!] START: هذا هو المنطق الجديد والمُحسّن
+        // سنتحقق من الحالة بناءً على المسار المطلوب
+        const requestedPath = req.path;
 
-        req.mediationRequestFromMiddleware = request; // استخدام اسم مختلف قليلاً لتجنب الارتباك إذا كان الـ controller يجلب الطلب مرة أخرى
+        if (requestedPath.includes('/available-random')) {
+            // الحالة الخاصة بمسار جلب الوسطاء
+            if (request.status !== 'PendingMediatorSelection') {
+                return res.status(400).json({
+                    msg: `Action 'get mediators' not allowed at status '${request.status}'. Expected 'PendingMediatorSelection'.`
+                });
+            }
+        } else if (requestedPath.includes('/confirm-readiness')) {
+            // الحالة الخاصة بمسار تأكيد الاستعداد
+            const allowedStatuses = ['MediationOfferAccepted', 'EscrowFunded'];
+            if (!allowedStatuses.includes(request.status)) {
+                return res.status(400).json({
+                    msg: `Action 'confirm readiness' not allowed at status '${request.status}'. Expected one of: ${allowedStatuses.join(', ')}.`
+                });
+            }
+        }
+        // يمكنك إضافة شروط 'else if' أخرى هنا لمسارات مستقبلية يستخدم فيها هذا الـ middleware
+        // [!!!] END: نهاية المنطق الجديد
+
+        req.mediationRequestFromMiddleware = request;
         next();
     } catch (error) {
         console.error("Error in isSellerOfMediation middleware:", error);

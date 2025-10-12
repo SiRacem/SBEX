@@ -949,7 +949,20 @@ const CommandsListVendor = () => {
       );
     },
     [
-      /* ...dependencies... */
+      handleAcceptBid,
+      handleDeleteProduct,
+      handleImageError,
+      handleOpenSelectMediatorModal,
+      handleOpenViewMediationDetails,
+      handleSellerConfirmReadiness,
+      handleShowImageModal,
+      i18n.language,
+      loadingDelete,
+      navigate,
+      openRejectModal,
+      rejectingBid,
+      sellerConfirmLoading,
+      t,
     ]
   );
 
@@ -1209,7 +1222,7 @@ const CommandsListVendor = () => {
             loading={loadingMediators}
             onSelectMediator={handleAssignMediator}
             onRequestNewSuggestions={() => {
-              /* logic here */
+              fetchRandomMediators(productForMediationAction, true);
             }}
             suggestionsUsedOnce={
               mediatorSuggestionsUsedOnce || refreshCountRemaining <= 0
