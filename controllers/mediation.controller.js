@@ -251,14 +251,15 @@ exports.adminAssignMediator = async (req, res) => {
 
 // --- Seller: Get Available Random Mediators ---
 exports.getAvailableRandomMediators = async (req, res) => {
-    console.log("<<<<< RUNNING LATEST VERSION OF getAvailableRandomMediators >>>>>");
+    console.log("<<<<< RUNNING NEW LOGIC FOR getAvailableRandomMediators >>>>>");
     const { mediationRequestId } = req.params;
     const requestingUserId = req.user._id;
-    const { refresh, exclude } = req.query;
+    // 'exclude' is now a comma-separated string of IDs from the frontend
+    const { exclude } = req.query;
 
     try {
         const mediationRequest = await MediationRequest.findById(mediationRequestId)
-            .select('seller buyer previouslySuggestedMediators suggestionRefreshCount status')
+            .select('seller buyer status') // We only need these fields now
             .lean();
 
         if (!mediationRequest) {
@@ -269,34 +270,21 @@ exports.getAvailableRandomMediators = async (req, res) => {
             return res.status(403).json({ msg: "Forbidden: You are not the seller." });
         }
 
-        // [!!!] START: هذا هو الإصلاح الرئيسي
-        // الآن، نحن نتحقق من أن الحالة هي 'PendingMediatorSelection' في جميع الأحوال (سواء الجلب الأولي أو إعادة الجلب).
-        // هذا يمنع أي دالة أخرى من استدعاء هذا المسار في حالة خاطئة، ويحل الخطأ الذي رأيته.
         if (mediationRequest.status !== 'PendingMediatorSelection') {
             return res.status(400).json({
-                msg: `Action not allowed for seller at current request status: '${mediationRequest.status}'. Expected 'PendingMediatorSelection'.`
+                msg: `Action 'get mediators' not allowed at status '${mediationRequest.status}'. Expected 'PendingMediatorSelection'.`
             });
         }
 
-        // التحقق من عدد مرات إعادة الجلب المسموح بها
-        if (refresh === 'true' && (mediationRequest.suggestionRefreshCount || 0) >= 1) {
-            return res.status(400).json({ msg: "You have already used your one-time request for new suggestions." });
-        }
-        // [!!!] END: نهاية الإصلاح الرئيسي
-
+        // Build the exclusion list
         let exclusionIds = [mediationRequest.seller, mediationRequest.buyer];
-        // عند إعادة الجلب، قم بإضافة الوسطاء المقترحين سابقاً إلى قائمة الاستبعاد
-        if (mediationRequest.previouslySuggestedMediators?.length) {
-            exclusionIds = [...exclusionIds, ...mediationRequest.previouslySuggestedMediators];
-        }
-
         if (exclude) {
             const excludeArray = exclude.split(',').filter(id => mongoose.Types.ObjectId.isValid(id));
             exclusionIds = [...new Set([...exclusionIds, ...excludeArray])];
         }
-
         const finalExclusionObjectIds = exclusionIds.map(id => new mongoose.Types.ObjectId(id.toString()));
 
+        // Query for available mediators, excluding the ones sent from the frontend
         const query = {
             isMediatorQualified: true,
             mediatorStatus: 'Available',
@@ -307,14 +295,16 @@ exports.getAvailableRandomMediators = async (req, res) => {
         const allAvailableMediators = await User.find(query).select('fullName avatarUrl mediatorStatus successfulMediationsCount reputationPoints level positiveRatings negativeRatings').lean();
 
         if (allAvailableMediators.length === 0) {
-            const message = refresh === 'true' ? "No new distinct mediators found." : "No available mediators found.";
+            // [!!!] Translation Fix [!!!]
+            // Send a translation key instead of a hardcoded string
+            const messageKey = exclude ? "myProductsPage.mediatorModal.infoNoNewMediators" : "myProductsPage.mediatorModal.infoNoMediators";
             return res.status(200).json({
                 mediators: [],
-                message,
-                refreshCountRemaining: Math.max(0, 1 - (mediationRequest.suggestionRefreshCount || 0))
+                message: messageKey, // Send the key
             });
         }
 
+        // Shuffle and pick 3 random mediators
         const shuffledMediators = [...allAvailableMediators].sort(() => 0.5 - Math.random());
         const selectedMediatorsRaw = shuffledMediators.slice(0, 3);
 
@@ -327,23 +317,10 @@ exports.getAvailableRandomMediators = async (req, res) => {
             return { ...mediator, calculatedRating: calculatedRatingValue };
         });
 
-        // تحديث قاعدة البيانات بالوسطاء المقترحين والعداد
-        const updateOperations = {
-            $addToSet: { previouslySuggestedMediators: { $each: selectedMediatorsWithRating.map(m => m._id) } }
-        };
-
-        let currentRefreshCount = mediationRequest.suggestionRefreshCount || 0;
-        if (refresh === 'true') {
-            updateOperations.$inc = { suggestionRefreshCount: 1 };
-            currentRefreshCount++;
-        }
-
-        await MediationRequest.findByIdAndUpdate(mediationRequestId, updateOperations);
+        // We no longer update the database with suggested mediators
 
         res.status(200).json({
             mediators: selectedMediatorsWithRating,
-            suggestionsRefreshed: refresh === 'true',
-            refreshCountRemaining: Math.max(0, 1 - currentRefreshCount)
         });
 
     } catch (error) {
@@ -409,34 +386,55 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
             console.log(`   Product ${mediationRequest.product._id} status updated to 'MediatorAssigned' in DB.`);
         }
 
-        const productTitleForNotification = mediationRequest.product?.title || 'the specified product';
-        const sellerFullNameForNotification = req.user.fullName || 'The Seller';
-        const buyerFullNameForNotification = mediationRequest.buyer?.fullName || 'The Buyer';
-
-        const sellerConfirmationMsg = `You have successfully selected ${mediatorUser.fullName} as the mediator for "${productTitleForNotification}". They have been notified and you will be updated on their decision.`;
-        const mediatorNotificationMsg = `You have been selected as a mediator by ${sellerFullNameForNotification} for a transaction regarding "${productTitleForNotification}" with ${buyerFullNameForNotification}. Please review and accept or reject this assignment.`;
-        const buyerNotificationMsg = `${sellerFullNameForNotification} has selected ${mediatorUser.fullName} as the mediator for your transaction regarding "${productTitleForNotification}". Please wait for the mediator to accept the assignment.`;
+        // [!!!] START: إصلاح خطأ notificationParams [!!!]
+        // تعريف المتغير الذي كان ناقصاً
+        const notificationParams = {
+            mediatorName: mediatorUser.fullName,
+            productName: mediationRequest.product?.title || 'the product',
+            sellerName: req.user.fullName || 'The Seller',
+            buyerName: mediationRequest.buyer?.fullName || 'The Buyer'
+        };
+        // [!!!] END: نهاية إصلاح الخطأ [!!!]
 
         await Notification.create([
-            { user: sellerId, type: 'MEDIATOR_SELECTION_CONFIRMED', title: 'Mediator Selection Confirmed', message: sellerConfirmationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
-            { user: selectedMediatorId, type: 'MEDIATION_ASSIGNED', title: 'New Mediation Assignment', message: mediatorNotificationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
-            { user: mediationRequest.buyer._id, type: 'MEDIATOR_SELECTED_BY_SELLER', title: 'Mediator Selected for Your Transaction', message: buyerNotificationMsg, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } }
+            {
+                user: sellerId,
+                type: 'MEDIATOR_SELECTION_CONFIRMED',
+                title: 'notification_titles.MEDIATOR_SELECTION_CONFIRMED',
+                message: 'notification_messages.MEDIATOR_SELECTION_CONFIRMED',
+                messageParams: notificationParams, // الآن المتغير معرف
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            },
+            {
+                user: selectedMediatorId,
+                type: 'MEDIATION_ASSIGNED',
+                title: 'notification_titles.MEDIATION_ASSIGNED',
+                message: 'notification_messages.MEDIATION_ASSIGNED_TO_MEDIATOR',
+                messageParams: notificationParams, // الآن المتغير معرف
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            },
+            {
+                user: mediationRequest.buyer._id,
+                type: 'MEDIATOR_SELECTED_BY_SELLER',
+                title: 'notification_titles.MEDIATOR_SELECTED_BY_SELLER',
+                message: 'notification_messages.MEDIATOR_SELECTED_BY_SELLER',
+                messageParams: notificationParams, // الآن المتغير معرف
+                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
+            }
         ], { session: session, ordered: true });
         console.log(`   Notifications sent for mediator assignment on request ${updatedMediationRequestDoc._id}.`);
 
         await session.commitTransaction();
         console.log("   sellerAssignSelectedMediator transaction committed successfully.");
 
-        // --- [!!!] الحل: إعادة جلب شاملة قبل إرسال السوكيت [!!!] ---
         const finalPopulatedMediationRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
-            .populate('product') // المنتج بالكامل
+            .populate('product')
             .populate('seller', 'fullName avatarUrl _id')
             .populate('buyer', 'fullName avatarUrl _id')
             .populate('mediator', 'fullName avatarUrl _id')
             .lean();
 
         if (req.io && finalPopulatedMediationRequest) {
-            // إرسال تحديث عام
             const involvedUserIds = [finalPopulatedMediationRequest.seller?._id, finalPopulatedMediationRequest.buyer?._id, finalPopulatedMediationRequest.mediator?._id].filter(id => id).map(id => id.toString());
             const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
             uniqueInvolvedUserIds.forEach(involvedUserIdString => {
@@ -447,12 +445,10 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
                 }
             });
 
-            // إرسال تحديث للمنتج منفصل
             if (finalPopulatedMediationRequest.product) {
                 req.io.emit('product_updated', finalPopulatedMediationRequest.product);
             }
 
-            // --- [!!!] الحل: إرسال حدث مخصص للوسيط لتحديث قائمته [!!!] ---
             const mediatorSocketId = req.onlineUsers?.[selectedMediatorId.toString()];
             if (mediatorSocketId) {
                 req.io.to(mediatorSocketId).emit('new_assignment_for_mediator', {
@@ -3286,5 +3282,139 @@ exports.adminMarkSubChatMessagesReadController = async (req, res) => {
     } catch (error) {
         console.error("[Ctrl-MarkSubRead] Error:", error);
         res.status(500).json({ msg: "Server error marking messages as read.", errorDetails: error.message });
+    }
+};
+
+// CRON Job: التعامل مع طلبات الوساطة التي انتهت مهلة تعيين الوسيط لها
+exports.handleExpiredMediationAssignments = async (io, onlineUsers) => {
+    console.log(`[CRON - ExpiredMediations] Running job at ${new Date().toISOString()}`);
+    const TIMEOUT_MINUTES = 10;
+    const expirationTime = new Date(Date.now() - TIMEOUT_MINUTES * 60 * 1000);
+    let processedCount = 0;
+    let errorCount = 0;
+
+    try {
+        const expiredRequests = await MediationRequest.find({
+            status: 'MediatorAssigned',
+            updatedAt: { $lt: expirationTime }
+        }).populate('product', 'title _id')
+            .populate('seller', '_id fullName')
+            .populate('buyer', '_id fullName')
+            .populate('mediator', '_id fullName');
+
+        if (expiredRequests.length === 0) {
+            console.log("[CRON - ExpiredMediations] No expired assignments found.");
+            return { processed: 0, errors: 0 };
+        }
+
+        console.log(`[CRON - ExpiredMediations] Found ${expiredRequests.length} expired assignments to process.`);
+
+        for (const request of expiredRequests) {
+            const session = await mongoose.startSession();
+            session.startTransaction();
+            try {
+                // [!!!] START: إصلاح خطأ المهمة المجدولة [!!!]
+                // التحقق من وجود الأطراف قبل استخدامهم
+                if (!request.seller || !request.mediator) {
+                    console.error(`[CRON - ExpiredMediations] Skipping request ${request._id} due to missing seller or mediator data.`);
+                    await session.abortTransaction();
+                    errorCount++;
+                    continue; // انتقل إلى الطلب التالي
+                }
+                // [!!!] END: نهاية إصلاح الخطأ [!!!]
+
+                const mediatorName = request.mediator.fullName || 'The mediator';
+                const productTitle = request.product?.title || 'the product';
+                const reasonForRejection = `Mediator did not respond within the ${TIMEOUT_MINUTES}-minute time limit.`;
+
+                const expiredMediatorId = request.mediator._id; // حفظ المعرف قبل تغييره
+
+                request.status = 'PendingMediatorSelection';
+                request.mediator = null;
+                request.history.push({
+                    event: "Mediator assignment expired",
+                    userId: null,
+                    details: {
+                        reason: reasonForRejection,
+                        expiredMediatorId: expiredMediatorId
+                    },
+                    timestamp: new Date()
+                });
+                await request.save({ session });
+
+                if (request.product?._id) {
+                    await Product.findByIdAndUpdate(request.product._id,
+                        { $set: { status: 'PendingMediatorSelection' } },
+                        { session }
+                    );
+                }
+
+                const notifications = [
+                    {
+                        user: request.seller._id, // الآن آمن للاستخدام
+                        type: 'MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW',
+                        title: 'notification_titles.MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW',
+                        message: 'notification_messages.MEDIATION_AUTO_REJECTED_SELLER',
+                        messageParams: { mediatorName, productName: productTitle, minutes: TIMEOUT_MINUTES },
+                        relatedEntity: { id: request._id, modelName: 'MediationRequest' }
+                    },
+                    {
+                        user: expiredMediatorId, // الآن آمن للاستخدام
+                        type: 'MEDIATION_TASK_EXPIRED',
+                        title: 'notification_titles.MEDIATION_TASK_EXPIRED',
+                        message: 'notification_messages.MEDIATION_TASK_EXPIRED',
+                        messageParams: { productName: productTitle, minutes: TIMEOUT_MINUTES },
+                        relatedEntity: { id: request._id, modelName: 'MediationRequest' }
+                    }
+                ];
+
+                const createdNotifications = await Notification.insertMany(notifications, { session });
+                await session.commitTransaction();
+                processedCount++;
+                console.log(`[CRON - ExpiredMediations] Successfully processed expired request ${request._id}`);
+
+                const finalUpdatedRequest = await MediationRequest.findById(request._id)
+                    .populate('product seller buyer')
+                    .lean();
+
+                if (finalUpdatedRequest) {
+                    // نرسل التحديث للبائع والمشتري فقط
+                    const involved = [finalUpdatedRequest.seller, finalUpdatedRequest.buyer].filter(Boolean);
+                    involved.forEach(user => {
+                        const socketId = onlineUsers[user._id.toString()];
+                        if (socketId) {
+                            io.to(socketId).emit('mediation_request_updated', { updatedMediationRequestData: finalUpdatedRequest });
+                        }
+                    });
+
+                    // ونرسل تحديثاً خاصاً للوسيط الذي انتهى وقته
+                    const expiredMediatorSocketId = onlineUsers[expiredMediatorId.toString()];
+                    if (expiredMediatorSocketId) {
+                        io.to(expiredMediatorSocketId).emit('mediation_request_updated', { updatedMediationRequestData: finalUpdatedRequest });
+                    }
+
+
+                    createdNotifications.forEach(notif => {
+                        const socketId = onlineUsers[notif.user.toString()];
+                        if (socketId) {
+                            io.to(socketId).emit('new_notification', notif);
+                        }
+                    });
+                }
+
+            } catch (singleError) {
+                await session.abortTransaction();
+                console.error(`[CRON - ExpiredMediations] Error processing single request ${request._id}:`, singleError);
+                errorCount++;
+            } finally {
+                session.endSession();
+            }
+        }
+
+        return { processed: processedCount, errors: errorCount };
+
+    } catch (mainError) {
+        console.error("[CRON - ExpiredMediations] Critical error in main job execution:", mainError);
+        return { processed: processedCount, errors: errorCount + 1 };
     }
 };

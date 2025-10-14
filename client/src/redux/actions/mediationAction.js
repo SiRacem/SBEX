@@ -134,7 +134,16 @@ export const assignSelectedMediator = (mediationRequestId, selectedMediatorId) =
     if (!config) return dispatch({ type: types.ASSIGN_MEDIATOR_FAIL, payload: { errorMessage: { key: "apiErrors.notAuthorized" } } });
     try {
         const { data } = await axios.put(`${BACKEND_URL}/mediation/assign-selected/${mediationRequestId}`, { selectedMediatorId }, config);
-        dispatch({ type: types.ASSIGN_MEDIATOR_SUCCESS, payload: { responseData: data, mediationRequestId, successMessage: 'mediation.seller.assignSuccess' } });
+        dispatch({
+            type: types.ASSIGN_MEDIATOR_SUCCESS,
+            payload: {
+                responseData: data,
+                mediationRequestId,
+                successMessage: 'mediation.seller.assignSuccess',
+                // [!!!] أضف هذا الجزء لإرسال المنتج المحدث إلى الـ reducer [!!!]
+                updatedProduct: data.mediationRequest.product
+            }
+        });
         return data;
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'mediation.seller.assignFail');

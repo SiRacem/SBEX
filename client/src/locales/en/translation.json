@@ -226,7 +226,6 @@
     "PRODUCT_DELETED": "Product Deleted by Admin",
     "NEW_PRODUCT_PENDING": "New Product for Approval",
     "PRODUCT_UPDATE_PENDING": "Product Update for Approval",
-    "MEDIATOR_SELECTED_BY_SELLER": "Mediator Selected",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "Action Required: Select a New Mediator",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Action Required: Buyer Confirmed",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Bid Accepted - Awaiting Mediator",
@@ -278,7 +277,11 @@
     "TICKET_ASSIGNED_TO_YOU": "New Ticket Assigned to You",
     "TICKET_ASSIGNMENT_UPDATED": "Ticket Assignment Updated",
     "ACCOUNT_BLOCKED": "Account Blocked",
-    "ACCOUNT_UNBLOCKED": "Account Unblocked"
+    "ACCOUNT_UNBLOCKED": "Account Unblocked",
+    "MEDIATION_TASK_EXPIRED": "Mediation Task Expired",
+    "MEDIATOR_SELECTION_CONFIRMED": "Mediator Selection Confirmed",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "New Mediation Assignment",
+    "MEDIATOR_SELECTED_BY_SELLER": "Mediator Selected for Your Transaction"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -294,7 +297,6 @@
     "PRODUCT_DELETED": "Your product '{{productName}}' was deleted by administrator '{{adminName}}'. Reason: {{reason}}",
     "NEW_PRODUCT_PENDING": "Vendor '{{vendorName}}' submitted a new product '{{productName}}' for your approval.",
     "PRODUCT_UPDATE_PENDING": "Vendor '{{vendorName}}' updated product '{{productName}}'. It now requires re-approval.",
-    "MEDIATOR_SELECTED_BY_SELLER": "The seller has selected '{{mediatorName}}' as the mediator for the transaction of '{{productName}}'.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "The mediator '{{mediatorName}}' rejected the task for '{{productName}}'. Please select a new mediator.",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "The buyer has confirmed readiness for '{{productName}}'. Please confirm your readiness to proceed.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Your bid for '{{productName}}' was accepted. The seller will now select a mediator.",
@@ -344,7 +346,12 @@
     "ACCOUNT_BLOCKED": "Your account has been blocked by an administrator. Reason: {{reason}}",
     "ACCOUNT_UNBLOCKED": "Your account has been unblocked by an administrator. Welcome back!",
     "MEDIATOR_APP_PENDING_GUARANTEE": "Your application to become a mediator (based on Guarantee) is now pending review. {{amount}} has been reserved from your balance.",
-    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "We regret to inform you that your application to become a mediator was rejected by admin \"{{adminName}}\". Reason: {{reason}}. The guarantee amount has been returned to your main balance."
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "We regret to inform you that your application to become a mediator was rejected by admin \"{{adminName}}\". Reason: {{reason}}. The guarantee amount has been returned to your main balance.",
+    "MEDIATION_AUTO_REJECTED_SELLER": "Mediator {{mediatorName}} did not respond to the assignment for '{{productName}}' within {{minutes}} minutes. Please select a new mediator.",
+    "MEDIATION_TASK_EXPIRED": "You did not respond to the mediation assignment for '{{productName}}' within the {{minutes}}-minute time limit, so it has been automatically cancelled.",
+    "MEDIATOR_SELECTION_CONFIRMED": "You have successfully selected {{mediatorName}} as the mediator for \"{{productName}}\". They have been notified.",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "You have been selected by {{sellerName}} for a transaction regarding \"{{productName}}\" with {{buyerName}}. Please review and respond.",
+    "MEDIATOR_SELECTED_BY_SELLER": "{{sellerName}} has selected {{mediatorName}} as the mediator for your transaction regarding \"{{productName}}\". Please wait for them to accept."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -1304,6 +1311,7 @@
     "productCard": {
       "listPrice": "List Price:",
       "agreedPrice": "Agreed:",
+      "countdownTooltip": "Time remaining for the mediator to respond",
       "status": {
         "approved": "Approved",
         "pendingApproval": "Pending Approval",
@@ -1362,12 +1370,18 @@
       "unavailable": "Image not available.",
       "close": "Close"
     },
+    "countdown": {
+      "calculating": "Calculating...",
+      "tooltip": "Time remaining for the mediator to accept the assignment",
+      "expiredToast": "Mediator response time has expired. You can now select another one."
+    },
     "mediatorModal": {
       "errorIdMissing": "Mediation request ID is missing.",
       "errorNotAuthenticated": "Not authenticated.",
       "errorLoadFailed": "Could not load mediators.",
       "successSuggestions": "New suggestions loaded!",
-      "infoNoMediators": "No new mediators found."
+      "infoNoNewMediators": "No new distinct mediators found.",
+      "assignSuccess": "Mediator assigned successfully and has been notified."
     }
   },
   "ticketsListPage": {

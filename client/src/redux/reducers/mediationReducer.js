@@ -106,7 +106,16 @@ const mediationReducer = (state = initialState, action) => {
         case ASSIGN_MEDIATOR_REQUEST:
             return { ...state, assigningMediator: { ...state.assigningMediator, [payload.mediationRequestId]: true }, errorAssign: null, successAssign: false };
         case ASSIGN_MEDIATOR_SUCCESS:
-            return { ...state, assigningMediator: { ...state.assigningMediator, [payload.mediationRequestId]: false }, successAssign: true, errorAssign: null };
+            return {
+                ...state,
+                assigningMediator: { ...state.assigningMediator, [payload.mediationRequestId]: false },
+                successAssign: true,
+                errorAssign: null,
+                // [!!!] تحديث المنتج النشط إذا كان مفتوحاً [!!!]
+                activeMediationDetails: state.activeMediationDetails?._id === payload.mediationRequestId
+                    ? payload.responseData.mediationRequest
+                    : state.activeMediationDetails,
+            };
         case ASSIGN_MEDIATOR_FAIL:
             return { ...state, assigningMediator: { ...state.assigningMediator, [payload.mediationRequestId]: false }, errorAssign: payload.error, successAssign: false };
 
@@ -402,77 +411,80 @@ const mediationReducer = (state = initialState, action) => {
 
             console.log(`[Reducer] Handling UPDATE_MEDIATION_DETAILS_FROM_SOCKET for request: ${updatedRequest._id}, New Status: ${updatedRequest.status}`);
 
-            if (updatedRequest.status === 'Cancelled') {
-                console.log("%c[mediationReducer] Received CANCELLED request from socket. Data:", "color: red; font-weight: bold;", updatedRequest);
-            }
-
             // ========================================================================
-            // دالة مساعدة عامة لتحديث قوائم مهام الوسيط
+            // دالة مساعدة عامة لتحديث قوائم المهام النشطة
+            // (مثل مهام الوسيط المعلقة أو قيد الانتظار)
             // ========================================================================
-            const updateMediatorTaskList = (originalListObject) => {
+            const updateActiveTaskList = (originalListObject) => {
                 const currentList = originalListObject.list || [];
                 const currentTotal = originalListObject.totalCount || 0;
                 const itemIndex = currentList.findIndex(req => req._id === updatedRequest._id);
 
-                if (itemIndex > -1) {
-                    const newList = [...currentList];
-                    newList[itemIndex] = updatedRequest; // استبدال العنصر بالكامل
-
-                    // [!!!] أضف هذا الـ Log هنا [!!!]
-                    if (updatedRequest.status === 'Cancelled') {
-                        console.log("[mediationReducer] UPDATING buyer's list. New list will contain:", newList);
-                    }
-
-                    return { ...originalListObject, list: newList };
-                }
-                return originalListObject;
-
                 const isFinished = ['Cancelled', 'Completed', 'AdminResolved'].includes(updatedRequest.status);
 
-                if (isFinished) {
-                    console.log(`   -> Request ${updatedRequest._id} has status '${updatedRequest.status}'. Removing from an active mediator list.`);
-                    return {
-                        ...originalListObject,
-                        list: currentList.filter(req => req._id !== updatedRequest._id),
-                        totalCount: Math.max(0, currentTotal - 1)
-                    };
-                } else {
-                    console.log(`   -> Request ${updatedRequest._id} has status '${updatedRequest.status}'. Updating in an active mediator list.`);
-                    const newList = [...currentList];
-                    newList[itemIndex] = updatedRequest;
-                    return {
-                        ...originalListObject,
-                        list: newList
-                    };
+                if (itemIndex > -1) { // إذا كان العنصر موجوداً في القائمة
+                    if (isFinished) {
+                        // إذا انتهت المهمة، قم بإزالتها من القائمة النشطة
+                        console.log(`   -> Request ${updatedRequest._id} finished. Removing from an active list.`);
+                        return {
+                            ...originalListObject,
+                            list: currentList.filter(req => req._id !== updatedRequest._id),
+                            totalCount: Math.max(0, currentTotal - 1)
+                        };
+                    } else {
+                        // إذا لم تنتهِ المهمة، قم بتحديث بياناتها
+                        console.log(`   -> Request ${updatedRequest._id} found. Updating in an active list.`);
+                        const newList = [...currentList];
+                        newList[itemIndex] = updatedRequest;
+                        return { ...originalListObject, list: newList };
+                    }
+                } else if (!isFinished) {
+                    // إذا لم يكن العنصر موجوداً في القائمة وكانت حالته نشطة
+                    // (مثلاً: وسيط استقبل مهمة جديدة)
+                    // تحقق مما إذا كان هذا التحديث يخص المستخدم الحالي (كوسيط مثلاً)
+                    const currentUserId = state.userReducer?.user?._id;
+                    if (updatedRequest.mediator?._id === currentUserId && updatedRequest.status === 'MediatorAssigned') {
+                        console.log(`   -> New assignment ${updatedRequest._id} received. Adding to an active list.`);
+                        return {
+                            ...originalListObject,
+                            list: [updatedRequest, ...currentList],
+                            totalCount: currentTotal + 1,
+                        };
+                    }
                 }
+
+                // إذا لم تتطابق أي من الحالات، أعد القائمة الأصلية
+                return originalListObject;
             };
 
             // ========================================================================
-            // دالة خاصة بقائمة طلبات المشتري (لأنها تحتفظ بالطلبات الملغاة)
+            // دالة خاصة بقوائم الطلبات التي تحتفظ بالحالات المنتهية (مثل طلبات المشتري)
             // ========================================================================
-            const updateBuyerRequestList = (originalListObject) => {
+            const updateComprehensiveList = (originalListObject) => {
                 const currentList = originalListObject.list || [];
                 const itemIndex = currentList.findIndex(req => req._id === updatedRequest._id);
 
-                if (itemIndex === -1) {
-                    // إذا لم يكن موجودًا وكان للمستخدم الحالي، أضفه (حالة نادرة)
-                    if (updatedRequest.buyer?._id === state.userReducer?.user?._id) {
+                if (itemIndex > -1) {
+                    // إذا كان موجوداً، قم بتحديثه
+                    console.log(`   -> Request ${updatedRequest._id} found. Updating in a comprehensive list.`);
+                    const newList = [...currentList];
+                    newList[itemIndex] = updatedRequest;
+                    return { ...originalListObject, list: newList };
+                } else {
+                    // إذا لم يكن موجوداً، تحقق مما إذا كان يجب إضافته
+                    // (مثلاً، طلب جديد يخص المشتري الحالي)
+                    const currentUserId = state.userReducer?.user?._id;
+                    if (updatedRequest.buyer?._id === currentUserId) {
+                        console.log(`   -> New request ${updatedRequest._id} for this user. Adding to comprehensive list.`);
                         return {
                             ...originalListObject,
                             list: [updatedRequest, ...currentList],
                             totalCount: (originalListObject.totalCount || 0) + 1,
                         };
                     }
-                    return originalListObject;
                 }
 
-                console.log(`   -> Request ${updatedRequest._id} found in buyer's list. Updating with status '${updatedRequest.status}'.`);
-                const newList = [...currentList];
-                newList[itemIndex] = updatedRequest;
-                return {
-                    ...originalListObject,
-                    list: newList
-                };
+                return originalListObject;
             };
 
             // ========================================================================
@@ -480,15 +492,18 @@ const mediationReducer = (state = initialState, action) => {
             // ========================================================================
             return {
                 ...state,
+                // تحديث التفاصيل النشطة إذا كانت مطابقة
                 activeMediationDetails: state.activeMediationDetails?._id === updatedRequest._id
                     ? updatedRequest
                     : state.activeMediationDetails,
 
-                pendingDecisionAssignments: updateMediatorTaskList(state.pendingDecisionAssignments),
-                acceptedAwaitingPartiesAssignments: updateMediatorTaskList(state.acceptedAwaitingPartiesAssignments),
-                disputedCases: updateMediatorTaskList(state.disputedCases),
+                // تحديث قوائم الوسيط (تتم إزالة المهام المنتهية)
+                pendingDecisionAssignments: updateActiveTaskList(state.pendingDecisionAssignments),
+                acceptedAwaitingPartiesAssignments: updateActiveTaskList(state.acceptedAwaitingPartiesAssignments),
+                disputedCases: updateActiveTaskList(state.disputedCases),
 
-                buyerRequests: updateBuyerRequestList(state.buyerRequests),
+                // تحديث قائمة المشتري (تحتفظ بالمهام المنتهية)
+                buyerRequests: updateComprehensiveList(state.buyerRequests),
             };
         }
         case CLEAR_ACTIVE_MEDIATION_DETAILS:

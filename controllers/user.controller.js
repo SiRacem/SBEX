@@ -658,7 +658,6 @@ const adminApproveMediatorApplication = async (req, res) => {
             console.log(`   Confirmed user ${userId} meets reputation level ${user.level} (Required: ${MEDIATOR_REQUIRED_LEVEL}).`);
         }
 
-
         user.isMediatorQualified = true;
         user.mediatorApplicationStatus = 'Approved';
         user.mediatorStatus = 'Available';

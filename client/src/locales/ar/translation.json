@@ -278,7 +278,8 @@
     "TICKET_ASSIGNED_TO_YOU": "تم تعيين تذكرة جديدة لك",
     "TICKET_ASSIGNMENT_UPDATED": "تم تحديث تعيين التذكرة",
     "ACCOUNT_BLOCKED": "تم حظر الحساب",
-    "ACCOUNT_UNBLOCKED": "تم فك حظر الحساب"
+    "ACCOUNT_UNBLOCKED": "تم فك حظر الحساب",
+    "MEDIATION_TASK_EXPIRED": "مهمة الوساطة انتهت صلاحيتها"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بك، {{name}}! يسعدنا انضمامك إلينا.",
@@ -344,7 +345,9 @@
     "ACCOUNT_BLOCKED": "تم حظر حسابك من قبل مسؤول. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "تم فك حظر حسابك من قبل مسؤول. أهلاً بعودتك!",
     "MEDIATOR_APP_PENDING_GUARANTEE": "طلبك لتصبح وسيطًا (على أساس الضمان) قيد المراجعة الآن. تم حجز مبلغ {{amount}} من رصيدك.",
-    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "نأسف لإبلاغك بأن طلبك لتصبح وسيطًا قد تم رفضه من قبل المسؤول \"{{adminName}}\". السبب: {{reason}}. تم إعادة مبلغ الضمان إلى رصيدك الرئيسي."
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "نأسف لإبلاغك بأن طلبك لتصبح وسيطًا قد تم رفضه من قبل المسؤول \"{{adminName}}\". السبب: {{reason}}. تم إعادة مبلغ الضمان إلى رصيدك الرئيسي.",
+    "MEDIATION_AUTO_REJECTED_SELLER": "لم يستجب الوسيط '{{mediatorName}}' للمهمة الخاصة بالمنتج '{{productName}}' خلال {{minutes}} دقائق. الرجاء اختيار وسيط جديد.",
+    "MEDIATION_TASK_EXPIRED": "لم تستجب لمهمة الوساطة الخاصة بالمنتج '{{productName}}' خلال المهلة الزمنية المحددة بـ {{minutes}} دقائق، لذلك تم إلغاؤها تلقائياً."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -1363,12 +1366,18 @@
       "unavailable": "الصورة غير متوفرة.",
       "close": "إغلاق"
     },
+    "countdown": {
+        "calculating": "جاري الحساب...",
+        "tooltip": "الوقت المتبقي للوسيط لقبول المهمة",
+        "expiredToast": "انتهى وقت استجابة الوسيط. يمكنك الآن اختيار وسيط آخر."
+      },
     "mediatorModal": {
       "errorIdMissing": "معرّف طلب الوساطة مفقود.",
       "errorNotAuthenticated": "غير مصادق عليه.",
       "errorLoadFailed": "تعذر تحميل الوسطاء.",
       "successSuggestions": "تم تحميل اقتراحات جديدة!",
-      "infoNoMediators": "لم يتم العثور على وسطاء جدد."
+      "infoNoNewMediators": "لم يتم العثور على وسطاء جدد.",
+      "assignSuccess": "تم تعيين الوسيط بنجاح وتم إشعاره."
     }
   },
   "ticketsListPage": {

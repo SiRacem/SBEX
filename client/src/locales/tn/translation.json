@@ -226,7 +226,6 @@
     "PRODUCT_DELETED": "الأدمن فسخ المنتوج",
     "NEW_PRODUCT_PENDING": "منتوج جديد يستنى في الموافقة",
     "PRODUCT_UPDATE_PENDING": "تحديث منتوج يستنى في الموافقة",
-    "MEDIATOR_SELECTED_BY_SELLER": "تختار الوسيط",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "لازمك تختار وسيط جديد",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "لازمك تعمل حاجة: الشاري أكد",
     "BID_ACCEPTED_PENDING_MEDIATOR": "تقبلت المزايدة - نستناو في الوسيط",
@@ -278,7 +277,11 @@
     "TICKET_ASSIGNED_TO_YOU": "تحطتلك تذكرة جديدة",
     "TICKET_ASSIGNMENT_UPDATED": "تبدل تعيين التذكرة",
     "ACCOUNT_BLOCKED": "الكونت تبلوكا",
-    "ACCOUNT_UNBLOCKED": "الكونت تحل"
+    "ACCOUNT_UNBLOCKED": "الكونت تحل",
+    "MEDIATION_TASK_EXPIRED": "خدمة الوساطة وفات",
+    "MEDIATOR_SELECTION_CONFIRMED": "تأكيد اختيار الوسيط",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "خدمة وساطة جديدة",
+    "MEDIATOR_SELECTED_BY_SELLER": "تختار الوسيط لمعاملتك"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بيك، {{name}}! فرحانين بيك معانا.",
@@ -294,7 +297,6 @@
     "PRODUCT_DELETED": "الأدمن '{{adminName}}' فسخ المنتوج متاعك '{{productName}}'. السبب: {{reason}}",
     "NEW_PRODUCT_PENDING": "البايع '{{vendorName}}' بعث منتوج جديد '{{productName}}' باش توافق عليه.",
     "PRODUCT_UPDATE_PENDING": "البايع '{{vendorName}}' بدل المنتوج '{{productName}}'. لازم تعاود توافق عليه.",
-    "MEDIATOR_SELECTED_BY_SELLER": "البايع اختار '{{mediatorName}}' كوسيط للعملية متاع '{{productName}}'.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "الوسيط '{{mediatorName}}' رفض الخدمة متاع '{{productName}}'. يرحم والديك اختار وسيط آخر.",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "الشاري أكد اللي هو حاضر لـ '{{productName}}'. يرحم والديك أكد إنت زادة باش تكملو.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "المزايدة متاعك على '{{productName}}' تقبلت. البايع توّا باش يختار وسيط.",
@@ -344,7 +346,12 @@
     "ACCOUNT_BLOCKED": "الكونت متاعك تبلوكا من عند الأدمن. السبب: {{reason}}",
     "ACCOUNT_UNBLOCKED": "الأدمن حللك الكونت. أهلا بيك من جديد!",
     "MEDIATOR_APP_PENDING_GUARANTEE": "الطلب متاعك باش تولي وسيط (بالضمان) يستنى في المراجعة. تجمد مبلغ {{amount}} من رصيدك.",
-    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "للأسف، طلبك باش تولي وسيط ترفض من عند الأدمن \"{{adminName}}\". السبب: {{reason}}. فلوس الضمان رجعت لرصيدك الأساسي."
+    "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "للأسف، طلبك باش تولي وسيط ترفض من عند الأدمن \"{{adminName}}\". السبب: {{reason}}. فلوس الضمان رجعت لرصيدك الأساسي.",
+    "MEDIATION_AUTO_REJECTED_SELLER": "الوسيط '{{mediatorName}}' ما جاوبش على الخدمة متاع '{{productName}}' في {{minutes}} دقايق. يرحم والديك اختار وسيط آخر.",
+    "MEDIATION_TASK_EXPIRED": "ما جاوبتش على خدمة الوساطة متاع '{{productName}}' في {{minutes}} دقايق، على هاكا تلغات أوتوماتيك.",
+    "MEDIATOR_SELECTION_CONFIRMED": "اخترت بالصحيح '{{mediatorName}}' كوسيط لـ '{{productName}}'. بعثنالو إشعار.",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' كوسيط لعملية بخصوص '{{productName}}' مع '{{buyerName}}'. يرحم والديك ثبت و جاوب.",
+    "MEDIATOR_SELECTED_BY_SELLER": "اختار '{{sellerName}}' الوسيط '{{mediatorName}}' للعملية متاعك بخصوص '{{productName}}'. استنى حتى يقبل."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -1305,6 +1312,7 @@
     "productCard": {
       "listPrice": "سوم العرض:",
       "agreedPrice": "السوم المتفاهم عليه:",
+      "countdownTooltip": "الوقت اللي بقى للوسيط باش يجاوب",
       "status": {
         "approved": "توافق عليه",
         "pendingApproval": "يستنى في الموافقة",
@@ -1363,12 +1371,18 @@
       "unavailable": "التصويرة موش موجودة.",
       "close": "سكر"
     },
+    "countdown": {
+        "calculating": "نحسبو في الوقت...",
+        "tooltip": "الوقت اللي مازال للوسيط باش يقبل المهمة",
+        "expiredToast": "وفا وقت الوسيط باش يجاوب. تنجم تختار واحد آخر توا."
+      },
     "mediatorModal": {
       "errorIdMissing": "معرّف طلب الوساطة ناقص.",
       "errorNotAuthenticated": "مانكش مسجل دخول.",
       "errorLoadFailed": "ما نجمناش نجيبو الوسطاء.",
       "successSuggestions": "تحملت اقتراحات جديدة!",
-      "infoNoMediators": "ما لقيناش وسطاء جدد."
+      "infoNoNewMediators": "ما لقيناش وسطاء جدد مختلفين.",
+        "assignSuccess": "تم اختيار الوسيط بالصحيح و بعثنالو إشعار."
     }
   },
   "ticketsListPage": {

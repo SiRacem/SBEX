@@ -423,6 +423,36 @@ const productReducer = (state = initialState, { type, payload }) => {
             };
         }
 
+        // [!!!] حالة جديدة للتعامل مع التحديث المحلي الفوري [!!!]
+        case 'UPDATE_SINGLE_PRODUCT_LOCALLY':
+            if (!payload || !payload._id) {
+                console.warn("REDUCER: UPDATE_SINGLE_PRODUCT_LOCALLY - Invalid payload, cannot update product locally.");
+                return state;
+            }
+            console.log(`[Reducer] Updating product ${payload._id} locally with:`, payload);
+            return {
+                ...state,
+                Products: state.Products.map(p =>
+                    p._id === payload._id ? { ...p, ...payload } : p
+                ),
+            };
+
+            // [!!!] استمع لنجاح تعيين الوسيط وقم بتحديث المنتج فوراً [!!!]
+        case 'ASSIGN_MEDIATOR_SUCCESS': {
+            const { updatedProduct } = payload;
+            if (!updatedProduct || !updatedProduct._id) {
+                console.warn("Product Reducer: Received ASSIGN_MEDIATOR_SUCCESS without a valid updated product.");
+                return state;
+            }
+            console.log(`[Product Reducer] Updating product ${updatedProduct._id} from ASSIGN_MEDIATOR_SUCCESS.`);
+            return {
+                ...state,
+                Products: state.Products.map(p =>
+                    p._id === updatedProduct._id ? updatedProduct : p
+                ),
+            };
+        }
+        
         default:
             return state;
     }

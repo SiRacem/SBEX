@@ -253,3 +253,14 @@ export const clearProductError = (productId) => ({
     type: CLEAR_PRODUCT_ERROR,
     payload: { productId }
 });
+
+// [!!!] دالة جديدة لتحديث المنتج محلياً فقط في الواجهة [!!!]
+export const updateProductLocally = (productId, updates) => (dispatch) => {
+    dispatch({
+        type: 'UPDATE_SINGLE_PRODUCT_LOCALLY', // سنضيف هذا النوع في الـ Reducer
+        payload: {
+            _id: productId,
+            ...updates
+        }
+    });
+};

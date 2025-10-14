@@ -11,6 +11,7 @@ const cron = require('node-cron');
 const { releaseDuePendingFunds } = require('./services/pendingFundsReleaseService');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { handleExpiredMediationAssignments } = require('./controllers/mediation.controller');
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -495,7 +496,18 @@ cron.schedule('*/5 * * * *', async () => {
     }
 });
 
-// [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
+// [!!!] START: المهمة المجدولة الجديدة لإلغاء طلبات الوساطة
+cron.schedule('* * * * *', async () => {
+    console.log(`[CRON MASTER] Triggering 'handleExpiredMediationAssignments' job at ${new Date().toISOString()}`);
+    try {
+        // We pass io and onlineUsers so the job can send real-time updates
+        const result = await handleExpiredMediationAssignments(io, onlineUsers);
+        console.log(`[CRON MASTER] Job "handleExpiredMediationAssignments" completed. Processed: ${result.processed}, Errors: ${result.errors}.`);
+    } catch (error) {
+        console.error('[CRON MASTER] Critical error during scheduled "handleExpiredMediationAssignments" job:', error);
+    }
+});
+// [!!!] END: نهاية المهمة المجدولة الجديدة
 
 // 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
