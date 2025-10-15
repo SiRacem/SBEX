@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -18,13 +17,11 @@ const PORT = config.get('PORT') || 8000;
 let FRONTEND_URL = "http://localhost:3000";
 if (config.has('FRONTEND_URL')) {
     FRONTEND_URL = config.get('FRONTEND_URL');
-    console.log(`[Server Config] Using FRONTEND_URL from config: ${FRONTEND_URL}`);
 } else {
-    console.warn('[Server Config] WARNING: FRONTEND_URL is not defined in config files. Using default "http://localhost:3000".');
+    console.warn('[Server Config] WARNING: FRONTEND_URL is not defined in config files.');
 }
 const JWT_SECRET = config.get('secret');
-if (JWT_SECRET) console.log("[Server Config] JWT Secret loaded successfully.");
-else console.error("[Server Config] CRITICAL: JWT_SECRET is not defined in config!");
+if (!JWT_SECRET) console.error("[Server Config] CRITICAL: JWT_SECRET is not defined in config!");
 
 // --- Route Imports ---
 const user = require('./router/user');
@@ -49,8 +46,10 @@ const User = require('./models/User');
 
 const connectDB = require('./config/connectDB');
 
+// [!!!] START: تعريف app و server هنا [!!!]
 const app = express();
 const server = http.createServer(app);
+// [!!!] END: نهاية التعريف
 
 const io = new Server(server, {
     cors: {
@@ -215,43 +214,46 @@ io.on('connection', (socket) => {
                 readBy: [{ readerId: new mongoose.Types.ObjectId(senderId), readAt: new Date() }]
             };
             await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: newMessageData } });
+
             const populatedMessageForEmit = {
                 ...newMessageData,
                 sender: { _id: senderId, fullName: socket.userFullNameForChat, avatarUrl: socket.userAvatarUrlForChat }
             };
             io.to(mediationRequestId.toString()).emit('newMediationMessage', populatedMessageForEmit);
+
             const request = await MediationRequest.findById(mediationRequestId)
                 .select('seller buyer mediator disputeOverseers product')
                 .populate('product', 'title')
                 .lean();
             if (!request) return;
+
             const recipientIds = [
-                request.seller,
-                request.buyer,
-                request.mediator,
-                ...(request.disputeOverseers || [])
-            ]
-                .map(id => id?.toString())
-                .filter(id => id && id !== senderId);
+                request.seller, request.buyer, request.mediator, ...(request.disputeOverseers || [])
+            ].map(id => id?.toString()).filter(id => id && id !== senderId);
             const uniqueRecipientIds = [...new Set(recipientIds)];
-            const productTitle = request.product?.title || 'the mediation';
-            const senderName = socket.userFullNameForChat || 'A user';
-            const notificationTitle = `New Message: ${productTitle}`;
-            const notificationMessage = `You have a new message from ${senderName}.`;
+
+            // [!!!] START: تعديل إشعار الرسالة الجديدة [!!!]
+            const notificationParams = {
+                productName: request.product?.title || 'the mediation',
+                senderName: socket.userFullNameForChat || 'A user'
+            };
+
             const notificationsToCreate = uniqueRecipientIds.map(userId => ({
                 user: userId,
                 type: 'NEW_CHAT_MESSAGE',
-                title: notificationTitle,
-                message: notificationMessage,
+                title: 'notification_titles.NEW_CHAT_MESSAGE',
+                message: 'notification_messages.NEW_CHAT_MESSAGE',
+                messageParams: notificationParams,
                 relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
             }));
+            // [!!!] END: نهاية تعديل الإشعار [!!!]
+
             if (notificationsToCreate.length > 0) {
                 const createdNotifications = await Notification.insertMany(notificationsToCreate);
                 createdNotifications.forEach(notif => {
                     const recipientSocketId = onlineUsers[notif.user.toString()];
                     if (recipientSocketId) {
                         io.to(recipientSocketId).emit('new_notification', notif);
-                        console.log(`[Notification] Sent 'new_notification' for main chat to user ${notif.user.toString()}`);
                     }
                 });
             }
@@ -512,16 +514,25 @@ cron.schedule('* * * * *', async () => {
 // 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
 
-// 2. تفعيل سياسة CORS للسماح للواجهة الأمامية بالوصول
+// 2. [!!!] إضافة ترويسة CORP هنا [!!!]
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    // هذا هو السطر الأهم لإصلاح مشكلة الصور
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+});
+
+// 3. تفعيل سياسة CORS للسماح للواجهة الأمامية بالوصول
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
-// 3. تفعيل قراءة الجسم بصيغة JSON للطلبات القادمة
+// 4. تفعيل قراءة الجسم بصيغة JSON للطلبات القادمة
 app.use(express.json());
 
-// 4. خدمة الملفات الثابتة (مثل الصور). الطلبات إلى /uploads سيتم معالجتها هنا ولن تصل إلى Rate Limiter
+// 5. خدمة الملفات الثابتة (مثل الصور). الطلبات إلى /uploads سيتم معالجتها هنا
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 5. الآن، قم بتطبيق Rate Limiter على كل ما تبقى (وهي مسارات الـ API فقط)
+// 6. تطبيق Rate Limiter على كل ما تبقى (مسارات الـ API)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500, // حد معقول للاستخدام العادي
@@ -547,8 +558,6 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
 });
 app.use(apiLimiter);
-
-// --- [!!!] END: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 
 // التأكد من وجود مجلدات الرفع
 const chatImageUploadPath = path.join(__dirname, 'uploads/chat_images/');

@@ -1,65 +1,70 @@
-// src/components/chat/TypingIndicator.jsx
+// client/src/components/chat/TypingIndicator.jsx
 
 import React from "react";
 import { Image } from "react-bootstrap";
-import "./TypingIndicator.css";
+import { useTranslation } from "react-i18next";
+import "./TypingIndicator.css"; // تأكد من أن هذا الملف موجود
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const noUserAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 
 const TypingIndicator = ({ typingUsers, currentUserId }) => {
-  const otherTypingUsers = Object.values(typingUsers || {}).filter(
+  const { t } = useTranslation();
+
+  const activeTypingUsers = Object.values(typingUsers || {}).filter(
     (user) => user && user.userId !== currentUserId
   );
 
-  if (otherTypingUsers.length === 0) {
-    return null;
+  if (activeTypingUsers.length === 0) {
+    return <div className="typing-indicator-area-placeholder" />;
   }
 
-  // --- START OF THE FIX ---
-  // سنبني أجزاء الواجهة هنا
-  const typingUsersElements = otherTypingUsers
-    .slice(0, 2)
-    .map((user, index, arr) => (
-      // نضع كل مجموعة في <span> ونعطيه المفتاح
-      <span key={user.userId || `typing-${index}`}>
+  const renderTypingMessage = () => {
+    const names = activeTypingUsers.map((u) => u.fullName || "Someone");
+    let message;
+
+    if (names.length === 1) {
+      message = t("mediationChatPage.isTyping", { name: names[0] });
+    } else if (names.length === 2) {
+      message = t("mediationChatPage.areTyping", {
+        name1: names[0],
+        name2: names[1],
+      });
+    } else {
+      message = t("mediationChatPage.multipleTyping", { count: names.length });
+    }
+
+    return (
+      <>
+        <span className="is-typing-text-indicator">{message}</span>
+        <div className="typing-dots-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="typing-indicator-area">
+      {activeTypingUsers.slice(0, 1).map((user) => (
         <Image
+          key={user.userId}
           src={
             user.avatarUrl && !user.avatarUrl.startsWith("http")
-              ? `${BACKEND_URL}/${user.avatarUrl}`
+              ? `${BACKEND_URL}${user.avatarUrl}`
               : user.avatarUrl || noUserAvatar
           }
           roundedCircle
-          width={18}
-          height={18}
-          className="me-1 typing-avatar-indicator"
+          width={16}
+          height={16}
+          className="typing-avatar-indicator"
           alt={user.fullName || "User"}
-          title={user.fullName || "User"} // Add a title for hover
         />
-        <span className="typing-user-name-indicator">
-          {user.fullName || "Someone"}
-        </span>
-        {/* أضف الفاصلة فقط إذا لم يكن هذا هو العنصر الأخير في القائمة المعروضة */}
-        {index < arr.length - 1 && <span className="mx-1">,</span>}
-      </span>
-    ));
-  // --- END OF THE FIX ---
-
-  return (
-    <div className="typing-indicator small text-muted mb-1 d-flex align-items-center">
-      {typingUsersElements} {/* عرض العناصر التي تم بناؤها */}
-      {otherTypingUsers.length > 2 && (
-        <span className="ms-1">and {otherTypingUsers.length - 2} other(s)</span>
-      )}
-      <span className="is-typing-text-indicator mx-1">
-        {otherTypingUsers.length > 1 ? "are typing" : "is typing"}
-      </span>
-      <div className="typing-dots">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
+      ))}
+      {renderTypingMessage()}
     </div>
   );
 };

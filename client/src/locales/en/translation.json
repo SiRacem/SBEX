@@ -234,14 +234,12 @@
     "MEDIATION_TASK_REJECTED_SELF": "You Rejected a Mediation Task",
     "MEDIATION_ACCEPTED_BY_MEDIATOR": "Mediator Accepted Your Case",
     "PARTY_CONFIRMED_READINESS": "A Party Has Confirmed Readiness",
-    "MEDIATION_STARTED": "Mediation Has Started",
     "MEDIATION_COMPLETED": "Mediation Completed",
     "MEDIATION_CANCELLED": "Mediation Cancelled",
     "MEDIATION_DISPUTED": "A Dispute Has Been Opened",
     "DISPUTE_RESOLVED_ADMIN": "Dispute Resolved by Admin",
     "MEDIATION_CANCELLATION_CONFIRMED": "Mediation Cancellation Confirmed",
     "MEDIATION_REJECTED_BY_BUYER": "Buyer Cancelled Mediation",
-    "NEW_CHAT_MESSAGE": "New Message in Mediation Chat",
     "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message from Admin",
     "NEW_MEDIATOR_APPLICATION": "New Mediator Application",
     "MEDIATOR_APP_APPROVED": "Mediator Application Approved!",
@@ -286,7 +284,9 @@
     "MEDIATION_REJECTED_BY_MEDIATOR": "Mediator Assignment Rejected",
     "MEDIATION_CANCELLED_BY_BUYER": "Mediation Cancelled by Buyer",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Buyer Confirmed & Paid - Your Turn!",
-    "MEDIATION_CONFIRMED_BY_PARTY": "Readiness & Escrow Confirmed"
+    "MEDIATION_CONFIRMED_BY_PARTY": "Readiness & Escrow Confirmed",
+    "MEDIATION_STARTED": "Mediation Started!",
+    "NEW_CHAT_MESSAGE": "New Message: {{productName}}"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -310,7 +310,6 @@
     "MEDIATION_TASK_REJECTED_SELF": "You have rejected the mediation task for '{{productName}}'.",
     "MEDIATION_ACCEPTED_BY_MEDIATOR": "Mediator '{{mediatorName}}' has accepted the task for '{{productName}}'. Both parties must now confirm their readiness.",
     "PARTY_CONFIRMED_READINESS": "{{userName}} has confirmed readiness for the mediation of '{{productName}}'.",
-    "MEDIATION_STARTED": "The mediation chat for '{{productName}}' has now started. Please proceed.",
     "MEDIATION_COMPLETED": "The mediation for '{{productName}}' has been successfully completed.",
     "MEDIATION_CANCELLED": "The mediation for '{{productName}}' has been cancelled. Reason: {{reason}}",
     "MEDIATION_DISPUTED": "A dispute has been opened for the mediation of '{{productName}}'. An admin will review the case.",
@@ -365,7 +364,8 @@
     "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "Buyer '{{buyerName}}' has cancelled the mediation for '{{productName}}'. Reason: '{{reason}}'. The product may be available again.",
     "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "You have successfully cancelled the mediation for '{{productName}}'.",
     "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "The mediation for '{{productName}}' has been cancelled by the buyer, '{{buyerName}}'. Reason: '{{reason}}'.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "'{{buyerName}}' has confirmed readiness and escrowed funds for '{{productName}}'. Please confirm your readiness to proceed."
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "'{{buyerName}}' has confirmed readiness and escrowed funds for '{{productName}}'. Please confirm your readiness to proceed.",
+    "MEDIATION_STARTED": "All parties have confirmed for '{{productName}}'. The chat with mediator {{mediatorName}} has now started."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -1590,6 +1590,10 @@
     "you": "(You)",
     "online": "Online",
     "offline": "Offline",
+    "isTyping": "{{name}} is typing",
+    "areTyping": "{{name1}} and {{name2}} are typing",
+    "multipleTyping": "{{count}} people are typing",
+    "and": "and",
     "startPrivateChatWith": "Start private chat with {{name}}",
     "transactionDetails": "Transaction Details",
     "product": "Product:",

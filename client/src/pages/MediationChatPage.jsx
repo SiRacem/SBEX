@@ -73,6 +73,36 @@ const noUserAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
+  const getStatusInfo = (status, t) => {
+    let text = status;
+    let bg = "secondary";
+    const key = `mediationStatuses.${status}`;
+    const translatedText = t(key);
+
+    if (translatedText !== key) {
+        text = translatedText;
+    } else {
+        text = status ? status.replace(/([A-Z])/g, " $1").trim() : 'Unknown';
+    }
+
+    switch (status) {
+        case 'PendingMediatorSelection': bg = "info"; break;
+        case 'MediatorAssigned': bg = "primary"; break;
+        case 'MediationOfferAccepted': bg = "warning"; break;
+        case 'EscrowFunded': bg = "info"; break;
+        case 'PartiesConfirmed': bg = "info"; break;
+        case 'InProgress': bg = "success"; break;
+        case 'Completed': bg = "dark"; break;
+        case 'Disputed': bg = "danger"; break;
+        case 'Cancelled': bg = "secondary"; break;
+        default: bg = "secondary";
+    }
+    
+    const textColor = (bg === 'warning' || bg === 'info' || bg === 'light') ? 'dark' : 'white';
+    
+    return { text, bg, textColor };
+};
+
 const SafeHtmlRenderer = ({ htmlContent }) => {
   const cleanHtml = DOMPurify.sanitize(htmlContent, {
     USE_PROFILES: { html: true },
@@ -247,9 +277,11 @@ const MediationChatPage = () => {
   const loadingActiveSubChatMessages = activeSubChat.loadingMessages;
   const activeSubChatId = activeSubChat.id;
 
+  // [!!!] جلب قائمة المستخدمين المتصلين من Redux [!!!]
   const onlineUserIds = useSelector(
-    (state) => state.userReducer?.onlineUserIds || []
+    (state) => state.userReducer?.onlineUsers || []
   );
+
   const { mediationRatings, loadingMediationRatings } = useSelector(
     (state) => state.ratingReducer
   );
@@ -1251,7 +1283,7 @@ const MediationChatPage = () => {
                       <OverlayTrigger
                         placement="top"
                         overlay={
-                          <Tooltip id={`tooltip-chat-${p._id}`}>
+                          <Tooltip>
                             {t("mediationChatPage.startPrivateChatWith", {
                               name: p.fullName,
                             })}
@@ -1284,42 +1316,20 @@ const MediationChatPage = () => {
                 {mediationDetails.product.title}
               </p>
               <p className="mb-1">
-                <strong>{t("mediationChatPage.agreedPrice")}</strong>
+                <strong>{t("mediationChatPage.agreedPrice")}</strong>{" "}
                 {formatCurrency(
                   mediationDetails.bidAmount,
                   mediationDetails.bidCurrency
                 )}
               </p>
               <p className="mb-1">
-                <strong>{t("mediationChatPage.escrowed")}</strong>
-                {mediationDetails.escrowedAmount
-                  ? formatCurrency(
-                      mediationDetails.escrowedAmount,
-                      mediationDetails.escrowedCurrency
-                    )
-                  : t("mediationChatPage.notYet")}
-              </p>
-              <p className="mb-1">
-                <strong>{t("mediationChatPage.mediatorFee")}</strong>
-                {formatCurrency(
-                  mediationDetails.calculatedMediatorFee,
-                  mediationDetails.mediationFeeCurrency
-                )}
-              </p>
-              <p className="mb-1">
                 <strong>{t("mediationChatPage.status")}</strong>
                 <Badge
-                  bg={
-                    mediationDetails.status === "InProgress"
-                      ? "success"
-                      : mediationDetails.status === "Completed"
-                      ? "primary"
-                      : isDisputed
-                      ? "danger"
-                      : "info"
-                  }
+                  bg={getStatusInfo(mediationDetails.status, t).bg}
+                  text={getStatusInfo(mediationDetails.status, t).textColor}
+                  className="ms-1"
                 >
-                  {mediationDetails.status}
+                  {getStatusInfo(mediationDetails.status, t).text}
                 </Badge>
               </p>
             </div>

@@ -94,11 +94,48 @@
 }
 
 .online-status-indicator-sidebar.online {
-    background-color: #38a169;
+    background-color: #28a745;
 }
 
 .online-status-indicator-sidebar.offline {
-    background-color: #a0aec0;
+    background-color: #dc3545;
+}
+
+/* [!!!] START: أنماط جديدة لمحاذاة الرسائل [!!!] */
+.message-item.my-message {
+    justify-content: flex-end; /* محاذاة لليمين */
+}
+
+.message-item.my-message .message-content {
+    align-items: flex-end;
+}
+
+.message-item.my-message .message-bubble {
+    background-color: #007bff; /* لون رسائلك */
+    color: white;
+    border-radius: 1.2rem 1.2rem 0.25rem 1.2rem; /* تغيير شكل الزاوية */
+}
+
+.message-item.my-message .message-bubble strong {
+    display: none; /* إخفاء اسمك في رسائلك */
+}
+
+.message-item.my-message .avatar-container {
+    display: none; /* إخفاء صورتك في رسائلك للتبسيط */
+}
+
+.message-item.other-message {
+    justify-content: flex-start; /* محاذاة لليسار */
+}
+
+.message-item.other-message .message-content {
+    align-items: flex-start;
+}
+
+.message-item.other-message .message-bubble {
+    background-color: #e9ecef; /* لون رسائل الآخرين */
+    color: #212529;
+    border-radius: 0.25rem 1.2rem 1.2rem 1.2rem;
 }
 
 .open-subchat-icon {

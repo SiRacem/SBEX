@@ -195,7 +195,9 @@ function App() {
           newSocket.emit("addUser", currentUserId);
         });
 
-        newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => dispatch(setOnlineUsers(onlineUserIdsFromServer || [])));
+        newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
+          dispatch(setOnlineUsers(onlineUserIdsFromServer || []));
+        });
         newSocket.on('user_balances_updated', (data) => { if (data?._id === currentUserId) dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data }); });
         newSocket.on('dashboard_transactions_updated', () => {
           dispatch(getTransactionsForDashboard());

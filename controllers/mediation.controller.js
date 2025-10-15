@@ -74,15 +74,36 @@ async function initiateMediationChat(mediationRequestId, callingFunctionName = "
             console.log(`   [initiateMediationChat] Mediator ${mediationRequest.mediator._id} status updated to 'Busy'.`);
         }
 
-        const productTitle = mediationRequest.product?.title || 'the transaction';
-        const mediatorName = mediationRequest.mediator?.fullName || 'The Assigned Mediator';
-        const commonMessage = `All parties have confirmed for "${productTitle}". The mediation process and chat have now started with ${mediatorName}.`;
-        const notificationTypeStart = 'MEDIATION_STARTED';
+        const notificationParams = {
+            productName: mediationRequest.product?.title || 'the transaction',
+            mediatorName: mediationRequest.mediator?.fullName || 'The Assigned Mediator'
+        };
 
         const notificationsToSend = [
-            { user: mediationRequest.seller._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
-            { user: mediationRequest.buyer._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
-            { user: mediationRequest.mediator._id, type: notificationTypeStart, title: "Mediation Started!", message: commonMessage, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } }
+            { 
+                user: mediationRequest.seller._id, 
+                type: 'MEDIATION_STARTED', 
+                title: 'notification_titles.MEDIATION_STARTED', 
+                message: 'notification_messages.MEDIATION_STARTED',
+                messageParams: notificationParams,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+            },
+            { 
+                user: mediationRequest.buyer._id, 
+                type: 'MEDIATION_STARTED', 
+                title: 'notification_titles.MEDIATION_STARTED', 
+                message: 'notification_messages.MEDIATION_STARTED', 
+                messageParams: notificationParams,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+            },
+            { 
+                user: mediationRequest.mediator._id, 
+                type: 'MEDIATION_STARTED', 
+                title: 'notification_titles.MEDIATION_STARTED', 
+                message: 'notification_messages.MEDIATION_STARTED', 
+                messageParams: notificationParams,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+            }
         ];
         await Notification.insertMany(notificationsToSend, { session });
         console.log(`   [initiateMediationChat] MEDIATION_STARTED notifications sent for ${mediationRequestId}.`);
