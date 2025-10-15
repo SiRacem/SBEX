@@ -149,66 +149,15 @@ const mediationReducer = (state = initialState, action) => {
 
         case MEDIATOR_REJECT_ASSIGNMENT_REQUEST:
             return { ...state, actionLoading: true, actionError: null, actionSuccess: false };
-        case MEDIATOR_ACCEPT_ASSIGNMENT_SUCCESS: {
-            const acceptedRequest = payload.responseData?.mediationRequest || payload.responseData; // Get the updated request object
-            if (!acceptedRequest || !acceptedRequest._id) {
-                // If for some reason the accepted request data isn't there, just remove from pending
-                return {
-                    ...state, actionLoading: false, actionSuccess: true,
-                    pendingDecisionAssignments: {
-                        ...state.pendingDecisionAssignments,
-                        list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
-                        totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
-                    },
-                };
-            }
-
-            // Remove from pendingDecisionAssignments
-            const updatedPendingList = state.pendingDecisionAssignments.list.filter(
-                assignment => assignment._id !== payload.mediationRequestId
-            );
-            const newPendingTotal = Math.max(0, state.pendingDecisionAssignments.totalCount - 1);
-
-            // Add to acceptedAwaitingPartiesAssignments (or update if somehow already there)
-            // Ensure it's not a duplicate if list already contains it (shouldn't happen for a new acceptance)
-            const existingAcceptedList = state.acceptedAwaitingPartiesAssignments.list || [];
-            let updatedAcceptedList;
-            const existingAcceptedIndex = existingAcceptedList.findIndex(req => req._id === acceptedRequest._id);
-
-            if (existingAcceptedIndex > -1) { // Should ideally not happen for a fresh acceptance
-                updatedAcceptedList = existingAcceptedList.map(req =>
-                    req._id === acceptedRequest._id ? acceptedRequest : req
-                );
-            } else {
-                updatedAcceptedList = [acceptedRequest, ...existingAcceptedList];
-            }
-
-            // Sort the updatedAcceptedList, e.g., by updatedAt or createdAt descending
-            updatedAcceptedList.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
-
-
-            const newAcceptedTotal = state.acceptedAwaitingPartiesAssignments.totalCount ?
-                (existingAcceptedIndex > -1 ? state.acceptedAwaitingPartiesAssignments.totalCount : state.acceptedAwaitingPartiesAssignments.totalCount + 1)
-                : 1;
-
-
+        case 'MEDIATOR_REJECT_ASSIGNMENT_SUCCESS':
             return {
-                ...state,
-                actionLoading: false,
-                actionSuccess: true,
+                ...state, actionLoading: false, actionSuccess: true,
                 pendingDecisionAssignments: {
                     ...state.pendingDecisionAssignments,
-                    list: updatedPendingList,
-                    totalCount: newPendingTotal,
-                },
-                acceptedAwaitingPartiesAssignments: {
-                    ...state.acceptedAwaitingPartiesAssignments,
-                    list: updatedAcceptedList,
-                    totalCount: newAcceptedTotal,
-                    // currentPage will be reset by subsequent fetch in component, or handle pagination more carefully if needed
+                    list: state.pendingDecisionAssignments.list.filter(assignment => assignment._id !== payload.mediationRequestId),
+                    totalCount: Math.max(0, state.pendingDecisionAssignments.totalCount - 1),
                 },
             };
-        }
         case MEDIATOR_REJECT_ASSIGNMENT_FAIL:
             return { ...state, actionLoading: false, actionError: payload.error, actionSuccess: false };
 

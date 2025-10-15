@@ -113,13 +113,13 @@ const MediationRequestSchema = new Schema({
             },
         }
     ],
-    // previouslySuggestedMediators: {
-    //     type: [{
-    //         type: Schema.Types.ObjectId,
-    //         ref: 'User'
-    //     }],
-    //     default: []
-    // },
+    previouslySuggestedMediators: {
+        type: [{
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }],
+        default: []
+    },
     suggestionRefreshCount: { type: Number, default: 0 },
     sellerMediationFeePaid: { type: Boolean, default: false },
     buyerMediationFeePaid: { type: Boolean, default: false },

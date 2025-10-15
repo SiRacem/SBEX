@@ -75,8 +75,9 @@ export const clearUserErrors = () => ({ type: CLEAR_USER_ERRORS });
 
 // --- THIS IS THE FIX: `navigate` parameter is removed ---
 export const loginUser = (loggedUser) => async (dispatch) => {
+    dispatch(clearUserErrors()); // <-- [!!!] الخطوة الحاسمة: مسح الأخطاء القديمة أولاً
     dispatch({ type: LOGIN_REQUEST });
-    dispatch(clearUserErrors());
+
     try {
         const { data } = await axios.post("/user/login", loggedUser);
         if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
@@ -99,10 +100,8 @@ export const loginUser = (loggedUser) => async (dispatch) => {
 
     } catch (error) {
         const errorMessage = handleError(error);
-        // The action now simply dispatches the error without navigating
         dispatch({ type: LOGIN_FAIL, payload: { errorMessage } });
-        localStorage.removeItem("token");
-        localStorage.removeItem("userId");
+        // لا تقم بإزالة التوكن هنا، لأنه قد لا يكون موجوداً أصلاً
     }
 };
 // --- END OF FIX ---

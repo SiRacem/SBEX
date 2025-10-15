@@ -227,7 +227,6 @@
     "NEW_PRODUCT_PENDING": "منتوج جديد يستنى في الموافقة",
     "PRODUCT_UPDATE_PENDING": "تحديث منتوج يستنى في الموافقة",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "لازمك تختار وسيط جديد",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "لازمك تعمل حاجة: الشاري أكد",
     "BID_ACCEPTED_PENDING_MEDIATOR": "تقبلت المزايدة - نستناو في الوسيط",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "لازمك تعمل حاجة: البايع أكد",
     "MEDIATION_ASSIGNED": "تحطيت في وساطة!",
@@ -281,7 +280,13 @@
     "MEDIATION_TASK_EXPIRED": "خدمة الوساطة وفات",
     "MEDIATOR_SELECTION_CONFIRMED": "تأكيد اختيار الوسيط",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "خدمة وساطة جديدة",
-    "MEDIATOR_SELECTED_BY_SELLER": "تختار الوسيط لمعاملتك"
+    "MEDIATOR_SELECTED_BY_SELLER": "تختار الوسيط لمعاملتك",
+    "PARTIES_CONFIRMED": "الناس الكل حاضرة !",
+    "SELLER_CONFIRMED": "البايع أكّد - توا دورك",
+    "MEDIATION_REJECTED_BY_MEDIATOR": "الوسيط رفض الخدمة",
+    "MEDIATION_CANCELLED_BY_BUYER": "الشاري بطل الوساطة",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "الشاري أكّد وخلّص - توا دورك!",
+    "MEDIATION_CONFIRMED_BY_PARTY": "تأكد الحضور والفلوس تحفظت"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بيك، {{name}}! فرحانين بيك معانا.",
@@ -298,7 +303,6 @@
     "NEW_PRODUCT_PENDING": "البايع '{{vendorName}}' بعث منتوج جديد '{{productName}}' باش توافق عليه.",
     "PRODUCT_UPDATE_PENDING": "البايع '{{vendorName}}' بدل المنتوج '{{productName}}'. لازم تعاود توافق عليه.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "الوسيط '{{mediatorName}}' رفض الخدمة متاع '{{productName}}'. يرحم والديك اختار وسيط آخر.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "الشاري أكد اللي هو حاضر لـ '{{productName}}'. يرحم والديك أكد إنت زادة باش تكملو.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "المزايدة متاعك على '{{productName}}' تقبلت. البايع توّا باش يختار وسيط.",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "البايع متاع '{{productName}}' أكد اللي هو حاضر. يرحم والديك أكد وحط الفلوس باش تكملو.",
     "MEDIATION_ASSIGNED": "تحطيت كوسيط للعملية المتعلقة بـ '{{productName}}'.",
@@ -351,7 +355,17 @@
     "MEDIATION_TASK_EXPIRED": "ما جاوبتش على خدمة الوساطة متاع '{{productName}}' في {{minutes}} دقايق، على هاكا تلغات أوتوماتيك.",
     "MEDIATOR_SELECTION_CONFIRMED": "اخترت بالصحيح '{{mediatorName}}' كوسيط لـ '{{productName}}'. بعثنالو إشعار.",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' كوسيط لعملية بخصوص '{{productName}}' مع '{{buyerName}}'. يرحم والديك ثبت و جاوب.",
-    "MEDIATOR_SELECTED_BY_SELLER": "اختار '{{sellerName}}' الوسيط '{{mediatorName}}' للعملية متاعك بخصوص '{{productName}}'. استنى حتى يقبل."
+    "MEDIATOR_SELECTED_BY_SELLER": "اختار '{{sellerName}}' الوسيط '{{mediatorName}}' للعملية متاعك بخصوص '{{productName}}'. استنى حتى يقبل.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER": "الوسيط '{{mediatorName}}' قبل باش يدخل في معاملتك متع '{{productName}}' مع الشاري '{{buyerName}}'. يرحم والديك أكّد اللي إنت حاضر.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER": "الوسيط '{{mediatorName}}' قبل باش يدخل في معاملتك متع '{{productName}}' مع البايع '{{sellerName}}'. يرحم والديك أكّد اللي إنت حاضر.",
+    "PARTIES_CONFIRMED": "الناس الكل (البايع و الشاري) أكدو اللي هوما حاضرين لـ '{{productName}}'. الشات متاع الوساطة تو يتحل.",
+    "SELLER_CONFIRMED_FOR_BUYER": "البايع '{{sellerName}}' متاع '{{productName}}' أكّد اللي هو حاضر. يرحم والديك أكّد اللي إنت حاضر و حط الفلوس.",
+    "MEDIATION_REJECTED_FOR_SELLER": "الوسيط '{{mediatorName}}' رفض الخدمة لـ '{{productName}}'. علاش: '{{reason}}'. يرحم والديك اختار وسيط آخر.",
+    "MEDIATION_REJECTED_FOR_BUYER": "الوسيط متاع '{{productName}}' (مع البايع {{sellerName}}) رفض الخدمة. البايع تو يختار واحد آخر.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "الشاري '{{buyerName}}' بطل الوساطة لـ '{{productName}}'. علاش: '{{reason}}'. المنتج ينجم يرجع معروض للبيع.",
+    "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "بطلت الوساطة لـ '{{productName}}' بالصحيح.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "الوساطة لـ '{{productName}}' تبطلت من عند الشاري '{{buyerName}}'. علاش: '{{reason}}'.",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "الشاري '{{buyerName}}' أكّد اللي هو حاضر وحط الفلوس لـ '{{productName}}'. يرحم والديك أكّد اللي إنت حاضر باش تكملو."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -898,6 +912,7 @@
     "Mythic": "خرافي"
   },
   "apiErrors": {
+    "tooManyLoginAttempts": "جربت برشا مرات غالط، يرحم والديك ارجع جرب بعد {{minutes}} دقايق.",
     "Invalid_credentials": "الإيميل ولا كلمة السر غالطين.",
     "Email_already_exists": "الإيميل هذا موجود ديجا.",
     "You_cannot_rate_yourself": "ما تنجمش تقيِّم روحك.",
@@ -934,7 +949,8 @@
     "getProfileFail": "فما مشكل في تحميل البروفيل.",
     "notAuthorized": "لازمك تحل الكونت متاعك.",
     "notAuthorizedAdmin": "لازم صلاحيات أدمن باش تعمل الحكاية هاذي.",
-    "Failed_to_fetch_withdrawal_requests": "غلطة في السيرفر وقت جاب طلبات الجبدان متاعك."
+    "Failed_to_fetch_withdrawal_requests": "غلطة في السيرفر وقت جاب طلبات الجبدان متاعك.",
+    "insufficientBalance": "فلوسك ما تكفيش. لازمك {{required}} أما إنت عندك {{available}} كهو. يرحم والديك صب فلوس في الكونط متاعك."
   },
   "confirmLogout": "بالرسمي تحب تخرج؟",
   "forSellersOnly": "للبايعة أكهو.",
@@ -1325,7 +1341,8 @@
         "inProgress": "قيد التنفيذ",
         "disputeOpened": "تحلت مشكلة",
         "sold": "تباعت",
-        "completed": "كملت"
+        "completed": "كملت",
+        "MediatorAssigned": "نستناو في الوسيط"
       },
       "alerts": {
         "selectMediator": "يرحم والديك اختار وسيط",
@@ -1336,7 +1353,8 @@
         "sellerConfirmed": "إنت أكدت. <small class=\"text-muted\">نستناو في الشاري باش يأكد ويخلص.</small>",
         "mediationInProgress": "الوساطة قاعدة تخدم.",
         "disputeActive": "فما مشكلة قاعدة تصير.",
-        "communicate": "احكي مع الشاري والوسيط."
+        "communicate": "احكي مع الشاري والوسيط.",
+        "sellerActionRequiredHTML": "<strong>لازمك تعمل حاجة:</strong> يرحم والديك أكد اللي إنت حاضر باش تكمل."
       },
       "buttons": {
         "confirmReadiness": "نأكد اللي أنا حاضر",
@@ -1372,17 +1390,17 @@
       "close": "سكر"
     },
     "countdown": {
-        "calculating": "نحسبو في الوقت...",
-        "tooltip": "الوقت اللي مازال للوسيط باش يقبل المهمة",
-        "expiredToast": "وفا وقت الوسيط باش يجاوب. تنجم تختار واحد آخر توا."
-      },
+      "calculating": "نحسبو في الوقت...",
+      "tooltip": "الوقت اللي مازال للوسيط باش يقبل المهمة",
+      "expiredToast": "وفا وقت الوسيط باش يجاوب. تنجم تختار واحد آخر توا."
+    },
     "mediatorModal": {
       "errorIdMissing": "معرّف طلب الوساطة ناقص.",
       "errorNotAuthenticated": "مانكش مسجل دخول.",
       "errorLoadFailed": "ما نجمناش نجيبو الوسطاء.",
       "successSuggestions": "تحملت اقتراحات جديدة!",
       "infoNoNewMediators": "ما لقيناش وسطاء جدد مختلفين.",
-        "assignSuccess": "تم اختيار الوسيط بالصحيح و بعثنالو إشعار."
+      "assignSuccess": "تم اختيار الوسيط بالصحيح و بعثنالو إشعار."
     }
   },
   "ticketsListPage": {
@@ -1484,7 +1502,8 @@
       "Cancelled": "تلغات"
     },
     "rejectModal": {
-      "noReason": "يرحم والديك اكتب علاش باش تلغي."
+      "noReason": "يرحم والديك اكتب علاش باش تلغي.",
+      "cancelSuccess": "تم تبطيل الوساطة بالصحيح."
     },
     "imageModal": {
       "title": "تصويرة المنتوج {{index}}",
@@ -2025,5 +2044,42 @@
     "buyerIdOnly": "الشاري (رقم فقط)",
     "feeError": "السوم ولا دالة الرسوم ناقصة",
     "productImage": "تصويرة المنتوج"
+  },
+  "mediationStatuses": {
+    "PendingMediatorSelection": "نستناو في اختيار الوسيط",
+    "MediatorAssigned": "نستناو في جواب الوسيط",
+    "MediationOfferAccepted": "الوسيط قبل",
+    "EscrowFunded": "الفلوس محجوزة",
+    "PartiesConfirmed": "الزوج أكدو",
+    "InProgress": "الوساطة ماشية",
+    "Completed": "كملت",
+    "Disputed": "فما مشكلة",
+    "Cancelled": "تبطلت",
+    "AdminResolved": "تحلت من عند المدير"
+  },
+  "rejectMediationByBuyerModal": {
+    "title": "تبطيل الوساطة",
+    "aboutToCancel": "بش تبطل الوساطة للمنتج هذا:",
+    "reasonLabel": "علاش بش تبطل",
+    "placeholder": "يرحم والديك أكتب سبب واضح علاش بش تبطل...",
+    "back": "ارجع التالي",
+    "confirm": "أكد التبطيل",
+    "reasonRequired": "لازم تكتب علاش بش تبطل.",
+    "cancelling": "نبطلو فيها..."
+  },
+  "rejectAssignmentModal": {
+    "title": "رفض خدمة الوساطة",
+    "aboutToReject": "بش ترفض الخدمة للمنتج هذا:",
+    "reasonLabel": "علاش بش ترفض",
+    "placeholder": "يرحم والديك أكتب سبب واضح علاش بش ترفض الخدمة...",
+    "confirmRejection": "أكد الرفض",
+    "reasonRequired": "لازم تكتب علاش بش ترفض.",
+    "rejecting": "نرفضو فيها..."
+  },
+  "mediation": {
+    "buyer": {
+      "confirmSuccessWait": "تأكد الحضور وتحفظت الفلوس بالصحيح. نستناو في البايع يأكد.",
+      "confirmSuccessBothReady": "تأكد الحضور وتحفظت الفلوس. الزوز حاضرين. الشات تو يتحل."
+    }
   }
 }

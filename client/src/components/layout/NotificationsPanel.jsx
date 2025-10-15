@@ -9,7 +9,7 @@ import {
   getNotifications,
   markNotificationsRead,
 } from "../../redux/actions/notificationAction";
-import { getNotificationIcon } from "../../utils/notificationUtils"; // تأكد من أن المسار صحيح
+import { getNotificationIcon } from "../../utils/notificationUtils";
 import "./NotificationsPanel.css";
 
 const NotificationsPanel = () => {
@@ -58,10 +58,7 @@ const NotificationsPanel = () => {
     setIsOpen(false);
   };
 
-  // دالة لتحديد الرابط المناسب (يمكنك توسيعها لاحقاً إذا أردت)
   const getNotificationLink = (notification) => {
-    // حالياً، كل الإشعارات في القائمة المنسدلة ستوجه للصفحة الرئيسية للإشعارات
-    // هذا هو السلوك الأكثر شيوعًا، حيث أن القائمة المنسدلة هي مجرد نظرة سريعة
     return "/dashboard/notifications";
   };
 
@@ -85,7 +82,6 @@ const NotificationsPanel = () => {
             className="position-absolute top-0 start-100 translate-middle notification-badge"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
-            {/* عرض العدد أو +9 إذا تجاوز */}
             <span className="visually-hidden">unread notifications</span>
           </Badge>
         )}
@@ -124,6 +120,7 @@ const NotificationsPanel = () => {
                     {getNotificationIcon(notif.type, notif.isRead)}
                   </div>
                   <div className="notification-content-panel flex-grow-1">
+                    {/* [!!!] هذا هو الجزء المهم للتأكد منه [!!!] */}
                     <div className="fw-bold small text-truncate">
                       {t(notif.title, {
                         ...notif.messageParams,
@@ -136,6 +133,7 @@ const NotificationsPanel = () => {
                         defaultValue: notif.message,
                       })}
                     </div>
+                    {/* [!!!] نهاية الجزء المهم [!!!] */}
                     <div className="text-muted extra-small">
                       {notif.createdAt
                         ? new Date(notif.createdAt).toLocaleString(

@@ -227,7 +227,6 @@
     "NEW_PRODUCT_PENDING": "New Product for Approval",
     "PRODUCT_UPDATE_PENDING": "Product Update for Approval",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "Action Required: Select a New Mediator",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Action Required: Buyer Confirmed",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Bid Accepted - Awaiting Mediator",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "Action Required: Seller Confirmed",
     "MEDIATION_ASSIGNED": "You've Been Assigned a Mediation!",
@@ -281,7 +280,13 @@
     "MEDIATION_TASK_EXPIRED": "Mediation Task Expired",
     "MEDIATOR_SELECTION_CONFIRMED": "Mediator Selection Confirmed",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "New Mediation Assignment",
-    "MEDIATOR_SELECTED_BY_SELLER": "Mediator Selected for Your Transaction"
+    "MEDIATOR_SELECTED_BY_SELLER": "Mediator Selected for Your Transaction",
+    "PARTIES_CONFIRMED": "All Parties Confirmed!",
+    "SELLER_CONFIRMED": "Seller Confirmed - Your Turn",
+    "MEDIATION_REJECTED_BY_MEDIATOR": "Mediator Assignment Rejected",
+    "MEDIATION_CANCELLED_BY_BUYER": "Mediation Cancelled by Buyer",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Buyer Confirmed & Paid - Your Turn!",
+    "MEDIATION_CONFIRMED_BY_PARTY": "Readiness & Escrow Confirmed"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -298,7 +303,6 @@
     "NEW_PRODUCT_PENDING": "Vendor '{{vendorName}}' submitted a new product '{{productName}}' for your approval.",
     "PRODUCT_UPDATE_PENDING": "Vendor '{{vendorName}}' updated product '{{productName}}'. It now requires re-approval.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "The mediator '{{mediatorName}}' rejected the task for '{{productName}}'. Please select a new mediator.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "The buyer has confirmed readiness for '{{productName}}'. Please confirm your readiness to proceed.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Your bid for '{{productName}}' was accepted. The seller will now select a mediator.",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "The seller for '{{productName}}' has confirmed readiness. Please confirm and deposit the escrow to proceed.",
     "MEDIATION_ASSIGNED": "You have been assigned as a mediator for the transaction involving '{{productName}}'.",
@@ -351,7 +355,17 @@
     "MEDIATION_TASK_EXPIRED": "You did not respond to the mediation assignment for '{{productName}}' within the {{minutes}}-minute time limit, so it has been automatically cancelled.",
     "MEDIATOR_SELECTION_CONFIRMED": "You have successfully selected {{mediatorName}} as the mediator for \"{{productName}}\". They have been notified.",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "You have been selected by {{sellerName}} for a transaction regarding \"{{productName}}\" with {{buyerName}}. Please review and respond.",
-    "MEDIATOR_SELECTED_BY_SELLER": "{{sellerName}} has selected {{mediatorName}} as the mediator for your transaction regarding \"{{productName}}\". Please wait for them to accept."
+    "MEDIATOR_SELECTED_BY_SELLER": "{{sellerName}} has selected {{mediatorName}} as the mediator for your transaction regarding \"{{productName}}\". Please wait for them to accept.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER": "{{mediatorName}} has accepted to mediate your transaction for '{{productName}}' with buyer {{buyerName}}. Please proceed to confirm your readiness.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER": "{{mediatorName}} has accepted to mediate your transaction for '{{productName}}' with seller {{sellerName}}. Please proceed to confirm your readiness.",
+    "PARTIES_CONFIRMED": "All parties have confirmed readiness for '{{productName}}'. The mediation chat will be initiated shortly.",
+    "SELLER_CONFIRMED_FOR_BUYER": "Seller '{{sellerName}}' for '{{productName}}' has confirmed readiness. Please confirm your readiness and escrow the funds.",
+    "MEDIATION_REJECTED_FOR_SELLER": "{{mediatorName}} has rejected the assignment for '{{productName}}'. Reason: '{{reason}}'. Please select a new mediator.",
+    "MEDIATION_REJECTED_FOR_BUYER": "The mediator for '{{productName}}' (with seller {{sellerName}}) has rejected the assignment. The seller will select a new one.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "Buyer '{{buyerName}}' has cancelled the mediation for '{{productName}}'. Reason: '{{reason}}'. The product may be available again.",
+    "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "You have successfully cancelled the mediation for '{{productName}}'.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "The mediation for '{{productName}}' has been cancelled by the buyer, '{{buyerName}}'. Reason: '{{reason}}'.",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "'{{buyerName}}' has confirmed readiness and escrowed funds for '{{productName}}'. Please confirm your readiness to proceed."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -898,6 +912,7 @@
     "Mythic": "Mythic"
   },
   "apiErrors": {
+    "tooManyLoginAttempts": "Too many login attempts, please try again after {{minutes}} minutes.",
     "Invalid_credentials": "The email or password you entered is incorrect.",
     "Email_already_exists": "This email is already registered.",
     "You_cannot_rate_yourself": "You cannot rate yourself.",
@@ -934,7 +949,8 @@
     "getProfileFail": "Failed to load user profile.",
     "notAuthorized": "Authorization required. Please log in.",
     "notAuthorizedAdmin": "Admin authorization is required for this action.",
-    "Failed_to_fetch_withdrawal_requests": "Server error fetching your withdrawal requests."
+    "Failed_to_fetch_withdrawal_requests": "Server error fetching your withdrawal requests.",
+    "insufficientBalance": "Insufficient balance. Required: {{required}}, but you only have {{available}}. Please top up your wallet."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1324,7 +1340,8 @@
         "inProgress": "In Progress",
         "disputeOpened": "Dispute Opened",
         "sold": "Sold",
-        "completed": "Completed"
+        "completed": "Completed",
+        "MediatorAssigned": "Awaiting Mediator"
       },
       "alerts": {
         "selectMediator": "Please Select a Mediator",
@@ -1335,7 +1352,8 @@
         "sellerConfirmed": "You confirmed. <small>Waiting for buyer to confirm & pay.</small>",
         "mediationInProgress": "Mediation is in progress.",
         "disputeActive": "Dispute is active.",
-        "communicate": "Communicate with buyer and mediator."
+        "communicate": "Communicate with buyer and mediator.",
+        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> الرجاء تأكيد جاهزيتك للمتابعة."
       },
       "buttons": {
         "confirmReadiness": "Confirm My Readiness",
@@ -1483,7 +1501,8 @@
       "Cancelled": "Cancelled"
     },
     "rejectModal": {
-      "noReason": "Please provide a reason for cancellation."
+      "noReason": "Please provide a reason for cancellation.",
+      "cancelSuccess": "Mediation has been cancelled successfully."
     },
     "imageModal": {
       "title": "Product Image {{index}}",
@@ -2016,5 +2035,42 @@
     "ar": "Arabic",
     "fr": "French",
     "tn": "Tunisian"
+  },
+  "mediationStatuses": {
+    "PendingMediatorSelection": "Pending Mediator Selection",
+    "MediatorAssigned": "Awaiting Mediator Response",
+    "MediationOfferAccepted": "Mediator Accepted",
+    "EscrowFunded": "Funds in Escrow",
+    "PartiesConfirmed": "Parties Confirmed",
+    "InProgress": "In Progress",
+    "Completed": "Completed",
+    "Disputed": "Disputed",
+    "Cancelled": "Cancelled",
+    "AdminResolved": "Resolved by Admin"
+  },
+  "rejectMediationByBuyerModal": {
+    "title": "Cancel Mediation",
+    "aboutToCancel": "You are about to cancel the mediation for the product:",
+    "reasonLabel": "Reason for Cancellation",
+    "placeholder": "Please provide a clear reason for cancelling...",
+    "back": "Go Back",
+    "confirm": "Confirm Cancellation",
+    "reasonRequired": "A reason for cancellation is required.",
+    "cancelling": "Cancelling..."
+  },
+  "rejectAssignmentModal": {
+    "title": "Reject Mediation Assignment",
+    "aboutToReject": "You are about to reject the assignment for the product:",
+    "reasonLabel": "Reason for Rejection",
+    "placeholder": "Please provide a clear reason for rejecting this assignment...",
+    "confirmRejection": "Confirm Rejection",
+    "reasonRequired": "A reason for rejection is required.",
+    "rejecting": "Rejecting..."
+  },
+  "mediation": {
+    "buyer": {
+      "confirmSuccessWait": "Readiness confirmed and funds escrowed successfully. Waiting for seller to confirm.",
+      "confirmSuccessBothReady": "Readiness confirmed, funds escrowed. Both parties are ready. The chat will open shortly."
+    }
   }
 }

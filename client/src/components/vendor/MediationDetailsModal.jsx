@@ -1,5 +1,5 @@
 // src/components/vendor/MediationDetailsModal.jsx
-import React, { useMemo } from "react";
+import React from "react";
 import {
   Modal,
   Button,
@@ -11,15 +11,13 @@ import {
 } from "react-bootstrap";
 import { FaCheck } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next"; // [!!!] استيراد useTranslation
+import { useTranslation } from "react-i18next";
 
-// دالة تنسيق العملة تبقى كما هي، لكنها الآن تستخدم i18n
 const formatCurrencyLocal = (amount, currencyCode = "TND", i18nInstance) => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
   try {
     return num.toLocaleString(i18nInstance.language, {
-      // استخدام لغة i18n
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
@@ -33,8 +31,58 @@ const formatCurrencyLocal = (amount, currencyCode = "TND", i18nInstance) => {
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
 
+// [!!!] START: إضافة دالة ترجمة الحالات [!!!]
+const getStatusBadge = (status, t) => {
+  let text = status;
+  let bg = "secondary";
+  const key = `mediationStatuses.${status}`;
+  const translatedText = t(key);
+
+  // إذا كانت الترجمة موجودة، استخدمها
+  if (translatedText !== key) {
+    text = translatedText;
+  } else {
+    // قيمة احتياطية إذا لم تكن الترجمة موجودة
+    text = status.replace(/([A-Z])/g, " $1").trim();
+  }
+
+  switch (status) {
+    case "PendingMediatorSelection":
+      bg = "info text-dark";
+      break;
+    case "MediatorAssigned":
+      bg = "primary";
+      break;
+    case "MediationOfferAccepted":
+      bg = "warning text-dark";
+      break;
+    case "EscrowFunded":
+      bg = "info";
+      break;
+    case "PartiesConfirmed":
+      bg = "info";
+      break;
+    case "InProgress":
+      bg = "success";
+      break;
+    case "Completed":
+      bg = "dark";
+      break;
+    case "Disputed":
+      bg = "danger";
+      break;
+    case "Cancelled":
+      bg = "secondary";
+      break;
+    default:
+      bg = "secondary";
+  }
+  return { text, bg };
+};
+// [!!!] END: نهاية إضافة الدالة [!!!]
+
 const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
-  const { t, i18n } = useTranslation(); // [!!!] استخدام hook الترجمة
+  const { t, i18n } = useTranslation();
 
   if (!product) return null;
 
@@ -68,7 +116,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
           error: t(
             "mediationDetailsModal.feeError",
             "Price or fee function missing"
-          ), // مترجم
+          ),
         };
 
   let buyerInfo = null;
@@ -89,37 +137,18 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
     buyerInfo = {
       _id: product.buyer,
       fullName: t("mediationDetailsModal.buyerIdOnly", "Buyer (ID only)"),
-    }; // مترجم
+    };
   } else if (mediationRequest && mediationRequest.buyer) {
     buyerInfo = {
       _id: mediationRequest.buyer,
       fullName: t("mediationDetailsModal.buyerIdOnly", "Buyer (ID only)"),
-    }; // مترجم
+    };
   }
 
-  let displayStatus = product.status;
-  let displayStatusBg = "secondary";
-
-  if (mediationRequest && mediationRequest.status) {
-    displayStatus = mediationRequest.status;
-    if (displayStatus === "PendingMediatorSelection") {
-      displayStatusBg = "info text-dark";
-    } else if (displayStatus === "MediatorAssigned") {
-      displayStatusBg = "primary";
-    } else if (displayStatus === "MediationOfferAccepted") {
-      displayStatusBg = "warning text-dark";
-    } else if (displayStatus === "EscrowFunded") {
-      displayStatusBg = "info";
-    } else if (displayStatus === "InProgress") {
-      displayStatusBg = "success";
-    } else if (displayStatus === "Completed") {
-      displayStatusBg = "dark";
-    }
-  } else if (product.status === "PendingMediatorSelection") {
-    displayStatusBg = "info text-dark";
-  } else if (product.status === "MediatorAssigned") {
-    displayStatusBg = "primary";
-  }
+  // [!!!] START: استخدام دالة ترجمة الحالة [!!!]
+  const displayStatus = mediationRequest?.status || product.status;
+  const { text: statusText, bg: statusBg } = getStatusBadge(displayStatus, t);
+  // [!!!] END: نهاية استخدام الدالة [!!!]
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered dir={i18n.dir()}>
@@ -153,9 +182,9 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                 <strong className="mx-1">
                   {t("mediationDetailsModal.overallStatus", "Overall Status:")}
                 </strong>
-                <Badge bg={displayStatusBg}>
-                  {displayStatus.replace(/([A-Z])/g, " $1").trim()}
-                </Badge>
+                {/* [!!!] START: عرض الحالة المترجمة [!!!] */}
+                <Badge bg={statusBg}>{statusText}</Badge>
+                {/* [!!!] END: نهاية عرض الحالة المترجمة [!!!] */}
               </ListGroup.Item>
 
               {buyerInfo && buyerInfo._id && (
@@ -204,7 +233,6 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                   )}
                 </ListGroup.Item>
               )}
-
               {product.price != null && (
                 <ListGroup.Item>
                   <strong className="mx-1">
@@ -216,7 +244,6 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                   {formatCurrencyLocal(product.price, product.currency, i18n)}
                 </ListGroup.Item>
               )}
-
               {agreedPrice != null && (
                 <ListGroup.Item>
                   <strong className="mx-1">
@@ -236,7 +263,6 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                   </span>
                 </ListGroup.Item>
               )}
-
               {feeDetails && !feeDetails.error && feeDetails.fee > 0 && (
                 <>
                   <ListGroup.Item>

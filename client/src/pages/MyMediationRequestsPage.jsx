@@ -109,10 +109,24 @@ const MyMediationRequestsPage = () => {
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerConfirmReadinessAndEscrowAction(mediationRequestId))
         .then((actionResult) => {
-          if (actionResult && actionResult.type.endsWith("_SUCCESS")) {
-            dispatch(getProfile());
-            dispatch(getBuyerMediationRequestsAction(currentPageLocal));
-          }
+          // toast.success(...) سيتم عرضه تلقائياً من الأكشن إذا نجح
+          dispatch(getProfile());
+          dispatch(getBuyerMediationRequestsAction(currentPageLocal));
+        })
+        .catch((error) => {
+          // الـ error object يحتوي الآن على key, fallback, params
+          const errorMessage = error || {
+            key: "apiErrors.unknownError",
+            fallback: "An unknown error occurred",
+          };
+
+          toast.error(
+            t(errorMessage.key, {
+              ...errorMessage.params, // <-- هذا السطر سيقوم الآن بإدراج القيم
+              defaultValue: errorMessage.fallback,
+            })
+          );
+          console.error("Failed to confirm and escrow:", errorMessage);
         })
         .finally(() => {
           setSelectedRequestIdForAction(null);
@@ -168,9 +182,7 @@ const MyMediationRequestsPage = () => {
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerRejectMediationAction(mediationRequestId, reason))
         .then((responseData) => {
-          toast.success(
-            responseData?.msg || "Mediation cancelled successfully!"
-          );
+          toast.success(t("mediationRequestsPage.rejectModal.cancelSuccess"));
           setShowBuyerRejectModal(false);
           setSelectedRequestToRejectByBuyer(null);
           dispatch(getBuyerMediationRequestsAction(currentPageLocal));

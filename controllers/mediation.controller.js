@@ -551,21 +551,39 @@ exports.mediatorAcceptAssignment = async (req, res) => {
             .session(session);
 
         // إعداد رسائل الإشعارات
-        const productTitle = populatedRequestForNotif.product?.title || 'the specified product';
-        const mediatorFullName = populatedRequestForNotif.mediator?.fullName || 'The Assigned Mediator';
-        const sellerFullName = populatedRequestForNotif.seller?.fullName || 'The Seller';
-        const buyerFullName = populatedRequestForNotif.buyer?.fullName || 'The Buyer';
+        const notificationParams = {
+            productName: populatedRequestForNotif.product?.title || 'the specified product',
+            mediatorName: populatedRequestForNotif.mediator?.fullName || 'The Assigned Mediator',
+            sellerName: populatedRequestForNotif.seller?.fullName || 'The Seller',
+            buyerName: populatedRequestForNotif.buyer?.fullName || 'The Buyer'
+        };
 
-        const mediatorConfirmationMsg = `You have successfully accepted the mediation assignment for "${productTitle}". You will be notified when both parties are ready.`;
-        const sellerMessage = `${mediatorFullName} has accepted the assignment to mediate your transaction for "${productTitle}" (with buyer: ${buyerFullName}). Please proceed to confirm your readiness for mediation.`;
-        const buyerMessage = `${mediatorFullName} has accepted the assignment to mediate your transaction for "${productTitle}" (with seller: ${sellerFullName}). Please proceed to confirm your readiness for mediation.`;
-
-        // إنشاء جميع الإشعارات دفعة واحدة داخل المعاملة
         await Notification.create([
-            { user: mediatorId, type: 'MEDIATION_TASK_ACCEPTED_SELF', title: 'Assignment Accepted', message: mediatorConfirmationMsg, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } },
-            { user: populatedRequestForNotif.seller._id, type: 'MEDIATION_ACCEPTED_BY_MEDIATOR', title: 'Mediator Accepted - Confirm Readiness', message: sellerMessage, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } },
-            { user: populatedRequestForNotif.buyer._id, type: 'MEDIATION_ACCEPTED_BY_MEDIATOR', title: 'Mediator Accepted - Confirm Readiness', message: buyerMessage, relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' } }
-        ], { session, ordered: true }); // الخيار { ordered: true } ضروري عند الإنشاء المتعدد داخل transaction
+            {
+                user: mediatorId,
+                type: 'MEDIATION_TASK_ACCEPTED_SELF',
+                title: 'notification_titles.MEDIATION_TASK_ACCEPTED_SELF',
+                message: 'notification_messages.MEDIATION_TASK_ACCEPTED_SELF',
+                messageParams: notificationParams,
+                relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' }
+            },
+            {
+                user: populatedRequestForNotif.seller._id,
+                type: 'MEDIATION_ACCEPTED_BY_MEDIATOR',
+                title: 'notification_titles.MEDIATION_ACCEPTED_BY_MEDIATOR',
+                message: 'notification_messages.MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER',
+                messageParams: notificationParams,
+                relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' }
+            },
+            {
+                user: populatedRequestForNotif.buyer._id,
+                type: 'MEDIATION_ACCEPTED_BY_MEDIATOR',
+                title: 'notification_titles.MEDIATION_ACCEPTED_BY_MEDIATOR',
+                message: 'notification_messages.MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER',
+                messageParams: notificationParams,
+                relatedEntity: { id: populatedRequestForNotif._id, modelName: 'MediationRequest' }
+            }
+        ], { session, ordered: true });
 
         // إتمام المعاملة وحفظ جميع التغييرات في قاعدة البيانات
         await session.commitTransaction();
@@ -686,9 +704,8 @@ exports.mediatorRejectAssignment = async (req, res) => {
 
         // إضافة الوسيط المرفوض إلى قائمة "تم اقتراحهم سابقاً" لتجنب إعادة اقتراحه فوراً (اختياري)
         if (originalMediatorId) {
-            if (!Array.isArray(mediationRequest.previouslySuggestedMediators)) {
-                mediationRequest.previouslySuggestedMediators = [];
-            }
+            // Mongoose's addToSet handles initialization if the array doesn't exist.
+            // This is a safe operation.
             mediationRequest.previouslySuggestedMediators.addToSet(originalMediatorId);
             console.log(`   Added mediator ${originalMediatorId} to previouslySuggestedMediators for request ${mediationRequest._id}.`);
         }
@@ -742,36 +759,42 @@ exports.mediatorRejectAssignment = async (req, res) => {
         const sellerFullName = mediationRequest.seller?.fullName || 'The Seller'; // اسم البائع للإشعار
 
         // إنشاء وإرسال الإشعارات
-        console.log("   Preparing notifications for mediator rejection...");
-        const sellerMessage = `${rejectingMediatorName} has rejected the mediation assignment for "${productTitle}". Reason: "${reason}". Please select a new mediator.`;
-        const buyerMessage = `The mediator assignment for your transaction regarding "${productTitle}" (with seller ${sellerFullName}) was rejected by ${rejectingMediatorName}. The seller will select a new mediator.`;
-        const mediatorRejectionConfirmationMsg = `You have successfully rejected the mediation assignment for "${productTitle}". Reason: ${reason}.`;
+console.log("   Preparing translatable notifications for mediator rejection...");
+        
+        const notificationParams = {
+            mediatorName: rejectingMediatorName,
+            productName: productTitle,
+            reason: reason,
+            sellerName: sellerFullName
+        };
 
-        // --- التعديل هنا ---
         await Notification.create([
             { // إشعار للبائع
                 user: mediationRequest.seller._id,
                 type: 'MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW',
-                title: 'Mediator Rejected - Action Required',
-                message: sellerMessage,
+                title: 'notification_titles.MEDIATION_REJECTED_BY_MEDIATOR',
+                message: 'notification_messages.MEDIATION_REJECTED_FOR_SELLER',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedRequestAfterRejection._id, modelName: 'MediationRequest' }
             },
             { // إشعار للمشتري
                 user: mediationRequest.buyer._id,
                 type: 'MEDIATION_REJECTED_BY_MEDIATOR',
-                title: 'Mediator Assignment Rejected',
-                message: buyerMessage,
+                title: 'notification_titles.MEDIATION_REJECTED_BY_MEDIATOR',
+                message: 'notification_messages.MEDIATION_REJECTED_FOR_BUYER',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedRequestAfterRejection._id, modelName: 'MediationRequest' }
             },
             { // إشعار للوسيط الرافض (تأكيد)
-                user: originalMediatorId, // ID الوسيط الذي قام بالرفض
+                user: originalMediatorId,
                 type: 'MEDIATION_TASK_REJECTED_SELF',
-                title: 'Assignment Rejection Confirmed',
-                message: mediatorRejectionConfirmationMsg,
+                title: 'notification_titles.MEDIATION_TASK_REJECTED_SELF',
+                message: 'notification_messages.MEDIATION_TASK_REJECTED_SELF',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedRequestAfterRejection._id, modelName: 'MediationRequest' }
             }
-        ], { session, ordered: true }); // <--- أضف ordered: true
-        // --- نهاية التعديل ---
+        ], { session, ordered: true });
+        
         console.log(`   Notifications sent for mediator rejection on request ${updatedRequestAfterRejection._id}.`);
 
         await session.commitTransaction();
@@ -969,25 +992,33 @@ exports.sellerConfirmReadiness = async (req, res) => {
         if (!Array.isArray(mediationRequest.history)) mediationRequest.history = [];
         mediationRequest.history.push({ event: "Seller confirmed readiness", userId: sellerId, timestamp: new Date() });
 
-        let msg = "Readiness confirmed. Waiting for buyer.";
+        let responseMsgKey = "mediation.seller.confirmSuccessWait";
+
+        const notificationParams = {
+            productName: mediationRequest.product?.title || 'the transaction',
+            sellerName: mediationRequest.seller?.fullName || 'The Seller'
+        };
 
         if (mediationRequest.buyerConfirmedStart && (mediationRequest.status === 'EscrowFunded' || mediationRequest.status === 'MediationOfferAccepted')) {
             mediationRequest.status = 'PartiesConfirmed';
-            msg = "Readiness confirmed. Both parties ready. Chat will open shortly.";
+            responseMsgKey = "mediation.seller.confirmSuccessBothReady";
             if (mediationRequest.product?._id) {
                 await Product.findByIdAndUpdate(mediationRequest.product._id, { $set: { status: 'PartiesConfirmed' } }, { session });
             }
-            const productTitle = mediationRequest.product?.title || 'transaction';
-            const partiesConfirmedMsg = `All parties confirmed for "${productTitle}". Chat will initiate shortly.`;
-            const notifType = 'PARTIES_CONFIRMED_AWAITING_CHAT';
             await Notification.insertMany([
-                { user: mediationRequest.seller._id, type: notifType, title: "Parties Confirmed", message: partiesConfirmedMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
-                { user: mediationRequest.buyer._id, type: notifType, title: "Parties Confirmed", message: partiesConfirmedMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
-                { user: mediationRequest.mediator._id, type: notifType, title: "Parties Confirmed", message: partiesConfirmedMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } }
+                { user: mediationRequest.seller._id, type: 'PARTIES_CONFIRMED_AWAITING_CHAT', title: "notification_titles.PARTIES_CONFIRMED", message: 'notification_messages.PARTIES_CONFIRMED', messageParams: notificationParams, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
+                { user: mediationRequest.buyer._id, type: 'PARTIES_CONFIRMED_AWAITING_CHAT', title: "notification_titles.PARTIES_CONFIRMED", message: 'notification_messages.PARTIES_CONFIRMED', messageParams: notificationParams, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } },
+                { user: mediationRequest.mediator._id, type: 'PARTIES_CONFIRMED_AWAITING_CHAT', title: "notification_titles.PARTIES_CONFIRMED", message: 'notification_messages.PARTIES_CONFIRMED', messageParams: notificationParams, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } }
             ], { session });
         } else {
-            const buyerAwaitingMsg = `Seller for "${mediationRequest.product?.title || 'transaction'}" confirmed readiness. Please confirm your readiness and ensure funds.`;
-            await Notification.create([{ user: mediationRequest.buyer._id, type: 'SELLER_CONFIRMED_AWAITING_YOUR_ACTION', title: 'Seller Confirmed', message: buyerAwaitingMsg, relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } }], { session });
+            await Notification.create([{
+                user: mediationRequest.buyer._id,
+                type: 'SELLER_CONFIRMED_AWAITING_YOUR_ACTION',
+                title: 'notification_titles.SELLER_CONFIRMED',
+                message: 'notification_messages.SELLER_CONFIRMED_FOR_BUYER',
+                messageParams: notificationParams,
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
+            }], { session });
         }
 
         await mediationRequest.save({ session });
@@ -998,7 +1029,10 @@ exports.sellerConfirmReadiness = async (req, res) => {
         }
 
         const finalResponse = await MediationRequest.findById(mediationRequestInstance._id).populate('product seller buyer mediator history.userId', 'title status agreedPrice imageUrls currency fullName avatarUrl').lean();
-        res.status(200).json({ msg, mediationRequest: finalResponse });
+
+        // أرسل مفتاح الترجمة بدلاً من الرسالة الثابتة
+        res.status(200).json({ msg: responseMsgKey, mediationRequest: finalResponse });
+
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error in sellerConfirmReadiness:", error);
@@ -1086,9 +1120,38 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         // 5. التحقق من رصيد المشتري (بالعملة الأساسية للمنصة)
         if (buyerUser.balance < amountToDeductInPlatformCurrency) {
-            await session.abortTransaction();
-            return res.status(400).json({ msg: `Insufficient balance. Required: ${formatCurrency(amountToDeductInPlatformCurrency, PLATFORM_BASE_CURRENCY)}, Available: ${formatCurrency(buyerUser.balance, PLATFORM_BASE_CURRENCY)}` });
+        await session.abortTransaction();
+
+        // [!!!] START: هذا هو الإصلاح الجديد [!!!]
+        
+        // المبلغ المطلوب، وهو موجود بالفعل بعملة المعاملة الأصلية
+        const requiredAmount = amountToEscrowInOriginalCurrency;
+        const transactionCurrency = originalEscrowCurrency;
+
+        // الآن، سنقوم بتحويل الرصيد المتاح للمستخدم (المخزن بالـ TND) إلى عملة المعاملة
+        let availableAmountInTransactionCurrency = buyerUser.balance;
+
+        if (transactionCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
+            // إذا كانت المعاملة بالدولار، قم بتحويل رصيد المستخدم (بالدينار) إلى دولار
+            availableAmountInTransactionCurrency = buyerUser.balance / TND_USD_EXCHANGE_RATE;
+        } else if (transactionCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') {
+            // حالة عكسية (غير محتملة في حالتك، ولكنها جيدة للمستقبل)
+            // إذا كانت المعاملة بالدينار، قم بتحويل رصيد المستخدم (بالدولار) إلى دينار
+            availableAmountInTransactionCurrency = buyerUser.balance * TND_USD_EXCHANGE_RATE;
         }
+        
+        // [!!!] END: نهاية الإصلاح الجديد [!!!]
+
+        return res.status(400).json({
+            translationKey: "apiErrors.insufficientBalance",
+            translationParams: {
+                // الآن كلا المبلغين بنفس العملة
+                required: formatCurrency(requiredAmount, transactionCurrency),
+                available: formatCurrency(availableAmountInTransactionCurrency, transactionCurrency) 
+            },
+            msg: `Insufficient balance. Required: ${formatCurrency(requiredAmount, transactionCurrency)}, Available: ${formatCurrency(availableAmountInTransactionCurrency, transactionCurrency)}`
+        });
+    }
 
         // 6. خصم المبلغ من رصيد المشتري
         buyerUser.balance = parseFloat((buyerUser.balance - amountToDeductInPlatformCurrency).toFixed(2));
@@ -1157,38 +1220,50 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         // 10. إنشاء الإشعارات
         const productTitleForNotif = mediationRequest.product?.title || 'the transaction';
-        const notificationPromises = [];
 
+        let buyerAlertMsgKey = "mediation.buyer.confirmSuccessWait";
+        if (nextStatus === 'PartiesConfirmed') {
+            buyerAlertMsgKey = "mediation.buyer.confirmSuccessBothReady";
+        }
+
+        const notificationParams = {
+            productName: productTitleForNotif,
+            buyerName: buyerFullNameForNotification
+        };
+
+        const notificationPromises = [];
         // إشعار للبائع (إذا لم يكن قد أكد بعد)
         if (!mediationRequest.sellerConfirmedStart && mediationRequest.seller?._id) {
             notificationPromises.push(Notification.create([{
                 user: mediationRequest.seller._id,
-                type: 'BUYER_CONFIRMED_AWAITING_YOUR_ACTION',
-                title: 'Buyer Confirmed & Paid - Your Turn!',
-                message: `${buyerFullNameForNotification} has confirmed readiness and escrowed funds for "${productTitleForNotif}". Please confirm your readiness to proceed.`,
+                type: 'BUYER_CONFIRM_AWAITING_YOUR_ACTION',
+                title: 'notification_titles.BUYER_CONFIRMED_AWAITING_YOUR_ACTION',
+                message: 'notification_messages.BUYER_CONFIRMED_AWAITING_YOUR_ACTION',
+                messageParams: notificationParams,
                 relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             }], { session }));
         }
         // إشعار للمشتري
         notificationPromises.push(Notification.create([{
             user: buyerId,
-            type: 'MEDIATION_CONFIRMED_BY_PARTY', // أو ESCROW_SUCCESSFUL
-            title: 'Readiness & Escrow Confirmed',
-            message: buyerAlertMessage, // استخدم الرسالة الديناميكية
+            type: 'MEDIATION_CONFIRMED_BY_PARTY',
+            title: 'notification_titles.MEDIATION_CONFIRMED_BY_PARTY',
+            message: buyerAlertMsgKey, // استخدم مفتاح الرسالة الديناميكي
+            messageParams: notificationParams,
             relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
         }], { session }));
 
-        // إذا تم تأكيد كلا الطرفين، أرسل إشعارًا لجميع الأطراف (بما في ذلك الوسيط)
+        // إذا تم تأكيد كلا الطرفين، أرسل إشعارًا لجميع الأطراف
         if (nextStatus === 'PartiesConfirmed') {
-            const partiesConfirmedNotifMessage = `All parties (Seller & Buyer) have confirmed readiness for "${productTitleForNotif}". The mediation chat will be initiated shortly.`;
             const participantsToNotify = [mediationRequest.seller._id, buyerId];
             if (mediationRequest.mediator?._id) participantsToNotify.push(mediationRequest.mediator._id);
 
             const partiesConfirmedNotifications = [...new Set(participantsToNotify)].map(pId => ({
                 user: pId,
                 type: 'PARTIES_CONFIRMED_AWAITING_CHAT',
-                title: 'All Parties Confirmed!',
-                message: partiesConfirmedNotifMessage,
+                title: 'notification_titles.PARTIES_CONFIRMED',
+                message: 'notification_messages.PARTIES_CONFIRMED',
+                messageParams: notificationParams,
                 relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             }));
             if (partiesConfirmedNotifications.length > 0) {
@@ -1388,19 +1463,29 @@ exports.buyerRejectMediation = async (req, res) => {
 
         // 9. إنشاء وإرسال الإشعارات للأطراف المعنية
         const productTitleForNotification = mediationRequest.product?.title || 'the transaction';
+        const notificationParams = {
+            buyerName: buyerFullName,
+            productName: productTitleForNotification,
+            reason: reason.trim(),
+            sellerName: mediationRequest.seller.fullName, // افترض أن البائع موجود
+            mediatorName: mediationRequest.mediator?.fullName || 'the mediator' // الوسيط قد لا يكون موجوداً
+        };
+
         const notifications = [
             { // إشعار للبائع
                 user: mediationRequest.seller._id,
-                type: 'MEDIATION_CANCELLED_BY_BUYER', // نوع مميز
-                title: 'Mediation Cancelled by Buyer',
-                message: `${buyerFullName} has cancelled the mediation for product "${productTitleForNotification}". Reason: "${reason.trim()}". The product may now be available for new bids.`,
+                type: 'MEDIATION_CANCELLED_BY_BUYER',
+                title: 'notification_titles.MEDIATION_CANCELLED_BY_BUYER',
+                message: 'notification_messages.MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
             },
             { // إشعار للمشتري (تأكيد الإلغاء)
                 user: buyerId,
                 type: 'MEDIATION_CANCELLATION_CONFIRMED',
-                title: 'Mediation Cancellation Confirmed',
-                message: `You have successfully cancelled the mediation for product "${productTitleForNotification}".`,
+                title: 'notification_titles.MEDIATION_CANCELLATION_CONFIRMED',
+                message: 'notification_messages.MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
             }
         ];
@@ -1408,8 +1493,9 @@ exports.buyerRejectMediation = async (req, res) => {
             notifications.push({
                 user: mediationRequest.mediator._id,
                 type: 'MEDIATION_CANCELLED_BY_PARTY',
-                title: 'Mediation Cancelled by Buyer',
-                message: `The mediation for product "${productTitleForNotification}" (between seller ${mediationRequest.seller.fullName} and buyer ${buyerFullName}) has been cancelled by the buyer. Reason: "${reason.trim()}".`,
+                title: 'notification_titles.MEDIATION_CANCELLED_BY_BUYER',
+                message: 'notification_messages.MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR',
+                messageParams: notificationParams,
                 relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
             });
         }

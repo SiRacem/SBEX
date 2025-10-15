@@ -228,7 +228,6 @@
     "PRODUCT_UPDATE_PENDING": "Mise à jour de produit à approuver",
     "MEDIATOR_SELECTED_BY_SELLER": "Médiateur sélectionné",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "Action requise : Choisissez un nouveau médiateur",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Action requise : L'acheteur a confirmé",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Enchère acceptée - En attente du médiateur",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "Action requise : Le vendeur a confirmé",
     "MEDIATION_ASSIGNED": "Une médiation vous a été assignée !",
@@ -279,7 +278,13 @@
     "TICKET_ASSIGNMENT_UPDATED": "Assignation du ticket mise à jour",
     "ACCOUNT_BLOCKED": "Compte bloqué",
     "ACCOUNT_UNBLOCKED": "Compte débloqué",
-    "MEDIATION_TASK_EXPIRED": "Tâche de médiation expirée"
+    "MEDIATION_TASK_EXPIRED": "Tâche de médiation expirée",
+    "PARTIES_CONFIRMED": "Toutes les parties sont prêtes !",
+    "SELLER_CONFIRMED": "Le vendeur a confirmé - À votre tour",
+    "MEDIATION_REJECTED_BY_MEDIATOR": "Mission de médiation refusée",
+    "MEDIATION_CANCELLED_BY_BUYER": "Médiation annulée par l'acheteur",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Acheteur a confirmé & payé - À votre tour !",
+    "MEDIATION_CONFIRMED_BY_PARTY": "Disponibilité & Séquestre confirmés"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -297,7 +302,6 @@
     "PRODUCT_UPDATE_PENDING": "Le vendeur '{{vendorName}}' a mis à jour le produit '{{productName}}'. Il nécessite une nouvelle approbation.",
     "MEDIATOR_SELECTED_BY_SELLER": "Le vendeur a sélectionné '{{mediatorName}}' comme médiateur pour la transaction de '{{productName}}'.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "Le médiateur '{{mediatorName}}' a rejeté la tâche pour '{{productName}}'. Veuillez sélectionner un nouveau médiateur.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "L'acheteur a confirmé sa disponibilité pour '{{productName}}'. Veuillez confirmer votre disponibilité pour continuer.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "Votre enchère pour '{{productName}}' a été acceptée. Le vendeur va maintenant choisir un médiateur.",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "Le vendeur de '{{productName}}' a confirmé sa disponibilité. Veuillez confirmer et déposer les fonds pour continuer.",
     "MEDIATION_ASSIGNED": "Vous avez été assigné comme médiateur pour la transaction concernant '{{productName}}'.",
@@ -347,7 +351,17 @@
     "MEDIATOR_APP_PENDING_GUARANTEE": "Votre candidature pour devenir médiateur (basée sur la Garantie) est en cours d'examen. Un montant de {{amount}} a été réservé sur votre solde.",
     "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "Nous avons le regret de vous informer que votre candidature pour devenir médiateur a été rejetée par l'administrateur \"{{adminName}}\". Raison : {{reason}}. Le montant de la garantie a été restitué à votre solde principal.",
     "MEDIATION_AUTO_REJECTED_SELLER": "Le médiateur '{{mediatorName}}' n'a pas répondu à l'assignation pour '{{productName}}' dans le délai de {{minutes}} minutes. Veuillez sélectionner un nouveau médiateur.",
-    "MEDIATION_TASK_EXPIRED": "Vous n'avez pas répondu à la tâche de médiation pour '{{productName}}' dans le délai de {{minutes}} minutes, elle a donc été automatiquement annulée."
+    "MEDIATION_TASK_EXPIRED": "Vous n'avez pas répondu à la tâche de médiation pour '{{productName}}' dans le délai de {{minutes}} minutes, elle a donc été automatiquement annulée.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER": "Le médiateur '{{mediatorName}}' a accepté de arbitrer votre transaction pour '{{productName}}' avec l'acheteur '{{buyerName}}'. Veuillez confirmer votre disponibilité.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER": "Le médiateur '{{mediatorName}}' a accepté de arbitrer votre transaction pour '{{productName}}' avec le vendeur '{{sellerName}}'. Veuillez confirmer votre disponibilité.",
+    "PARTIES_CONFIRMED": "Toutes les parties ont confirmé leur disponibilité pour '{{productName}}'. Le chat de médiation va bientôt commencer.",
+    "SELLER_CONFIRMED_FOR_BUYER": "Le vendeur '{{sellerName}}' pour '{{productName}}' a confirmé sa disponibilité. Veuillez confirmer la vôtre et mettre les fonds sous séquestre.",
+    "MEDIATION_REJECTED_FOR_SELLER": "Le médiateur '{{mediatorName}}' a refusé la mission pour '{{productName}}'. Raison : '{{reason}}'. Veuillez sélectionner un nouveau médiateur.",
+    "MEDIATION_REJECTED_FOR_BUYER": "Le médiateur pour '{{productName}}' (avec le vendeur {{sellerName}}) a refusé la mission. Le vendeur en sélectionnera un nouveau.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "L'acheteur '{{buyerName}}' a annulé la médiation pour '{{productName}}'. Raison : '{{reason}}'. Le produit pourrait être de nouveau disponible.",
+    "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "Vous avez annulé avec succès la médiation pour '{{productName}}'.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "La médiation pour '{{productName}}' a été annulée par l'acheteur, '{{buyerName}}'. Raison : '{{reason}}'.",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "L'acheteur '{{buyerName}}' a confirmé sa disponibilité et mis sous séquestre les fonds pour '{{productName}}'. Veuillez confirmer votre disponibilité pour continuer."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -894,6 +908,7 @@
     "Mythic": "Mythique"
   },
   "apiErrors": {
+    "tooManyLoginAttempts": "Trop de tentatives de connexion, veuillez réessayer dans {{minutes}} minutes.",
     "Invalid_credentials": "L'e-mail ou le mot de passe que vous avez entré est incorrect.",
     "Email_already_exists": "Cet e-mail est déjà enregistré.",
     "You_cannot_rate_yourself": "Vous ne pouvez pas vous évaluer.",
@@ -930,7 +945,8 @@
     "getProfileFail": "Échec du chargement du profil utilisateur.",
     "notAuthorized": "Autorisation requise. Veuillez vous connecter.",
     "notAuthorizedAdmin": "Une autorisation d'administrateur est requise pour cette action.",
-    "Failed_to_fetch_withdrawal_requests": "Erreur serveur lors de la récupération de vos demandes de retrait."
+    "Failed_to_fetch_withdrawal_requests": "Erreur serveur lors de la récupération de vos demandes de retrait.",
+    "insufficientBalance": "Solde insuffisant. Requis : {{required}}, mais vous n'avez que {{available}}. Veuillez recharger votre portefeuille."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -1319,7 +1335,8 @@
         "inProgress": "En cours",
         "disputeOpened": "Litige ouvert",
         "sold": "Vendu",
-        "completed": "Terminé"
+        "completed": "Terminé",
+        "MediatorAssigned": "En attente du médiateur"
       },
       "alerts": {
         "selectMediator": "Veuillez sélectionner un médiateur",
@@ -1330,7 +1347,8 @@
         "sellerConfirmed": "Vous avez confirmé. <small class=\"text-muted\">En attente de la confirmation et du paiement de l'acheteur.</small>",
         "mediationInProgress": "La médiation est en cours.",
         "disputeActive": "Le litige est actif.",
-        "communicate": "Communiquez avec l'acheteur et le médiateur."
+        "communicate": "Communiquez avec l'acheteur et le médiateur.",
+        "sellerActionRequiredHTML": "<strong>Action requise :</strong> Veuillez confirmer que vous êtes prêt à continuer."
       },
       "buttons": {
         "confirmReadiness": "Confirmer ma disponibilité",
@@ -1366,17 +1384,17 @@
       "close": "Fermer"
     },
     "countdown": {
-        "calculating": "Calcul en cours...",
-        "tooltip": "Temps restant pour que le médiateur accepte la mission",
-        "expiredToast": "Le temps de réponse du médiateur a expiré. Vous pouvez maintenant en sélectionner un autre."
-      },
+      "calculating": "Calcul en cours...",
+      "tooltip": "Temps restant pour que le médiateur accepte la mission",
+      "expiredToast": "Le temps de réponse du médiateur a expiré. Vous pouvez maintenant en sélectionner un autre."
+    },
     "mediatorModal": {
       "errorIdMissing": "L'ID de la demande de médiation est manquant.",
       "errorNotAuthenticated": "Non authentifié.",
       "errorLoadFailed": "Impossible de charger les médiateurs.",
       "successSuggestions": "Nouvelles suggestions chargées !",
       "infoNoNewMediators": "Aucun nouveau médiateur trouvé.",
-        "assignSuccess": "Le médiateur a été assigné avec succès et a été notifié."
+      "assignSuccess": "Le médiateur a été assigné avec succès et a été notifié."
     }
   },
   "ticketsListPage": {
@@ -1478,7 +1496,8 @@
       "Cancelled": "Annulée"
     },
     "rejectModal": {
-      "noReason": "Veuillez fournir une raison pour l'annulation."
+      "noReason": "Veuillez fournir une raison pour l'annulation.",
+      "cancelSuccess": "La médiation a été annulée avec succès."
     },
     "imageModal": {
       "title": "Image du produit {{index}}",
@@ -2019,5 +2038,42 @@
     "buyerIdOnly": "Acheteur (ID uniquement)",
     "feeError": "Fonction de prix ou de frais manquante",
     "productImage": "Image du produit"
+  },
+  "mediationStatuses": {
+    "PendingMediatorSelection": "En attente de sélection du médiateur",
+    "MediatorAssigned": "En attente de la réponse du médiateur",
+    "MediationOfferAccepted": "Médiateur a accepté",
+    "EscrowFunded": "Fonds séquestrés",
+    "PartiesConfirmed": "Parties confirmées",
+    "InProgress": "En cours",
+    "Completed": "Terminée",
+    "Disputed": "En litige",
+    "Cancelled": "Annulée",
+    "AdminResolved": "Résolu par l'admin"
+  },
+  "rejectMediationByBuyerModal": {
+    "title": "Annuler la médiation",
+    "aboutToCancel": "Vous êtes sur le point d'annuler la médiation pour le produit :",
+    "reasonLabel": "Raison de l'annulation",
+    "placeholder": "Veuillez fournir une raison claire pour l'annulation...",
+    "back": "Retour",
+    "confirm": "Confirmer l'annulation",
+    "reasonRequired": "Une raison pour l'annulation est requise.",
+    "cancelling": "Annulation en cours..."
+  },
+  "rejectAssignmentModal": {
+    "title": "Refuser la mission de médiation",
+    "aboutToReject": "Vous êtes sur le point de refuser la mission pour le produit :",
+    "reasonLabel": "Raison du refus",
+    "placeholder": "Veuillez fournir une raison claire pour refuser cette mission...",
+    "confirmRejection": "Confirmer le refus",
+    "reasonRequired": "Une raison pour le refus est requise.",
+    "rejecting": "Refus en cours..."
+  },
+  "mediation": {
+    "buyer": {
+      "confirmSuccessWait": "Disponibilité confirmée et fonds mis sous séquestre avec succès. En attente de la confirmation du vendeur.",
+      "confirmSuccessBothReady": "Disponibilité confirmée, fonds mis sous séquestre. Les deux parties sont prêtes. Le chat va bientôt commencer."
+    }
   }
 }

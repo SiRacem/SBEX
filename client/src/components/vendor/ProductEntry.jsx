@@ -307,11 +307,10 @@ const ProductEntry = ({
                   !isActualMediationInProgress && (
                     <div className="mt-2">
                       <Alert variant="info" className="p-2 small d-block">
-                        <strong>
-                          {t(
-                            "myProductsPage.productCard.alerts.sellerActionRequired"
-                          )}
-                        </strong>
+                        <Trans
+                          i18nKey="myProductsPage.productCard.alerts.sellerActionRequiredHTML"
+                          components={{ strong: <strong /> }}
+                        />
                         <br />
                         <small className="text-muted">
                           {isEscrowFundedByBuyer

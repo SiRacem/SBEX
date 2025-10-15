@@ -8,7 +8,13 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"
 // دالة مساعدة لمعالجة الأخطاء وإرجاع مفتاح ترجمة
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
     if (error.response) {
-        if (error.response.data.translationKey) return { key: error.response.data.translationKey };
+        // [!!!] هذا هو الجزء الأهم [!!!]
+        if (error.response.data.translationKey) {
+            return {
+                key: error.response.data.translationKey,
+                params: error.response.data.translationParams || {} // تأكد من تمرير params
+            };
+        }
         if (error.response.data.msg) {
             const fallback = error.response.data.msg;
             const key = `apiErrors.${fallback.replace(/\s+/g, '_').replace(/[!'.]/g, '')}`;
@@ -134,16 +140,23 @@ export const assignSelectedMediator = (mediationRequestId, selectedMediatorId) =
     if (!config) return dispatch({ type: types.ASSIGN_MEDIATOR_FAIL, payload: { errorMessage: { key: "apiErrors.notAuthorized" } } });
     try {
         const { data } = await axios.put(`${BACKEND_URL}/mediation/assign-selected/${mediationRequestId}`, { selectedMediatorId }, config);
+        // 1. إرسال أكشن النجاح لـ mediationReducer (لإيقاف التحميل مثلاً)
         dispatch({
             type: types.ASSIGN_MEDIATOR_SUCCESS,
             payload: {
                 responseData: data,
                 mediationRequestId,
-                successMessage: 'mediation.seller.assignSuccess',
-                // [!!!] أضف هذا الجزء لإرسال المنتج المحدث إلى الـ reducer [!!!]
-                updatedProduct: data.mediationRequest.product
             }
         });
+
+        // 2. إذا عادت البيانات الكاملة، قم بإرسال أكشن منفصل ومباشر لتحديث المنتج
+        if (data.mediationRequest && data.mediationRequest.product) {
+            dispatch({
+                type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', // استخدم هذا الأكشن الموثوق
+                payload: data.mediationRequest.product
+            });
+            console.log('[assignSelectedMediator Action] Dispatched UPDATE_SINGLE_PRODUCT_IN_STORE with full product data.');
+        }
         return data;
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'mediation.seller.assignFail');
@@ -199,9 +212,16 @@ export const buyerConfirmReadinessAndEscrowAction = (mediationRequestId) => asyn
         }
         return data;
     } catch (error) {
-        const { key, fallback, params } = handleError(error, 'mediation.buyer.confirmFail');
-        dispatch({ type: types.BUYER_CONFIRM_READINESS_ESCROW_FAIL, payload: { mediationRequestId, errorMessage: { key, fallback, params } } });
-        throw error;
+        const errorObject = handleError(error, 'mediation.buyer.confirmFail');
+        dispatch({
+            type: types.BUYER_CONFIRM_READINESS_ESCROW_FAIL,
+            payload: {
+                mediationRequestId,
+                errorMessage: errorObject
+            }
+        });
+        // [!!!] تمرير الكائن الكامل الذي تم إرجاعه من handleError [!!!]
+        return Promise.reject(errorObject);
     }
 };
 

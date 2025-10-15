@@ -797,7 +797,7 @@ exports.acceptBid = async (req, res) => {
 
     const session = await mongoose.startSession();
     session.startTransaction();
-
+    console.log(`--- Controller: acceptBid for Product: ${productId} by Seller: ${sellerId} ---`);
     try {
         const product = await Product.findById(productId).session(session);
         const buyer = await User.findById(bidUserId).session(session);
@@ -806,56 +806,65 @@ exports.acceptBid = async (req, res) => {
         if (!product.user.equals(sellerId)) throw new Error("You are not the seller of this product.");
         if (product.status !== 'approved') throw new Error(`Product status is not 'approved'.`);
 
+        const bidToAccept = product.bids.find(b => b.user.equals(bidUserId));
+        if (!bidToAccept) throw new Error("The specified bid was not found on this product.");
+
+        // تحديث المنتج
+        product.status = 'PendingMediatorSelection';
+        product.buyer = buyer._id;
+        product.agreedPrice = numericBidAmount;
+        product.soldCurrency = bidToAccept.currency;
+
+        // إنشاء طلب وساطة جديد
         const newMediationRequest = new MediationRequest({
-            product: product._id, seller: sellerId, buyer: buyer._id,
-            bidAmount: numericBidAmount, bidCurrency: product.currency,
+            product: product._id,
+            seller: sellerId,
+            buyer: buyer._id,
+            bidAmount: numericBidAmount,
+            bidCurrency: bidToAccept.currency,
             status: 'PendingMediatorSelection',
         });
         await newMediationRequest.save({ session });
 
-        product.status = 'PendingMediatorSelection';
-        product.buyer = buyer._id;
-        product.agreedPrice = numericBidAmount;
+        // ربط طلب الوساطة بالمنتج
         product.currentMediationRequest = newMediationRequest._id;
         await product.save({ session });
 
+        const notificationParams = {
+            amount: formatCurrency(numericBidAmount, product.currency),
+            productName: product.title
+        };
         const notificationsForAccept = [
-            {
-                user: buyer._id,
-                type: 'BID_ACCEPTED_PENDING_MEDIATOR',
-                title: 'notification_titles.BID_ACCEPTED_PENDING_MEDIATOR',
-                message: 'notification_messages.BID_ACCEPTED_PENDING_MEDIATOR',
-                messageParams: {
-                    amount: formatCurrency(numericBidAmount, product.currency),
-                    productName: product.title
-                },
-                relatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' }
-            },
-            {
-                user: sellerId,
-                type: 'BID_ACCEPTED_SELLER',
-                title: 'notification_titles.BID_ACCEPTED_SELLER',
-                message: 'notification_messages.BID_ACCEPTED_SELLER',
-                messageParams: { productName: product.title },
-                relatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' }
-            }
+            { user: buyer._id, type: 'BID_ACCEPTED_PENDING_MEDIATOR', title: 'notification_titles.BID_ACCEPTED_PENDING_MEDIATOR', message: 'notification_messages.BID_ACCEPTED_PENDING_MEDIATOR', messageParams: notificationParams, relatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' } },
+            { user: sellerId, type: 'BID_ACCEPTED_SELLER', title: 'notification_titles.BID_ACCEPTED_SELLER', message: 'notification_messages.BID_ACCEPTED_SELLER', messageParams: notificationParams, relatedEntity: { id: newMediationRequest._id, modelName: 'MediationRequest' } }
         ];
         await Notification.insertMany(notificationsForAccept, { session });
 
         await session.commitTransaction();
 
-        const finalUpdatedProduct = await Product.findById(productId).populate('user buyer bids.user').lean();
+        // [!!!] إعادة جلب المنتج مع populate كامل بعد إتمام كل شيء [!!!]
+        const finalUpdatedProduct = await Product.findById(productId)
+            .populate('user', 'fullName email avatarUrl')
+            .populate('bids.user', 'fullName email avatarUrl')
+            .populate('buyer', 'fullName email avatarUrl')
+            .populate({
+                path: 'currentMediationRequest',
+                model: 'MediationRequest'
+            })
+            .lean(); // استخدم lean هنا
+
         if (req.io) {
             req.io.emit('product_updated', finalUpdatedProduct);
         }
 
         res.status(200).json({
             msg: "Bid accepted successfully! Please select a mediator.",
-            updatedProduct: finalUpdatedProduct
+            updatedProduct: finalUpdatedProduct // أرسل المنتج المحدث بالكامل
         });
 
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
+        console.error("--- Controller: acceptBid ERROR ---", error);
         res.status(400).json({ msg: error.message || 'Failed to accept bid.' });
     } finally {
         if (session) await session.endSession();

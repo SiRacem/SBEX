@@ -436,22 +436,6 @@ const productReducer = (state = initialState, { type, payload }) => {
                     p._id === payload._id ? { ...p, ...payload } : p
                 ),
             };
-
-            // [!!!] استمع لنجاح تعيين الوسيط وقم بتحديث المنتج فوراً [!!!]
-        case 'ASSIGN_MEDIATOR_SUCCESS': {
-            const { updatedProduct } = payload;
-            if (!updatedProduct || !updatedProduct._id) {
-                console.warn("Product Reducer: Received ASSIGN_MEDIATOR_SUCCESS without a valid updated product.");
-                return state;
-            }
-            console.log(`[Product Reducer] Updating product ${updatedProduct._id} from ASSIGN_MEDIATOR_SUCCESS.`);
-            return {
-                ...state,
-                Products: state.Products.map(p =>
-                    p._id === updatedProduct._id ? updatedProduct : p
-                ),
-            };
-        }
         
         default:
             return state;

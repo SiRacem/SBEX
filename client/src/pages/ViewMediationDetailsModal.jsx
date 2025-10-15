@@ -32,6 +32,7 @@ import {
 } from "react-icons/fa";
 import { BsArrowRepeat } from "react-icons/bs";
 import "./ViewMediationDetailsModal.css";
+import { Link } from "react-router-dom";
 
 const formatCurrencyForHistory = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -63,6 +64,39 @@ const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const noUserAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 
+const getStatusInfo = (status, t) => {
+    let text = status;
+    let bg = "secondary";
+    const key = `mediationStatuses.${status}`;
+    const translatedText = t(key);
+
+    // إذا كانت الترجمة موجودة، استخدمها
+    if (translatedText !== key) {
+        text = translatedText;
+    } else {
+        // قيمة احتياطية إذا لم تكن الترجمة موجودة
+        text = status ? status.replace(/([A-Z])/g, " $1").trim() : 'Unknown';
+    }
+
+    switch (status) {
+        case 'PendingMediatorSelection': bg = "info"; break;
+        case 'MediatorAssigned': bg = "primary"; break;
+        case 'MediationOfferAccepted': bg = "warning"; break;
+        case 'EscrowFunded': bg = "info"; break;
+        case 'PartiesConfirmed': bg = "info"; break;
+        case 'InProgress': bg = "success"; break;
+        case 'Completed': bg = "dark"; break;
+        case 'Disputed': bg = "danger"; break;
+        case 'Cancelled': bg = "secondary"; break;
+        default: bg = "secondary";
+    }
+    
+    // تحديد لون النص المناسب للخلفية
+    const textColor = (bg === 'warning' || bg === 'info' || bg === 'light' || bg === 'secondary') ? 'dark' : 'light';
+    
+    return { text, bg, textColor };
+};
+
 const ViewMediationDetailsModal = ({
   show,
   onHide,
@@ -74,6 +108,8 @@ const ViewMediationDetailsModal = ({
   if (!request) {
     return null;
   }
+
+  const { text: statusText, bg: statusBg, textColor: statusTextColor } = getStatusInfo(request.status, t);
 
   const getStatusBadgeBg = (status) => {
     const lowerStatus = status?.toLowerCase();
@@ -223,21 +259,9 @@ const ViewMediationDetailsModal = ({
                 <ListGroup.Item>
                   <FaShieldAlt className="me-2 text-muted" />
                   <strong>{t("viewMediationDetailsModal.status")}</strong>
-                  <Badge
-                    bg={getStatusBadgeBg(request.status)}
-                    className="ms-1"
-                    text={
-                      getStatusBadgeBg(request.status) === "warning" ||
-                      getStatusBadgeBg(request.status) === "info" ||
-                      getStatusBadgeBg(request.status) === "secondary"
-                        ? "dark"
-                        : "light"
-                    }
-                  >
-                    {request.status
-                      ? request.status.replace(/([A-Z])/g, " $1").trim()
-                      : t("viewMediationDetailsModal.unknown")}
-                  </Badge>
+                  {/* [!!!] START: عرض الحالة المترجمة [!!!] */}
+                  <Badge bg={statusBg} text={statusTextColor} className="ms-1">{statusText}</Badge>
+                  {/* [!!!] END: نهاية عرض الحالة المترجمة [!!!] */}
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <FaBalanceScale className="me-2 text-muted" />

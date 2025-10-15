@@ -31,17 +31,37 @@ const Login = () => {
   }, [i18n, i18n.language]);
 
   useEffect(() => {
+    // إذا كان المستخدم مصادقاً عليه، قم بالتحويل
     if (isAuth) {
       navigate("/dashboard", { replace: true });
+      return; // أوقف تنفيذ باقي الكود في التأثير
     }
+
+    // إذا كان هناك رسالة خطأ جديدة، قم بمعالجتها
     if (errorMessage) {
-      if (errorMessage.key === "apiErrors.tooManyRequests") {
-        localStorage.setItem(
-          "rateLimitResetTime",
-          errorMessage.rateLimit.resetTime
+      // تحقق أولاً من خطأ تجاوز عدد المحاولات
+      if (
+        errorMessage.key === "apiErrors.tooManyLoginAttempts" ||
+        errorMessage.key === "apiErrors.tooManyRequests"
+      ) {
+        // عرض رسالة مترجمة قبل التحويل
+        toast.error(
+          t(errorMessage.key, {
+            ...errorMessage.params,
+            defaultValue: errorMessage.fallback,
+          })
         );
-        navigate("/rate-limit-exceeded", { replace: true });
+
+        // إذا كانت المعلومات موجودة، احفظها وقم بالتحويل
+        if (errorMessage.rateLimit?.resetTime) {
+          localStorage.setItem(
+            "rateLimitResetTime",
+            errorMessage.rateLimit.resetTime
+          );
+          navigate("/rate-limit-exceeded", { replace: true });
+        }
       } else {
+        // عرض أي خطأ آخر
         toast.error(
           t(errorMessage.key, {
             ...errorMessage.params,
@@ -49,6 +69,7 @@ const Login = () => {
           })
         );
       }
+      // قم بمسح الخطأ بعد عرضه لمنع إعادة عرضه عند إعادة الرسم
       dispatch(clearUserErrors());
     }
   }, [isAuth, errorMessage, navigate, dispatch, t]);

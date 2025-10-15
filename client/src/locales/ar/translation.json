@@ -228,7 +228,6 @@
     "PRODUCT_UPDATE_PENDING": "تحديث منتج للموافقة",
     "MEDIATOR_SELECTED_BY_SELLER": "تم اختيار الوسيط",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "إجراء مطلوب: اختر وسيطًا جديدًا",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "إجراء مطلوب: أكد المشتري",
     "BID_ACCEPTED_PENDING_MEDIATOR": "تم قبول المزايدة - بانتظار الوسيط",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "إجراء مطلوب: أكد البائع",
     "MEDIATION_ASSIGNED": "تم تعيينك في وساطة!",
@@ -279,7 +278,13 @@
     "TICKET_ASSIGNMENT_UPDATED": "تم تحديث تعيين التذكرة",
     "ACCOUNT_BLOCKED": "تم حظر الحساب",
     "ACCOUNT_UNBLOCKED": "تم فك حظر الحساب",
-    "MEDIATION_TASK_EXPIRED": "مهمة الوساطة انتهت صلاحيتها"
+    "MEDIATION_TASK_EXPIRED": "مهمة الوساطة انتهت صلاحيتها",
+    "PARTIES_CONFIRMED": "جميع الأطراف جاهزة!",
+    "SELLER_CONFIRMED": "البائع أكد - دورك الآن",
+    "MEDIATION_REJECTED_BY_MEDIATOR": "تم رفض مهمة الوساطة",
+    "MEDIATION_CANCELLED_BY_BUYER": "تم إلغاء الوساطة من قبل المشتري",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "المشتري أكد ودفع - دورك الآن!",
+    "MEDIATION_CONFIRMED_BY_PARTY": "تم تأكيد الاستعداد وحجز المبلغ"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بك، {{name}}! يسعدنا انضمامك إلينا.",
@@ -297,7 +302,6 @@
     "PRODUCT_UPDATE_PENDING": "قام البائع '{{vendorName}}' بتحديث المنتج '{{productName}}'. يتطلب الآن إعادة الموافقة.",
     "MEDIATOR_SELECTED_BY_SELLER": "اختار البائع '{{mediatorName}}' كوسيط لمعاملة '{{productName}}'.",
     "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW": "رفض الوسيط '{{mediatorName}}' مهمة '{{productName}}'. يرجى اختيار وسيط جديد.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "أكد المشتري جاهزيته لـ '{{productName}}'. يرجى تأكيد جاهزيتك للمتابعة.",
     "BID_ACCEPTED_PENDING_MEDIATOR": "تم قبول مزايدتك على '{{productName}}'. سيختار البائع الآن وسيطًا.",
     "SELLER_CONFIRMED_AWAITING_YOUR_ACTION": "أكد البائع لـ '{{productName}}' جاهزيته. يرجى تأكيد وإيداع الأموال للمتابعة.",
     "MEDIATION_ASSIGNED": "تم تعيينك كوسيط للمعاملة المتعلقة بـ '{{productName}}'.",
@@ -347,7 +351,17 @@
     "MEDIATOR_APP_PENDING_GUARANTEE": "طلبك لتصبح وسيطًا (على أساس الضمان) قيد المراجعة الآن. تم حجز مبلغ {{amount}} من رصيدك.",
     "MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED": "نأسف لإبلاغك بأن طلبك لتصبح وسيطًا قد تم رفضه من قبل المسؤول \"{{adminName}}\". السبب: {{reason}}. تم إعادة مبلغ الضمان إلى رصيدك الرئيسي.",
     "MEDIATION_AUTO_REJECTED_SELLER": "لم يستجب الوسيط '{{mediatorName}}' للمهمة الخاصة بالمنتج '{{productName}}' خلال {{minutes}} دقائق. الرجاء اختيار وسيط جديد.",
-    "MEDIATION_TASK_EXPIRED": "لم تستجب لمهمة الوساطة الخاصة بالمنتج '{{productName}}' خلال المهلة الزمنية المحددة بـ {{minutes}} دقائق، لذلك تم إلغاؤها تلقائياً."
+    "MEDIATION_TASK_EXPIRED": "لم تستجب لمهمة الوساطة الخاصة بالمنتج '{{productName}}' خلال المهلة الزمنية المحددة بـ {{minutes}} دقائق، لذلك تم إلغاؤها تلقائياً.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER": "لقد قبل الوسيط '{{mediatorName}}' التوسط في معاملتك للمنتج '{{productName}}' مع المشتري '{{buyerName}}'. يرجى المتابعة لتأكيد استعدادك.",
+    "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER": "لقد قبل الوسيط '{{mediatorName}}' التوسط في معاملتك للمنتج '{{productName}}' مع البائع '{{sellerName}}'. يرجى المتابعة لتأكيد استعدادك.",
+    "PARTIES_CONFIRMED": "جميع الأطراف أكدت استعدادها للمنتج '{{productName}}'. ستبدأ محادثة الوساطة قريباً.",
+    "SELLER_CONFIRMED_FOR_BUYER": "البائع '{{sellerName}}' للمنتج '{{productName}}' أكد استعداده. يرجى تأكيد استعدادك وحجز المبلغ المطلوب.",
+    "MEDIATION_REJECTED_FOR_SELLER": "لقد رفض الوسيط '{{mediatorName}}' مهمة الوساطة للمنتج '{{productName}}'. السبب: '{{reason}}'. الرجاء اختيار وسيط جديد.",
+    "MEDIATION_REJECTED_FOR_BUYER": "لقد رفض الوسيط المعين للمنتج '{{productName}}' (مع البائع {{sellerName}}) المهمة. سيقوم البائع باختيار وسيط آخر.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "لقد قام المشتري '{{buyerName}}' بإلغاء الوساطة للمنتج '{{productName}}'. السبب: '{{reason}}'. قد يصبح المنتج متاحاً مرة أخرى.",
+    "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "لقد قمت بإلغاء الوساطة للمنتج '{{productName}}' بنجاح.",
+    "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "تم إلغاء الوساطة للمنتج '{{productName}}' من قبل المشتري '{{buyerName}}'. السبب: '{{reason}}'.",
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "لقد أكد المشتري '{{buyerName}}' استعداده وحجز المبلغ للمنتج '{{productName}}'. الرجاء تأكيد استعدادك للمتابعة."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -460,7 +474,7 @@
     "accept": "قبول",
     "reject": "رفض",
     "edit": "تعديل",
-    "delete" : "حذف",
+    "delete": "حذف",
     "statuses": {
       "active": "نشط",
       "blocked": "محظور",
@@ -894,6 +908,7 @@
     "Mythic": "خرافي"
   },
   "apiErrors": {
+    "tooManyLoginAttempts": "لقد تجاوزت عدد محاولات الدخول المسموح بها. الرجاء المحاولة مرة أخرى بعد {{minutes}} دقيقة.",
     "Invalid_credentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
     "Email_already_exists": "هذا البريد الإلكتروني مسجل بالفعل.",
     "You_cannot_rate_yourself": "لا يمكنك تقييم نفسك.",
@@ -930,7 +945,8 @@
     "getProfileFail": "فشل تحميل الملف الشخصي للمستخدم.",
     "notAuthorized": "المصادقة مطلوبة. يرجى تسجيل الدخول.",
     "notAuthorizedAdmin": "صلاحيات المسؤول مطلوبة لهذا الإجراء.",
-    "Failed_to_fetch_withdrawal_requests": "خطأ في الخادم عند جلب طلبات السحب الخاصة بك."
+    "Failed_to_fetch_withdrawal_requests": "خطأ في الخادم عند جلب طلبات السحب الخاصة بك.",
+    "insufficientBalance": "رصيدك غير كافٍ. المبلغ المطلوب: {{required}}، لكن رصيدك الحالي هو {{available}} فقط. الرجاء شحن محفظتك."
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",
@@ -1320,7 +1336,8 @@
         "inProgress": "قيد التنفيذ",
         "disputeOpened": "تم فتح نزاع",
         "sold": "مباع",
-        "completed": "مكتمل"
+        "completed": "مكتمل",
+        "MediatorAssigned": "بانتظار الوسيط"
       },
       "alerts": {
         "selectMediator": "الرجاء اختيار وسيط",
@@ -1331,7 +1348,8 @@
         "sellerConfirmed": "لقد قمت بالتأكيد. <small class=\"text-muted\">في انتظار تأكيد المشتري والدفع.</small>",
         "mediationInProgress": "الوساطة قيد التنفيذ.",
         "disputeActive": "النزاع نشط.",
-        "communicate": "تواصل مع المشتري والوسيط."
+        "communicate": "تواصل مع المشتري والوسيط.",
+        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> قم بتأكيد جاهزيتك. <br/> <small class=\"text-muted\">بعد تأكيدك، سيقوم المشتري بالتأكيد والدفع.</small>"
       },
       "buttons": {
         "confirmReadiness": "تأكيد جاهزيتي",
@@ -1367,10 +1385,10 @@
       "close": "إغلاق"
     },
     "countdown": {
-        "calculating": "جاري الحساب...",
-        "tooltip": "الوقت المتبقي للوسيط لقبول المهمة",
-        "expiredToast": "انتهى وقت استجابة الوسيط. يمكنك الآن اختيار وسيط آخر."
-      },
+      "calculating": "جاري الحساب...",
+      "tooltip": "الوقت المتبقي للوسيط لقبول المهمة",
+      "expiredToast": "انتهى وقت استجابة الوسيط. يمكنك الآن اختيار وسيط آخر."
+    },
     "mediatorModal": {
       "errorIdMissing": "معرّف طلب الوساطة مفقود.",
       "errorNotAuthenticated": "غير مصادق عليه.",
@@ -1479,7 +1497,8 @@
       "Cancelled": "ملغاة"
     },
     "rejectModal": {
-      "noReason": "يرجى تقديم سبب للإلغاء."
+      "noReason": "يرجى تقديم سبب للإلغاء.",
+      "cancelSuccess": "تم إلغاء الوساطة بنجاح."
     },
     "imageModal": {
       "title": "صورة المنتج {{index}}",
@@ -1995,7 +2014,7 @@
     "ar": "العربية",
     "fr": "الفرنسية",
     "tn": "التونسية"
-    },
+  },
   "mediationDetailsModal": {
     "title": "تفاصيل الوساطة:",
     "overallStatus": "الحالة العامة:",
@@ -2020,5 +2039,42 @@
     "buyerIdOnly": "المشتري (معرف فقط)",
     "feeError": "السعر أو دالة الرسوم مفقودة",
     "productImage": "صورة المنتج"
+  },
+  "mediationStatuses": {
+    "PendingMediatorSelection": "في انتظار اختيار الوسيط",
+    "MediatorAssigned": "تم تعيين الوسيط",
+    "MediationOfferAccepted": "تم قبول عرض الوساطة",
+    "EscrowFunded": "تم تمويل الضمان",
+    "PartiesConfirmed": "تم تأكيد الطرفين",
+    "InProgress": "قيد التنفيذ",
+    "Completed": "مكتملة",
+    "Disputed": "في نزاع",
+    "Cancelled": "ملغاة",
+    "AdminResolved": "تم حلها بواسطة المسؤول"
+  },
+  "rejectMediationByBuyerModal": {
+    "title": "إلغاء الوساطة",
+    "aboutToCancel": "أنت على وشك إلغاء الوساطة للمنتج:",
+    "reasonLabel": "سبب الإلغاء",
+    "placeholder": "يرجى تقديم سبب واضح للإلغاء...",
+    "back": "رجوع",
+    "confirm": "تأكيد الإلغاء",
+    "reasonRequired": "سبب الإلغاء مطلوب.",
+    "cancelling": "جاري الإلغاء..."
+  },
+  "rejectAssignmentModal": {
+    "title": "رفض مهمة الوساطة",
+    "aboutToReject": "أنت على وشك رفض المهمة الخاصة بالمنتج:",
+    "reasonLabel": "سبب الرفض",
+    "placeholder": "يرجى تقديم سبب واضح لرفض هذه المهمة...",
+    "confirmRejection": "تأكيد الرفض",
+    "reasonRequired": "سبب الرفض مطلوب.",
+    "rejecting": "جاري الرفض..."
+  },
+  "mediation": {
+    "buyer": {
+      "confirmSuccessWait": "تم تأكيد الاستعداد وحجز المبلغ بنجاح. بانتظار تأكيد البائع.",
+      "confirmSuccessBothReady": "تم تأكيد الاستعداد وحجز المبلغ. كلا الطرفين جاهزان. ستبدأ المحادثة قريباً."
+    }
   }
 }
