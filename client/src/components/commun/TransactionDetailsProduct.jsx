@@ -1,16 +1,15 @@
-// src/components/commun/TransactionDetailsProduct.jsx
+// client/src/components/commun/TransactionDetailsProduct.jsx
+
 import React from "react";
 import { Modal, Button, Table, Badge } from "react-bootstrap";
 import { format } from "date-fns";
 import {
   FaCalendarAlt,
   FaTag,
-  FaUser,
   FaDollarSign,
   FaInfoCircle,
   FaReceipt,
   FaProductHunt,
-  FaLink,
   FaExchangeAlt,
   FaExternalLinkAlt,
   FaCommentDots,
@@ -21,25 +20,23 @@ import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
 
 const TransactionDetailsProduct = ({ show, onHide, transaction }) => {
   const { t, i18n } = useTranslation();
-  const amountDisplay = useCurrencyDisplay(transaction?.amount);
+
+  // [!!!] START: إصلاح الإشارة السالبة المزدوجة [!!!]
+  // استخدم القيمة المطلقة للمبلغ للعرض
+  const amountDisplay = useCurrencyDisplay(
+    Math.abs(transaction?.amount),
+    transaction?.currency
+  );
+  // [!!!] END: نهاية الإصلاح [!!!]
 
   if (!transaction) {
     return null;
   }
 
-  const translateKey = (prefix, key) => {
-    if (!key) return "N/A";
-    const defaultValue = key
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (l) => l.toUpperCase());
-    return t(`${prefix}.${key}`, defaultValue);
-  };
-
   const renderDetailRow = (translationKey, value, icon = <FaInfoCircle />) => (
     <tr>
       <td style={{ width: "35%" }} className="fw-bold align-middle">
         <div className="d-flex align-items-center">
-          {/* [!] هذا هو المهم. نستخدم me-2 كالمعتاد */}
           {React.cloneElement(icon, { className: "me-2 text-primary" })}
           <span>{t(translationKey)}</span>
         </div>
@@ -69,26 +66,28 @@ const TransactionDetailsProduct = ({ show, onHide, transaction }) => {
               <span className="user-select-all">{transaction._id}</span>,
               <FaInfoCircle />
             )}
-
             {renderDetailRow(
               "transactionModal.type",
               <Badge bg="info" pill>
-                {translateKey("transactionTypes", transaction.type)}
+                {t(`transactionTypes.${transaction.type}`, {
+                  defaultValue: transaction.type,
+                })}
               </Badge>,
               <FaTag />
             )}
-
             {renderDetailRow(
               "transactionModal.status",
               <Badge
                 bg={transaction.status === "COMPLETED" ? "success" : "warning"}
                 pill
               >
-                {translateKey("transactionStatuses", transaction.status)}
+                {t(
+                  `transactionStatuses.${transaction.status}`,
+                  transaction.status
+                )}
               </Badge>,
               <FaInfoCircle />
             )}
-
             {renderDetailRow(
               "transactionModal.date",
               transaction.createdAt
@@ -96,7 +95,6 @@ const TransactionDetailsProduct = ({ show, onHide, transaction }) => {
                 : "N/A",
               <FaCalendarAlt />
             )}
-
             {transaction.relatedProduct &&
               renderDetailRow(
                 "transactionModal.product",
@@ -106,23 +104,28 @@ const TransactionDetailsProduct = ({ show, onHide, transaction }) => {
               )}
 
             {renderDetailRow(
-              `transactionTypes.${transaction.type}`,
+              "transactionModal.amount", // <-- تم تغيير المفتاح ليكون عاماً
               <strong
                 className={
                   transaction.amount >= 0 ? "text-success" : "text-danger"
                 }
               >
-                {transaction.amount >= 0 ? "+" : "-"}{" "}
+                {transaction.amount >= 0 ? "+ " : "- "}
                 {amountDisplay.displayValue}
               </strong>,
               <FaDollarSign />
             )}
 
-            {transaction.description &&
+            {(transaction.description || transaction.descriptionKey) &&
               renderDetailRow(
                 "transactionModal.description",
                 <span style={{ whiteSpace: "pre-wrap" }}>
-                  {transaction.description}
+                  {transaction.descriptionKey
+                    ? t(
+                        transaction.descriptionKey,
+                        transaction.descriptionParams
+                      )
+                    : transaction.description}
                 </span>,
                 <FaCommentDots />
               )}

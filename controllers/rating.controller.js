@@ -99,7 +99,7 @@ const updateUserLevelAndBadge = (userDoc) => { // Exported, so can be used by ot
  * Processes rewards if a new numeric level is achieved and the reward for that level has not been claimed yet.
  * This function modifies the userDoc directly if a reward is given.
  */
-const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, session) => { // Exported
+const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, session) => {
     if (!userDoc) {
         console.error("processLevelUpRewards called with undefined userDoc");
         return false;
@@ -114,15 +114,21 @@ const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate,
             if (!Array.isArray(userDoc.claimedLevelRewards)) userDoc.claimedLevelRewards = [];
             userDoc.claimedLevelRewards.push(achievedLevel);
             rewardProcessedThisCall = true;
-            console.log(`User ${userDoc._id} received reward of ${rewardDetails.amount} ${rewardDetails.currency} for newly reaching Level ${achievedLevel}. New balance: ${userDoc.balance}`);
+            console.log(`User ${userDoc._id} received reward for Level ${achievedLevel}.`);
+
+            const notificationParams = {
+                level: achievedLevel,
+                rewardAmount: rewardDetails.amount,
+                rewardCurrency: rewardDetails.currency,
+            };
             await Notification.create([{
-                user: userDoc._id, type: 'LEVEL_UP_REWARD',
-                title: `🎉 Congratulations! You've reached Level ${achievedLevel}!`,
-                message: `You have received a reward of ${rewardDetails.amount} ${rewardDetails.currency} for reaching Level ${achievedLevel}. Keep up the great work!`,
+                user: userDoc._id,
+                type: 'LEVEL_UP_REWARD',
+                title: 'notification_titles.LEVEL_UP_REWARD',
+                message: 'notification_messages.LEVEL_UP_REWARD',
+                messageParams: notificationParams,
                 relatedEntity: { id: userDoc._id, modelName: 'User' }
             }], { session });
-        } else if (rewardDetails.amount > 0 && (userDoc.claimedLevelRewards || []).includes(achievedLevel)) {
-            console.log(`User ${userDoc._id} has already claimed the reward for Level ${achievedLevel}.`);
         }
     }
     return rewardProcessedThisCall;
@@ -222,12 +228,24 @@ const submitRating = async (req, res) => {
 
         const raterInfo = await User.findById(raterId).select('fullName').lean().session(session);
         if (raterInfo) {
-            const productTitle = mediationRequest.product?.title || 'the transaction';
-            const cmt = comment ? ` Comment: "${comment.substring(0, 100)}${comment.length > 100 ? '...' : ''}"` : "";
-            await Notification.create([{ user: ratedUserId, type: 'RATING_RECEIVED', title: `New Rating: ${ratingType}!`, message: `${raterInfo.fullName} gave you a ${ratingType} for "${productTitle}".${cmt}`, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } }], { session });
+            const notificationParams = {
+                raterName: raterInfo.fullName,
+                ratingType: ratingType,
+                productName: mediationRequest.product?.title || 'the transaction',
+                comment: comment || ''
+            };
+            await Notification.create([{
+                user: ratedUserId,
+                type: 'RATING_RECEIVED',
+                title: 'notification_titles.RATING_RECEIVED',
+                message: 'notification_messages.RATING_RECEIVED',
+                messageParams: notificationParams,
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            }], { session });
         }
 
         await session.commitTransaction();
+
         console.log("Transaction committed successfully.");
 
         if (req.io) {

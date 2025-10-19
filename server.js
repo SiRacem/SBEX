@@ -511,41 +511,38 @@ cron.schedule('* * * * *', async () => {
 });
 // [!!!] END: نهاية المهمة المجدولة الجديدة
 
+// --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 // 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
 
-// 2. [!!!] إضافة ترويسة CORP هنا [!!!]
+// 2. [!!!] إضافة ترويسة CORP هنا في المكان الصحيح [!!!]
 app.use((req, res, next) => {
     res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-    // هذا هو السطر الأهم لإصلاح مشكلة الصور
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
 });
 
-// 3. تفعيل سياسة CORS للسماح للواجهة الأمامية بالوصول
+// 3. تفعيل سياسة CORS
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
-// 4. تفعيل قراءة الجسم بصيغة JSON للطلبات القادمة
+// 4. تفعيل قراءة الجسم بصيغة JSON
 app.use(express.json());
 
-// 5. خدمة الملفات الثابتة (مثل الصور). الطلبات إلى /uploads سيتم معالجتها هنا
+// 5. خدمة الملفات الثابتة (مثل الصور)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 6. تطبيق Rate Limiter على كل ما تبقى (مسارات الـ API)
+// 6. تطبيق Rate Limiter العام
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 500, // حد معقول للاستخدام العادي
     handler: (req, res, next, options) => {
         const retryAfter = Math.ceil(options.windowMs / 1000);
         res.status(options.statusCode).json({
-            // أرسل كائن خطأ متكامل لكي تتعرف عليه الواجهة الأمامية
             errorMessage: {
                 key: "apiErrors.tooManyRequests",
                 fallback: "Too many requests, please try again after 15 minutes.",
-                params: {
-                    retryAfter: retryAfter
-                }
+                params: { retryAfter: retryAfter }
             },
             rateLimit: {
                 limit: options.max,
@@ -558,6 +555,7 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
 });
 app.use(apiLimiter);
+// --- [!!!] END: الترتيب الصحيح [!!!]
 
 // التأكد من وجود مجلدات الرفع
 const chatImageUploadPath = path.join(__dirname, 'uploads/chat_images/');

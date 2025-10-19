@@ -19,11 +19,7 @@ import {
   OverlayTrigger,
 } from "react-bootstrap";
 import { useTranslation, Trans } from "react-i18next";
-import {
-  getBuyerMediationRequestsAction,
-  buyerConfirmReadinessAndEscrowAction,
-  buyerRejectMediationAction,
-} from "../redux/actions/mediationAction";
+import { getBuyerMediationRequestsAction, buyerConfirmReadinessAndEscrowAction, buyerRejectMediationAction } from "../redux/actions/mediationAction";
 import { getProfile } from "../redux/actions/userAction";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -94,6 +90,7 @@ const MyMediationRequestsPage = () => {
 
   useEffect(() => {
     if (currentUser?._id) {
+      // [!!!] استدعاء الأكشن الذي يجلب جميع طلبات المشتري فقط
       dispatch(getBuyerMediationRequestsAction(currentPageLocal, 10));
     }
   }, [dispatch, currentUser, currentPageLocal]);
@@ -108,21 +105,18 @@ const MyMediationRequestsPage = () => {
         return;
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerConfirmReadinessAndEscrowAction(mediationRequestId))
-        .then((actionResult) => {
-          // toast.success(...) سيتم عرضه تلقائياً من الأكشن إذا نجح
+        .then(() => {
           dispatch(getProfile());
           dispatch(getBuyerMediationRequestsAction(currentPageLocal));
         })
         .catch((error) => {
-          // الـ error object يحتوي الآن على key, fallback, params
           const errorMessage = error || {
             key: "apiErrors.unknownError",
             fallback: "An unknown error occurred",
           };
-
           toast.error(
             t(errorMessage.key, {
-              ...errorMessage.params, // <-- هذا السطر سيقوم الآن بإدراج القيم
+              ...errorMessage.params,
               defaultValue: errorMessage.fallback,
             })
           );
@@ -138,6 +132,7 @@ const MyMediationRequestsPage = () => {
       actionLoading,
       selectedRequestIdForAction,
       currentPageLocal,
+      t,
     ]
   );
 
@@ -181,7 +176,7 @@ const MyMediationRequestsPage = () => {
       }
       setSelectedRequestIdForAction(mediationRequestId);
       dispatch(buyerRejectMediationAction(mediationRequestId, reason))
-        .then((responseData) => {
+        .then(() => {
           toast.success(t("mediationRequestsPage.rejectModal.cancelSuccess"));
           setShowBuyerRejectModal(false);
           setSelectedRequestToRejectByBuyer(null);
@@ -265,7 +260,7 @@ const MyMediationRequestsPage = () => {
         buyerRequests.list.length === 0 &&
         !errorBuyerRequests && (
           <Alert variant="info" className="text-center">
-            {t("mediationRequestsPage.noRequests")}
+            {t("mediationRequestsPage.noRequestsFound")}
           </Alert>
         )}
 
@@ -433,14 +428,14 @@ const MyMediationRequestsPage = () => {
                           </strong>
                         </div>
                         <div>
-                          {t("mediationRequestsPage.card.escrowPrice")} +{" "}
+                          {t("mediationRequestsPage.card.escrowPrice")}{" "}
                           {formatCurrency(
                             feeDisplayDetails.priceOriginal,
                             feeDisplayDetails.currencyUsed
                           )}
                         </div>
                         <div>
-                          {t("mediationRequestsPage.card.escrowFee")} +{" "}
+                          {t("mediationRequestsPage.card.escrowFee")}{" "}
                           {formatCurrency(
                             feeDisplayDetails.buyerShare,
                             feeDisplayDetails.currencyUsed

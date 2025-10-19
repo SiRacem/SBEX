@@ -63,35 +63,27 @@ import { toast } from "react-toastify";
 const TransactionItem = ({ transaction, onShowDetails }) => {
   const { t } = useTranslation();
 
-  // استدعاء الهوك هنا الآن صحيح وقانوني
-  const amountDisplay = useCurrencyDisplay(Math.abs(transaction.amount));
+  // [!!!] START: إصلاح الإشارة [!!!]
+  const isCredit = transaction.amount > 0;
+  const isDebit = transaction.amount < 0;
+  const amountDisplay = useCurrencyDisplay(
+    Math.abs(transaction.amount),
+    transaction.currency
+  );
+  const amountPrefix = isCredit ? "+ " : isDebit ? "- " : "";
+  // [!!!] END: إصلاح الإشارة [!!!]
 
-  if (!transaction || !transaction._id) {
-    return null;
-  }
+  if (!transaction || !transaction._id) return null;
 
   let IconComponent = FaReceipt;
   let iconColorClass = "text-secondary";
-  let amountPrefix = transaction.amount >= 0 ? "+ " : "- ";
 
-  // ترجمة عنوان النشاط
-  let title = t(`transactionTypes.${transaction.type}`, {
-    productName:
-      transaction.relatedProduct?.title ||
-      transaction.metadata?.productTitle ||
-      "Product",
-    recipientName:
-      transaction.recipient?.fullName ||
-      transaction.metadata?.recipientName ||
-      "User",
-    senderName:
-      transaction.sender?.fullName ||
-      transaction.metadata?.senderName ||
-      "User",
-    level: transaction.metadata?.levelAchieved,
-    defaultValue:
-      transaction.description || transaction.type.replace(/_/g, " "),
-  });
+  let title = transaction.descriptionKey
+    ? t(transaction.descriptionKey, transaction.descriptionParams)
+    : transaction.description ||
+      t(`transactionTypes.${transaction.type}`, {
+        defaultValue: transaction.type.replace(/_/g, " "),
+      });
 
   switch (transaction.type) {
     case "PRODUCT_SALE_FUNDS_PENDING":
@@ -397,7 +389,26 @@ const MainDashboard = () => {
                 <hr className="border-light opacity-50 my-2" />
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <h5 className="mb-0">{t("dashboard.balances.onHold")}</h5>
-                  <FaHourglassHalf size={20} />
+                  {/* [!!!] START: إضافة أيقونة الرصيد المعلّق [!!!] */}
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={
+                      <Tooltip>
+                        {t(
+                          "pendingFunds.viewDetailsTooltip")}
+                      </Tooltip>
+                    }
+                  >
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={handleShowPendingFundsDetails}
+                      className="p-0 border-0 text-white opacity-75"
+                    >
+                      <FaHourglassHalf size={20} />
+                    </Button>
+                  </OverlayTrigger>
+                  {/* [!!!] END: نهاية إضافة الأيقونة [!!!] */}
                 </div>
                 <h4 className="fw-bold mb-1">
                   {sellerPendingBalanceDisplay.displayValue}
@@ -437,7 +448,7 @@ const MainDashboard = () => {
               </Link>
               <hr className="my-2" />
               <Link
-                to="/my-mediation-requests"
+                to="/dashboard/mediations"
                 className="comms-link d-flex align-items-center text-decoration-none mt-3"
               >
                 <FaComments size={22} className="me-3 text-success icon" />
@@ -591,6 +602,10 @@ const MainDashboard = () => {
           transaction={selectedTransactionForDetails}
         />
       )}
+      <PendingFundsDetailsModal
+        show={showPendingFundsModal}
+        onHide={() => setShowPendingFundsModal(false)}
+      />
     </div>
   );
 };

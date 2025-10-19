@@ -1,78 +1,81 @@
-// src/components/commun/Login.jsx
+// client/src/components/commun/Login.jsx
+
 import React, { useState, useEffect } from "react";
-import {
-  Button,
-  Card,
-  Col,
-  Container,
-  Form,
-  Row,
-  Spinner,
-} from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { toast } from "react-toastify";
 import { loginUser, clearUserErrors } from "../../redux/actions/userAction";
+import { toast } from "react-toastify";
+import {
+  Form,
+  Button,
+  Container,
+  Row,
+  Col,
+  Card,
+  Spinner,
+} from "react-bootstrap";
+import { useTranslation } from "react-i18next";
 
 const Login = () => {
   const { t, i18n } = useTranslation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { loading, isAuth, errorMessage } = useSelector(
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const { isAuth, loading, errorMessage } = useSelector(
     (state) => state.userReducer
   );
+
+  // [!!!] START: الإصلاح رقم 1 - التحقق من الحظر عند تحميل الصفحة [!!!]
+  useEffect(() => {
+    const resetTimeString = localStorage.getItem("rateLimitResetTime");
+    if (resetTimeString) {
+      const resetTime = new Date(resetTimeString).getTime();
+      if (resetTime > new Date().getTime()) {
+        // إذا كان الحظر لا يزال نشطاً، قم بالتحويل مباشرة
+        navigate("/rate-limit-exceeded", { replace: true });
+      } else {
+        // إذا انتهى وقت الحظر، قم بإزالته
+        localStorage.removeItem("rateLimitResetTime");
+      }
+    }
+  }, [navigate]);
+  // [!!!] END: نهاية الإصلاح رقم 1 [!!!]
 
   useEffect(() => {
     document.documentElement.dir = i18n.dir(i18n.language);
   }, [i18n, i18n.language]);
 
   useEffect(() => {
-    // إذا كان المستخدم مصادقاً عليه، قم بالتحويل
     if (isAuth) {
       navigate("/dashboard", { replace: true });
-      return; // أوقف تنفيذ باقي الكود في التأثير
+      return;
     }
 
-    // إذا كان هناك رسالة خطأ جديدة، قم بمعالجتها
+    // [!!!] START: الإصلاح النهائي - منطق مبسط جداً [!!!]
     if (errorMessage) {
-      // تحقق أولاً من خطأ تجاوز عدد المحاولات
-      if (
+      const isRateLimitError =
         errorMessage.key === "apiErrors.tooManyLoginAttempts" ||
-        errorMessage.key === "apiErrors.tooManyRequests"
-      ) {
-        // عرض رسالة مترجمة قبل التحويل
-        toast.error(
-          t(errorMessage.key, {
-            ...errorMessage.params,
-            defaultValue: errorMessage.fallback,
-          })
-        );
+        errorMessage.key === "apiErrors.tooManyRequests";
 
-        // إذا كانت المعلومات موجودة، احفظها وقم بالتحويل
+      // فقط تحقق مما إذا كان يجب التحويل
+      if (isRateLimitError) {
         if (errorMessage.rateLimit?.resetTime) {
           localStorage.setItem(
             "rateLimitResetTime",
             errorMessage.rateLimit.resetTime
           );
-          navigate("/rate-limit-exceeded", { replace: true });
         }
-      } else {
-        // عرض أي خطأ آخر
-        toast.error(
-          t(errorMessage.key, {
-            ...errorMessage.params,
-            defaultValue: errorMessage.fallback || t("apiErrors.unknownError"),
-          })
-        );
+        // لا تعرض toast من هنا، فقط قم بالتحويل
+        navigate("/rate-limit-exceeded", { replace: true });
       }
-      // قم بمسح الخطأ بعد عرضه لمنع إعادة عرضه عند إعادة الرسم
-      dispatch(clearUserErrors());
+
+      // لا تقم بمسح الخطأ هنا، دعه يمسح عند المحاولة التالية
     }
-  }, [isAuth, errorMessage, navigate, dispatch, t]);
+    // [!!!] END: نهاية الإصلاح [!!!]
+  }, [isAuth, errorMessage, navigate, dispatch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -80,6 +83,7 @@ const Login = () => {
       toast.error(t("auth.toast.fillAllFields", "Please fill in all fields."));
       return;
     }
+    dispatch(clearUserErrors());
     dispatch(loginUser({ email, password }));
   };
 
@@ -148,4 +152,5 @@ const Login = () => {
     </Container>
   );
 };
+
 export default Login;

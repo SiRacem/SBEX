@@ -1,4 +1,5 @@
-// server/middlewares/mediationPartyCheck.js
+// middlewares/mediationPartyCheck.js
+
 const MediationRequest = require('../models/MediationRequest');
 const mongoose = require('mongoose');
 
@@ -16,37 +17,37 @@ exports.isSellerOfMediation = async (req, res, next) => {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
         if (!request.seller.equals(userId)) {
-            return res.status(403).json({ msg: "Forbidden: You are not the seller for this request." });
+            return res.status(403).json({
+                translationKey: "apiErrors.notTheSellerForThisRequest",
+                msg: "Forbidden: You are not the seller for this request."
+            });
         }
 
-        // [!!!] START: هذا هو المنطق الجديد والمُحسّن
-        // سنتحقق من الحالة بناءً على المسار المطلوب
         const requestedPath = req.path;
-
         if (requestedPath.includes('/available-random')) {
-            // الحالة الخاصة بمسار جلب الوسطاء
             if (request.status !== 'PendingMediatorSelection') {
                 return res.status(400).json({
-                    msg: `Action 'get mediators' not allowed at status '${request.status}'. Expected 'PendingMediatorSelection'.`
+                    translationKey: "apiErrors.actionNotAllowedAtStatus",
+                    translationParams: { action: "'get mediators'", status: request.status },
+                    msg: `Action 'get mediators' not allowed at status '${request.status}'.`
                 });
             }
         } else if (requestedPath.includes('/confirm-readiness')) {
-            // الحالة الخاصة بمسار تأكيد الاستعداد
             const allowedStatuses = ['MediationOfferAccepted', 'EscrowFunded'];
             if (!allowedStatuses.includes(request.status)) {
                 return res.status(400).json({
-                    msg: `Action 'confirm readiness' not allowed at status '${request.status}'. Expected one of: ${allowedStatuses.join(', ')}.`
+                    translationKey: "apiErrors.actionNotAllowedAtStatus",
+                    translationParams: { action: "'confirm readiness'", status: request.status },
+                    msg: `Action 'confirm readiness' not allowed at status '${request.status}'.`
                 });
             }
         }
-        // يمكنك إضافة شروط 'else if' أخرى هنا لمسارات مستقبلية يستخدم فيها هذا الـ middleware
-        // [!!!] END: نهاية المنطق الجديد
 
         req.mediationRequestFromMiddleware = request;
         next();
     } catch (error) {
         console.error("Error in isSellerOfMediation middleware:", error);
-        res.status(500).json({ msg: "Server error during seller authorization for mediation." });
+        res.status(500).json({ msg: "Server error during seller authorization." });
     }
 };
 
@@ -66,29 +67,31 @@ exports.isBuyerOfMediation = async (req, res, next) => {
         if (!request) {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
+
+        // [!!!] START: تعديل رسالة الخطأ للترجمة [!!!]
         if (!request.buyer.equals(userId)) {
-            return res.status(403).json({ msg: "Forbidden: You are not the buyer for this request." });
+            return res.status(403).json({
+                translationKey: "apiErrors.notTheBuyerForThisRequest",
+                msg: "Forbidden: You are not the buyer for this request."
+            });
         }
 
-        // --- تعديل مماثل هنا إذا كان المشتري يحتاج للتحقق من حالات متعددة ---
-        // في حالة تأكيد المشتري والدفع، الحالة المتوقعة هي 'MediationOfferAccepted' فقط
-        // لذا الشرط الحالي هنا قد يكون صحيحًا لـ buyerConfirmReadinessAndEscrow
-        // ولكن إذا كان هناك إجراءات أخرى للمشتري في حالات أخرى، يجب توسيع هذا الشرط.
-        const allowedStatusesForBuyerAction = ['MediationOfferAccepted']; // حاليًا، المشتري يؤكد فقط عندما تكون الحالة هكذا
-        if (req.path.includes('confirm-readiness-and-escrow')) { // تطبيق الشرط فقط على هذا الـ endpoint
+        const allowedStatusesForBuyerAction = ['MediationOfferAccepted'];
+        if (req.path.includes('confirm-readiness-and-escrow')) {
             if (!allowedStatusesForBuyerAction.includes(request.status)) {
                 return res.status(400).json({
-                    msg: `Action not allowed for buyer at current request status: '${request.status}'. Expected one of: ${allowedStatusesForBuyerAction.join(', ')}.`
+                    translationKey: "apiErrors.actionNotAllowedAtStatus",
+                    translationParams: { action: "'confirm and escrow'", status: request.status },
+                    msg: `Action 'confirm and escrow' not allowed for buyer at current request status: '${request.status}'.`
                 });
             }
         }
-        // إذا كان هناك مسارات أخرى يستخدم فيها isBuyerOfMediation، قد تحتاج لمرونة أكثر في التحقق من الحالة.
-        // --- نهاية التعديل المقترح (إذا لزم الأمر للمشتري) ---
+        // [!!!] END: نهاية التعديل [!!!]
 
         req.mediationRequestFromMiddleware = request;
         next();
     } catch (error) {
         console.error("Error in isBuyerOfMediation middleware:", error);
-        res.status(500).json({ msg: "Server error during buyer authorization for mediation." });
+        res.status(500).json({ msg: "Server error during buyer authorization." });
     }
 };

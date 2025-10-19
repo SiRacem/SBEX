@@ -1,4 +1,5 @@
-// src/components/commun/PendingFundsDetailsModal.jsx
+// client/src/components/commun/PendingFundsDetailsModal.jsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -23,14 +24,12 @@ import {
 import {
   FaHourglassHalf,
   FaCheckCircle,
-  FaTimesCircle,
-  FaQuestionCircle,
   FaInfoCircle,
   FaUndoAlt,
   FaExternalLinkAlt,
 } from "react-icons/fa";
-import { Link } from "react-router-dom"; // إذا أردت روابط للمنتجات/الوساطات
-import useCurrencyDisplay from "../../hooks/useCurrencyDisplay"; // لعرض الأرصدة الإجمالية
+import { Link } from "react-router-dom";
+import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
 
@@ -66,7 +65,6 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
   const platformBaseCurrencyGlobal = useSelector(
     (state) => state.ui?.platformBaseCurrency || "TND"
   );
-
   const totalPendingDisplay = useCurrencyDisplay(
     details?.totalPendingBalance,
     details?.platformBaseCurrency || platformBaseCurrencyGlobal
@@ -87,7 +85,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
         return (
           <Badge bg="success-soft" text="success" pill>
             <FaCheckCircle className="me-1" />
-            {t("pendingFunds.readyForRelease", "Ready for Release")}
+            {t("pendingFunds.readyForRelease")}
           </Badge>
         );
       }
@@ -146,7 +144,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
       <Modal.Header closeButton>
         <Modal.Title>
           <FaHourglassHalf className="me-2 text-warning" />{" "}
-          {t("pendingFunds.title", "On Hold & Available Funds Details")}
+          {t("pendingFunds.title")}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body style={{ maxHeight: "70vh", overflowY: "auto" }}>
@@ -157,9 +155,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
               variant="primary"
               style={{ width: "3rem", height: "3rem" }}
             />
-            <p className="mt-2">
-              {t("pendingFunds.loading", "Loading details...")}
-            </p>
+            <p className="mt-2">{t("pendingFunds.loading")}</p>
           </div>
         )}
         {error && <Alert variant="danger">{error}</Alert>}
@@ -171,7 +167,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <Card bg="warning" text="white" className="h-100 shadow">
                   <Card.Body>
                     <Card.Subtitle className="mb-2 text-white-75">
-                      {t("pendingFunds.totalOnHold", "Total On Hold Balance")}
+                      {t("pendingFunds.totalOnHold")}
                     </Card.Subtitle>
                     <Card.Title className="display-6">
                       {totalPendingDisplay.displayValue}
@@ -184,10 +180,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <Card bg="success" text="white" className="h-100 shadow">
                   <Card.Body>
                     <Card.Subtitle className="mb-2 text-white-75">
-                      {t(
-                        "pendingFunds.totalAvailable",
-                        "Total Available (from Sales)"
-                      )}
+                      {t("pendingFunds.totalAvailable")}
                     </Card.Subtitle>
                     <Card.Title className="display-6">
                       {totalAvailableDisplay.displayValue}
@@ -200,7 +193,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
 
             <h5 className="mt-4 mb-3">
               <FaHourglassHalf className="me-2" />
-              {t("pendingFunds.currentlyOnHold", "Currently On Hold")} (
+              {t("pendingFunds.currentlyOnHold")} (
               {details.pendingItems?.length || 0})
             </h5>
             {details.pendingItems && details.pendingItems.length > 0 ? (
@@ -215,17 +208,11 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <thead className="table-light">
                   <tr>
                     <th>#</th>
-                    <th>{t("pendingFunds.table.product", "Product")}</th>
-                    <th>{t("pendingFunds.table.saleAmount", "Sale Amount")}</th>
-                    <th>
-                      {t("pendingFunds.table.onHoldSince", "On Hold Since")}
-                    </th>
-                    <th>
-                      {t("pendingFunds.table.releasesIn", "Releases In / At")}
-                    </th>
-                    <th>
-                      {t("pendingFunds.table.mediationRef", "Mediation Ref.")}
-                    </th>
+                    <th>{t("pendingFunds.table.product")}</th>
+                    <th>{t("pendingFunds.table.saleAmount")}</th>
+                    <th>{t("pendingFunds.table.onHoldSince")}</th>
+                    <th>{t("pendingFunds.table.releasesIn")}</th>
+                    <th>{t("pendingFunds.table.mediationRef")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -238,10 +225,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                           <Link
                             to={`/dashboard/mediation-chat/${item.mediationRequest._id}`}
                             className="ms-2 small"
-                            title={t(
-                              "pendingFunds.viewMediation",
-                              "View Mediation"
-                            )}
+                            title={t("pendingFunds.viewMediation")}
                           >
                             <FaExternalLinkAlt size="0.8em" />
                           </Link>
@@ -255,10 +239,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                           placement="top"
                           overlay={
                             <Tooltip>
-                              {t(
-                                "pendingFunds.scheduledRelease",
-                                "Scheduled Release:"
-                              )}
+                              {t("pendingFunds.scheduledRelease")}
                               {format(new Date(item.releaseAt), "PPpp")}
                             </Tooltip>
                           }
@@ -279,10 +260,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
               </Table>
             ) : (
               <Alert variant="info" className="text-center">
-                {t(
-                  "pendingFunds.noFundsOnHold",
-                  "No funds are currently on hold from sales."
-                )}
+                {t("pendingFunds.noFundsOnHold")}
               </Alert>
             )}
 
@@ -291,7 +269,7 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 <>
                   <h5 className="mt-5 mb-3">
                     <FaCheckCircle className="me-2 text-success" />
-                    {t("pendingFunds.recentlyReleased", "Recently Released")} (
+                    {t("pendingFunds.recentlyReleased")} (
                     {details.recentlyReleasedItems.length})
                   </h5>
                   <Table
@@ -304,42 +282,16 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                   >
                     <thead className="table-light">
                       <tr>
-                        <th>{t("pendingFunds.table.product", "Product")}</th>
-                        <th>
-                          {t(
-                            "pendingFunds.table.amountReleased",
-                            "Amount Released"
-                          )}
-                        </th>
-                        <th>
-                          {t("pendingFunds.table.releasedOn", "Released On")}
-                        </th>
-                        <th>
-                          {t(
-                            "pendingFunds.table.mediationRef",
-                            "Mediation Ref."
-                          )}
-                        </th>
+                        <th>{t("pendingFunds.table.product")}</th>
+                        <th>{t("pendingFunds.table.amountReleased")}</th>
+                        <th>{t("pendingFunds.table.releasedOn")}</th>
+                        <th>{t("pendingFunds.table.mediationRef")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {details.recentlyReleasedItems.map((item) => (
                         <tr key={item._id}>
-                          <td>
-                            {item.productTitle || "N/A"}
-                            {item.mediationRequest?._id && (
-                              <Link
-                                to={`/dashboard/mediation-chat/${item.mediationRequest._id}`}
-                                className="ms-2 small"
-                                title={t(
-                                  "pendingFunds.viewMediation",
-                                  "View Mediation"
-                                )}
-                              >
-                                <FaExternalLinkAlt size="0.8em" />
-                              </Link>
-                            )}
-                          </td>
+                          <td>{item.productTitle || "N/A"}</td>
                           <td>{formatCurrency(item.amount, item.currency)}</td>
                           <td>
                             {format(
@@ -358,11 +310,6 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
                 </>
               )}
           </>
-        )}
-        {!loading && !error && !details && (
-          <Alert variant="light" className="text-center">
-            {t("pendingFunds.noData", "No data available.")}
-          </Alert>
         )}
       </Modal.Body>
       <Modal.Footer className="d-flex justify-content-between">

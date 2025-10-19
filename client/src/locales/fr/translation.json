@@ -192,7 +192,41 @@
     "PRODUCT_SALE_FUNDS_PENDING": "Fonds en attente",
     "LEVEL_UP_REWARD_RECEIVED": "Récompense de niveau",
     "DEPOSIT_COMPLETED": "Dépôt",
-    "WITHDRAWAL_COMPLETED": "Retrait"
+    "WITHDRAWAL_COMPLETED": "Retrait",
+    "MEDIATION_FEE_RECEIVED": "Frais de médiation reçus"
+  },
+  "transactionDescriptions": {
+    "mediationFeeReceived": "Frais reçus pour la médiation de '{{productName}}'.",
+    "saleFundsPending": "Les fonds de la vente de '{{productName}}' sont en attente.",
+    "purchaseCompleted": "Achat de '{{productName}}' auprès du vendeur {{sellerName}}.",
+    "saleFundsReleased": "Les fonds de la vente de '{{productName}}' sont maintenant disponibles."
+  },
+  "pendingFunds": {
+    "viewDetailsTooltip": "Voir les détails des fonds en attente et disponibles",
+    "title": "Détails des fonds en attente et disponibles",
+    "loading": "Chargement des détails...",
+    "errors": {
+      "noAuth": "Jeton d'authentification introuvable.",
+      "fetchFailed": "Échec de la récupération des détails des fonds en attente."
+    },
+    "totalOnHold": "Solde total en attente",
+    "totalAvailable": "Total disponible (des ventes)",
+    "currentlyOnHold": "Actuellement en attente",
+    "noFundsOnHold": "Aucun fonds n'est actuellement en attente suite à des ventes.",
+    "recentlyReleased": "Récemment libéré",
+    "noData": "Aucune donnée disponible.",
+    "viewMediation": "Voir la médiation",
+    "scheduledRelease": "Libération prévue : ",
+    "readyForRelease": "Prêt à être libéré",
+    "table": {
+      "product": "Produit",
+      "saleAmount": "Montant de la vente",
+      "onHoldSince": "En attente depuis",
+      "releasesIn": "Libération dans / à",
+      "mediationRef": "Réf. médiation",
+      "amountReleased": "Montant libéré",
+      "releasedOn": "Libéré le"
+    }
   },
   "transactionStatuses": {
     "COMPLETED": "Terminé",
@@ -264,8 +298,6 @@
     "FUNDS_NOW_AVAILABLE": "Fonds libérés !",
     "NEW_USER_REPORT": "Nouveau signalement soumis",
     "REPORT_STATUS_UPDATE": "Mise à jour du statut du signalement",
-    "RATING_RECEIVED": "Nouvelle évaluation reçue !",
-    "LEVEL_UP_REWARD": "Félicitations ! Niveau supérieur !",
     "SALE_FUNDS_PENDING": "Fonds de vente en attente",
     "MEDIATION_FEE_RECEIVED": "Frais de médiation reçus",
     "PRODUCT_RECEIPT_CONFIRMED": "Réception du produit confirmée",
@@ -284,7 +316,10 @@
     "MEDIATION_REJECTED_BY_MEDIATOR": "Mission de médiation refusée",
     "MEDIATION_CANCELLED_BY_BUYER": "Médiation annulée par l'acheteur",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Acheteur a confirmé & payé - À votre tour !",
-    "MEDIATION_CONFIRMED_BY_PARTY": "Disponibilité & Séquestre confirmés"
+    "MEDIATION_CONFIRMED_BY_PARTY": "Disponibilité & Séquestre confirmés",
+    "LEVEL_UP_REWARD": "Félicitations ! Vous avez atteint le niveau {{level}} ! 🎉",
+    "RATING_RECEIVED": "Nouvelle évaluation reçue : {{ratingType}} !",
+    "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -361,7 +396,13 @@
     "MEDIATION_CANCELLED_BY_BUYER_FOR_SELLER": "L'acheteur '{{buyerName}}' a annulé la médiation pour '{{productName}}'. Raison : '{{reason}}'. Le produit pourrait être de nouveau disponible.",
     "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "Vous avez annulé avec succès la médiation pour '{{productName}}'.",
     "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "La médiation pour '{{productName}}' a été annulée par l'acheteur, '{{buyerName}}'. Raison : '{{reason}}'.",
-    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "L'acheteur '{{buyerName}}' a confirmé sa disponibilité et mis sous séquestre les fonds pour '{{productName}}'. Veuillez confirmer votre disponibilité pour continuer."
+    "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "L'acheteur '{{buyerName}}' a confirmé sa disponibilité et mis sous séquestre les fonds pour '{{productName}}'. Veuillez confirmer votre disponibilité pour continuer.",
+    "SALE_FUNDS_PENDING": "L'acheteur '{{buyerName}}' a confirmé la réception de '{{productName}}'. Vos fonds de {{amount}} sont maintenant en attente.",
+    "MEDIATION_FEE_RECEIVED": "Vous avez reçu vos frais de médiation de {{feeAmount}} pour '{{productName}}'.",
+    "LEVEL_UP_REWARD": "Vous avez reçu une récompense de {{rewardAmount}} {{rewardCurrency}} pour avoir atteint le niveau {{level}}. Continuez votre excellent travail !",
+    "RATING_RECEIVED": "'{{raterName}}' vous a donné un {{ratingType}} pour '{{productName}}'. Commentaire : '{{comment}}'",
+    "PRODUCT_RECEIPT_CONFIRMED": "L'acheteur '{{buyerName}}' a confirmé la réception de '{{productName}}'. Les fonds sont maintenant en attente de libération.",
+    "MEDIATOR_SELECTION_CONFIRMED": "Vous avez sélectionné avec succès {{mediatorName}} comme médiateur pour \"{{productName}}\". Il a été notifié."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -407,7 +448,8 @@
       "accountBlocked": "Votre compte est bloqué.",
       "registerSuccess": "Compte créé avec succès ! Veuillez vous connecter.",
       "registerFail": "Échec de l'inscription : {{error}}",
-      "loginError": "Échec de la connexion : {{error}}"
+      "loginError": "Échec de la connexion : {{error}}",
+      "fillAllFields": "Veuillez remplir tous les champs."
     }
   },
   "home": {
@@ -941,12 +983,15 @@
     "networkError": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",
     "unknownError": "Une erreur inconnue s'est produite : {{message}}",
     "tooManyRequests": "Trop de requêtes depuis cette adresse IP, veuillez réessayer après 15 minutes.",
-    "sessionExpired": "Session expirée ou invalide. Veuillez vous reconnecter.",
     "getProfileFail": "Échec du chargement du profil utilisateur.",
     "notAuthorized": "Autorisation requise. Veuillez vous connecter.",
     "notAuthorizedAdmin": "Une autorisation d'administrateur est requise pour cette action.",
     "Failed_to_fetch_withdrawal_requests": "Erreur serveur lors de la récupération de vos demandes de retrait.",
-    "insufficientBalance": "Solde insuffisant. Requis : {{required}}, mais vous n'avez que {{available}}. Veuillez recharger votre portefeuille."
+    "insufficientBalance": "Solde insuffisant. Requis : {{required}}, mais vous n'avez que {{available}}. Veuillez recharger votre portefeuille.",
+    "notTheSellerForThisRequest": "Interdit : Vous n'êtes pas le vendeur de cette demande.",
+    "actionNotAllowedAtStatus": "L'action {{action}} n'est pas autorisée à l'état actuel '{{status}}'.",
+    "notTheBuyerForThisRequest": "Interdit : Vous n'êtes pas l'acheteur de cette demande.",
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter pour des raisons de sécurité."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -1454,6 +1499,7 @@
     "noRequests": "Vous n'avez aucune demande de médiation active pour le moment.",
     "updateWarning": "Impossible de mettre à jour toutes les demandes : {{error}}",
     "updateError": "Erreur de mise à jour.",
+    "noRequestsFound": "Vous n'avez aucune demande de médiation.",
     "card": {
       "productTitle": "Produit : {{title}}",
       "viewDetailsTooltip": "Voir les détails de la médiation",

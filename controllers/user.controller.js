@@ -104,7 +104,7 @@ const Login = async (req, res) => {
 
         const payload = { _id: user._id, fullName: user.fullName, userRole: user.userRole };
         const secret = config.get("secret");
-        const token = jwt.sign(payload, secret, { expiresIn: '7d' });
+        const token = jwt.sign(payload, secret, { expiresIn: '2h' });
 
         console.log(`User ${email} logged in successfully. Blocked status: ${user.blocked}`);
         res.status(200).json({

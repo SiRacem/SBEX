@@ -192,7 +192,41 @@
     "PRODUCT_SALE_FUNDS_PENDING": "Funds on Hold",
     "LEVEL_UP_REWARD_RECEIVED": "Level Up Reward",
     "DEPOSIT_COMPLETED": "Deposit",
-    "WITHDRAWAL_COMPLETED": "Withdrawal"
+    "WITHDRAWAL_COMPLETED": "Withdrawal",
+    "MEDIATION_FEE_RECEIVED": "Mediation Fee Received"
+  },
+  "transactionDescriptions": {
+    "mediationFeeReceived": "Fee received for mediating '{{productName}}'.",
+    "saleFundsPending": "Funds from sale of '{{productName}}' are on hold.",
+    "purchaseCompleted": "Purchase of '{{productName}}' from seller {{sellerName}}.",
+    "saleFundsReleased": "Funds from sale of '{{productName}}' are now available."
+  },
+  "pendingFunds": {
+    "viewDetailsTooltip": "View On Hold & Available Funds Details",
+    "title": "On Hold & Available Funds Details",
+    "loading": "Loading details...",
+    "errors": {
+      "noAuth": "Authentication token not found.",
+      "fetchFailed": "Failed to fetch pending funds details."
+    },
+    "totalOnHold": "Total On Hold Balance",
+    "totalAvailable": "Total Available (from Sales)",
+    "currentlyOnHold": "Currently On Hold",
+    "noFundsOnHold": "No funds are currently on hold from sales.",
+    "recentlyReleased": "Recently Released",
+    "noData": "No data available.",
+    "viewMediation": "View Mediation",
+    "scheduledRelease": "Scheduled Release: ",
+    "readyForRelease": "Ready for Release",
+    "table": {
+      "product": "Product",
+      "saleAmount": "Sale Amount",
+      "onHoldSince": "On Hold Since",
+      "releasesIn": "Releases In / At",
+      "mediationRef": "Mediation Ref.",
+      "amountReleased": "Amount Released",
+      "releasedOn": "Released On"
+    }
   },
   "transactionStatuses": {
     "COMPLETED": "Completed",
@@ -261,8 +295,6 @@
     "FUNDS_NOW_AVAILABLE": "Funds Released!",
     "NEW_USER_REPORT": "New User Report Submitted",
     "REPORT_STATUS_UPDATE": "Report Status Updated",
-    "RATING_RECEIVED": "New Rating Received!",
-    "LEVEL_UP_REWARD": "Congratulations! Level Up!",
     "SALE_FUNDS_PENDING": "Sale Funds On Hold",
     "MEDIATION_FEE_RECEIVED": "Mediator Fee Received",
     "PRODUCT_RECEIPT_CONFIRMED": "Product Receipt Confirmed",
@@ -286,7 +318,9 @@
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "Buyer Confirmed & Paid - Your Turn!",
     "MEDIATION_CONFIRMED_BY_PARTY": "Readiness & Escrow Confirmed",
     "MEDIATION_STARTED": "Mediation Started!",
-    "NEW_CHAT_MESSAGE": "New Message: {{productName}}"
+    "NEW_CHAT_MESSAGE": "New Message: {{productName}}",
+    "LEVEL_UP_REWARD": "Congratulations! You've reached Level {{level}}! 🎉",
+    "RATING_RECEIVED": "New Rating Received: {{ratingType}}!"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -365,7 +399,12 @@
     "MEDIATION_CANCELLATION_CONFIRMED_FOR_BUYER": "You have successfully cancelled the mediation for '{{productName}}'.",
     "MEDIATION_CANCELLED_BY_BUYER_FOR_MEDIATOR": "The mediation for '{{productName}}' has been cancelled by the buyer, '{{buyerName}}'. Reason: '{{reason}}'.",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "'{{buyerName}}' has confirmed readiness and escrowed funds for '{{productName}}'. Please confirm your readiness to proceed.",
-    "MEDIATION_STARTED": "All parties have confirmed for '{{productName}}'. The chat with mediator {{mediatorName}} has now started."
+    "MEDIATION_STARTED": "All parties have confirmed for '{{productName}}'. The chat with mediator {{mediatorName}} has now started.",
+    "SALE_FUNDS_PENDING": "Buyer '{{buyerName}}' has confirmed receipt for '{{productName}}'. Your funds of {{amount}} are now on hold.",
+    "MEDIATION_FEE_RECEIVED": "You have received your mediation fee of {{feeAmount}} for '{{productName}}'.",
+    "LEVEL_UP_REWARD": "You have received a reward of {{rewardAmount}} {{rewardCurrency}} for reaching Level {{level}}. Keep up the great work!",
+    "RATING_RECEIVED": "{{raterName}} gave you a {{ratingType}} for '{{productName}}'. Comment: '{{comment}}'",
+    "PRODUCT_RECEIPT_CONFIRMED": "Buyer '{{buyerName}}' has confirmed receipt of '{{productName}}'. The transaction is now complete."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -411,7 +450,8 @@
       "accountBlocked": "Your account is blocked. Access is restricted.",
       "registerSuccess": "Account created successfully! Please log in.",
       "registerFail": "Registration failed: {{error}}",
-      "loginError": "Login failed: {{error}}"
+      "loginError": "Login failed: {{error}}",
+      "fillAllFields": "Please fill in all fields."
     }
   },
   "home": {
@@ -945,12 +985,15 @@
     "networkError": "Network Error. Please check your connection and try again.",
     "unknownError": "An unknown error occurred: {{message}}",
     "tooManyRequests": "Too many requests from this IP, please try again after 15 minutes.",
-    "sessionExpired": "Session expired or invalid. Please login again.",
     "getProfileFail": "Failed to load user profile.",
     "notAuthorized": "Authorization required. Please log in.",
     "notAuthorizedAdmin": "Admin authorization is required for this action.",
     "Failed_to_fetch_withdrawal_requests": "Server error fetching your withdrawal requests.",
-    "insufficientBalance": "Insufficient balance. Required: {{required}}, but you only have {{available}}. Please top up your wallet."
+    "insufficientBalance": "Insufficient balance. Required: {{required}}, but you only have {{available}}. Please top up your wallet.",
+    "notTheSellerForThisRequest": "Forbidden: You are not the seller for this request.",
+    "actionNotAllowedAtStatus": "Action {{action}} is not allowed at current status '{{status}}'.",
+    "notTheBuyerForThisRequest": "Forbidden: You are not the buyer for this request.",
+    "sessionExpired": "Your session has expired. Please log in again for security."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1486,7 +1529,8 @@
       "completedAlert": "Mediation completed.",
       "cancelledAlertTitle": "Mediation Cancelled",
       "cancelledReason": "Reason: {{reason}}",
-      "cancelledNoReason": "Reason: Not specified."
+      "cancelledNoReason": "Reason: Not specified.",
+      "noRequestsFound": "You do not have any mediation requests."
     },
     "statuses": {
       "PendingMediatorSelection": "Awaiting Mediator Selection",
@@ -1792,6 +1836,14 @@
       "gmail": "Gmail",
       "mail": "Mail"
     }
+  },
+  "rateLimit": {
+    "title": "Access Temporarily Locked",
+    "subtitle": "Due to multiple rapid requests, your access has been temporarily limited to protect our services.",
+    "tryAgainIn": "Please try again in:",
+    "now": "Now",
+    "goBackButtonReady": "Go Back Now",
+    "goBackButtonWaiting": "Go Back"
   },
   "levelsModal": {
     "title": "Your Progression Path",

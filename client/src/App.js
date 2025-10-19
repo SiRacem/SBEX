@@ -49,6 +49,7 @@ import './components/layout/Sidebar.css';
 import './pages/MainDashboard.css';
 import FAQPage from './pages/FAQPage';
 import AdminFAQManagement from './components/admin/AdminFAQManagement';
+import axios from 'axios';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -150,20 +151,26 @@ function App() {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // This effect now handles ALL toasts and dispatches to clear them
+    // عرض رسائل النجاح
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
-      dispatch({ type: 'CLEAR_USER_MESSAGES' });
-    } else if (errorFromAPI) {
-      // The rate-limit navigation is handled in Login.jsx, so we just prevent a duplicate toast here
-      if (errorFromAPI.key !== 'apiErrors.tooManyRequests') {
-        const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
-        toast.error(t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }));
-      }
-      dispatch(clearUserErrors());
-    } else if (errors) {
+      dispatch({ type: 'CLEAR_USER_MESSAGES' }); // استخدمنا action type مختلف لمسح رسائل النجاح
+    } 
+    
+    // عرض رسائل الخطأ
+    if (errorFromAPI) {
+      const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
+      toast.error(
+          t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }),
+          { toastId: errorFromAPI.key } // لمنع التكرار السريع لنفس الخطأ
+      );
+      dispatch(clearUserErrors()); // امسح الخطأ بعد عرضه مباشرة
+    }
+    
+    // التعامل مع الأخطاء القديمة (إذا كانت موجودة)
+    if (errors) {
       const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
-      toast.error(errorMessageText);
+      toast.error(errorMessageText, { toastId: errors });
       dispatch(clearUserErrors());
     }
   }, [successMessage, errorFromAPI, errors, dispatch, t, successMessageParams]);
@@ -234,6 +241,33 @@ function App() {
     }
     return () => { if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; } };
   }, [isAuth, currentUserId, dispatch, user, t]);
+
+  useEffect(() => {
+    // 1. Interceptor للتعامل مع أخطاء 401
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status = error.response ? error.response.status : null;
+        const isLoginRoute = window.location.pathname === '/login' || window.location.pathname === '/register';
+
+        if (status === 401) {
+          // إذا لم نكن في صفحة التسجيل، قم بتسجيل الخروج التلقائي
+          if (!isLoginRoute && isAuth) {
+            toast.error(t('apiErrors.sessionExpired', 'Session expired. Please log in again.'), {
+              toastId: 'session-expired'
+            });
+            dispatch(logoutUser());
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // تنظيف Interceptor عند إلغاء تحميل المكون
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [dispatch, isAuth, t]);
 
   const localTokenExistsForLoadingCheck = !!localStorage.getItem('token');
   if (!authChecked && (userLoading || (localTokenExistsForLoadingCheck && !user && !userError))) {

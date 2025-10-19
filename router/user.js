@@ -21,28 +21,28 @@ const router = express.Router();
 
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 attempts per 15 minutes
+    max: 5, // 5 attempts per 15 minutes for a given IP
     handler: (req, res, next, options) => {
-        const retryAfter = Math.ceil(options.windowMs / 60000); // Minutes
+        const retryAfterMinutes = Math.ceil(options.windowMs / 60000);
         res.status(options.statusCode).json({
-            // [!!!] إرسال كائن خطأ متكامل للترجمة [!!!]
+            // أرسل كائن الخطأ الكامل
             errorMessage: {
-                key: "apiErrors.tooManyLoginAttempts", // مفتاح الترجمة
-                fallback: `Too many login attempts, please try again after ${retryAfter} minutes.`,
+                key: "apiErrors.tooManyLoginAttempts",
+                fallback: `Too many login attempts, please try again after ${retryAfterMinutes} minutes.`,
                 params: {
-                    minutes: retryAfter
+                    minutes: retryAfterMinutes
+                },
+                // أضف كائن rateLimit هنا أيضاً
+                rateLimit: {
+                    limit: options.max,
+                    remaining: 0,
+                    resetTime: new Date(Date.now() + options.windowMs)
                 }
-            },
-            // معلومات إضافية للواجهة الأمامية
-            rateLimit: {
-                limit: options.max,
-                remaining: 0,
-                resetTime: new Date(Date.now() + options.windowMs)
             }
         });
     },
-    standardHeaders: true,
-    legacyHeaders: false,
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 // -- Auth Routes --

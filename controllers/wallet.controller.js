@@ -370,57 +370,40 @@ exports.getSellerPendingFundsDetailsController = async (req, res) => {
 exports.getDashboardTransactionsController = async (req, res) => {
     const userId = req.user._id;
     const userRole = req.user.userRole;
-
     console.log(`[GetDashboardTxCtrl] Fetching for User: ${userId}, Role: ${userRole}`);
-
     try {
+        // [!!!] START: العودة إلى المنطق الأصلي مع تحسينات [!!!]
         let queryConditions = [];
-        if (userRole === 'Vendor' || userRole === 'Admin') {
-            queryConditions.push({
-                user: userId,
-                type: { $in: ['PRODUCT_SALE_FUNDS_PENDING', 'PRODUCT_SALE_FUNDS_RELEASED', 'DISPUTE_PAYOUT_SELLER_WON'] }
-            });
-        }
-        if (userRole === 'User' || userRole === 'Admin') {
-            queryConditions.push({
-                user: userId,
-                type: { $in: ['PRODUCT_PURCHASE_COMPLETED', 'ESCROW_REFUND_DISPUTE_WON', 'MEDIATION_FEE_DISPUTE', 'MEDIATION_FEE_PAID_BY_BUYER'] }
-            });
-        }
-        if (userRole === 'Admin' || req.user.isMediatorQualified) {
-            queryConditions.push({
-                user: userId,
-                type: { $in: ['MEDIATION_FEE_RECEIVED', 'MEDIATION_FEE_DISPUTE'] }
-            });
-        }
-        queryConditions.push({
-            user: userId,
-            type: 'LEVEL_UP_REWARD_RECEIVED'
-        });
 
-        let finalQuery = {};
-        if (queryConditions.length > 0) {
-            finalQuery = { $or: queryConditions };
-        } else {
-            console.log(`[GetDashboardTxCtrl] No specific dashboard transaction types for User: ${userId}, Role: ${userRole}`);
-            return res.status(200).json([]);
+        // دائماً أضف هذه الأنواع
+        queryConditions.push({ user: userId, type: 'LEVEL_UP_REWARD_RECEIVED' });
+        queryConditions.push({ user: userId, type: 'PRODUCT_PURCHASE_COMPLETED' });
+        queryConditions.push({ user: userId, type: 'MEDIATION_FEE_RECEIVED' });
+        queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_PENDING' });
+        queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_RELEASED' });
+
+        // يمكنك إضافة شروط أخرى هنا إذا احتجت
+        // ...
+
+        if (queryConditions.length === 0) {
+            console.log(`[GetDashboardTxCtrl] No dashboard transaction types defined for User: ${userId}`);
+            return res.status(200).json([]); // أرجع مصفوفة فارغة
         }
+
+        const finalQuery = { $or: queryConditions };
+        // [!!!] END: نهاية المنطق [!!!]
 
         console.log("[GetDashboardTxCtrl] Final Query:", JSON.stringify(finalQuery));
 
         const transactions = await Transaction.find(finalQuery)
+            .select('amount currency type status createdAt description descriptionKey descriptionParams relatedMediationRequest')
             .populate('sender', 'fullName avatarUrl')
             .populate('recipient', 'fullName avatarUrl')
             .populate('relatedProduct', 'title')
-            .populate({
-                path: 'relatedMediationRequest',
-                populate: [
-                    { path: 'buyer', select: 'fullName' },
-                    { path: 'seller', select: 'fullName' }
-                ]
-            })
+            .populate({ path: 'relatedMediationRequest', select: '_id' })
             .sort({ createdAt: -1 })
-            .limit(20);
+            .limit(10) // يمكنك تغيير الحد
+            .lean();
 
         console.log(`[GetDashboardTxCtrl] Found ${transactions.length} transactions for dashboard.`);
         res.status(200).json(transactions);

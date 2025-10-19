@@ -235,9 +235,19 @@ const mediationReducer = (state = initialState, action) => {
         case GET_MY_MEDIATION_SUMMARIES_FAIL:
             return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: [], loading: false, error: payload, totalUnreadMessagesCount: 0 } };
         case MARK_MEDIATION_AS_READ_IN_LIST:
-            const updatedRequestsMarkRead = state.myMediationSummaries.map(med => med._id === payload.mediationId ? { ...med, unreadMessagesCount: 0 } : med);
+            const updatedRequestsMarkRead = state.myMediationSummaries.requests.map(med =>
+                med._id === payload.mediationId ? { ...med, unreadMessagesCount: 0 } : med
+            );
             const newTotalUnreadMarkRead = updatedRequestsMarkRead.reduce((total, med) => total + (med.unreadMessagesCount || 0), 0);
-            return { ...state, myMediationSummaries: { ...state.myMediationSummaries, requests: updatedRequestsMarkRead, totalUnreadMessagesCount: newTotalUnreadMarkRead } };
+            return {
+                ...state,
+                myMediationSummaries: {
+                    ...state.myMediationSummaries,
+                    requests: updatedRequestsMarkRead,
+                    totalUnreadMessagesCount: newTotalUnreadMarkRead
+                }
+            };
+
         case UPDATE_UNREAD_COUNT_FROM_SOCKET:
             let foundMediation = false;
             const updatedRequestsSocket = state.myMediationSummaries.map(med => {

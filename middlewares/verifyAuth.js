@@ -87,16 +87,20 @@ exports.verifyAuth = async (req, res, next) => {
     } catch (error) {
         // Handle JWT errors specifically
         console.error("Error during authentication:", error.name, "-", error.message);
-        if (error.name === 'JsonWebTokenError') {
-            // Example: Invalid signature, malformed token
-            return res.status(401).json({ msg: "Unauthorized: Invalid token signature or format" });
-        } else if (error.name === 'TokenExpiredError') {
-            // Token has expired
-            return res.status(401).json({ msg: "Unauthorized: Token has expired" });
-        } else {
-            // Handle other potential errors (e.g., database errors during User.findById)
-            // Return a generic 500 for unexpected server errors
-            return res.status(500).json({ msg: "Internal Server Error during authentication process", error: error.message });
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                msg: "Unauthorized: Token has expired",
+                // يمكن إضافة مفتاح ترجمة هنا أيضاً
+                translationKey: "apiErrors.sessionExpired"
+            });
         }
+
+        if (error.name === 'JsonWebTokenError') {
+            // Invalid signature, malformed token, etc.
+            return res.status(401).json({ msg: "Unauthorized: Invalid token signature or format" });
+        }
+
+        // Handle other potential errors
+        return res.status(500).json({ msg: "Internal Server Error during authentication process", error: error.message });
     }
 };

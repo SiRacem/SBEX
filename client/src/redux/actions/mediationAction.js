@@ -47,6 +47,23 @@ export const adminGetPendingAssignments = (params = {}) => async (dispatch) => {
     }
 };
 
+export const getMyAllMediationRequestsAction = (page = 1, limit = 10, statusFilter = '') => async (dispatch) => {
+    dispatch({ type: types.GET_BUYER_MEDIATION_REQUESTS_REQUEST }); // يمكن إعادة استخدام نفس النوع
+    const config = getTokenConfig();
+    if (!config) return dispatch({ type: types.GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
+
+    const queryParams = { page, limit };
+    if (statusFilter) queryParams.status = statusFilter;
+
+    try {
+        const { data } = await axios.get(`${BACKEND_URL}/mediation/my-requests/all`, { ...config, params: queryParams });
+        dispatch({ type: types.GET_BUYER_MEDIATION_REQUESTS_SUCCESS, payload: data });
+    } catch (error) {
+        const { key, fallback, params } = handleError(error, 'mediationRequestsPage.errorTitle');
+        dispatch({ type: types.GET_BUYER_MEDIATION_REQUESTS_FAIL, payload: { errorMessage: { key, fallback, params } } });
+    }
+};
+
 export const adminAssignMediator = (requestId, mediatorId) => async (dispatch) => {
     dispatch({ type: types.ADMIN_ASSIGN_MEDIATOR_REQUEST, payload: { requestId } });
     const config = getTokenConfig();

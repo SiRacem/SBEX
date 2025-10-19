@@ -270,7 +270,14 @@ const TransactionDetailsModal = ({
                   <span className="text-muted small d-block">
                     {t("transactionModal.descriptionLabel")}
                   </span>
-                  {description}
+                  {/* [!!!] START: تعديل الترجمة [!!!] */}
+                  {transaction.descriptionKey
+                    ? t(
+                        transaction.descriptionKey,
+                        transaction.descriptionParams
+                      )
+                    : description}
+                  {/* [!!!] END: نهاية التعديل [!!!] */}
                 </div>
               </ListGroup.Item>
             </ListGroup>

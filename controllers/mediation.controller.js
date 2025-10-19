@@ -1088,9 +1088,12 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
         if (!mediationRequest.buyer.equals(buyerId)) {
-            await session.abortTransaction();
-            return res.status(403).json({ msg: "Forbidden: You are not the buyer for this request." });
-        }
+    await session.abortTransaction();
+    return res.status(403).json({
+        translationKey: "apiErrors.notTheBuyerForThisRequest",
+        msg: "Forbidden: You are not the buyer for this request."
+    });
+}
         if (mediationRequest.status !== 'MediationOfferAccepted') {
             await session.abortTransaction();
             return res.status(400).json({ msg: `Action not allowed. Current status is '${mediationRequest.status}'. Expected 'MediationOfferAccepted'.` });
@@ -1888,7 +1891,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         const totalEscrowedInOriginalCurrency = parseFloat(mediationRequest.escrowedAmount);
         const originalEscrowCurrency = mediationRequest.escrowedCurrency;
         const mediatorFeeInOriginalCurrency = parseFloat(mediationRequest.calculatedMediatorFee || 0);
-        const feeCurrency = mediationRequest.mediationFeeCurrency || originalEscrowCurrency; // عملة رسوم الوسيط الأصلية
+        const feeCurrency = mediationRequest.mediationFeeCurrency || originalEscrowCurrency;
         const netAmountForSellerInOriginalCurrency = totalEscrowedInOriginalCurrency - mediatorFeeInOriginalCurrency;
 
         if (netAmountForSellerInOriginalCurrency < 0) {
@@ -1897,7 +1900,6 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             return res.status(500).json({ msg: "Calculation error: Negative amount derived for seller." });
         }
 
-        // تحويل مبلغ البائع الصافي إلى عملة المنصة الأساسية
         let netAmountForSellerInPlatformCurrency = netAmountForSellerInOriginalCurrency;
         if (originalEscrowCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
             netAmountForSellerInPlatformCurrency = netAmountForSellerInOriginalCurrency * TND_USD_EXCHANGE_RATE;
@@ -1908,45 +1910,44 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
         // 2. إنشاء سجل Transaction لتعليق أموال البائع
         const pendingSaleTransaction = new Transaction({
-            user: seller._id, // البائع هو المستخدم المرتبط بهذه المعاملة
+            user: seller._id,
             type: 'PRODUCT_SALE_FUNDS_PENDING',
             amount: netAmountForSellerInOriginalCurrency,
             currency: originalEscrowCurrency,
-            status: 'ON_HOLD', // أو 'PENDING_RELEASE'
-            description: `Funds from sale of '${product.title}' (Mediation: ${mediationRequestId.toString().slice(-6)}) are now on hold.`,
+            status: 'ON_HOLD',
+            descriptionKey: 'transactionDescriptions.saleFundsPending',
+            descriptionParams: { productName: product.title },
+            description: `Funds from sale of '${product.title}' are now on hold.`, // قيمة احتياطية
             relatedProduct: product._id,
             relatedMediationRequest: mediationRequestId,
             metadata: {
                 buyerId: buyerId.toString(),
                 buyerName: buyerFullNameForNotification,
-                originalAmount: totalEscrowedInOriginalCurrency, // المبلغ الإجمالي قبل خصم رسوم الوسيط
+                originalAmount: totalEscrowedInOriginalCurrency,
                 originalCurrency: originalEscrowCurrency,
                 mediatorFee: mediatorFeeInOriginalCurrency,
                 feeCurrency: feeCurrency
             }
         });
         await pendingSaleTransaction.save({ session });
-        console.log(`   Transaction (PRODUCT_SALE_FUNDS_PENDING) created: ${pendingSaleTransaction._id}`);
 
         // 3. إنشاء سجل PendingFund للبائع
-        const releaseTime = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 ساعة من الآن
+        const releaseTime = new Date(Date.now() + 48 * 60 * 60 * 1000);
         const pendingFundRecord = new PendingFund({
             seller: seller._id,
             mediationRequest: mediationRequestId,
             product: product._id,
-            amount: netAmountForSellerInOriginalCurrency, // المبلغ الصافي للبائع بالعملة الأصلية
+            amount: netAmountForSellerInOriginalCurrency,
             currency: originalEscrowCurrency,
-            amountInPlatformCurrency: netAmountForSellerInPlatformCurrency, // المبلغ الصافي بالعملة الأساسية
+            amountInPlatformCurrency: netAmountForSellerInPlatformCurrency,
             platformCurrency: PLATFORM_BASE_CURRENCY,
             releaseAt: releaseTime,
-            transactionPendingId: pendingSaleTransaction._id // ربط بسجل المعاملة الأولي
+            transactionPendingId: pendingSaleTransaction._id
         });
         await pendingFundRecord.save({ session });
-        console.log(`   PendingFund record created: ${pendingFundRecord._id} for seller ${seller._id}, release at ${releaseTime.toISOString()}`);
 
-        // 4. تحديث sellerPendingBalance للبائع (بالعملة الأساسية للمنصة)
+        // 4. تحديث sellerPendingBalance للبائع
         seller.sellerPendingBalance = parseFloat(((seller.sellerPendingBalance || 0) + netAmountForSellerInPlatformCurrency).toFixed(2));
-        // لا يتم الحفظ هنا بعد، سيتم مع تحديثات السمعة
 
         // 5. دفع عمولة الوسيط
         let mediatorFeeInPlatformCurrency = mediatorFeeInOriginalCurrency;
@@ -1957,19 +1958,19 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         }
         mediatorFeeInPlatformCurrency = parseFloat(mediatorFeeInPlatformCurrency.toFixed(2));
         mediator.balance = parseFloat(((mediator.balance || 0) + mediatorFeeInPlatformCurrency).toFixed(2));
-        // لا يتم الحفظ هنا بعد
 
         const mediatorFeeTransaction = new Transaction({
-            user: mediator._id, // الوسيط هو المستخدم المرتبط بهذه المعاملة
+            user: mediator._id,
             type: 'MEDIATION_FEE_RECEIVED',
-            amount: mediatorFeeInOriginalCurrency, // مبلغ العمولة الأصلي
-            currency: feeCurrency, // عملة العمولة الأصلية
+            amount: mediatorFeeInOriginalCurrency,
+            currency: feeCurrency,
             status: 'COMPLETED',
-            description: `Fee received for mediating '${product.title}' (Mediation: ${mediationRequestId.toString().slice(-6)}).`,
+            descriptionKey: 'transactionDescriptions.mediationFeeReceived',
+            descriptionParams: { productName: product.title },
+            description: `Fee received for mediating '${product.title}'.`, // قيمة احتياطية
             relatedMediationRequest: mediationRequestId
         });
         await mediatorFeeTransaction.save({ session });
-        console.log(`   Transaction (MEDIATION_FEE_RECEIVED) created: ${mediatorFeeTransaction._id} for mediator ${mediator._id}`);
 
         // 6. تحديث حالة الوساطة
         mediationRequest.status = 'Completed';
@@ -1984,7 +1985,6 @@ exports.buyerConfirmReceiptController = async (req, res) => {
                 mediatorFeeCurrency: feeCurrency
             }
         });
-        // سيتم حفظ mediationRequest مع حفظ المستخدمين
 
         // 7. تحديث حالة المنتج وعداد مبيعات البائع
         const productDoc = await Product.findById(product._id).session(session);
@@ -1994,11 +1994,9 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             productDoc.buyer = buyerId;
             await productDoc.save({ session });
             seller.productsSoldCount = (seller.productsSoldCount || 0) + 1;
-            console.log(`   Product ${productDoc._id} status set to sold. Seller ${seller._id} productsSoldCount updated to ${seller.productsSoldCount}.`);
         }
 
-        // 8. تحديث نقاط السمعة والمستويات والمكافآت لجميع الأطراف (+1 نقطة للجميع عند الإكمال)
-        console.log("   [Reputation] Processing reputation (+1), levels, and rewards for participants.");
+        // 8. تحديث نقاط السمعة
         const participants = [seller, buyer, mediator];
         for (const participant of participants) {
             if (participant) {
@@ -2012,7 +2010,8 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
                 if (badgeChangedByLevelUpdate && !rewardGivenByLevelUp && oldLevel === participant.level) {
                     await Notification.create([{
-                        user: participant._id, type: 'BADGE_UPDATED',
+                        user: participant._id,
+                        type: 'BADGE_UPDATED',
                         title: `🏅 Reputation Update: You are now ${participant.reputationLevel}!`,
                         message: `Your reputation level has been updated to ${participant.reputationLevel}.`,
                         relatedEntity: { id: participant._id, modelName: 'User' }
@@ -2020,73 +2019,47 @@ exports.buyerConfirmReceiptController = async (req, res) => {
                 }
             }
         }
-        // حفظ جميع التغييرات على المستخدمين (بما في ذلك الأرصدة المحدثة) والوساطة
+
         await seller.save({ session });
         await buyer.save({ session });
         await mediator.save({ session });
         await mediationRequest.save({ session });
-        console.log("   Users (balances, reputation, etc.) and MediationRequest updated and saved.");
 
-        // 9. إنشاء إشعارات
-        const productTitleForNotif = product.title || 'the transaction';
+        // 9. إنشاء إشعارات مترجمة
+        const notificationParams = {
+            buyerName: buyerFullNameForNotification,
+            productName: product.title || 'the transaction',
+            amount: formatCurrency(netAmountForSellerInOriginalCurrency, originalEscrowCurrency),
+            feeAmount: formatCurrency(mediatorFeeInOriginalCurrency, feeCurrency)
+        };
+
         const notifications = [
-            {
-                user: seller._id,
-                type: 'SALE_FUNDS_PENDING',
-                title: 'notification_titles.SALE_FUNDS_PENDING', // <-- مفتاح
-                message: 'notification_messages.SALE_FUNDS_PENDING', // <-- مفتاح
-                messageParams: { // <-- متغيرات
-                    buyerName: buyerFullNameForNotification,
-                    productName: productTitleForNotif,
-                    amount: formatCurrency(netAmountForSellerInOriginalCurrency, originalEscrowCurrency)
-                },
-                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
-            },
-            {
-                user: mediator._id,
-                type: 'MEDIATION_FEE_RECEIVED',
-                title: 'notification_titles.MEDIATION_FEE_RECEIVED', // <-- مفتاح
-                message: 'notification_messages.MEDIATION_FEE_RECEIVED', // <-- مفتاح
-                messageParams: { // <-- متغيرات
-                    amount: formatCurrency(mediatorFeeInOriginalCurrency, feeCurrency),
-                    productName: productTitleForNotif
-                },
-                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
-            },
-            {
-                user: buyerId,
-                type: 'PRODUCT_RECEIPT_CONFIRMED',
-                title: 'notification_titles.PRODUCT_RECEIPT_CONFIRMED', // <-- مفتاح
-                message: 'notification_messages.PRODUCT_RECEIPT_CONFIRMED', // <-- مفتاح
-                messageParams: { // <-- متغيرات
-                    productName: productTitleForNotif
-                },
-                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
-            }
+            { user: seller._id, type: 'SALE_FUNDS_PENDING', title: 'notification_titles.SALE_FUNDS_PENDING', message: 'notification_messages.SALE_FUNDS_PENDING', messageParams: notificationParams, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } },
+            { user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', title: 'notification_titles.MEDIATION_FEE_RECEIVED', message: 'notification_messages.MEDIATION_FEE_RECEIVED', messageParams: notificationParams, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } },
+            { user: buyerId, type: 'PRODUCT_RECEIPT_CONFIRMED', title: 'notification_titles.PRODUCT_RECEIPT_CONFIRMED', message: 'notification_messages.PRODUCT_RECEIPT_CONFIRMED', messageParams: notificationParams, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } }
         ];
         await Notification.insertMany(notifications, { session });
-        console.log("   Notifications sent for receipt confirmation.");
 
-        // (اختياري ولكن جيد للشفافية) إنشاء سجل معاملة للمشتري
+        // إنشاء سجل معاملة للمشتري
         const purchaseTransaction = new Transaction({
-            user: buyerId, // <<< يجب أن يكون المشتري هو المستخدم هنا
+            user: buyerId,
             type: 'PRODUCT_PURCHASE_COMPLETED',
-            amount: totalEscrowedInOriginalCurrency, // المبلغ الإجمالي الذي دفعه المشتري (يشمل رسومه إذا كانت هناك)
+            amount: -Math.abs(totalEscrowedInOriginalCurrency),
             currency: originalEscrowCurrency,
             status: 'COMPLETED',
-            description: `Purchase of '${product.title}' (Mediation: ${mediationRequestId.toString().slice(-6)}) from seller ${seller.fullName}.`,
+            descriptionKey: 'transactionDescriptions.purchaseCompleted',
+            descriptionParams: { productName: product.title, sellerName: seller.fullName },
+            description: `Purchase of '${product.title}' from seller ${seller.fullName}.`, // قيمة احتياطية
             relatedProduct: product._id,
             relatedMediationRequest: mediationRequestId,
-            recipient: seller._id // المستفيد من هذه الدفعة هو البائع (وإن كانت معلقة)
+            recipient: seller._id
         });
         await purchaseTransaction.save({ session });
-        console.log(`   Transaction (PRODUCT_PURCHASE_COMPLETED) created: ${purchaseTransaction._id} for buyer ${buyerId}`);
 
         // 10. Commit Transaction
         await session.commitTransaction();
-        console.log(`--- Transaction committed for buyerConfirmReceipt: ${mediationRequestId} ---`);
 
-        // 11. تحديث حالة الوسيط (خارج الـ transaction الرئيسي)
+        // 11. تحديث حالة الوسيط بعد الـ commit
         try {
             const otherActiveMediations = await MediationRequest.countDocuments({
                 mediator: mediator._id,
@@ -2094,13 +2067,9 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             });
             if (otherActiveMediations === 0 && mediator.mediatorStatus !== 'Available') {
                 await User.findByIdAndUpdate(mediator._id, { $set: { mediatorStatus: 'Available' } });
-                console.log(`   [Post-Transaction] Mediator ${mediator._id} status updated to 'Available'.`);
-            } else if (otherActiveMediations > 0 && mediator.mediatorStatus !== 'Busy') {
-                await User.findByIdAndUpdate(mediator._id, { $set: { mediatorStatus: 'Busy' } });
-                console.log(`   [Post-Transaction] Mediator ${mediator._id} status ensured to be 'Busy'.`);
             }
         } catch (mediatorStatusError) {
-            console.error(`   [Post-Transaction] Error updating mediator status for ${mediator._id}:`, mediatorStatusError);
+            console.error(`[Post-Transaction] Error updating mediator status for ${mediator._id}:`, mediatorStatusError);
         }
 
         // 12. إرسال تحديثات Socket.IO
@@ -2113,8 +2082,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
             const usersToUpdateViaSocket = [seller, buyer, mediator];
             for (const userDoc of usersToUpdateViaSocket) {
-                // أعد جلب المستخدم للحصول على أحدث حالة (خاصة الأرصدة)
-                const freshUserDoc = await User.findById(userDoc._id).lean(); // .lean() مهم هنا
+                const freshUserDoc = await User.findById(userDoc._id).lean();
                 if (freshUserDoc && req.onlineUsers && req.onlineUsers[freshUserDoc._id.toString()]) {
                     const userProfileSummaryForSocket = {
                         _id: freshUserDoc._id.toString(), reputationPoints: freshUserDoc.reputationPoints, level: freshUserDoc.level,
@@ -2129,18 +2097,15 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             if (seller?._id && product?._id && req.onlineUsers && req.onlineUsers[seller._id.toString()]) {
                 req.io.to(req.onlineUsers[seller._id.toString()]).emit('product_list_updated_for_seller', { productId: product._id, newStatus: 'sold' });
             }
-        }
 
-        // --- [!!!] هذا هو الجزء الجديد الذي تضيفه هنا [!!!] ---
-        const involvedUserIds = [seller._id.toString(), buyer._id.toString(), mediator._id.toString()];
-        const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
-        uniqueInvolvedUserIds.forEach(involvedUserIdString => {
-            if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
-                req.io.to(req.onlineUsers[involvedUserIdString]).emit('dashboard_transactions_updated');
-                console.log(`SOCKET: Emitted 'dashboard_transactions_updated' to user ${involvedUserIdString} after receipt confirmation.`);
-            }
-        });
-        // --- [!!!] نهاية الجزء الجديد [!!!] ---
+            const involvedUserIds = [seller._id.toString(), buyer._id.toString(), mediator._id.toString()];
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
+            uniqueInvolvedUserIds.forEach(involvedUserIdString => {
+                if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
+                    req.io.to(req.onlineUsers[involvedUserIdString]).emit('dashboard_transactions_updated');
+                }
+            });
+        }
 
         const finalResponseMediationRequest = await MediationRequest.findById(mediationRequestId)
             .populate('product', 'title _id status soldAt buyer')
@@ -2159,7 +2124,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             await session.abortTransaction();
         }
         console.error("[Controller buyerConfirmReceipt] CRITICAL Error:", error.message, "\nFull Stack:", error.stack);
-        res.status(error.status || 500).json({ msg: error.message || "Server error confirming receipt. Please try again or contact support." });
+        res.status(error.status || 500).json({ msg: error.message || "Server error confirming receipt." });
     } finally {
         if (session) {
             await session.endSession();
@@ -3523,5 +3488,50 @@ exports.handleExpiredMediationAssignments = async (io, onlineUsers) => {
     } catch (mainError) {
         console.error("[CRON - ExpiredMediations] Critical error in main job execution:", mainError);
         return { processed: processedCount, errors: errorCount + 1 };
+    }
+};
+
+exports.getMyAllMediationRequests = async (req, res) => {
+    const userId = req.user._id;
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const statusFilter = req.query.status;
+
+    console.log(`--- Controller: getMyAllMediationRequests for User: ${userId} ---`);
+
+    try {
+        const query = {
+            $or: [{ seller: userId }, { buyer: userId }, { mediator: userId }],
+        };
+
+        if (statusFilter && statusFilter.trim() !== "" && statusFilter !== 'all') {
+            query.status = statusFilter.trim();
+        }
+
+        const options = {
+            page,
+            limit,
+            sort: { updatedAt: -1 },
+            populate: [
+                { path: 'product', select: 'title imageUrls' },
+                { path: 'seller', select: '_id fullName avatarUrl' },
+                { path: 'buyer', select: '_id fullName avatarUrl' },
+                { path: 'mediator', select: '_id fullName avatarUrl' }
+            ],
+            lean: true
+        };
+
+        const result = await MediationRequest.paginate(query, options);
+
+        res.status(200).json({
+            requests: result.docs || [],
+            totalPages: result.totalPages || 0,
+            currentPage: result.page || 1,
+            totalRequests: result.totalDocs || 0
+        });
+
+    } catch (error) {
+        console.error("[getMyAllMediationRequests] Error:", error);
+        res.status(500).json({ msg: "Server error fetching mediation requests." });
     }
 };

@@ -83,16 +83,17 @@ const releaseDuePendingFunds = async (io, onlineUsers) => {
                 amount: pendingFund.amount,
                 currency: pendingFund.currency,
                 status: 'COMPLETED',
-                description: `Funds from sale of '${pendingFund.product?.title || 'product'}' now available.`,
+                descriptionKey: 'transactionDescriptions.saleFundsReleased', // <-- تعديل
+                descriptionParams: { productName: pendingFund.product?.title || 'product' }, // <-- إضافة
+                description: `Funds from sale of '${pendingFund.product?.title || 'product'}' now available.`, // قيمة احتياطية
                 relatedProduct: pendingFund.product?._id,
                 relatedMediationRequest: pendingFund.mediationRequest,
             });
             await releaseTransaction.save({ session });
             pendingFund.transactionReleasedId = releaseTransaction._id;
             await pendingFund.save({ session });
-            
+
             // إنشاء الإشعار بمفاتيح الترجمة
-            const productTitle = pendingFund.product?.title || 'a previous sale';
             const notification = await Notification.create([{
                 user: seller._id,
                 type: 'FUNDS_NOW_AVAILABLE',
@@ -100,7 +101,7 @@ const releaseDuePendingFunds = async (io, onlineUsers) => {
                 message: 'notification_messages.FUNDS_NOW_AVAILABLE',
                 messageParams: {
                     amount: formatCurrency(pendingFund.amount, pendingFund.currency),
-                    productName: productTitle
+                    productName: pendingFund.product?.title || 'a previous sale'
                 },
                 relatedEntity: { id: pendingFund.product?._id, modelName: 'Product' }
             }], { session });
