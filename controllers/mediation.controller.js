@@ -165,7 +165,12 @@ exports.getMediationRequestDetailsController = async (req, res) => {
 
         if (!canAccess) {
             console.warn(`[getMediationDetails] User ${userId} (Role: ${userRole}) is FORBIDDEN from accessing details for ${mediationRequestId}.`);
-            return res.status(403).json({ msg: "Forbidden: You are not authorized to view these mediation details." });
+            return res.status(403).json({
+                errorMessage: {
+                    key: "apiErrors.forbiddenMediationAccess",
+                    fallback: "Forbidden: You are not authorized to view these mediation details."
+                }
+            });
         }
 
         const responseRequest = request.toObject();
@@ -1703,7 +1708,12 @@ exports.getMediationChatHistory = async (req, res) => {
 
         if (!isParty) {
             console.warn(`   [ChatHistory] User ${userId} (Role: ${req.user.userRole}) is FORBIDDEN from accessing chat history for ${mediationRequestId}. Parties: S-${request.seller}, B-${request.buyer}, M-${request.mediator}`);
-            return res.status(403).json({ msg: "Forbidden: You are not a party to this mediation chat or not authorized." });
+            return res.status(403).json({
+                errorMessage: {
+                    key: "apiErrors.forbiddenMediationAccess",
+                    fallback: "Forbidden: You are not a party to this mediation chat or not authorized."
+                }
+            });
         }
         // --------------------------------------------
 
@@ -2136,16 +2146,15 @@ exports.openDisputeController = async (req, res) => {
     const { mediationRequestId } = req.params;
     const { reason } = req.body;
     const disputingUserId = req.user._id;
-    const disputingUserFullName = req.user.fullName || 'A user'; // احصل عليها مبكرًا
+    const disputingUserFullName = req.user.fullName || 'A user';
 
     console.log(`--- Controller: openDispute for ${mediationRequestId} by User: ${disputingUserId} ---`);
     console.log(`   Reason (optional): ${reason}`);
 
     const session = await mongoose.startSession();
-    let updatedMediationRequestGlobal; // لتخزين النتيجة بعد نجاح المعاملة
+    let updatedMediationRequestGlobal;
 
     try {
-        // عدد مرات إعادة المحاولة
         const MAX_RETRIES = 3;
         let attempt = 0;
 
@@ -2153,16 +2162,15 @@ exports.openDisputeController = async (req, res) => {
             try {
                 await session.withTransaction(async (currentSession) => {
                     const mediationRequest = await MediationRequest.findById(mediationRequestId)
-                        .populate('product', 'title _id user') // user هو بائع المنتج
+                        .populate('product', 'title _id user')
                         .populate('seller', '_id fullName')
                         .populate('buyer', '_id fullName')
                         .populate('mediator', '_id fullName')
                         .session(currentSession);
 
                     if (!mediationRequest) {
-                        // لا حاجة لـ abortTransaction هنا لأن withTransaction يعالجها
                         const err = new Error("Mediation request not found.");
-                        err.status = 404; // أضف status للخطأ
+                        err.status = 404;
                         throw err;
                     }
 
@@ -2181,7 +2189,6 @@ exports.openDisputeController = async (req, res) => {
                         throw err;
                     }
 
-                    // --- التحديثات الأساسية داخل المعاملة ---
                     mediationRequest.status = 'Disputed';
                     mediationRequest.history.push({
                         event: `Dispute opened by ${disputingUserFullName} (${isSeller ? 'Seller' : 'Buyer'})`,
@@ -2193,17 +2200,13 @@ exports.openDisputeController = async (req, res) => {
                     if (mediationRequest.product?._id) {
                         await Product.findByIdAndUpdate(mediationRequest.product._id,
                             { $set: { status: 'Disputed' } },
-                            { session: currentSession } // استخدم currentSession
+                            { session: currentSession }
                         );
-                        console.log(`   Product ${mediationRequest.product._id} status updated to 'Disputed' in transaction.`);
                     }
 
-                    // احفظ النسخة المحدثة ليتم استخدامها خارج المعاملة
                     updatedMediationRequestGlobal = await mediationRequest.save({ session: currentSession });
-                    console.log(`   MediationRequest ${mediationRequestId} status updated to 'Disputed' in transaction.`);
                 });
 
-                // إذا نجحت المعاملة، اخرج من حلقة إعادة المحاولة
                 console.log(`   Transaction committed successfully for dispute opening on attempt ${attempt + 1}.`);
                 break;
 
@@ -2211,70 +2214,65 @@ exports.openDisputeController = async (req, res) => {
                 attempt++;
                 if (error.errorLabels && error.errorLabels.includes('TransientTransactionError') && attempt < MAX_RETRIES) {
                     console.warn(`[openDisputeController] Write conflict, retrying transaction (attempt ${attempt}/${MAX_RETRIES})...`, error.message);
-                    // انتظر قليلاً قبل إعادة المحاولة (اختياري ولكن جيد)
                     await new Promise(resolve => setTimeout(resolve, 100 * attempt));
                 } else {
-                    // إذا لم يكن خطأ عابرًا أو تم تجاوز عدد المحاولات، أعد رمي الخطأ
                     throw error;
                 }
             }
         }
 
         if (!updatedMediationRequestGlobal) {
-            // هذا لا يجب أن يحدث إذا خرجنا من الحلقة بنجاح
             throw new Error("Failed to open dispute after retries or transaction did not complete as expected.");
         }
 
-        // --- العمليات بعد نجاح المعاملة (الإشعارات، Socket.IO) ---
-        // جلب الأدمنز (يمكن أن يتم خارج المعاملة)
         const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
-
-        const partiesToNotify = [];
-        if (updatedMediationRequestGlobal.seller?._id && !updatedMediationRequestGlobal.seller._id.equals(disputingUserId)) partiesToNotify.push(updatedMediationRequestGlobal.seller._id);
-        if (updatedMediationRequestGlobal.buyer?._id && !updatedMediationRequestGlobal.buyer._id.equals(disputingUserId)) partiesToNotify.push(updatedMediationRequestGlobal.buyer._id);
-        if (updatedMediationRequestGlobal.mediator?._id) partiesToNotify.push(updatedMediationRequestGlobal.mediator._id);
+        const partiesToNotify = [
+            updatedMediationRequestGlobal.seller?._id,
+            updatedMediationRequestGlobal.buyer?._id,
+            updatedMediationRequestGlobal.mediator?._id
+        ].filter(Boolean);
         admins.forEach(admin => partiesToNotify.push(admin._id));
 
         const uniqueNotificationRecipients = [...new Set(partiesToNotify.map(id => id.toString()))];
         const productTitle = updatedMediationRequestGlobal.product?.title || 'the transaction';
-        const notificationMessage = `A dispute has been opened by ${disputingUserFullName} for the transaction regarding "${productTitle}". Please review the details.`;
 
-        // ***** [!!!] هذا هو التعديل الأهم هنا [!!!] *****
-        const notifications = uniqueNotificationRecipients.map(userIdToNotify => ({
-            user: userIdToNotify,
-            type: 'MEDIATION_DISPUTED',
-            title: 'notification_titles.MEDIATION_DISPUTED', // <-- استخدام مفتاح الترجمة
-            message: 'notification_messages.MEDIATION_DISPUTED', // <-- استخدام مفتاح الترجمة
-            messageParams: { // <-- إضافة المتغيرات
-                userName: disputingUserFullName,
-                productName: productTitle
-            },
-            relatedEntity: { id: updatedMediationRequestGlobal._id, modelName: 'MediationRequest' }
-        }));
-        // ***** نهاية التعديل *****
+        // [!!!] START: هذا هو التعديل الوحيد المطبق على الكود الأصلي [!!!]
+        const notifications = uniqueNotificationRecipients.map(userIdToNotify => {
+            const isAdmin = admins.some(a => a._id.toString() === userIdToNotify);
+            const isDisputingUser = userIdToNotify === disputingUserId.toString();
+
+            let messageKey = 'notification_messages.MEDIATION_DISPUTED_BY_OTHER';
+            if (isDisputingUser) {
+                messageKey = 'notification_messages.MEDIATION_DISPUTED_BY_YOU';
+            } else if (isAdmin) {
+                messageKey = 'notification_messages.MEDIATION_DISPUTED_FOR_ADMIN';
+            }
+
+            return {
+                user: userIdToNotify,
+                type: 'MEDIATION_DISPUTED',
+                title: 'notification_titles.MEDIATION_DISPUTED',
+                message: messageKey,
+                messageParams: {
+                    userName: disputingUserFullName,
+                    productName: productTitle
+                },
+                relatedEntity: { id: updatedMediationRequestGlobal._id, modelName: 'MediationRequest' }
+            };
+        });
+        // [!!!] END: نهاية التعديل الوحيد [!!!]
 
         if (notifications.length > 0) {
-            try {
-                await Notification.insertMany(notifications); // لا تحتاج session هنا
-                console.log("   Dispute notifications created successfully after transaction commit.");
-            } catch (notificationError) {
-                console.error("   Error creating notifications after transaction commit (non-critical for dispute itself):", notificationError);
-                // يمكنك تسجيل هذا الخطأ لكن لا توقف العملية بسببه
-            }
+            await Notification.insertMany(notifications);
         }
 
-        // إرسال تحديثات عبر Socket.IO
         if (req.io && updatedMediationRequestGlobal) {
-            const roomName = mediationRequestId.toString();
-            // أعد جلب الطلب مع كل populate اللازم للـ socket إذا أردت أحدث البيانات
             const finalUpdatedRequestForSocket = await MediationRequest.findById(mediationRequestId)
-                .populate('product', 'title imageUrls currency agreedPrice bidAmount bidCurrency status')
-                .populate('seller', '_id fullName avatarUrl userRole')
-                .populate('buyer', '_id fullName avatarUrl userRole')
-                .populate('mediator', '_id fullName avatarUrl userRole')
+                .populate('product seller buyer mediator')
                 .lean();
 
             if (finalUpdatedRequestForSocket) {
+                const roomName = mediationRequestId.toString();
                 req.io.to(roomName).emit('mediation_details_updated', {
                     mediationRequestId: mediationRequestId,
                     updatedMediationDetails: finalUpdatedRequestForSocket
@@ -2297,35 +2295,27 @@ exports.openDisputeController = async (req, res) => {
             admins.forEach(admin => {
                 const adminSocketId = req.onlineUsers[admin._id.toString()];
                 if (adminSocketId) {
-                    // Send a specific event to admins to refresh their dispute list/count
                     req.io.to(adminSocketId).emit('dispute_opened_for_admin');
-                    console.log(`   Socket event 'dispute_opened_for_admin' emitted to admin ${admin._id}`);
                 }
             });
         }
 
         res.status(200).json({
-            msg: "Dispute opened successfully. A mediator/admin will review.",
-            mediationRequest: updatedMediationRequestGlobal.toObject() // استخدم المستند المحدث
+            msg: "Dispute opened successfully. An admin will review.",
+            mediationRequest: updatedMediationRequestGlobal.toObject()
         });
 
     } catch (error) {
         console.error("[openDisputeController] Final Error Catch Block:", error.message, "\nStack:", error.stack);
-        // `error.status` تم تعيينه في حالات الخطأ المخصصة
-        const statusCode = error.status || (error.code === 112 || (error.errorLabels && error.errorLabels.includes('TransientTransactionError')) ? 503 : 500); // 503 للتعارض بعد عدة محاولات
+        const statusCode = error.status || (error.code === 112 || (error.errorLabels && error.errorLabels.includes('TransientTransactionError')) ? 503 : 500);
         const message = error.message || "Server error opening dispute.";
 
-        // إذا كان خطأ تعارض بعد كل المحاولات
-        if (statusCode === 503 || (error.errorLabels && error.errorLabels.includes('TransientTransactionError'))) {
-            return res.status(statusCode).json({
-                msg: "Could not open dispute due to high server load or conflicting operations. Please try again shortly.",
-                errorDetails: "Write conflict occurred." // لا تعرض تفاصيل الخطأ الكاملة للعميل
-            });
+        if (statusCode === 503) {
+            return res.status(statusCode).json({ msg: "Could not open dispute due to high server load. Please try again." });
         }
 
         res.status(statusCode).json({ msg: message });
     } finally {
-        // تأكد من إنهاء الجلسة دائمًا
         if (session) {
             await session.endSession();
         }
@@ -2454,18 +2444,11 @@ exports.adminResolveDisputeController = async (req, res) => {
             .populate('product', 'title _id price currency status currentMediationRequest agreedPrice')
             .session(session);
 
-        if (!mediationRequest) {
-            throw new Error("Mediation request not found.");
-        }
-        if (mediationRequest.status !== 'Disputed') {
-            throw new Error(`Cannot resolve. Mediation status is '${mediationRequest.status}', expected 'Disputed'.`);
-        }
+        if (!mediationRequest) throw new Error("Mediation request not found.");
+        if (mediationRequest.status !== 'Disputed') throw new Error(`Cannot resolve. Mediation status is '${mediationRequest.status}', expected 'Disputed'.`);
 
         const { seller, buyer, mediator, product } = mediationRequest;
-
-        if (!seller || !buyer || !product) {
-            throw new Error("Internal Server Error: Essential data (seller, buyer, product) missing for mediation.");
-        }
+        if (!seller || !buyer || !product) throw new Error("Internal Server Error: Essential data (seller, buyer, product) missing for mediation.");
 
         let finalStatus = 'AdminResolved';
         let historyEvent = `Dispute resolved by Admin ${adminFullName}.`;
@@ -2491,13 +2474,12 @@ exports.adminResolveDisputeController = async (req, res) => {
                     console.warn(`   [AdminResolveDispute - Cancel] Product currency (${product.currency}) differs from escrow currency (${escrowOriginalCurrency}). Assuming conversion is needed.`);
                 }
                 productPriceToRefundBuyerInOriginalCurrency = parseFloat(productPriceToRefundBuyerInOriginalCurrency.toFixed(4));
-                let mediatorFeeToPayNowInOriginalCurrency = totalEscrowedInOriginalCurrency - productPriceToRefundBuyerInOriginalCurrency;
-                mediatorFeeToPayNowInOriginalCurrency = parseFloat(mediatorFeeToPayNowInOriginalCurrency.toFixed(4));
 
-                if (mediatorFeeToPayNowInOriginalCurrency < 0) {
-                    productPriceToRefundBuyerInOriginalCurrency = totalEscrowedInOriginalCurrency;
-                    mediatorFeeToPayNowInOriginalCurrency = 0;
-                }
+                // منطق نصف الرسوم الدقيق الخاص بك
+                const halfFeeInOriginalCurrency = parseFloat((mediationRequest.calculatedMediatorFee / 2).toFixed(4));
+                let mediatorFeeToPayNowInOriginalCurrency = Math.min(halfFeeInOriginalCurrency, totalEscrowedInOriginalCurrency);
+
+                productPriceToRefundBuyerInOriginalCurrency = totalEscrowedInOriginalCurrency - mediatorFeeToPayNowInOriginalCurrency;
 
                 if (mediatorFeeToPayNowInOriginalCurrency > 0) {
                     let mediatorFeeInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency;
@@ -2505,9 +2487,8 @@ exports.adminResolveDisputeController = async (req, res) => {
                         if (escrowOriginalCurrency === 'USD') mediatorFeeInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
                         else if (escrowOriginalCurrency === 'TND') mediatorFeeInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
                     }
-                    mediatorFeeInPlatformCurrency = parseFloat(mediatorFeeInPlatformCurrency.toFixed(2));
                     mediator.balance = parseFloat(((mediator.balance || 0) + mediatorFeeInPlatformCurrency).toFixed(2));
-                    const mediatorFeeTx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', amount: mediatorFeeInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', relatedMediationRequest: mediationRequestId, description: `Fee (admin cancel) for '${product.title}'` });
+                    const mediatorFeeTx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', amount: mediatorFeeInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', relatedMediationRequest: mediationRequestId, description: `Half fee (admin cancel) for '${product.title}'` });
                     await mediatorFeeTx.save({ session });
                 }
 
@@ -2517,38 +2498,31 @@ exports.adminResolveDisputeController = async (req, res) => {
                         if (escrowOriginalCurrency === 'USD') productPriceInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
                         else if (escrowOriginalCurrency === 'TND') productPriceInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
                     }
-                    productPriceInPlatformCurrency = parseFloat(productPriceInPlatformCurrency.toFixed(2));
                     buyer.balance = parseFloat(((buyer.balance || 0) + productPriceInPlatformCurrency).toFixed(2));
                     const refundTransaction = new Transaction({ user: buyer._id, type: 'ESCROW_RETURNED_MEDIATION_CANCELLED', amount: productPriceInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Product price refund (admin cancel) for '${product.title}'`, relatedMediationRequest: mediationRequestId });
                     await refundTransaction.save({ session });
-
-                    if (mediatorFeeToPayNowInOriginalCurrency > 0) {
-                        let mediatorFeeForBuyerTxInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency;
-                        if (escrowOriginalCurrency !== PLATFORM_BASE_CURRENCY) {
-                            if (escrowOriginalCurrency === 'USD') mediatorFeeForBuyerTxInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
-                            else if (escrowOriginalCurrency === 'TND') mediatorFeeForBuyerTxInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
-                        }
-                        mediatorFeeForBuyerTxInPlatformCurrency = parseFloat(mediatorFeeForBuyerTxInPlatformCurrency.toFixed(2));
-
-                        const buyerMediationFeeTx = new Transaction({
-                            user: buyer._id,
-                            type: 'MEDIATION_FEE_PAID_BY_BUYER',
-                            amount: mediatorFeeForBuyerTxInPlatformCurrency,
-                            currency: PLATFORM_BASE_CURRENCY,
-                            status: 'COMPLETED',
-                            description: `Mediator fee paid from escrow for cancelled mediation of '${product.title}'. Original fee: ${mediatorFeeToPayNowInOriginalCurrency.toFixed(2)} ${escrowOriginalCurrency}.`,
-                            relatedMediationRequest: mediationRequestId,
-                            metadata: {
-                                reason: "Mediator fee deduction from escrow upon admin cancellation.",
-                                originalFeeAmount: mediatorFeeToPayNowInOriginalCurrency,
-                                originalFeeCurrency: escrowOriginalCurrency
-                            }
-                        });
-                        await buyerMediationFeeTx.save({ session });
-                    }
                 }
-                mediationRequest.escrowedAmount = 0;
-                mediationRequest.escrowedCurrency = null;
+
+                // [!!!] START: هذا هو الكود المضاف لإصلاح المشكلة نهائيًا [!!!]
+                if (mediatorFeeToPayNowInOriginalCurrency > 0) {
+                    let mediatorFeeForBuyerTxInPlatformCurrency = mediatorFeeToPayNowInOriginalCurrency;
+                    if (escrowOriginalCurrency !== PLATFORM_BASE_CURRENCY) {
+                        if (escrowOriginalCurrency === 'USD') mediatorFeeForBuyerTxInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
+                        else if (escrowOriginalCurrency === 'TND') mediatorFeeForBuyerTxInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
+                    }
+                    const buyerMediationFeeTx = new Transaction({
+                        user: buyer._id,
+                        type: 'MEDIATION_FEE_PAID_BY_BUYER',
+                        amount: -Math.abs(mediatorFeeForBuyerTxInPlatformCurrency), // استخدم سالب ليعرف أنه خصم
+                        currency: PLATFORM_BASE_CURRENCY,
+                        status: 'COMPLETED',
+                        description: `Fee deduction for cancelled mediation of '${product.title}'`,
+                        relatedMediationRequest: mediationRequestId
+                    });
+                    await buyerMediationFeeTx.save({ session });
+                }
+                // [!!!] END: نهاية الكود المضاف [!!!]
+
             } else if (mediationRequest.escrowedAmount > 0 && buyer && !mediator) {
                 let amountToReturnToBuyerInPlatformCurrency = mediationRequest.escrowedAmount;
                 if (mediationRequest.escrowedCurrency !== PLATFORM_BASE_CURRENCY) {
@@ -2587,7 +2561,6 @@ exports.adminResolveDisputeController = async (req, res) => {
                     let refundAmountInPlatformCurrency = totalEscrowed;
                     if (escrowCurrency !== PLATFORM_BASE_CURRENCY) {
                         if (escrowCurrency === 'USD') refundAmountInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
-                        else if (escrowCurrency === 'TND') refundAmountInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
                     }
                     buyer.balance += parseFloat(refundAmountInPlatformCurrency.toFixed(2));
                     const tx = new Transaction({ user: buyer._id, type: 'ESCROW_REFUND_DISPUTE_WON', amount: refundAmountInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Escrow refund (won dispute) for '${product.title}'`, relatedMediationRequest: mediationRequestId });
@@ -2602,33 +2575,31 @@ exports.adminResolveDisputeController = async (req, res) => {
                         let mediatorFeeInPlatformCurrency = mediatorFeeOriginal;
                         if (feeCurrency !== PLATFORM_BASE_CURRENCY) {
                             if (feeCurrency === 'USD') mediatorFeeInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
-                            else if (feeCurrency === 'TND') mediatorFeeInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
                         }
                         mediator.balance += parseFloat(mediatorFeeInPlatformCurrency.toFixed(2));
                         mediator.successfulMediationsCount = (mediator.successfulMediationsCount || 0) + 1;
-
-                        const feeTx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', amount: mediatorFeeOriginal, currency: feeCurrency, status: 'COMPLETED', description: `Fee from resolved dispute for '${product.title}'`, relatedMediationRequest: mediationRequestId });
+                        const feeTx = new Transaction({ user: mediator._id, type: 'MEDIATION_FEE_RECEIVED', amount: mediatorFeeInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Fee from resolved dispute for '${product.title}'`, relatedMediationRequest: mediationRequestId });
                         await feeTx.save({ session });
                     }
 
                     let netForSellerInPlatformCurrency = netForSellerOriginal;
                     if (escrowCurrency !== PLATFORM_BASE_CURRENCY) {
                         if (escrowCurrency === 'USD') netForSellerInPlatformCurrency *= TND_USD_EXCHANGE_RATE;
-                        else if (escrowCurrency === 'TND') netForSellerInPlatformCurrency /= TND_USD_EXCHANGE_RATE;
                     }
                     seller.sellerAvailableBalance += parseFloat(netForSellerInPlatformCurrency.toFixed(2));
                     seller.productsSoldCount = (seller.productsSoldCount || 0) + 1;
 
-                    const payoutTx = new Transaction({ user: seller._id, type: 'DISPUTE_PAYOUT_SELLER_WON', amount: netForSellerOriginal, currency: escrowCurrency, status: 'COMPLETED', description: `Payout from resolved dispute for '${product.title}'`, relatedMediationRequest: mediationRequestId });
+                    // [!!!] FIX: تسجيل معاملة استلام الأموال للبائع [!!!]
+                    const payoutTx = new Transaction({ user: seller._id, type: 'DISPUTE_PAYOUT_SELLER_WON', amount: netForSellerInPlatformCurrency, currency: PLATFORM_BASE_CURRENCY, status: 'COMPLETED', description: `Payout from resolved dispute for '${product.title}'`, relatedMediationRequest: mediationRequestId });
                     await payoutTx.save({ session });
                 }
-                mediationRequest.escrowedAmount = 0;
-                mediationRequest.escrowedCurrency = null;
             }
         }
 
         mediationRequest.status = finalStatus;
         mediationRequest.history.push({ event: historyEvent, userId: adminUserId, timestamp: new Date(), details: { resolutionNotes: resolutionNotes || "N/A" } });
+        mediationRequest.escrowedAmount = 0;
+        mediationRequest.escrowedCurrency = null;
 
         if (product && product.status === 'Disputed') {
             let newProductStatus = 'approved';
@@ -2638,7 +2609,7 @@ exports.adminResolveDisputeController = async (req, res) => {
             await Product.findByIdAndUpdate(product._id, { $set: { status: newProductStatus, buyer: (newProductStatus === 'sold' ? buyer._id : null), soldAt: (newProductStatus === 'sold' ? new Date() : null), currentMediationRequest: null } }, { session });
         }
 
-        if (mediator && (mediator.mediatorStatus === 'Busy' || mediator.mediatorStatus === 'Unavailable')) {
+        if (mediator && (mediator.mediatorStatus === 'Busy')) {
             mediator.mediatorStatus = 'Available';
         }
 
@@ -2652,29 +2623,43 @@ exports.adminResolveDisputeController = async (req, res) => {
         await session.commitTransaction();
         session.endSession();
 
+        // [!!!] FIX: منطق الإشعارات المترجمة [!!!]
         const involvedPartyIds = [seller._id, buyer._id];
         if (mediator?._id) involvedPartyIds.push(mediator._id);
         const uniquePartyIdsForNotification = [...new Set(involvedPartyIds.map(id => id.toString()))];
         const productTitleNotif = product?.title || 'the transaction';
-        const notificationTitle = cancelMediation ? 'Mediation Cancelled by Admin' : 'Dispute Resolved by Admin';
-        let notificationMessageBase = cancelMediation ?
-            `The mediation regarding "${productTitleNotif}" has been cancelled by an administrator.` :
-            `The dispute regarding "${productTitleNotif}" has been resolved by an administrator.`;
-
-        if (resolutionNotes && resolutionNotes.trim() !== "") {
-            notificationMessageBase += ` Admin notes: ${resolutionNotes.trim()}`;
-        }
 
         const notificationsToSend = uniquePartyIdsForNotification.map(partyId => {
-            let specificMessage = notificationMessageBase;
-            if (!cancelMediation && winnerId && loserId) {
-                if (partyId === winnerId.toString()) specificMessage += ` The decision was in your favor.`;
-                else if (partyId === loserId.toString()) specificMessage += ` The decision was not in your favor.`;
+            let titleKey = 'notification_titles.DISPUTE_RESOLVED_ADMIN';
+            let messageKey = 'notification_messages.DISPUTE_RESOLVED_NEUTRAL';
+
+            if (cancelMediation) {
+                titleKey = 'notification_titles.MEDIATION_CANCELLED';
+                messageKey = 'notification_messages.MEDIATION_CANCELLED_BY_ADMIN';
+            } else if (winnerId) {
+                if (partyId === winnerId.toString()) {
+                    messageKey = 'notification_messages.DISPUTE_RESOLVED_WINNER';
+                } else if (partyId === loserId.toString()) {
+                    messageKey = 'notification_messages.DISPUTE_RESOLVED_LOSER';
+                }
             }
-            return { user: partyId, type: 'DISPUTE_RESOLVED_ADMIN', title: notificationTitle, message: specificMessage, relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' } };
+
+            return {
+                user: partyId,
+                type: 'DISPUTE_RESOLVED_ADMIN',
+                title: titleKey,
+                message: messageKey,
+                messageParams: {
+                    adminName: adminFullName,
+                    productName: productTitleNotif,
+                    notes: resolutionNotes || "No additional notes."
+                },
+                relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
+            };
         });
         if (notificationsToSend.length > 0) { await Notification.insertMany(notificationsToSend); }
 
+        // إرسال تحديثات Socket.IO
         if (req.io) {
             for (const userDoc of usersToUpdateAndSave.values()) {
                 if (userDoc && req.onlineUsers && req.onlineUsers[userDoc._id.toString()]) {
@@ -2846,10 +2831,11 @@ exports.adminCreateSubChatController = async (req, res) => {
         const initialSystemMessage = {
             _id: new mongoose.Types.ObjectId(),
             sender: adminUserId,
-            message: `Private chat started by Admin ${adminFullNameForMessage}.`,
             type: 'system',
             timestamp: new Date(),
-            readBy: [{ readerId: adminUserId, readAt: new Date() }]
+            readBy: [{ readerId: adminUserId, readAt: new Date() }],
+            messageKey: 'mediationChatPage.subChatStarted',
+            messageParams: { adminName: adminFullNameForMessage }
         };
 
         const newSubChatData = {

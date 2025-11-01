@@ -16,7 +16,7 @@ const ImageGalleryModal = ({ show, onHide, images, productName }) => {
       <Modal show={show} onHide={onHide} centered>
         <Modal.Header closeButton>
           <Modal.Title>
-            {t("imageGalleryModal.title", {
+            {t("comptes.imagePreview", {
               productName: productName || t("imageGalleryModal.product"),
             })}
           </Modal.Title>
@@ -49,7 +49,7 @@ const ImageGalleryModal = ({ show, onHide, images, productName }) => {
     >
       <Modal.Header closeButton>
         <Modal.Title>
-          {t("imageGalleryModal.title", {
+          {t("comptes.imagePreview", {
             productName: productName || t("imageGalleryModal.product"),
           })}
         </Modal.Title>

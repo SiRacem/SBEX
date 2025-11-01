@@ -86,6 +86,10 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
       });
 
   switch (transaction.type) {
+    case "MEDIATION_FEE_PAID_BY_BUYER":
+      IconComponent = FaBalanceScale; // نفس أيقونة رسوم الوساطة
+      iconColorClass = "text-danger"; // لأنها خصم
+      break;
     case "PRODUCT_SALE_FUNDS_PENDING":
       IconComponent = FaHourglassHalf;
       iconColorClass = "text-warning";

@@ -60,6 +60,18 @@ const AppWrapper = () => (
   </Router>
 );
 
+const RedirectWithToast = ({ to, messageKey }) => {
+  const { t } = useTranslation();
+  const location = useLocation();
+
+  useEffect(() => {
+    // استخدم toastId لمنع تكرار نفس الرسالة إذا حدث إعادة تصيير سريع
+    toast.warn(t(messageKey), { toastId: 'account-blocked-toast' });
+  }, [t, messageKey]); // سيعمل هذا مرة واحدة فقط عند عرض المكون
+
+  return <Navigate to={to} state={{ from: location }} replace />;
+};
+
 const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -82,13 +94,16 @@ const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user.blocked) {
+if (user.blocked) {
     const allowedBlockedPaths = ['/dashboard/profile', '/dashboard/support', '/dashboard/tickets', '/dashboard/support/tickets/:ticketId'];
-    if (allowedBlockedPaths.some(p => location.pathname.startsWith(p.replace(/:ticketId/, '')))) {
+    const isAllowed = allowedBlockedPaths.some(p => location.pathname.startsWith(p.replace(/:ticketId/, '')));
+    
+    if (isAllowed) {
       return children;
     }
-    toast.warn(t('auth.toast.accountBlocked'));
-    return <Navigate to="/dashboard/profile" replace />;
+
+    // استخدم المكون الجديد بدلاً من استدعاء toast و Navigate مباشرة
+    return <RedirectWithToast to="/dashboard/profile" messageKey="auth.toast.accountBlocked" />;
   }
 
   if (requiredRole && user.userRole !== requiredRole) {

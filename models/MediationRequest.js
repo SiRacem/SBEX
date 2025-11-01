@@ -4,9 +4,9 @@ const Schema = mongoose.Schema;
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const SubChatMessageSchema = new Schema({
-    sender: { 
-        type: Schema.Types.ObjectId, 
-        ref: 'User', 
+    sender: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
         required: function() { return this.type !== 'system'; } // The Fix
     },
     message: {
@@ -17,6 +17,15 @@ const SubChatMessageSchema = new Schema({
     timestamp: { type: Date, default: Date.now, index: true },
     type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
     imageUrl: { type: String, default: null },
+    // Add support for translation keys and parameters for system messages
+    messageKey: {
+        type: String,
+        required: function() { return this.type === 'system'; }
+    },
+    messageParams: {
+        type: Schema.Types.Mixed,
+        default: {}
+    },
     readBy: {
         type: [{
             readerId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -91,8 +100,8 @@ const MediationRequestSchema = new Schema({
     },
     chatMessages: [
         {
-            sender: { 
-                type: Schema.Types.ObjectId, 
+            sender: {
+                type: Schema.Types.ObjectId,
                 ref: 'User',
                 required: function() { return this.type !== 'system'; } // The Fix
             },
@@ -104,6 +113,15 @@ const MediationRequestSchema = new Schema({
             timestamp: { type: Date, default: Date.now, index: true },
             type: { type: String, enum: ['text', 'image', 'file', 'system'], default: 'text' },
             imageUrl: { type: String, default: null },
+            // Add support for translation keys and parameters for system messages
+            messageKey: {
+                type: String,
+                required: function() { return this.type === 'system'; }
+            },
+            messageParams: {
+                type: Schema.Types.Mixed,
+                default: {}
+            },
             readBy: {
                 type: [{
                     readerId: { type: Schema.Types.ObjectId, ref: 'User' },

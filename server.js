@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -178,18 +179,69 @@ io.on('connection', (socket) => {
 
                 if (updatedRequestWithMessageFlag) {
                     const adminName = socket.userFullNameForChat || 'Admin';
-                    const productTitle = request.product?.title || 'this dispute';
-                    const systemMessageContent = `🛡️ **${adminName} has joined the chat to review test one.** Please provide all necessary information.`;
+                    console.log(`[joinMediationChat] Creating admin join message for: ${adminName}`);
+                    
                     const systemMessage = {
                         _id: new mongoose.Types.ObjectId(),
-                        message: systemMessageContent,
                         type: 'system',
-                        timestamp: new Date()
+                        timestamp: new Date(),
+                        messageKey: 'mediationChatPage.adminJoined',
+                        messageParams: { adminName: adminName }
                     };
 
-                    await MediationRequest.updateOne({ _id: mediationRequestId }, { $push: { chatMessages: systemMessage } });
-                    io.to(mediationRequestId.toString()).emit('newMediationMessage', systemMessage);
-                    console.log(`[joinMediationChat] Admin join system message sent and saved successfully.`);
+                    console.log(`[joinMediationChat] System message object:`, systemMessage);
+
+                    // استخدم findOneAndUpdate للحصول على المستند المحدث مع الرسالة الجديدة
+                    const requestAfterMessage = await MediationRequest.findOneAndUpdate(
+                        { _id: mediationRequestId },
+                        { $push: { chatMessages: systemMessage } },
+                        { new: true }
+                    ).populate('chatMessages.sender', 'fullName avatarUrl _id');
+
+                    if (requestAfterMessage && requestAfterMessage.chatMessages) {
+                        const adminJoinMessage = requestAfterMessage.chatMessages[requestAfterMessage.chatMessages.length - 1];
+                        console.log(`[joinMediationChat] Saved message in database:`, {
+                            messageKey: adminJoinMessage.messageKey,
+                            messageParams: adminJoinMessage.messageParams,
+                            type: adminJoinMessage.type
+                        });
+                    }
+
+                    
+                    // أرسل رسالة انضمام المسؤول مباشرة للجميع
+                    if (requestAfterMessage && requestAfterMessage.chatMessages) {
+                        const adminJoinMessage = requestAfterMessage.chatMessages[requestAfterMessage.chatMessages.length - 1];
+                        console.log(`[joinMediationChat] Saved message in database:`, {
+                            messageKey: adminJoinMessage.messageKey,
+                            messageParams: adminJoinMessage.messageParams,
+                            type: adminJoinMessage.type
+                        });
+                        
+                        // إنشاء رسالة منظمة للإرسال المباشر
+                        const populatedSystemMessage = {
+                            _id: adminJoinMessage._id,
+                            type: 'system',
+                            message: '', // رسالة فارغة لأن المحتوى يأتي من الترجمة
+                            messageKey: adminJoinMessage.messageKey,
+                            messageParams: adminJoinMessage.messageParams,
+                            timestamp: adminJoinMessage.timestamp,
+                            sender: { _id: userIdToJoin, fullName: adminName, avatarUrl: socket.userAvatarUrlForChat },
+                            readBy: [{ readerId: userIdToJoin, readAt: new Date() }]
+                        };
+                        
+                        // إرسال الرسالة مباشرة لجميع المشاركين
+                        io.to(mediationRequestId.toString()).emit('newMediationMessage', populatedSystemMessage);
+                        console.log(`[joinMediationChat] Admin join system message sent directly to room`);
+                    }
+                    // أرسل حدثًا منفصلاً لتحديث قائمة الرسائل بأكملها لضمان التزامن
+                    if (requestAfterMessage) {
+                        io.to(mediationRequestId.toString()).emit('mediation_chat_history_updated', {
+                            mediationRequestId: mediationRequestId.toString(),
+                            messages: requestAfterMessage.chatMessages
+                        });
+                        console.log(`[joinMediationChat] Emitted mediation_chat_history_updated with ${requestAfterMessage.chatMessages.length} messages`);
+                    }
+                    console.log(`[joinMediationChat] Admin join system message sent and triggered history update.`);
                 } else {
                     console.log(`[joinMediationChat] Admin join message was already sent. Skipping.`);
                 }

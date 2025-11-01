@@ -84,11 +84,11 @@ export const loginUser = (loggedUser) => async (dispatch) => {
         const { data } = await axios.post("/user/login", loggedUser);
         if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
 
-        if (data.user.blocked) {
+        /* if (data.user.blocked) {
             const errorMessage = { key: "auth.toast.accountBlocked", fallback: 'Your account is blocked.' };
-            dispatch({ type: 'LOGIN_FAIL', payload: { errorMessage } });
+            dispatch({ type: 'LOGIN_FAIL', payload: { errorMessage } });loginUser 
             return; // توقف هنا
-        }
+        } */
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user._id);

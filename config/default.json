@@ -1,7 +1,7 @@
 {
-    "secret" : "appAuth",
+    "secret" : null,
     "PORT" : 8000,
-    "db" : "mongodb+srv://SiRacem:0000@onlinegroupdb.iqlvt.mongodb.net/SAEX?retryWrites=true&w=majority&appName=OnlineGroupDB",
+    "db" : null,
     "FRONTEND_URL": "http://localhost:3000",
     "TND_USD_EXCHANGE_RATE": 3.0,
     "PLATFORM_BASE_CURRENCY": "TND",

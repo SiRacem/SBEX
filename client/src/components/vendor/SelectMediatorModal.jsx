@@ -75,9 +75,9 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
               </h6>
             </Link>
             <small className="text-muted">
-              {t("selectMediatorModal.level", "Level")}:{" "}
+              {t("selectMediatorModal.level", "Level")} :{" "}
               {mediator.level || "N/A"} |{" "}
-              {t("selectMediatorModal.reputation", "Rep")}:
+              {t("selectMediatorModal.reputation", "Rep")} :{" "}
               {mediator.reputationPoints || 0} {/* استخدام reputationPoints */}
               {t("selectMediatorModal.points", "pts")}
             </small>
@@ -89,7 +89,7 @@ const MediatorCard = ({ mediator, onSelect, isSelected, loadingSelection }) => {
                 : "0.0"}
               {/* إذا كان الرقم موجوداً، قم بتنسيقه، وإلا اعرض 0.0 */}
               {/* -------------------- */}
-              <FaCheckCircle className="text-success ms-2 me-1" />
+              <FaCheckCircle className="text-success ms-2 me-1" />{" "}
               {mediator.successfulMediationsCount || 0}{" "}
               {t("selectMediatorModal.successful", "successful")}
             </div>

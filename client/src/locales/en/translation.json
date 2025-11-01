@@ -18,7 +18,7 @@
     "ticketUpdated": "Ticket #{{ticketId}} has been updated.",
     "blockedWarning": {
       "title": "Account Suspended",
-      "body": "Your account is currently blocked. Some features may be unavailable. If you believe this is an error, please",
+      "body": "Your account is currently blocked. Some features may be unavailable. If you believe this is an error, please ",
       "contactSupport": "contact support",
       "logout": "Logout",
       "orSeparator": " OR "
@@ -404,7 +404,14 @@
     "MEDIATION_FEE_RECEIVED": "You have received your mediation fee of {{feeAmount}} for '{{productName}}'.",
     "LEVEL_UP_REWARD": "You have received a reward of {{rewardAmount}} {{rewardCurrency}} for reaching Level {{level}}. Keep up the great work!",
     "RATING_RECEIVED": "{{raterName}} gave you a {{ratingType}} for '{{productName}}'. Comment: '{{comment}}'",
-    "PRODUCT_RECEIPT_CONFIRMED": "Buyer '{{buyerName}}' has confirmed receipt of '{{productName}}'. The transaction is now complete."
+    "PRODUCT_RECEIPT_CONFIRMED": "Buyer '{{buyerName}}' has confirmed receipt of '{{productName}}'. The transaction is now complete.",
+    "MEDIATION_CANCELLED_BY_ADMIN": "The mediation regarding '{{productName}}' has been cancelled by an administrator. Notes: {{notes}}",
+    "DISPUTE_RESOLVED_WINNER": "The dispute regarding '{{productName}}' has been resolved in your favor. Admin notes: {{notes}}",
+    "DISPUTE_RESOLVED_LOSER": "The dispute regarding '{{productName}}' was not resolved in your favor. Admin notes: {{notes}}",
+    "DISPUTE_RESOLVED_NEUTRAL": "The dispute regarding '{{productName}}' has been resolved by an administrator. Notes: {{notes}}",
+    "MEDIATION_DISPUTED_BY_YOU": "You have opened a dispute regarding '{{productName}}'. An admin will review the situation.",
+    "MEDIATION_DISPUTED_BY_OTHER": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. An admin will review the situation.",
+    "MEDIATION_DISPUTED_FOR_ADMIN": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. Your intervention is required."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -993,7 +1000,8 @@
     "notTheSellerForThisRequest": "Forbidden: You are not the seller for this request.",
     "actionNotAllowedAtStatus": "Action {{action}} is not allowed at current status '{{status}}'.",
     "notTheBuyerForThisRequest": "Forbidden: You are not the buyer for this request.",
-    "sessionExpired": "Your session has expired. Please log in again for security."
+    "sessionExpired": "Your session has expired. Please log in again for security.",
+    "forbiddenMediationAccess": "Forbidden: You are not authorized to access this mediation chat."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1319,7 +1327,8 @@
       "statsTitle": "Mediator Stats",
       "successfulMediations": "Successful Mediations:",
       "guaranteeHeld": "Guarantee Held:",
-      "withdrawButton": "Request Guarantee Withdrawal"
+      "withdrawButton": "Request Guarantee Withdrawal",
+      "statusUpdateSuccess": "Status updated successfully!"
     },
     "application": {
       "title": "Become a Mediator",
@@ -1442,7 +1451,8 @@
       "errorLoadFailed": "Could not load mediators.",
       "successSuggestions": "New suggestions loaded!",
       "infoNoNewMediators": "No new distinct mediators found.",
-      "assignSuccess": "Mediator assigned successfully and has been notified."
+      "assignSuccess": "Mediator assigned successfully and has been notified.",
+      "infoNoMediators": "No mediators available at the moment."
     }
   },
   "ticketsListPage": {
@@ -1716,7 +1726,9 @@
     "ratingsUnavailable": "Ratings will be available once the mediation is completed.",
     "noParticipantsSelected": "Please select at least one participant.",
     "couldNotOpenPrivateChatMessage": "Could not open private chat.",
-    "defaultPrivateChatTitle": "Private Discussion"
+    "defaultPrivateChatTitle": "Private Discussion",
+    "adminJoined": "🛡️ **{{adminName}}** has joined the chat to review the dispute. Please provide all necessary information.",
+    "subChatStarted": "Private chat started by Admin {{adminName}}."
   },
   "tickets": {
     "createSuccess": "Support ticket created successfully!",

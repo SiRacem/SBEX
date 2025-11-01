@@ -54,12 +54,26 @@ const userReducer = (state = initialState, action) => {
     case GET_PROFILE_REQUEST:
     case APPLY_MEDIATOR_REQUEST:
     case ADMIN_GET_MEDIATORS_REQUEST:
-    case UPDATE_MEDIATOR_STATUS_REQUEST:
       return {
         ...state,
         loading: true,
         errorMessage: null,
         successMessage: null
+      };
+
+    case UPDATE_MEDIATOR_STATUS_REQUEST:
+      return {
+        ...state,
+        loadingUpdateMediatorStatus: true, // هنا فقط نستخدم الحالة الخاصة
+        errorUpdateMediatorStatus: null,
+      };
+
+    case UPDATE_MEDIATOR_STATUS_SUCCESS:
+      return {
+        ...state,
+        loadingUpdateMediatorStatus: false,
+        user: state.user ? { ...state.user, mediatorStatus: payload.newStatus } : null,
+        successMessage: payload.successMessage,
       };
 
     // [!!!] حالة التحميل الخاصة بالصورة يجب أن تكون منفصلة [!!!]
@@ -215,9 +229,8 @@ const userReducer = (state = initialState, action) => {
     case UPDATE_MEDIATOR_STATUS_FAIL:
       return {
         ...state,
-        loading: false,
-        errorMessage: payload.errorMessage,
-        authChecked: true,
+        loadingUpdateMediatorStatus: false,
+        errorUpdateMediatorStatus: payload.errorMessage, // من الأفضل استخدام حالة خطأ منفصلة أيضاً
       };
 
     case LOGOUT:

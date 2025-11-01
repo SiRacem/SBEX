@@ -18,7 +18,7 @@
     "ticketUpdated": "Le ticket #{{ticketId}} a été mis à jour.",
     "blockedWarning": {
       "title": "Compte Suspendu",
-      "body": "Votre compte est actuellement bloqué. Certaines fonctionnalités peuvent être indisponibles. Si vous pensez qu'il s'agit d'une erreur, veuillez",
+      "body": "Votre compte est actuellement bloqué. Certaines fonctionnalités peuvent être indisponibles. Si vous pensez qu'il s'agit d'une erreur, veuillez ",
       "contactSupport": "contacter le support",
       "logout": "Déconnexion",
       "orSeparator": " OU "
@@ -402,7 +402,14 @@
     "LEVEL_UP_REWARD": "Vous avez reçu une récompense de {{rewardAmount}} {{rewardCurrency}} pour avoir atteint le niveau {{level}}. Continuez votre excellent travail !",
     "RATING_RECEIVED": "'{{raterName}}' vous a donné un {{ratingType}} pour '{{productName}}'. Commentaire : '{{comment}}'",
     "PRODUCT_RECEIPT_CONFIRMED": "L'acheteur '{{buyerName}}' a confirmé la réception de '{{productName}}'. Les fonds sont maintenant en attente de libération.",
-    "MEDIATOR_SELECTION_CONFIRMED": "Vous avez sélectionné avec succès {{mediatorName}} comme médiateur pour \"{{productName}}\". Il a été notifié."
+    "MEDIATOR_SELECTION_CONFIRMED": "Vous avez sélectionné avec succès {{mediatorName}} comme médiateur pour \"{{productName}}\". Il a été notifié.",
+    "MEDIATION_CANCELLED_BY_ADMIN": "La médiation concernant '{{productName}}' a été annulée par un administrateur. Notes : {{notes}}",
+    "DISPUTE_RESOLVED_WINNER": "Le litige concernant '{{productName}}' a été résolu en votre faveur. Notes de l'admin : {{notes}}",
+    "DISPUTE_RESOLVED_LOSER": "Le litige concernant '{{productName}}' n'a pas été résolu en votre faveur. Notes de l'admin : {{notes}}",
+    "DISPUTE_RESOLVED_NEUTRAL": "Le litige concernant '{{productName}}' a été résolu par un administrateur. Notes : {{notes}}",
+    "MEDIATION_DISPUTED_BY_YOU": "Vous avez ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
+    "MEDIATION_DISPUTED_BY_OTHER": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
+    "MEDIATION_DISPUTED_FOR_ADMIN": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Votre intervention est requise."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -991,7 +998,8 @@
     "notTheSellerForThisRequest": "Interdit : Vous n'êtes pas le vendeur de cette demande.",
     "actionNotAllowedAtStatus": "L'action {{action}} n'est pas autorisée à l'état actuel '{{status}}'.",
     "notTheBuyerForThisRequest": "Interdit : Vous n'êtes pas l'acheteur de cette demande.",
-    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter pour des raisons de sécurité."
+    "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter pour des raisons de sécurité.",
+    "forbiddenMediationAccess": "Interdit : Vous n'êtes pas autorisé à accéder à cette discussion de médiation."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -1317,7 +1325,8 @@
       "statsTitle": "Statistiques du Médiateur",
       "successfulMediations": "Médiations réussies :",
       "guaranteeHeld": "Garantie détenue :",
-      "withdrawButton": "Demander le retrait de la garantie"
+      "withdrawButton": "Demander le retrait de la garantie",
+      "statusUpdateSuccess": "Statut mis à jour avec succès !"
     },
     "application": {
       "title": "Devenir un Médiateur",
@@ -1439,7 +1448,8 @@
       "errorLoadFailed": "Impossible de charger les médiateurs.",
       "successSuggestions": "Nouvelles suggestions chargées !",
       "infoNoNewMediators": "Aucun nouveau médiateur trouvé.",
-      "assignSuccess": "Le médiateur a été assigné avec succès et a été notifié."
+      "assignSuccess": "Le médiateur a été assigné avec succès et a été notifié.",
+      "infoNoMediators": "Aucun médiateur disponible pour le moment."
     }
   },
   "ticketsListPage": {
@@ -1713,7 +1723,9 @@
     "ratingsUnavailable": "Les évaluations seront disponibles une fois la médiation terminée.",
     "noParticipantsSelected": "Veuillez sélectionner au moins un participant.",
     "couldNotOpenPrivateChatMessage": "Impossible d'ouvrir la discussion privée.",
-    "defaultPrivateChatTitle": "Discussion privée"
+    "defaultPrivateChatTitle": "Discussion privée",
+    "adminJoined": "🛡️ **{{adminName}}** a rejoint la discussion pour examiner le litige. Veuillez fournir toutes les informations nécessaires.",
+    "subChatStarted": "Discussion privée initiée par l'administrateur {{adminName}}."
   },
   "tickets": {
     "createSuccess": "Ticket de support créé avec succès !",

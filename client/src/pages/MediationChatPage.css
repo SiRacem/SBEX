@@ -533,6 +533,85 @@
 .participant-role-icon.buyer-icon {
     color: #e40606;
     /* Green for Buyer */
+/* Enhanced role badges for better visibility */
+.participant-role-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.participant-role-badge:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+
+.participant-role-badge .participant-role-icon {
+    color: white !important;
+    background: none !important;
+    position: relative;
+    bottom: auto;
+    right: auto;
+    margin: 0;
+    padding: 0;
+    font-size: 1em;
+    line-height: 1;
+}
+
+/* Make role badges more prominent in chat messages */
+.message-item .participant-role-badge {
+    width: 18px !important;
+    height: 18px !important;
+}
+
+.message-item .participant-role-badge .participant-role-icon {
+    font-size: 0.8em !important;
+}
+
+/* Specific colors for each role badge */
+.participant-role-badge.admin-badge {
+    background-color: #ffd700 !important; /* Gold */
+}
+
+.participant-role-badge.mediator-badge {
+    background-color: #17a2b8 !important; /* Teal */
+}
+
+.participant-role-badge.seller-badge {
+    background-color: #28a745 !important; /* Green */
+}
+
+.participant-role-badge.buyer-badge {
+    background-color: #007bff !important; /* Blue */
+}
+
+/* Read receipts should have smaller badges */
+.read-by-indicators-cluster .participant-role-badge {
+    width: 14px !important;
+    height: 14px !important;
+    border-width: 1px !important;
+}
+
+.read-by-indicators-cluster .participant-role-badge .participant-role-icon {
+    font-size: 0.7em !important;
+}
+
+/* Sidebar participant list enhanced badges */
+.participant-item .participant-role-badge {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+.participant-item .participant-role-badge .participant-role-icon {
+    font-size: 0.75em !important;
+}
 }
 
 /* Adjust size for smaller avatars like read-receipts */

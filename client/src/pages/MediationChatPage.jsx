@@ -73,34 +73,75 @@ const noUserAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const fallbackProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16px" fill="%23999">Error</text></svg>';
 
-  const getStatusInfo = (status, t) => {
-    let text = status;
-    let bg = "secondary";
-    const key = `mediationStatuses.${status}`;
-    const translatedText = t(key);
+// دالة مساعدة لتحويل كائن الخطأ إلى نص
+const formatErrorMessage = (error, t) => {
+  if (!error) return "";
+  
+  // إذا كان الخطأ نص عادي
+  if (typeof error === "string") return error;
+  
+  // إذا كان الخطأ كائن مع مفتاح ترجمة
+  if (error.key) {
+    const translated = t(error.key, error.params || {});
+    // إذا كان هناك ترجمة متاحة استخدمها، وإلا استخدم fallback
+    return translated !== error.key ? translated : (error.fallback || t("apiErrors.unknownError"));
+  }
+  
+  // إذا كان الخطأ كائن مع msg
+  if (error.msg) return error.msg;
+  
+  // في جميع الحالات الأخرى، حول إلى نص
+  return String(error);
+};
 
-    if (translatedText !== key) {
-        text = translatedText;
-    } else {
-        text = status ? status.replace(/([A-Z])/g, " $1").trim() : 'Unknown';
-    }
+const getStatusInfo = (status, t) => {
+  let text = status;
+  let bg = "secondary";
+  const key = `mediationStatuses.${status}`;
+  const translatedText = t(key);
 
-    switch (status) {
-        case 'PendingMediatorSelection': bg = "info"; break;
-        case 'MediatorAssigned': bg = "primary"; break;
-        case 'MediationOfferAccepted': bg = "warning"; break;
-        case 'EscrowFunded': bg = "info"; break;
-        case 'PartiesConfirmed': bg = "info"; break;
-        case 'InProgress': bg = "success"; break;
-        case 'Completed': bg = "dark"; break;
-        case 'Disputed': bg = "danger"; break;
-        case 'Cancelled': bg = "secondary"; break;
-        default: bg = "secondary";
-    }
-    
-    const textColor = (bg === 'warning' || bg === 'info' || bg === 'light') ? 'dark' : 'white';
-    
-    return { text, bg, textColor };
+  if (translatedText !== key) {
+    text = translatedText;
+  } else {
+    text = status ? status.replace(/([A-Z])/g, " $1").trim() : "Unknown";
+  }
+
+  switch (status) {
+    case "PendingMediatorSelection":
+      bg = "info";
+      break;
+    case "MediatorAssigned":
+      bg = "primary";
+      break;
+    case "MediationOfferAccepted":
+      bg = "warning";
+      break;
+    case "EscrowFunded":
+      bg = "info";
+      break;
+    case "PartiesConfirmed":
+      bg = "info";
+      break;
+    case "InProgress":
+      bg = "success";
+      break;
+    case "Completed":
+      bg = "dark";
+      break;
+    case "Disputed":
+      bg = "danger";
+      break;
+    case "Cancelled":
+      bg = "secondary";
+      break;
+    default:
+      bg = "secondary";
+  }
+
+  const textColor =
+    bg === "warning" || bg === "info" || bg === "light" ? "dark" : "white";
+
+  return { text, bg, textColor };
 };
 
 const SafeHtmlRenderer = ({ htmlContent }) => {
@@ -382,12 +423,6 @@ const MediationChatPage = () => {
     }
   }, [mediationRequestId, t]);
 
-  useEffect(() => {
-    if (mediationDetails) {
-      fetchChatHistory();
-    }
-  }, [mediationDetails, fetchChatHistory]);
-
   useEffect(() => () => dispatch(clearActiveMediationDetails()), [dispatch]);
 
   const scrollToBottom = useCallback(
@@ -408,43 +443,45 @@ const MediationChatPage = () => {
   }, [activeSubChatMessages, showSubChatModal, scrollToBottom]);
 
   useEffect(() => {
-    if (!socket?.connected || !mediationRequestId || !currentUserId) return;
-    socket.emit("joinMediationChat", {
-      mediationRequestId,
-      userId: currentUserId,
-      userRole: currentUserRole,
-    });
-    const handleJoinSuccess = (data) => {
-      if (data.mediationRequestId === mediationRequestId)
-        setHasJoinedRoom(true);
-    };
-    const handleJoinError = (error) => setChatError(error.message);
-    socket.on("joinedMediationChatSuccess", handleJoinSuccess);
-    socket.on("mediationChatError", handleJoinError);
-    return () => {
-      socket.emit("leaveMediationChat", { mediationRequestId });
-      setHasJoinedRoom(false);
-      socket.off("joinedMediationChatSuccess", handleJoinSuccess);
-      socket.off("mediationChatError", handleJoinError);
-    };
-  }, [socket, mediationRequestId, currentUserId, currentUserRole]);
+    if (!socket || !mediationRequestId || !currentUserId) {
+      return;
+    }
 
-  useEffect(() => {
-    if (!socket || !hasJoinedRoom) return;
-    const handleNewMessage = (message) =>
-      setMessages((prev) =>
-        prev.some((m) => m._id === message._id) ? prev : [...prev, message]
-      );
-    const handleTyping = (data) => {
-      if (data.userId !== currentUserId)
-        setTypingUsers((prev) => ({ ...prev, [data.userId]: { ...data } }));
+    const handleJoinSuccess = (data) => {
+      if (data.mediationRequestId === mediationRequestId) {
+        setHasJoinedRoom(true);
+        fetchChatHistory();
+      }
     };
-    const handleStopTyping = (data) =>
-      setTypingUsers((prev) => {
-        const u = { ...prev };
-        delete u[data.userId];
-        return u;
+    const handleJoinError = (error) => {
+      setChatError(error.message);
+      setHasJoinedRoom(false);
+      setIsLoadingHistory(false);
+    };
+    const handleNewMessage = (message) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === message._id)) return prev;
+        return [...prev, message];
       });
+    };
+    const handleHistoryUpdate = (data) => {
+      if (data.mediationRequestId === mediationRequestId) {
+        setMessages(Array.isArray(data.messages) ? data.messages : []);
+      }
+    };
+    const handleTyping = (data) => {
+      if (data.userId !== currentUserId) {
+        setTypingUsers((prev) => ({ ...prev, [data.userId]: data }));
+      }
+    };
+    const handleStopTyping = (data) => {
+      setTypingUsers((prev) => {
+        const newTypingUsers = { ...prev };
+        delete newTypingUsers[data.userId];
+        return newTypingUsers;
+      });
+    };
+
     const handleMessagesReadUpdate = (data) => {
       if (data.mediationRequestId === mediationRequestId) {
         setMessages((prevMessages) =>
@@ -468,17 +505,42 @@ const MediationChatPage = () => {
         );
       }
     };
+
+    // تسجيل المستمعين
+    socket.on("joinedMediationChatSuccess", handleJoinSuccess);
+    socket.on("mediationChatError", handleJoinError);
     socket.on("newMediationMessage", handleNewMessage);
+    socket.on("mediation_chat_history_updated", handleHistoryUpdate);
     socket.on("user_typing", handleTyping);
     socket.on("user_stopped_typing", handleStopTyping);
     socket.on("messages_read_update", handleMessagesReadUpdate);
+
+    // الانضمام للغرفة
+    socket.emit("joinMediationChat", {
+      mediationRequestId,
+      userId: currentUserId,
+      userRole: currentUserRole,
+    });
+
+    // دالة التنظيف
     return () => {
+      socket.emit("leaveMediationChat", { mediationRequestId });
+      setHasJoinedRoom(false);
+      socket.off("joinedMediationChatSuccess", handleJoinSuccess);
+      socket.off("mediationChatError", handleJoinError);
       socket.off("newMediationMessage", handleNewMessage);
+      socket.off("mediation_chat_history_updated", handleHistoryUpdate);
       socket.off("user_typing", handleTyping);
       socket.off("user_stopped_typing", handleStopTyping);
       socket.off("messages_read_update", handleMessagesReadUpdate);
     };
-  }, [socket, hasJoinedRoom, currentUserId, mediationRequestId]);
+  }, [
+    socket,
+    mediationRequestId,
+    currentUserId,
+    currentUserRole,
+    fetchChatHistory,
+  ]);
 
   useEffect(() => {
     if (
@@ -1614,7 +1676,7 @@ const MediationChatPage = () => {
       <Container className="py-5">
         <Alert variant="danger">
           <h4>{t("mediationChatPage.error")}</h4>
-          <p>{errorDetails}</p>
+          <p>{formatErrorMessage(errorDetails, t)}</p>
           <Button onClick={() => navigate(-1)}>
             {t("mediationChatPage.back")}
           </Button>
@@ -1714,14 +1776,24 @@ const MediationChatPage = () => {
                     msg.sender;
                   const avatarsForThisMessage =
                     lastReadMessageByParticipant[msg._id];
+
                   if (msg.type === "system") {
+                    // --- هذا هو التعديل الرئيسي ---
+                    // نتحقق إذا كانت الرسالة تحتوي على مفتاح ترجمة
+                    // إذا كان كذلك، نقوم بترجمتها أولاً. إذا لم يكن، نستخدم النص الموجود.
+                    const messageContent = msg.messageKey
+                      ? t(msg.messageKey, msg.messageParams)
+                      : msg.message;
+                    // --- نهاية التعديل ---
+
                     return (
                       <ListGroup.Item
                         key={msg._id || `msg-sys-${index}`}
                         className="message-item system-message text-center my-2 border-0"
                       >
                         <div className="d-inline-block p-2 rounded bg-light-subtle text-muted small">
-                          <SafeHtmlRenderer htmlContent={msg.message} />
+                          {/* نستخدم المتغير الجديد هنا */}
+                          <SafeHtmlRenderer htmlContent={messageContent} />
                           <div className="message-timestamp mt-1">
                             {formatMessageTimestampForDisplay(msg.timestamp, t)}
                           </div>
@@ -1729,6 +1801,7 @@ const MediationChatPage = () => {
                       </ListGroup.Item>
                     );
                   }
+
                   return (
                     <React.Fragment
                       key={msg._id || `msg-${index}-${msg.timestamp}`}
@@ -2005,7 +2078,7 @@ const MediationChatPage = () => {
         </Modal.Header>
         <Modal.Body>
           {errorCreatingSubChat && (
-            <Alert variant="danger">{errorCreatingSubChat}</Alert>
+            <Alert variant="danger">{formatErrorMessage(errorCreatingSubChat, t)}</Alert>
           )}
           <Form onSubmit={handleCreateSubChat}>
             <Form.Group className="mb-3">

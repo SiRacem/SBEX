@@ -381,6 +381,7 @@ exports.getDashboardTransactionsController = async (req, res) => {
         queryConditions.push({ user: userId, type: 'MEDIATION_FEE_RECEIVED' });
         queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_PENDING' });
         queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_RELEASED' });
+        queryConditions.push({ user: userId, type: 'MEDIATION_FEE_PAID_BY_BUYER' });
 
         // يمكنك إضافة شروط أخرى هنا إذا احتجت
         // ...
