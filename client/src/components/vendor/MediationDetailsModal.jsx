@@ -1,5 +1,5 @@
 // src/components/vendor/MediationDetailsModal.jsx
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   Button,
@@ -9,9 +9,10 @@ import {
   ListGroup,
   Badge,
 } from "react-bootstrap";
-import { FaCheck } from "react-icons/fa";
+import { FaCheck, FaInfoCircle } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import FeeExplanationModal from "../commun/FeeExplanationModal";
 
 const formatCurrencyLocal = (amount, currencyCode = "TND", i18nInstance) => {
   const num = Number(amount);
@@ -83,6 +84,7 @@ const getStatusBadge = (status, t) => {
 
 const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
   const { t, i18n } = useTranslation();
+  const [showFeeModal, setShowFeeModal] = useState(false);
 
   if (!product) return null;
 
@@ -289,6 +291,14 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                           )
                         </small>
                       )}
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 ms-2 text-info"
+                      onClick={() => setShowFeeModal(true)}
+                    >
+                      <FaInfoCircle />
+                    </Button>
                   </ListGroup.Item>
                   <ListGroup.Item>
                     <strong className="mx-1">
@@ -408,6 +418,12 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
             </ListGroup>
           </Col>
         </Row>
+        <FeeExplanationModal
+          show={showFeeModal}
+          onHide={() => setShowFeeModal(false)}
+          feeDetails={feeDetails} // [!!!] تمرير تفاصيل الرسوم المحسوبة
+          agreedPrice={agreedPrice} // [!!!] تمرير السعر المتفق عليه
+        />
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>

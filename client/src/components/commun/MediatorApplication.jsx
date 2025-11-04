@@ -26,6 +26,8 @@ import {
   FaStar,
   FaMoneyBillWave,
 } from "react-icons/fa";
+import FeeExplanationModal from "./FeeExplanationModal";
+import { FaInfoCircle } from "react-icons/fa";
 
 const MEDIATOR_REQUIRED_LEVEL = 5;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.0;
@@ -82,6 +84,8 @@ const MediatorApplication = () => {
   const [selectedStatus, setSelectedStatus] = useState(
     user?.mediatorStatus || "Unavailable"
   );
+
+  const [showFeeModal, setShowFeeModal] = useState(false);
 
   useEffect(() => {
     if (user?.mediatorStatus) {
@@ -182,6 +186,15 @@ const MediatorApplication = () => {
               </Alert>
             )}
             <div className="mt-4 border-top pt-3 mediator-stats">
+              <div className="text-center mb-2">
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setShowFeeModal(true)}
+                >
+                  {t("feeModal.viewStructure", "View Fee Structure")}
+                </Button>
+              </div>
               <p className="small text-muted mb-1 d-flex justify-content-between">
                 <span>
                   {t("mediatorApplication.qualified.successfulMediations")}
@@ -342,6 +355,11 @@ const MediatorApplication = () => {
           </Card.Body>
         </>
       )}
+      <FeeExplanationModal
+        show={showFeeModal}
+        onHide={() => setShowFeeModal(false)}
+        userRole="Mediator"
+      />
     </Card>
   );
 };

@@ -1402,7 +1402,9 @@
         "mediationInProgress": "La médiation est en cours.",
         "disputeActive": "Le litige est actif.",
         "communicate": "Communiquez avec l'acheteur et le médiateur.",
-        "sellerActionRequiredHTML": "<strong>Action requise :</strong> Veuillez confirmer que vous êtes prêt à continuer."
+        "sellerActionRequiredHTML": "<strong>Action requise :</strong> Veuillez confirmer que vous êtes prêt à continuer.",
+        "returnToSaleConfirm": "Êtes-vous sûr de vouloir remettre ce produit en vente ? Cela annulera le processus de médiation en cours.",
+        "returnToSaleSuccess": "Le produit a été remis en vente avec succès !"
       },
       "buttons": {
         "confirmReadiness": "Confirmer ma disponibilité",
@@ -1725,7 +1727,8 @@
     "couldNotOpenPrivateChatMessage": "Impossible d'ouvrir la discussion privée.",
     "defaultPrivateChatTitle": "Discussion privée",
     "adminJoined": "🛡️ **{{adminName}}** a rejoint la discussion pour examiner le litige. Veuillez fournir toutes les informations nécessaires.",
-    "subChatStarted": "Discussion privée initiée par l'administrateur {{adminName}}."
+    "subChatStarted": "Discussion privée initiée par l'administrateur {{adminName}}.",
+    "privateChatCreated": "Discussion privée créée avec {{participants}}."
   },
   "tickets": {
     "createSuccess": "Ticket de support créé avec succès !",
@@ -2136,6 +2139,79 @@
     "buyer": {
       "confirmSuccessWait": "Disponibilité confirmée et fonds mis sous séquestre avec succès. En attente de la confirmation du vendeur.",
       "confirmSuccessBothReady": "Disponibilité confirmée, fonds mis sous séquestre. Les deux parties sont prêtes. Le chat va bientôt commencer."
+    }
+  },
+  "statusModal": {
+    "default": {
+      "title": "Informations sur le statut",
+      "content": "Aucune information détaillée disponible pour ce statut."
+    },
+    "inProgress": {
+      "title": "Prochaines étapes possibles",
+      "subtitle": "La transaction est active. Il y a deux résultats possibles :",
+      "happyPath": {
+        "title": "Finalisation réussie",
+        "description": "Si l'acheteur confirme la réception du produit :",
+        "p1": "Les fonds séquestrés sont transférés au solde en attente du vendeur pour 48 heures par sécurité.",
+        "p2": "Le médiateur reçoit l'intégralité de ses frais.",
+        "p3": "Tous les participants (Acheteur, Vendeur, Médiateur) reçoivent +1 point de réputation.",
+        "p4": "Tous les participants pourront s'évaluer mutuellement."
+      },
+      "disputePath": {
+        "title": "Résolution de litige",
+        "description": "Si un litige est ouvert, un administrateur interviendra et prendra une décision finale :",
+        "ifBuyerWins": "Si l'admin décide en faveur de l'Acheteur :",
+        "buyerWinsResult": "L'acheteur est intégralement remboursé. Le vendeur perd 1 point de réputation, et l'acheteur gagne +1 point.",
+        "ifSellerWins": "Si l'admin décide en faveur du Vendeur :",
+        "sellerWinsResult": "Les fonds sont libérés pour le vendeur. L'acheteur perd 1 point de réputation, et le vendeur gagne +1 point.",
+        "ifCancelled": "Si l'admin annule la médiation :",
+        "cancelResult": "L'acheteur est remboursé (moins la moitié des frais du médiateur). Le médiateur reçoit la moitié de ses frais. Les points de réputation ne changent pas."
+      }
+    },
+    "completed": {
+      "title": "Transaction terminée",
+      "subtitle": "Voici un résumé des résultats finaux :",
+      "fundsOnHold": "Les fonds du vendeur sont en attente pendant 48 heures pour la protection de l'acheteur.",
+      "reputation": "L'acheteur, le vendeur et le médiateur ont chacun reçu +1 point de réputation.",
+      "ratingTitle": "Système d'évaluation :",
+      "like": "J'aime = +3 Points",
+      "dislike": "Je n'aime pas = -1 Point"
+    },
+    "adminResolved": {
+      "title": "Litige résolu par l'admin",
+      "description": "Un administrateur a examiné ce cas et a pris une décision finale.",
+      "decision": "Décision :",
+      "inFavorOf": "Décision en faveur de {{winner}}.",
+      "adminNotes": "Notes de l'administrateur",
+      "noNotes": "Aucune note spécifique n'a été fournie."
+    },
+    "cancelled": {
+      "title": "Médiation annulée",
+      "description": "Cette médiation a été annulée par : <strong>{{cancelledBy}}</strong>.",
+      "reasonTitle": "Raison fournie",
+      "noReason": "Aucune raison spécifique n'a été fournie.",
+      "unknown": "une partie inconnue"
+    }
+  },
+  "feeModal": {
+    "title": "Structure des frais de médiation",
+    "description": "Les frais du médiateur sont calculés sur la base du prix convenu du produit (converti en TND) et sont répartis à parts égales entre l'acheteur et le vendeur.",
+    "feeTiers": "Paliers de frais",
+    "priceRange": "Fourchette de prix (en TND)",
+    "commissionRate": "Taux de commission",
+    "viewStructure": "Voir la structure des frais",
+    "priceRangeUSD": "Fourchette de prix (en USD)",
+    "example": {
+      "title": "Exemple de calcul",
+      "dynamicScenario": "Basé sur le prix convenu de <1>{{price}}</1> pour cette transaction :",
+      "rate": "Taux applicable",
+      "totalFee": "Total des frais de médiation ({{price}} * {{percent}}%)",
+      "buyerShare": "Part de l'acheteur (Frais / 2)",
+      "sellerShare": "Part du vendeur (Frais / 2)",
+      "buyerTotal": "Montant total pour l'acheteur ({{price}} + {{share}})",
+      "sellerNet": "Montant net pour le vendeur ({{price}} - {{share}})",
+      "mediatorEarnings": "Gains totaux pour le médiateur",
+      "noData": "Les détails du calcul seront affichés une fois qu'un prix sera convenu."
     }
   }
 }

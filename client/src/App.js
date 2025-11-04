@@ -205,57 +205,147 @@ function App() {
   }, [dispatch, authChecked, user, userLoading]);
 
   useEffect(() => {
-    if (isAuth && currentUserId) {
-      if (!socketRef.current) {
-        const newSocket = io(SOCKET_SERVER_URL, {
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          auth: { token: localStorage.getItem("token") }
-        });
-
-        newSocket.on("connect", () => {
-          newSocket.emit("addUser", currentUserId);
-        });
-
-        newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
-          dispatch(setOnlineUsers(onlineUserIdsFromServer || []));
-        });
-        newSocket.on('user_balances_updated', (data) => { if (data?._id === currentUserId) dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data }); });
-        newSocket.on('dashboard_transactions_updated', () => {
-          dispatch(getTransactionsForDashboard());
-          dispatch(getTransactions());
-          dispatch(getUserWithdrawalRequests());
-          dispatch(getUserDepositRequests());
-        });
-        newSocket.on('user_profile_updated', (data) => { if (data?._id === currentUserId) dispatch(getProfile()); });
-        newSocket.on('new_pending_mediator_application', (data) => { if (user?.userRole === 'Admin') dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: data }); });
-        newSocket.on('refresh_mediator_applications_list', () => { if (user?.userRole === 'Admin') dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' }); });
-        newSocket.on('product_deleted', (data) => { if (data?.productId) dispatch({ type: 'DELETE_PRODUCT_SUCCESS', payload: { productId: data.productId } }); });
-        newSocket.on('new_mediation_request_for_buyer', (data) => { if (user?.userRole !== 'Admin') dispatch(getBuyerMediationRequestsAction(1, 10)); });
-        newSocket.on('mediation_request_updated', (data) => { if (data?.updatedMediationRequestData?._id) dispatch(updateMediationDetailsFromSocket(data.updatedMediationRequestData)); });
-        newSocket.on('product_updated', (data) => { if (data?._id) dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: data }); });
-        newSocket.on('new_assignment_for_mediator', (data) => { if (data?.newAssignmentData) dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData }); });
-        newSocket.on('new_notification', (notification) => {
-          toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right" });
-          dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
-        });
-        newSocket.on('dispute_opened_for_admin', () => { if (user?.userRole === 'Admin') dispatch(adminGetDisputedMediationsAction(1, 1)); });
-        newSocket.on('update_unread_summary', (data) => {
-          if (window.location.pathname !== `/dashboard/mediation-chat/${data.mediationId}`) {
-            dispatch(updateUnreadCountFromSocket(data.mediationId, data.newUnreadCount));
-          }
-        });
-        newSocket.on('new_admin_sub_chat_message', (data) => { if (data?.message) dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId)); });
-        newSocket.on('new_ticket_created_for_admin', (ticket) => { if (user?.userRole === 'Admin' || user?.userRole === 'Support') dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: ticket }); });
-        newSocket.on('ticket_updated', (data) => dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket }));
-        newSocket.on('connect_error', (err) => { if (err.message.includes('unauthorized')) dispatch(logoutUser()); });
-        socketRef.current = newSocket;
+    // إنشاء الاتصال دائمًا عند تحميل المكون لأول مرة
+    const newSocket = io(SOCKET_SERVER_URL, {
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      auth: (cb) => {
+        const token = localStorage.getItem("token");
+        cb({ token: token });
       }
-    } else {
-      if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; }
+    });
+    socketRef.current = newSocket;
+
+    // التعامل مع أحداث الاتصال والفصل
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
+      // فقط إذا كان المستخدم مسجلاً، أرسل بياناته للخادم
+      if (isAuth && currentUserId) {
+        newSocket.emit("addUser", currentUserId);
+      }
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error("Socket connection error:", err.message);
+      // إذا كان الخطأ بسبب عدم صلاحية التوكن، قم بتسجيل الخروج
+      if (err.message.includes('unauthorized')) {
+        dispatch(logoutUser());
+      }
+    });
+
+    // --- تسجيل المستمعين للأحداث العامة (للجميع، مسجلين وزوار) ---
+    newSocket.on('product_updated', (updatedProduct) => {
+      console.log('[Socket] Received product_updated:', updatedProduct?._id);
+      if (updatedProduct?._id) {
+        dispatch({ type: 'UPDATE_SINGLE_PRODUCT_IN_STORE', payload: updatedProduct });
+      }
+    });
+
+    newSocket.on('product_deleted', (data) => {
+      console.log('[Socket] Received product_deleted:', data?.productId);
+      if (data?.productId) {
+        dispatch({ type: 'DELETE_PRODUCT_SUCCESS', payload: { productId: data.productId } });
+      }
+    });
+
+    newSocket.on('onlineUsersListUpdated', (onlineUserIdsFromServer) => {
+      dispatch(setOnlineUsers(onlineUserIdsFromServer || []));
+    });
+
+    // --- تسجيل المستمعين الخاصة بالمستخدم المسجل فقط ---
+    if (isAuth && currentUserId) {
+      newSocket.on('user_balances_updated', (data) => {
+        if (data?._id === currentUserId) {
+          dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data });
+        }
+      });
+
+      newSocket.on('dashboard_transactions_updated', () => {
+        dispatch(getTransactionsForDashboard());
+        dispatch(getTransactions());
+        dispatch(getUserWithdrawalRequests());
+        dispatch(getUserDepositRequests());
+      });
+
+      newSocket.on('user_profile_updated', (data) => {
+        if (data?._id === currentUserId) {
+          dispatch(getProfile());
+        }
+      });
+
+      newSocket.on('new_pending_mediator_application', (data) => {
+        if (user?.userRole === 'Admin') {
+          dispatch({ type: 'ADMIN_ADD_PENDING_MEDIATOR_APPLICATION', payload: data });
+        }
+      });
+
+      newSocket.on('refresh_mediator_applications_list', () => {
+        if (user?.userRole === 'Admin') {
+          dispatch({ type: 'ADMIN_REFRESH_MEDIATOR_APPLICATIONS' });
+        }
+      });
+
+      newSocket.on('new_mediation_request_for_buyer', (data) => {
+        if (user?.userRole !== 'Admin') {
+          dispatch(getBuyerMediationRequestsAction(1, 10));
+        }
+      });
+
+      newSocket.on('mediation_request_updated', (data) => {
+        if (data?.updatedMediationRequestData?._id) {
+          dispatch(updateMediationDetailsFromSocket(data.updatedMediationRequestData));
+        }
+      });
+
+      newSocket.on('new_assignment_for_mediator', (data) => {
+        if (data?.newAssignmentData) {
+          dispatch({ type: 'ADD_PENDING_ASSIGNMENT_FROM_SOCKET', payload: data.newAssignmentData });
+        }
+      });
+
+      newSocket.on('new_notification', (notification) => {
+        toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right" });
+        dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
+      });
+
+      newSocket.on('dispute_opened_for_admin', () => {
+        if (user?.userRole === 'Admin') {
+          dispatch(adminGetDisputedMediationsAction(1, 1));
+        }
+      });
+
+      newSocket.on('update_unread_summary', (data) => {
+        if (window.location.pathname !== `/dashboard/mediation-chat/${data.mediationId}`) {
+          dispatch(updateUnreadCountFromSocket(data.mediationId, data.newUnreadCount));
+        }
+      });
+
+      newSocket.on('new_admin_sub_chat_message', (data) => {
+        if (data?.message) {
+          dispatch(handleNewAdminSubChatMessageSocket(data, currentUserId));
+        }
+      });
+
+      newSocket.on('new_ticket_created_for_admin', (ticket) => {
+        if (user?.userRole === 'Admin' || user?.userRole === 'Support') {
+          dispatch({ type: 'ADMIN_ADD_NEW_TICKET_REALTIME', payload: ticket });
+        }
+      });
+
+      newSocket.on('ticket_updated', (data) => {
+        dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
+      });
     }
-    return () => { if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; } };
-  }, [isAuth, currentUserId, dispatch, user, t]);
+
+    // --- دالة التنظيف ---
+    return () => {
+      console.log("Disconnecting socket:", newSocket.id);
+      if (newSocket) {
+        newSocket.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [isAuth, currentUserId, dispatch, t, user?.userRole]);
 
   useEffect(() => {
     // 1. Interceptor للتعامل مع أخطاء 401

@@ -34,6 +34,8 @@ import {
 import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator";
 import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal";
 import ViewMediationDetailsModal from "./ViewMediationDetailsModal";
+import FeeExplanationModal from "../components/commun/FeeExplanationModal";
+import { FaInfoCircle } from "react-icons/fa";
 
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="120" viewBox="0 0 150 120"><rect width="150" height="120" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
@@ -87,6 +89,7 @@ const MyMediationRequestsPage = () => {
   const [showBuyerRejectModal, setShowBuyerRejectModal] = useState(false);
   const [selectedRequestToRejectByBuyer, setSelectedRequestToRejectByBuyer] =
     useState(null);
+    const [showFeeModal, setShowFeeModal] = useState(false);
 
   useEffect(() => {
     if (currentUser?._id) {
@@ -426,6 +429,13 @@ const MyMediationRequestsPage = () => {
                           <strong>
                             {t("mediationRequestsPage.card.escrowTitle")}
                           </strong>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="p-0 ms-2"
+                            onClick={() => setShowFeeModal(true)}
+                          ></Button>
+                          <FaInfoCircle />
                         </div>
                         <div>
                           {t("mediationRequestsPage.card.escrowPrice")}{" "}
@@ -684,6 +694,11 @@ const MyMediationRequestsPage = () => {
           request={selectedRequestForDetails}
         />
       )}
+      <FeeExplanationModal
+        show={showFeeModal}
+        onHide={() => setShowFeeModal(false)}
+        userRole="Buyer"
+      />
     </Container>
   );
 };

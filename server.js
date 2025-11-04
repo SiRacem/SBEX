@@ -180,7 +180,7 @@ io.on('connection', (socket) => {
                 if (updatedRequestWithMessageFlag) {
                     const adminName = socket.userFullNameForChat || 'Admin';
                     console.log(`[joinMediationChat] Creating admin join message for: ${adminName}`);
-                    
+
                     const systemMessage = {
                         _id: new mongoose.Types.ObjectId(),
                         type: 'system',
@@ -207,7 +207,7 @@ io.on('connection', (socket) => {
                         });
                     }
 
-                    
+
                     // أرسل رسالة انضمام المسؤول مباشرة للجميع
                     if (requestAfterMessage && requestAfterMessage.chatMessages) {
                         const adminJoinMessage = requestAfterMessage.chatMessages[requestAfterMessage.chatMessages.length - 1];
@@ -216,7 +216,7 @@ io.on('connection', (socket) => {
                             messageParams: adminJoinMessage.messageParams,
                             type: adminJoinMessage.type
                         });
-                        
+
                         // إنشاء رسالة منظمة للإرسال المباشر
                         const populatedSystemMessage = {
                             _id: adminJoinMessage._id,
@@ -228,7 +228,7 @@ io.on('connection', (socket) => {
                             sender: { _id: userIdToJoin, fullName: adminName, avatarUrl: socket.userAvatarUrlForChat },
                             readBy: [{ readerId: userIdToJoin, readAt: new Date() }]
                         };
-                        
+
                         // إرسال الرسالة مباشرة لجميع المشاركين
                         io.to(mediationRequestId.toString()).emit('newMediationMessage', populatedSystemMessage);
                         console.log(`[joinMediationChat] Admin join system message sent directly to room`);
@@ -420,13 +420,18 @@ io.on('connection', (socket) => {
             const productTitle = requestWithSubChat.product?.title || 'the dispute';
             const subChatTitleForNotif = subChat.title || 'Private Chat';
             const senderName = socket.userFullNameForChat || 'A user';
-            const notificationTitle = `New Message in: ${subChatTitleForNotif}`;
-            const notificationMessage = `From ${senderName} regarding the dispute for "${productTitle}".`;
+
+            // لا نستخدم نصوص ثابتة، بل مفاتيح ترجمة
             const notificationsToCreate = uniqueRecipientIds.map(userId => ({
                 user: userId,
                 type: 'NEW_ADMIN_SUBCHAT_MESSAGE',
-                title: notificationTitle,
-                message: notificationMessage,
+                title: 'notification_titles.NEW_ADMIN_SUBCHAT_MESSAGE',
+                message: 'notification_messages.NEW_ADMIN_SUBCHAT_MESSAGE',
+                messageParams: {
+                    chatTitle: subChatTitleForNotif,
+                    senderName: senderName,
+                    productName: productTitle
+                },
                 relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' },
                 metadata: { subChatId: subChatId.toString() }
             }));

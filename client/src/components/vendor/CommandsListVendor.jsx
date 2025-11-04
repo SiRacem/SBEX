@@ -26,6 +26,7 @@ import {
   FaTimesCircle,
   FaHandshake,
   FaExclamationTriangle,
+  FaInfoCircle
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
@@ -44,6 +45,7 @@ import { calculateMediatorFeeDetails } from "./feeCalculator";
 import axios from "axios";
 import ProductEntry from "./ProductEntry";
 import "./CountdownCircle.css";
+import FeeExplanationModal from "../commun/FeeExplanationModal";
 
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
@@ -88,6 +90,7 @@ const CommandsListVendor = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedProductImages, setSelectedProductImages] = useState([]);
+  const [showFeeModal, setShowFeeModal] = useState(false);
 
   const formatCurrency = useCallback(
     (amount, currencyCode = "TND") => {
@@ -649,6 +652,12 @@ const CommandsListVendor = () => {
             onRequestNewSuggestions={() => {
               fetchRandomMediators(productForMediationAction);
             }}
+            onShowFeeInfo={() => setShowFeeModal(true)}
+          />
+          <FeeExplanationModal
+            show={showFeeModal}
+            onHide={() => setShowFeeModal(false)}
+            userRole="Seller"
           />
           <MediationDetailsModal
             show={showMediationDetailsModal}

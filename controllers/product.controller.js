@@ -784,7 +784,81 @@ exports.markProductAsSold = async (req, res) => {
     }
 };
 
-// --- [!!!] تعديل كامل لدالة قبول المزايدة لتبدأ عملية اختيار الوسيط [!!!] ---
+// --- Return Product To Sale ---
+exports.returnToSale = async (req, res) => {
+    const { productId } = req.params;
+    const sellerId = req.user._id;
+    console.log(`--- Controller: returnToSale for Product: ${productId} by Seller: ${sellerId} ---`);
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const product = await Product.findById(productId).session(session);
+        if (!product) throw new Error("Product not found.");
+        if (!product.user.equals(sellerId)) throw new Error("Forbidden: You are not the seller of this product.");
+        
+        // تحقق من أن المنتج في حالة تسمح بالإرجاع
+        if (product.status !== 'PendingMediatorSelection') {
+            throw new Error(`Cannot return to sale. Product status is '${product.status}'.`);
+        }
+
+        const mediationRequestId = product.currentMediationRequest;
+
+        // إعادة تعيين المنتج
+        product.status = 'approved';
+        product.buyer = null;
+        product.agreedPrice = null;
+        product.soldCurrency = null;
+        product.currentMediationRequest = null;
+        await product.save({ session });
+
+        // إلغاء طلب الوساطة المرتبط
+        if (mediationRequestId) {
+            await MediationRequest.findByIdAndUpdate(
+                mediationRequestId,
+                { 
+                    $set: { 
+                        status: 'Cancelled',
+                        cancellationDetails: {
+                            cancelledBy: sellerId,
+                            cancelledByType: 'Seller',
+                            reason: 'Product was returned to sale by the seller.',
+                            cancelledAt: new Date()
+                        }
+                    } 
+                },
+                { session }
+            );
+        }
+
+        await session.commitTransaction();
+
+        const finalUpdatedProduct = await Product.findById(productId)
+            .populate('user bids.user buyer currentMediationRequest')
+            .lean();
+
+        if (req.io) {
+            req.io.emit('product_updated', finalUpdatedProduct);
+            console.log(`[Socket] Emitted 'product_updated' for product ${productId} after returning to sale.`);
+        }
+        
+        res.status(200).json({
+            msg: "Product has been returned to sale successfully.",
+            translationKey: "myProductsPage.productCard.alerts.returnToSaleSuccess", // للإشعار المترجم
+            updatedProduct: finalUpdatedProduct
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        console.error("--- Controller: returnToSale ERROR ---", error);
+        res.status(400).json({ msg: error.message || 'Failed to return product to sale.' });
+    } finally {
+        if (session) await session.endSession();
+    }
+};
+
+// --- Accept Bid ---
 exports.acceptBid = async (req, res) => {
     const { productId } = req.params;
     const sellerId = req.user._id;
@@ -855,6 +929,7 @@ exports.acceptBid = async (req, res) => {
 
         if (req.io) {
             req.io.emit('product_updated', finalUpdatedProduct);
+            console.log(`[Socket] Emitted 'product_updated' for product ${productId} after bid acceptance.`);
         }
 
         res.status(200).json({

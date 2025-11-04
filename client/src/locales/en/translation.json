@@ -274,7 +274,6 @@
     "DISPUTE_RESOLVED_ADMIN": "Dispute Resolved by Admin",
     "MEDIATION_CANCELLATION_CONFIRMED": "Mediation Cancellation Confirmed",
     "MEDIATION_REJECTED_BY_BUYER": "Buyer Cancelled Mediation",
-    "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message from Admin",
     "NEW_MEDIATOR_APPLICATION": "New Mediator Application",
     "MEDIATOR_APP_APPROVED": "Mediator Application Approved!",
     "MEDIATOR_APP_REJECTED": "Mediator Application Rejected",
@@ -320,7 +319,8 @@
     "MEDIATION_STARTED": "Mediation Started!",
     "NEW_CHAT_MESSAGE": "New Message: {{productName}}",
     "LEVEL_UP_REWARD": "Congratulations! You've reached Level {{level}}! 🎉",
-    "RATING_RECEIVED": "New Rating Received: {{ratingType}}!"
+    "RATING_RECEIVED": "New Rating Received: {{ratingType}}!",
+    "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message in: {{chatTitle}}"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -1405,7 +1405,9 @@
         "mediationInProgress": "Mediation is in progress.",
         "disputeActive": "Dispute is active.",
         "communicate": "Communicate with buyer and mediator.",
-        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> الرجاء تأكيد جاهزيتك للمتابعة."
+        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> الرجاء تأكيد جاهزيتك للمتابعة.",
+        "returnToSaleConfirm": "Are you sure you want to return this product to sale? This will cancel the current mediation process.",
+        "returnToSaleSuccess": "Product has been returned to sale successfully!"
       },
       "buttons": {
         "confirmReadiness": "Confirm My Readiness",
@@ -1728,7 +1730,8 @@
     "couldNotOpenPrivateChatMessage": "Could not open private chat.",
     "defaultPrivateChatTitle": "Private Discussion",
     "adminJoined": "🛡️ **{{adminName}}** has joined the chat to review the dispute. Please provide all necessary information.",
-    "subChatStarted": "Private chat started by Admin {{adminName}}."
+    "subChatStarted": "Private chat started by Admin {{adminName}}.",
+    "privateChatCreated": "Private chat created successfully."
   },
   "tickets": {
     "createSuccess": "Support ticket created successfully!",
@@ -2139,6 +2142,81 @@
     "buyer": {
       "confirmSuccessWait": "Readiness confirmed and funds escrowed successfully. Waiting for seller to confirm.",
       "confirmSuccessBothReady": "Readiness confirmed, funds escrowed. Both parties are ready. The chat will open shortly."
+    }
+  },
+  "statusModal": {
+    "default": {
+      "title": "Status Information",
+      "content": "No detailed explanation available for this status."
+    },
+    "inProgress": {
+      "title": "What Happens Next?",
+      "subtitle": "The transaction is active. There are two possible outcomes:",
+      "happyPath": {
+        "title": "Successful Completion",
+        "description": "If the buyer confirms receipt of the product:",
+        "p1": "The escrowed funds are transferred to the seller's on-hold balance for 48 hours for security.",
+        "p2": "The mediator receives their full fee.",
+        "p3": "All participants (Buyer, Seller, Mediator) receive +1 reputation point.",
+        "p4": "All participants will be able to rate each other."
+      },
+      "disputePath": {
+        "title": "Dispute Resolution",
+        "description": "If a dispute is opened, an admin will intervene and make a final decision:",
+        "ifBuyerWins": "If Admin rules for the Buyer:",
+        "buyerWinsResult": "The buyer is fully refunded. The seller loses 1 reputation point, and the buyer gains +1 point.",
+        "ifSellerWins": "If Admin rules for the Seller:",
+        "sellerWinsResult": "The funds are released to the seller. The buyer loses 1 reputation point, and the seller gains +1 point.",
+        "ifCancelled": "If Admin cancels the mediation:",
+        "cancelResult": "The buyer is refunded (minus half of the mediator fee). The mediator receives half their fee. No reputation points are changed."
+      }
+    },
+    "completed": {
+      "title": "Transaction Completed",
+      "subtitle": "Here is a summary of the final results:",
+      "fundsOnHold": "Seller's funds are on-hold for 48 hours for buyer protection.",
+      "reputation": "Buyer, Seller, and Mediator each received +1 reputation point.",
+      "ratingTitle": "Rating System:",
+      "like": "Like = +3 Points",
+      "dislike": "Dislike = -1 Point"
+    },
+    "adminResolved": {
+      "title": "Dispute Resolved by Admin",
+      "description": "An administrator has reviewed this case and made a final decision.",
+      "decision": "Decision:",
+      "inFavorOf": "Ruled in favor of the {{winner}}.",
+      "adminNotes": "Administrator Notes",
+      "noNotes": "No specific notes were provided."
+    },
+    "cancelled": {
+      "title": "Mediation Cancelled",
+      "description": "This mediation was cancelled by: <strong>{{cancelledBy}}</strong>.",
+      "reasonTitle": "Reason Provided",
+      "noReason": "No specific reason was provided.",
+      "unknown": "an unknown party"
+    }
+  },
+  "feeModal": {
+    "title": "Mediator Fee Structure",
+    "description": "The mediator's fee is calculated based on the agreed price of the product (converted to TND) and is split equally between the buyer and the seller.",
+    "feeTiers": "Fee Tiers",
+    "priceRange": "Price Range (in TND)",
+    "commissionRate": "Commission Rate",
+    "viewStructure": "View Fee Structure",
+    "priceRangeUSD": "Price Range (in USD)",
+    "example": {
+      "example": {
+        "title": "Example Calculation",
+        "dynamicScenario": "Based on the agreed price of <1>{{price}}</1> for this transaction:",
+        "rate": "Applicable Rate",
+        "totalFee": "Total Mediator Fee ({{price}} * {{percent}}%)",
+        "buyerShare": "Buyer's Share (Fee / 2)",
+        "sellerShare": "Seller's Share (Fee / 2)",
+        "buyerTotal": "Total amount Buyer pays ({{price}} + {{share}})",
+        "sellerNet": "Net amount Seller receives ({{price}} - {{share}})",
+        "mediatorEarnings": "Total earnings for the Mediator",
+        "noData": "Calculation details will be shown once a price is agreed upon."
+      }
     }
   }
 }

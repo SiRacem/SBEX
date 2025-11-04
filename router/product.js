@@ -19,6 +19,7 @@ const {
     markProductAsSold,
     acceptBid,
     rejectBid,
+    returnToSale
 } = require('../controllers/product.controller');
 
 const router = express.Router();
@@ -41,6 +42,7 @@ router.post('/:productId/bids', verifyAuth, placeBidOnProduct); // وضع مزا
 // يستخدم PUT لأنه يعدل حالة المنتج والمستخدمين
 router.put('/:productId/accept-bid', verifyAuth, acceptBid);
 router.put('/:productId/reject-bid', verifyAuth, rejectBid);
+router.put("/:productId/return-to-sale", verifyAuth, returnToSale); // إرجاع المنتج للبيع من جديد
 
 // --- [!] إضافة مسار تحديد المنتج كمباع (يحتاج تسجيل دخول البائع) ---
 router.put('/:productId/sell', verifyAuth, markProductAsSold);

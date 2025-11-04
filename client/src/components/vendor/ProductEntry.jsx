@@ -1,6 +1,6 @@
 // client/src/components/vendor/ProductEntry.jsx
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { useDispatch } from "react-redux";
 import {
   Card,
@@ -34,6 +34,7 @@ import {
 
 import { updateProductLocally } from "../../redux/actions/productAction";
 import CountdownCircle from "./CountdownCircle";
+import axios from "axios";
 
 const noImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">?</text></svg>';
@@ -104,21 +105,40 @@ const ProductEntry = ({
     [dispatch, product.currentMediationRequest, t]
   );
 
-  const handleReturnToSale = () => {
-    // هنا يمكنك إضافة منطق استدعاء API لإعادة المنتج للبيع
-    // حالياً، سنقوم بتحديث محلي كحل مؤقت
-    if (product && product._id) {
-      dispatch(
-        updateProductLocally(product._id, {
-          status: "approved",
-          currentMediationRequest: null,
-          buyer: null,
-          agreedPrice: null,
-        })
-      );
-      toast.info("Product has been returned to sale. (Local Update)");
+  const [isReturningToSale, setIsReturningToSale] = useState(false);
+
+  const handleReturnToSale = useCallback(async () => {
+    if (!product || !product._id || isReturningToSale) return;
+
+    if (
+      window.confirm(t("myProductsPage.productCard.alerts.returnToSaleConfirm"))
+    ) {
+      setIsReturningToSale(true);
+      try {
+        const token = localStorage.getItem("token");
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const response = await axios.put(
+          `/product/${product._id}/return-to-sale`,
+          {},
+          config
+        );
+
+        // لا نحتاج لـ dispatch محلي، السوكيت سيقوم بالتحديث
+        // نعرض فقط رسالة النجاح
+        if (response.data.translationKey) {
+          toast.success(t(response.data.translationKey));
+        } else {
+          toast.success(response.data.msg);
+        }
+      } catch (error) {
+        toast.error(
+          error.response?.data?.msg || "Failed to return product to sale."
+        );
+      } finally {
+        setIsReturningToSale(false);
+      }
     }
-  };
+  }, [product, isReturningToSale, t]);
 
   if (!product || !product._id) return null;
 
@@ -484,8 +504,13 @@ const ProductEntry = ({
                             size="sm"
                             className="p-1 text-warning"
                             onClick={handleReturnToSale}
+                            disabled={isReturningToSale}
                           >
-                            <FaUndo />
+                            {isReturningToSale ? (
+                              <Spinner size="sm" />
+                            ) : (
+                              <FaUndo />
+                            )}
                           </Button>
                         </OverlayTrigger>
                       )}
@@ -500,9 +525,7 @@ const ProductEntry = ({
                         variant="link"
                         size="sm"
                         className="p-1 text-secondary"
-                        onClick={() =>
-                          navigate(`/dashboard/edit-product/${product._id}`)
-                        }
+                        onClick={() => navigate(`/dashboard/comptes`)}
                       >
                         <FaEdit />
                       </Button>
