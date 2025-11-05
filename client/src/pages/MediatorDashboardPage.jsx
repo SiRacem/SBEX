@@ -33,9 +33,12 @@ import {
   FaCheck,
   FaTimes,
   FaHourglassHalf,
+  FaInfoCircle,
 } from "react-icons/fa";
 import "./MediatorDashboardPage.css";
 import { useTranslation } from "react-i18next";
+import FeeExplanationModal from "../components/commun/FeeExplanationModal";
+import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator";
 
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
@@ -53,23 +56,18 @@ const MediatorDashboardPage = () => {
     (amount, currencyCode = "TND") => {
       const num = Number(amount);
       if (isNaN(num) || amount == null) return "N/A";
-      let safeCurrencyCode = currencyCode;
-      if (typeof currencyCode !== "string" || currencyCode.trim() === "") {
-        safeCurrencyCode = "TND";
-      }
+
+      const locale = currencyCode.toUpperCase() === "USD" ? "en-US" : "fr-TN";
+
       try {
-        return new Intl.NumberFormat(i18n.language, {
+        return new Intl.NumberFormat(locale, {
           style: "currency",
-          currency: safeCurrencyCode,
+          currency: currencyCode,
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }).format(num);
       } catch (error) {
-        console.warn(
-          `Currency formatting error for ${safeCurrencyCode}:`,
-          error
-        );
-        return `${num.toFixed(2)} ${safeCurrencyCode}`;
+        return `${num.toFixed(2)} ${currencyCode}`;
       }
     },
     [i18n.language]
@@ -89,6 +87,9 @@ const MediatorDashboardPage = () => {
 
   const currentUser = useSelector((state) => state.userReducer.user);
   const [activeTabKey, setActiveTabKey] = useState("pendingDecision");
+  const [showFeeModal, setShowFeeModal] = useState(false); // [!!!] حالة المودال الجديد
+  const [feeDetailsForModal, setFeeDetailsForModal] = useState(null); // [!!!] بيانات للمودال
+  const [priceForModal, setPriceForModal] = useState(0); // [!!!] سعر للمودال
 
   const pendingDecisionAssignments = useMemo(
     () => pendingData?.list || [],
@@ -245,6 +246,17 @@ const MediatorDashboardPage = () => {
     } else if (tabKey === "disputedCases") {
       setCurrentPageDisputedLocal(pageNumber);
     }
+  }, []);
+
+  // دالة لفتح مودال شرح الرسوم
+  const handleShowFeeModal = useCallback((assignment) => {
+    const details = calculateMediatorFeeDetails(
+      assignment.bidAmount,
+      assignment.bidCurrency
+    );
+    setFeeDetailsForModal(details);
+    setPriceForModal(assignment.bidAmount);
+    setShowFeeModal(true);
   }, []);
 
   const renderAssignmentCard = useCallback(
@@ -436,6 +448,14 @@ const MediatorDashboardPage = () => {
                         assignment.bidCurrency
                       )}
                     </strong>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 ms-2 text-info"
+                      onClick={() => handleShowFeeModal(assignment)}
+                    >
+                      <FaInfoCircle />
+                    </Button>
                   </p>
                   <p className="mb-0">
                     <small className="text-muted">
@@ -831,6 +851,12 @@ const MediatorDashboardPage = () => {
           }
         />
       )}
+      <FeeExplanationModal
+        show={showFeeModal}
+        onHide={() => setShowFeeModal(false)}
+        feeDetails={feeDetailsForModal}
+        agreedPrice={priceForModal}
+      />
     </Container>
   );
 };

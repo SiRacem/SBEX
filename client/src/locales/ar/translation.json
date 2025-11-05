@@ -413,7 +413,8 @@
     "DISPUTE_RESOLVED_NEUTRAL": "تم حل النزاع بواسطة المسؤول بخصوص '{{productName}}'. الملاحظات: {{notes}}",
     "MEDIATION_DISPUTED_BY_YOU": "لقد قمت بفتح نزاع بخصوص '{{productName}}'. سيقوم مسؤول بمراجعة الحالة.",
     "MEDIATION_DISPUTED_BY_OTHER": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. سيقوم مسؤول بمراجعة الحالة.",
-    "MEDIATION_DISPUTED_FOR_ADMIN": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. مطلوب تدخلكم."
+    "MEDIATION_DISPUTED_FOR_ADMIN": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. مطلوب تدخلكم.",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "لقد تم اختيارك من قبل '{{sellerName}}' كوسيط لمعاملة بخصوص \"{{productName}}\" مع المشتري '{{buyerName}}'. يرجى المراجعة والرد."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -1403,11 +1404,11 @@
         "sellerActionRequired": "<strong>إجراء مطلوب:</strong> قم بتأكيد جاهزيتك.",
         "sellerActionInfo": "بعد تأكيدك، سيقوم المشتري بالتأكيد والدفع.",
         "buyerActionInfo": "قام المشتري بالتأكيد والدفع.",
-        "sellerConfirmed": "لقد قمت بالتأكيد. <small class=\"text-muted\">في انتظار تأكيد المشتري والدفع.</small>",
+        "sellerConfirmed": "لقد قمت بالتأكيد. <small className=\"text-muted\">في انتظار تأكيد المشتري والدفع.</small>",
         "mediationInProgress": "الوساطة قيد التنفيذ.",
         "disputeActive": "النزاع نشط.",
         "communicate": "تواصل مع المشتري والوسيط.",
-        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> قم بتأكيد جاهزيتك. <br/> <small class=\"text-muted\">بعد تأكيدك، سيقوم المشتري بالتأكيد والدفع.</small>",
+        "sellerActionRequiredHTML": "<strong>إجراء مطلوب:</strong> قم بتأكيد جاهزيتك. <br/> <small className=\"text-muted\">بعد تأكيدك، سيقوم المشتري بالتأكيد والدفع.</small>",
         "returnToSaleConfirm": "هل أنت متأكد من رغبتك في إعادة هذا المنتج للبيع؟ سيؤدي هذا إلى إلغاء عملية الوساطة الحالية.",
         "returnToSaleSuccess": "تمت إعادة المنتج للبيع بنجاح!"
       },
@@ -2210,7 +2211,6 @@
     "viewStructure": "عرض هيكل الرسوم",
     "priceRangeUSD": "نطاق السعر (بالدولار الأمريكي)",
     "example": {
-      "example": {
         "title": "مثال توضيحي",
         "dynamicScenario": "بناءً على السعر المتفق عليه لهذه المعاملة وهو <1>{{price}}</1>:",
         "rate": "النسبة المطبقة",
@@ -2221,7 +2221,6 @@
         "sellerNet": "المبلغ الصافي للبائع ({{price}} - {{share}})",
         "mediatorEarnings": "إجمالي أرباح الوسيط",
         "noData": "ستظهر تفاصيل الحساب بمجرد الاتفاق على السعر."
-      }
     }
   }
 }

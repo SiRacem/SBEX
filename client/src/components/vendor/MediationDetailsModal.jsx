@@ -14,16 +14,20 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FeeExplanationModal from "../commun/FeeExplanationModal";
 
-const formatCurrencyLocal = (amount, currencyCode = "TND", i18nInstance) => {
+const formatCurrencyLocal = (amount, currencyCode = "TND") => {
   const num = Number(amount);
   if (isNaN(num) || amount == null) return "N/A";
+
+  // تحديد الـ locale بناءً على العملة وليس لغة الواجهة
+  const locale = currencyCode.toUpperCase() === 'USD' ? 'en-US' : 'fr-TN';
+
   try {
-    return num.toLocaleString(i18nInstance.language, {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currencyCode,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    });
+    }).format(num);
   } catch (error) {
     return `${num.toFixed(2)} ${currencyCode}`;
   }
@@ -243,7 +247,7 @@ const MediationDetailsModal = ({ show, onHide, product, calculateFee }) => {
                       "Original Listing Price:"
                     )}
                   </strong>
-                  {formatCurrencyLocal(product.price, product.currency, i18n)}
+                  {formatCurrencyLocal(product.price, product.currency)}
                 </ListGroup.Item>
               )}
               {agreedPrice != null && (

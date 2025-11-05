@@ -32,7 +32,6 @@ import {
 } from "react-icons/fa";
 import { BsArrowRepeat } from "react-icons/bs";
 import "./ViewMediationDetailsModal.css";
-import { Link } from "react-router-dom";
 
 const formatCurrencyForHistory = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -57,6 +56,24 @@ const formatCurrencyForHistory = (amount, currencyCode = "TND") => {
       error
     );
     return `${num.toFixed(2)} ${safeCurrencyCode}`;
+  }
+};
+
+const formatCurrencyForModal = (amount, currencyCode = "TND", i18nInstance) => {
+  const num = Number(amount);
+  if (isNaN(num) || amount == null) return "N/A";
+
+  const locale = currencyCode.toUpperCase() === "USD" ? "en-US" : "fr-TN";
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  } catch (error) {
+    return `${num.toFixed(2)} ${currencyCode}`;
   }
 };
 
@@ -260,14 +277,16 @@ const ViewMediationDetailsModal = ({
                   <FaShieldAlt className="me-2 text-muted" />
                   <strong>{t("viewMediationDetailsModal.status")}</strong>
                   {/* [!!!] START: عرض الحالة المترجمة [!!!] */}
-                  <Badge bg={statusBg} text={statusTextColor} className="ms-1">{statusText}</Badge>
+                  <Badge bg={statusBg} text={statusTextColor} className="ms-1">
+                    {statusText}
+                  </Badge>
                   {/* [!!!] END: نهاية عرض الحالة المترجمة [!!!] */}
                 </ListGroup.Item>
                 <ListGroup.Item>
                   <FaBalanceScale className="me-2 text-muted" />
                   <strong>{t("viewMediationDetailsModal.agreedPrice")}</strong>
                   <span className="fw-bold">
-                    {formatCurrencyForHistory(
+                    {formatCurrencyForModal(
                       request.bidAmount,
                       request.bidCurrency
                     )}

@@ -375,12 +375,6 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
         if (mediationRequest.status !== 'PendingMediatorSelection') {
             throw new Error(`Cannot assign mediator. Request status is already '${mediationRequest.status}'.`);
         }
-        if (mediationRequest.seller.equals(selectedMediatorId)) {
-            throw new Error("The selected mediator cannot be the seller in this transaction.");
-        }
-        if (mediationRequest.buyer._id.equals(selectedMediatorId)) {
-            throw new Error("The selected mediator cannot be the buyer in this transaction.");
-        }
 
         const mediatorUser = await User.findOne({
             _id: selectedMediatorId,
@@ -390,12 +384,11 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
         }).select('fullName').lean().session(session);
 
         if (!mediatorUser) {
-            throw new Error(`Selected user (ID: ${selectedMediatorId}) is not a qualified or available mediator, or does not exist.`);
+            throw new Error(`Selected user is not a qualified or available mediator.`);
         }
 
         mediationRequest.mediator = selectedMediatorId;
         mediationRequest.status = 'MediatorAssigned';
-        if (!Array.isArray(mediationRequest.history)) mediationRequest.history = [];
         mediationRequest.history.push({
             event: "Mediator selected by seller",
             userId: sellerId,
@@ -409,96 +402,76 @@ exports.sellerAssignSelectedMediator = async (req, res) => {
                 { $set: { status: 'MediatorAssigned' } },
                 { session: session }
             );
-            console.log(`   Product ${mediationRequest.product._id} status updated to 'MediatorAssigned' in DB.`);
         }
 
-        // [!!!] START: إصلاح خطأ notificationParams [!!!]
-        // تعريف المتغير الذي كان ناقصاً
         const notificationParams = {
             mediatorName: mediatorUser.fullName,
             productName: mediationRequest.product?.title || 'the product',
             sellerName: req.user.fullName || 'The Seller',
             buyerName: mediationRequest.buyer?.fullName || 'The Buyer'
         };
-        // [!!!] END: نهاية إصلاح الخطأ [!!!]
 
-        await Notification.create([
-            {
-                user: sellerId,
-                type: 'MEDIATOR_SELECTION_CONFIRMED',
-                title: 'notification_titles.MEDIATOR_SELECTION_CONFIRMED',
-                message: 'notification_messages.MEDIATOR_SELECTION_CONFIRMED',
-                messageParams: notificationParams, // الآن المتغير معرف
-                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
-            },
-            {
-                user: selectedMediatorId,
-                type: 'MEDIATION_ASSIGNED',
-                title: 'notification_titles.MEDIATION_ASSIGNED',
-                message: 'notification_messages.MEDIATION_ASSIGNED_TO_MEDIATOR',
-                messageParams: notificationParams, // الآن المتغير معرف
-                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
-            },
-            {
-                user: mediationRequest.buyer._id,
-                type: 'MEDIATOR_SELECTED_BY_SELLER',
-                title: 'notification_titles.MEDIATOR_SELECTED_BY_SELLER',
-                message: 'notification_messages.MEDIATOR_SELECTED_BY_SELLER',
-                messageParams: notificationParams, // الآن المتغير معرف
-                relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' }
-            }
-        ], { session: session, ordered: true });
-        console.log(`   Notifications sent for mediator assignment on request ${updatedMediationRequestDoc._id}.`);
+        const notificationsToCreate = [
+            { user: sellerId, type: 'MEDIATOR_SELECTION_CONFIRMED', title: 'notification_titles.MEDIATOR_SELECTION_CONFIRMED', message: 'notification_messages.MEDIATOR_SELECTION_CONFIRMED', messageParams: notificationParams, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
+            { user: selectedMediatorId, type: 'MEDIATION_ASSIGNED', title: 'notification_titles.MEDIATION_ASSIGNED', message: 'notification_messages.MEDIATION_ASSIGNED_TO_MEDIATOR', messageParams: notificationParams, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } },
+            { user: mediationRequest.buyer._id, type: 'MEDIATOR_SELECTED_BY_SELLER', title: 'notification_titles.MEDIATOR_SELECTED_BY_SELLER', message: 'notification_messages.MEDIATOR_SELECTED_BY_SELLER', messageParams: notificationParams, relatedEntity: { id: updatedMediationRequestDoc._id, modelName: 'MediationRequest' } }
+        ];
+
+        const createdNotifications = await Notification.insertMany(notificationsToCreate, { session: session });
 
         await session.commitTransaction();
-        console.log("   sellerAssignSelectedMediator transaction committed successfully.");
+        console.log("--- sellerAssignSelectedMediator transaction committed successfully. ---");
 
+        // أولاً، جلب كل البيانات المحدثة اللازمة للواجهات الأمامية
         const finalPopulatedMediationRequest = await MediationRequest.findById(updatedMediationRequestDoc._id)
-            .populate('product')
-            .populate('seller', 'fullName avatarUrl _id')
-            .populate('buyer', 'fullName avatarUrl _id')
-            .populate('mediator', 'fullName avatarUrl _id')
+            .populate('product seller buyer mediator')
             .lean();
 
         if (req.io && finalPopulatedMediationRequest) {
-            const involvedUserIds = [finalPopulatedMediationRequest.seller?._id, finalPopulatedMediationRequest.buyer?._id, finalPopulatedMediationRequest.mediator?._id].filter(id => id).map(id => id.toString());
-            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
-            uniqueInvolvedUserIds.forEach(involvedUserIdString => {
-                if (req.onlineUsers && req.onlineUsers[involvedUserIdString]) {
-                    req.io.to(req.onlineUsers[involvedUserIdString]).emit('mediation_request_updated', {
-                        updatedMediationRequestData: finalPopulatedMediationRequest
-                    });
+            // 1. إرسال الإشعارات الفورية إلى كل طرف
+            createdNotifications.forEach(notification => {
+                const recipientSocketId = req.onlineUsers[notification.user.toString()];
+                if (recipientSocketId) {
+                    req.io.to(recipientSocketId).emit('new_notification', notification.toObject());
+                    console.log(`[Socket] Emitted 'new_notification' to user ${notification.user.toString()}`);
                 }
             });
 
-            if (finalPopulatedMediationRequest.product) {
-                req.io.emit('product_updated', finalPopulatedMediationRequest.product);
-            }
+            // 2. إرسال تحديث شامل لطلب الوساطة لجميع الأطراف
+            const involvedUserIds = [sellerId, mediationRequest.buyer._id, selectedMediatorId].map(id => id.toString());
+            const uniqueInvolvedUserIds = [...new Set(involvedUserIds)];
 
-            const mediatorSocketId = req.onlineUsers?.[selectedMediatorId.toString()];
+            uniqueInvolvedUserIds.forEach(userId => {
+                const socketId = req.onlineUsers[userId];
+                if (socketId) {
+                    req.io.to(socketId).emit('mediation_request_updated', {
+                        updatedMediationRequestData: finalPopulatedMediationRequest
+                    });
+                    console.log(`[Socket] Emitted 'mediation_request_updated' to user ${userId}`);
+                }
+            });
+
+            // 3. إرسال حدث خاص للوسيط لإضافة المهمة إلى قائمته
+            const mediatorSocketId = req.onlineUsers[selectedMediatorId.toString()];
             if (mediatorSocketId) {
                 req.io.to(mediatorSocketId).emit('new_assignment_for_mediator', {
                     newAssignmentData: finalPopulatedMediationRequest
                 });
-                console.log(`   [Socket] Emitted 'new_assignment_for_mediator' to mediator ${selectedMediatorId}`);
+                console.log(`[Socket] Emitted 'new_assignment_for_mediator' to mediator ${selectedMediatorId}`);
             }
         }
 
         res.status(200).json({
-            msg: `Mediator ${mediatorUser.fullName} has been assigned. They will be notified.`,
+            msg: `Mediator ${mediatorUser.fullName} has been assigned.`,
             mediationRequest: finalPopulatedMediationRequest
         });
 
     } catch (error) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
+        if (session.inTransaction()) await session.abortTransaction();
         console.error("--- Controller: sellerAssignSelectedMediator ERROR ---", error);
-        res.status(error.status || 500).json({ msg: error.message || 'Failed to assign mediator.' });
+        res.status(400).json({ msg: error.message || 'Failed to assign mediator.' });
     } finally {
-        if (session) {
-            await session.endSession();
-        }
+        if (session) await session.endSession();
     }
 };
 
@@ -1149,38 +1122,37 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         // 5. التحقق من رصيد المشتري (بالعملة الأساسية للمنصة)
         if (buyerUser.balance < amountToDeductInPlatformCurrency) {
-        await session.abortTransaction();
+    await session.abortTransaction();
 
-        // [!!!] START: هذا هو الإصلاح الجديد [!!!]
-        
-        // المبلغ المطلوب، وهو موجود بالفعل بعملة المعاملة الأصلية
-        const requiredAmount = amountToEscrowInOriginalCurrency;
-        const transactionCurrency = originalEscrowCurrency;
+    const requiredAmount = amountToEscrowInOriginalCurrency;
+    const transactionCurrency = originalEscrowCurrency;
+    let availableAmountInTransactionCurrency = buyerUser.balance;
 
-        // الآن، سنقوم بتحويل الرصيد المتاح للمستخدم (المخزن بالـ TND) إلى عملة المعاملة
-        let availableAmountInTransactionCurrency = buyerUser.balance;
-
-        if (transactionCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
-            // إذا كانت المعاملة بالدولار، قم بتحويل رصيد المستخدم (بالدينار) إلى دولار
-            availableAmountInTransactionCurrency = buyerUser.balance / TND_USD_EXCHANGE_RATE;
-        } else if (transactionCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') {
-            // حالة عكسية (غير محتملة في حالتك، ولكنها جيدة للمستقبل)
-            // إذا كانت المعاملة بالدينار، قم بتحويل رصيد المستخدم (بالدولار) إلى دينار
-            availableAmountInTransactionCurrency = buyerUser.balance * TND_USD_EXCHANGE_RATE;
-        }
-        
-        // [!!!] END: نهاية الإصلاح الجديد [!!!]
-
-        return res.status(400).json({
-            translationKey: "apiErrors.insufficientBalance",
-            translationParams: {
-                // الآن كلا المبلغين بنفس العملة
-                required: formatCurrency(requiredAmount, transactionCurrency),
-                available: formatCurrency(availableAmountInTransactionCurrency, transactionCurrency) 
-            },
-            msg: `Insufficient balance. Required: ${formatCurrency(requiredAmount, transactionCurrency)}, Available: ${formatCurrency(availableAmountInTransactionCurrency, transactionCurrency)}`
-        });
+    if (transactionCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
+        availableAmountInTransactionCurrency = buyerUser.balance / TND_USD_EXCHANGE_RATE;
+    } else if (transactionCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') {
+        availableAmountInTransactionCurrency = buyerUser.balance * TND_USD_EXCHANGE_RATE;
     }
+
+    // دالة تنسيق محلية تستخدم locale الصحيح
+    const formatCurrencyForError = (amount, currency) => {
+        const locale = currency.toUpperCase() === 'USD' ? 'en-US' : 'fr-TN';
+        return new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        }).format(amount);
+    };
+
+    return res.status(400).json({
+        translationKey: "apiErrors.insufficientBalance",
+        translationParams: {
+            required: formatCurrencyForError(requiredAmount, transactionCurrency),
+            available: formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)
+        },
+        msg: `Insufficient balance. Required: ${formatCurrencyForError(requiredAmount, transactionCurrency)}, Available: ${formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)}`
+    });
+}
 
         // 6. خصم المبلغ من رصيد المشتري
         buyerUser.balance = parseFloat((buyerUser.balance - amountToDeductInPlatformCurrency).toFixed(2));

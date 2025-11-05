@@ -388,7 +388,6 @@
     "MEDIATION_AUTO_REJECTED_SELLER": "الوسيط '{{mediatorName}}' ما جاوبش على الخدمة متاع '{{productName}}' في {{minutes}} دقايق. يرحم والديك اختار وسيط آخر.",
     "MEDIATION_TASK_EXPIRED": "ما جاوبتش على خدمة الوساطة متاع '{{productName}}' في {{minutes}} دقايق، على هاكا تلغات أوتوماتيك.",
     "MEDIATOR_SELECTION_CONFIRMED": "اخترت بالصحيح '{{mediatorName}}' كوسيط لـ '{{productName}}'. بعثنالو إشعار.",
-    "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' كوسيط لعملية بخصوص '{{productName}}' مع '{{buyerName}}'. يرحم والديك ثبت و جاوب.",
     "MEDIATOR_SELECTED_BY_SELLER": "اختار '{{sellerName}}' الوسيط '{{mediatorName}}' للعملية متاعك بخصوص '{{productName}}'. استنى حتى يقبل.",
     "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_SELLER": "الوسيط '{{mediatorName}}' قبل باش يدخل في معاملتك متع '{{productName}}' مع الشاري '{{buyerName}}'. يرحم والديك أكّد اللي إنت حاضر.",
     "MEDIATION_ACCEPTED_BY_MEDIATOR_FOR_BUYER": "الوسيط '{{mediatorName}}' قبل باش يدخل في معاملتك متع '{{productName}}' مع البايع '{{sellerName}}'. يرحم والديك أكّد اللي إنت حاضر.",
@@ -411,7 +410,8 @@
     "DISPUTE_RESOLVED_NEUTRAL": "تحلت المشكلة من عند الأدمن بخصوص '{{productName}}'. ملاحظات: {{notes}}",
     "MEDIATION_DISPUTED_BY_YOU": "حليت مشكلة بخصوص '{{productName}}'. الأدمن باش يشوف الموضوع.",
     "MEDIATION_DISPUTED_BY_OTHER": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. الأدمن باش يشوف الموضوع.",
-    "MEDIATION_DISPUTED_FOR_ADMIN": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. لازمك تدخل."
+    "MEDIATION_DISPUTED_FOR_ADMIN": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. لازمك تدخل.",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' باش تكون وسيط في معاملة بخصوص \"{{productName}}\" مع الشاري '{{buyerName}}'. يرحم والديك ثبت في الموضوع وجاوب."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -1402,7 +1402,7 @@
         "sellerActionRequired": "<strong>لازمك تعمل حاجة:</strong> أكد اللي إنت حاضر.",
         "sellerActionInfo": "بعد ما تأكد إنت، الشاري باش يأكد ويخلص.",
         "buyerActionInfo": "الشاري أكد وخلص.",
-        "sellerConfirmed": "إنت أكدت. <small class=\"text-muted\">نستناو في الشاري باش يأكد ويخلص.</small>",
+        "sellerConfirmed": "إنت أكدت. <small className=\"text-muted\">نستناو في الشاري باش يأكد ويخلص.</small>",
         "mediationInProgress": "الوساطة قاعدة تخدم.",
         "disputeActive": "فما مشكلة قاعدة تصير.",
         "communicate": "احكي مع الشاري والوسيط.",

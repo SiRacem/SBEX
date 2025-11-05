@@ -409,7 +409,8 @@
     "DISPUTE_RESOLVED_NEUTRAL": "Le litige concernant '{{productName}}' a été résolu par un administrateur. Notes : {{notes}}",
     "MEDIATION_DISPUTED_BY_YOU": "Vous avez ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
     "MEDIATION_DISPUTED_BY_OTHER": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
-    "MEDIATION_DISPUTED_FOR_ADMIN": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Votre intervention est requise."
+    "MEDIATION_DISPUTED_FOR_ADMIN": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Votre intervention est requise.",
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "Vous avez été sélectionné par {{sellerName}} pour une transaction concernant \"{{productName}}\" avec {{buyerName}}. Veuillez examiner et répondre."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -1398,7 +1399,7 @@
         "sellerActionRequired": "<strong>Action requise :</strong> Confirmez que vous êtes prêt.",
         "sellerActionInfo": "Après votre confirmation, l'acheteur confirmera et paiera.",
         "buyerActionInfo": "L'acheteur a confirmé et payé.",
-        "sellerConfirmed": "Vous avez confirmé. <small class=\"text-muted\">En attente de la confirmation et du paiement de l'acheteur.</small>",
+        "sellerConfirmed": "Vous avez confirmé. <small className=\"text-muted\">En attente de la confirmation et du paiement de l'acheteur.</small>",
         "mediationInProgress": "La médiation est en cours.",
         "disputeActive": "Le litige est actif.",
         "communicate": "Communiquez avec l'acheteur et le médiateur.",

@@ -19,7 +19,11 @@ import {
   OverlayTrigger,
 } from "react-bootstrap";
 import { useTranslation, Trans } from "react-i18next";
-import { getBuyerMediationRequestsAction, buyerConfirmReadinessAndEscrowAction, buyerRejectMediationAction } from "../redux/actions/mediationAction";
+import {
+  getBuyerMediationRequestsAction,
+  buyerConfirmReadinessAndEscrowAction,
+  buyerRejectMediationAction,
+} from "../redux/actions/mediationAction";
 import { getProfile } from "../redux/actions/userAction";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -30,12 +34,12 @@ import {
   FaHandshake,
   FaCommentDots,
   FaEye,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { calculateMediatorFeeDetails } from "../components/vendor/feeCalculator";
 import RejectMediationByBuyerModal from "./RejectMediationByBuyerModal";
 import ViewMediationDetailsModal from "./ViewMediationDetailsModal";
 import FeeExplanationModal from "../components/commun/FeeExplanationModal";
-import { FaInfoCircle } from "react-icons/fa";
 
 const noProductImageUrl =
   'data:image/svg+xml;charset=UTF8,<svg xmlns="http://www.w3.org/2000/svg" width="150" height="120" viewBox="0 0 150 120"><rect width="150" height="120" fill="%23eeeeee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14px" fill="%23aaaaaa">No Image</text></svg>';
@@ -89,7 +93,9 @@ const MyMediationRequestsPage = () => {
   const [showBuyerRejectModal, setShowBuyerRejectModal] = useState(false);
   const [selectedRequestToRejectByBuyer, setSelectedRequestToRejectByBuyer] =
     useState(null);
-    const [showFeeModal, setShowFeeModal] = useState(false);
+  const [showFeeModal, setShowFeeModal] = useState(false);
+  const [feeDetailsForModal, setFeeDetailsForModal] = useState(null);
+  const [priceForModal, setPriceForModal] = useState(0);
 
   useEffect(() => {
     if (currentUser?._id) {
@@ -196,6 +202,13 @@ const MyMediationRequestsPage = () => {
     setSelectedRequestForDetails(request);
     setShowViewDetailsModal(true);
   }, []);
+
+  const handleShowFeeModal = useCallback((request) => {
+        const details = calculateMediatorFeeDetails(request.bidAmount, request.bidCurrency);
+        setFeeDetailsForModal(details);
+        setPriceForModal(request.bidAmount);
+        setShowFeeModal(true);
+    }, []);
 
   if (!currentUser) {
     return (
@@ -429,13 +442,19 @@ const MyMediationRequestsPage = () => {
                           <strong>
                             {t("mediationRequestsPage.card.escrowTitle")}
                           </strong>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="p-0 ms-2"
-                            onClick={() => setShowFeeModal(true)}
-                          ></Button>
-                          <FaInfoCircle />
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={<Tooltip>{t("feeModal.title")}</Tooltip>}
+                          >
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="p-0 ms-2"
+                              onClick={() => handleShowFeeModal(request)}
+                            >
+                              <FaInfoCircle />
+                            </Button>
+                          </OverlayTrigger>
                         </div>
                         <div>
                           {t("mediationRequestsPage.card.escrowPrice")}{" "}
@@ -697,6 +716,8 @@ const MyMediationRequestsPage = () => {
       <FeeExplanationModal
         show={showFeeModal}
         onHide={() => setShowFeeModal(false)}
+        feeDetails={feeDetailsForModal}
+        agreedPrice={priceForModal}
         userRole="Buyer"
       />
     </Container>
