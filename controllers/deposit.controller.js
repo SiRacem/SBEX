@@ -233,11 +233,17 @@ exports.adminApproveDeposit = async (req, res) => {
         await depositRequest.save({ session });
 
         const completedTransaction = new Transaction({
-            user: userToUpdate._id, amount: amountToAdd, currency: userBalanceCurrency,
-            type: 'DEPOSIT_COMPLETED', // Changed for clarity in history
+            user: userToUpdate._id,
+            amount: amountToAdd,
+            currency: userBalanceCurrency,
+            type: 'DEPOSIT_COMPLETED',
             status: 'COMPLETED',
-            description: `Approved Deposit: ${formatCurrency(depositRequest.amount, depositRequest.currency)} via ${depositRequest.paymentMethod?.name || 'N/A'}`,
-            relatedEntity: { id: depositRequest._id, modelName: 'DepositRequest' },
+            descriptionKey: 'transactionDescriptions.depositApproved',
+            descriptionParams: {
+                amount: formatCurrency(depositRequest.amount, depositRequest.currency),
+                method: depositRequest.paymentMethod?.displayName || 'N/A'
+            },
+            relatedDepositRequest: depositRequest._id // [!] غيرت اسم الحقل ليتطابق مع المخطط
         });
         await completedTransaction.save({ session });
 

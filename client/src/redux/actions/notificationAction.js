@@ -57,6 +57,7 @@ export const markNotificationsRead = (notificationIds) => async (dispatch) => {
     try {
         await axios.put('/notifications/read', { notificationIds }, config);
         dispatch({ type: MARK_READ_SUCCESS, payload: notificationIds });
+        dispatch(getNotifications());
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'notifications.markReadFail');
         dispatch({ type: MARK_READ_FAIL, payload: { errorMessage: { key, fallback, params } } });

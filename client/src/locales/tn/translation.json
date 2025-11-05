@@ -187,18 +187,31 @@
     "statusUnknown": "موش معروف"
   },
   "transactionTypes": {
-    "PRODUCT_SALE_FUNDS_RELEASED": "الفلوس اللي تصبت مالبيعة",
+    "PRODUCT_SALE_FUNDS_RELEASED": "فلوس البيعة تحلت",
     "PRODUCT_PURCHASE_COMPLETED": "شريان منتوج",
-    "PRODUCT_SALE_FUNDS_PENDING": "فلوس البيعة (تستنى)",
-    "LEVEL_UP_REWARD_RECEIVED": "كادو متع مستوى جديد",
+    "PRODUCT_SALE_FUNDS_PENDING": "فلوس بيعة مجمّدة",
+    "LEVEL_UP_REWARD_RECEIVED": "كادو مستوى جديد",
     "DEPOSIT_COMPLETED": "صبان",
     "WITHDRAWAL_COMPLETED": "جبدان",
-    "MEDIATION_FEE_RECEIVED": "فلوس وساطة وصلتك"
+    "MEDIATION_FEE_RECEIVED": "وصلتك فلوس الوساطة",
+    "MEDIATION_FEE_PAID_BY_BUYER": "خلاص فلوس الوساطة",
+    "DISPUTE_PAYOUT_SELLER_WON": "خلاص مشكلة (ربحت)",
+    "ESCROW_RETURNED_MEDIATION_CANCELLED": "رجوع فلوس (تلغات)",
+    "SELLER_BALANCE_TRANSFER": "تحويل فلوس البيعان"
   },
   "transactionDescriptions": {
-    "mediationFeeReceived": "فلوس وصلتك على الوساطة في '{{productName}}'.",
-    "saleFundsPending": "فلوس من بيعة '{{productName}}' تستنى.",
-    "purchaseCompleted": "شريان '{{productName}}' من عند البايع {{sellerName}}.",
+    "sellerBalanceTransfer": "تحويل متاع {{amount}} للرصيد الأساسي",
+    "depositApproved": "صبان توافق عليه: {{amount}} بـ {{method}}",
+    "escrowFunded": "فلوس تحفظت على '{{productName}}'",
+    "saleFundsPending": "فلوس بيعة تستنى على '{{productName}}'",
+    "mediationFeeReceived": "وصلتك فلوس الوساطة على '{{productName}}'",
+    "purchaseCompleted": "شريان '{{productName}}' من عند {{sellerName}}",
+    "feeAdminCancel": "نص حق الوسيط (الأدمن لغى) على '{{productName}}'",
+    "refundAdminCancel": "ترجيع فلوس (الأدمن لغى) على '{{productName}}'",
+    "feeDeductionCancel": "خصم حق الوسيط (الأدمن لغى) على '{{productName}}'",
+    "refundDisputeWon": "ترجيع فلوس (ربحت المشكلة) على '{{productName}}'",
+    "feeDisputeResolved": "فلوس وساطة من مشكلة تحلت على '{{productName}}'",
+    "payoutDisputeWon": "فلوس من مشكلة تحلت على '{{productName}}'",
     "saleFundsReleased": "الفلوس متاع بيعة '{{productName}}' ولات توّا موجودة."
   },
   "pendingFunds": {
@@ -320,7 +333,8 @@
     "MEDIATION_CANCELLED_BY_BUYER": "الشاري بطل الوساطة",
     "BUYER_CONFIRMED_AWAITING_YOUR_ACTION": "الشاري أكّد وخلّص - توا دورك!",
     "MEDIATION_CONFIRMED_BY_PARTY": "تأكد الحضور والفلوس تحفظت",
-    "LEVEL_UP_REWARD": "مبروك! وصلت للمستوى {{level}}! 🎉"
+    "LEVEL_UP_REWARD": "مبروك! وصلت للمستوى {{level}}! 🎉",
+    "BALANCE_TRANSFER_SUCCESS": "الفلوس تحولت بالصحيح"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بيك، {{name}}! فرحانين بيك معانا.",
@@ -411,7 +425,8 @@
     "MEDIATION_DISPUTED_BY_YOU": "حليت مشكلة بخصوص '{{productName}}'. الأدمن باش يشوف الموضوع.",
     "MEDIATION_DISPUTED_BY_OTHER": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. الأدمن باش يشوف الموضوع.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. لازمك تدخل.",
-    "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' باش تكون وسيط في معاملة بخصوص \"{{productName}}\" مع الشاري '{{buyerName}}'. يرحم والديك ثبت في الموضوع وجاوب."
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' باش تكون وسيط في معاملة بخصوص \"{{productName}}\" مع الشاري '{{buyerName}}'. يرحم والديك ثبت في الموضوع وجاوب.",
+    "BALANCE_TRANSFER_SUCCESS": "حولّت بالصحيح {{amount}} من رصيد البيعان للرصيد الأساسي متاعك."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -2216,6 +2231,25 @@
       "sellerNet": "الصافي اللي ياخذو البايع ({{price}} - {{share}})",
       "mediatorEarnings": "جملة أرباح الوسيط",
       "noData": "تفاصيل الحساب تظهر وقت اللي تتفاهمو على السوم."
+    }
+  },
+  "transferBalanceModal": {
+    "title": "حوّل فلوس البيعان",
+    "tooltip": "حوّل الفلوس لرصيدك الأساسي",
+    "available": "الموجود في رصيد البيعان: {{balance}}",
+    "amountPlaceholder": "المبلغ اللي تحب تحولو",
+    "summaryTitle": "ملخص العملية",
+    "amountToTransfer": "المبلغ اللي باش يتحول",
+    "fee": "عمولة التحويل ({{percent}}%)",
+    "totalDeducted": "الجملة اللي باش تتنحى من رصيد البيعان",
+    "confirmButton": "أكد التحويل",
+    "success": "الفلوس تحولت بالصحيح!",
+    "errors": {
+      "positive": "لازم المبلغ يكون أكثر من صفر.",
+      "minAmount": "أقل مبلغ تنجم تحولو هو {{amount}}.",
+      "insufficient": "فلوسك في رصيد البيعان ما تكفيش.",
+      "unknown": "صارت غلطة. يرحم والديك عاود.",
+      "noBalance": "ما عندكش فلوس في رصيد البيعان باش تحولهم."
     }
   }
 }

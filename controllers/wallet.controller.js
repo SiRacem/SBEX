@@ -259,6 +259,7 @@ exports.getTransactionsController = async (req, res) => {
             'DEPOSIT_COMPLETED',
             'WITHDRAWAL_COMPLETED',
             'TRANSFER',
+            'SELLER_BALANCE_TRANSFER',
         ];
         const transactions = await Transaction.find({
             $and: [
@@ -382,6 +383,7 @@ exports.getDashboardTransactionsController = async (req, res) => {
         queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_PENDING' });
         queryConditions.push({ user: userId, type: 'PRODUCT_SALE_FUNDS_RELEASED' });
         queryConditions.push({ user: userId, type: 'MEDIATION_FEE_PAID_BY_BUYER' });
+        queryConditions.push({ user: userId, type: 'SELLER_BALANCE_TRANSFER' });
 
         // يمكنك إضافة شروط أخرى هنا إذا احتجت
         // ...
@@ -412,5 +414,111 @@ exports.getDashboardTransactionsController = async (req, res) => {
     } catch (error) {
         console.error("[GetDashboardTxCtrl] Error:", error.message, error.stack);
         res.status(500).json({ msg: "Failed to retrieve dashboard transactions." });
+    }
+};
+
+// ---- دالة جديدة: تحويل رصيد البائع إلى الرصيد الأساسي ----
+exports.transferSellerBalanceController = async (req, res) => {
+    const { amount } = req.body;
+    const userId = req.user._id;
+
+    console.log(`[WalletCtrl TransferSeller] User: ${userId} attempting to transfer ${amount} from seller balance.`);
+
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+        return res.status(400).json({ msg: "Invalid amount specified." });
+    }
+
+    // تطبيق نفس قواعد الإرسال
+    const minTransferTND = 6.0; // يعادل تقريبًا 2 دولار
+    if (numericAmount < minTransferTND) {
+        return res.status(400).json({ msg: `Minimum transfer amount is ${formatCurrency(minTransferTND, 'TND')}.` });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const user = await User.findById(userId).session(session);
+        if (!user) throw new Error("User not found.");
+
+        const feeAmount = (numericAmount * TRANSFER_FEE_PERCENT) / 100;
+        const totalDeducted = numericAmount + feeAmount;
+
+        if (!user.sellerAvailableBalance || user.sellerAvailableBalance < totalDeducted) {
+            throw new Error(`Insufficient seller balance. Required: ${formatCurrency(totalDeducted, 'TND')}, Available: ${formatCurrency(user.sellerAvailableBalance, 'TND')}`);
+        }
+
+        // تنفيذ التحويل
+        user.sellerAvailableBalance -= totalDeducted;
+        user.balance += numericAmount; // إضافة المبلغ الصافي للرصيد الأساسي
+
+        await user.save({ session });
+
+        // تسجيل المعاملة
+        const newTransaction = new Transaction({
+            user: userId,
+            type: 'SELLER_BALANCE_TRANSFER',
+            amount: numericAmount,
+            currency: PLATFORM_BASE_CURRENCY,
+            status: 'COMPLETED',
+            descriptionKey: 'transactionDescriptions.sellerBalanceTransfer', // مفتاح الترجمة
+            descriptionParams: {
+                amount: formatCurrency(numericAmount, PLATFORM_BASE_CURRENCY)
+            },
+            metadata: {
+                feeAmount: feeAmount,
+                totalDeducted: totalDeducted
+            }
+        });
+        await newTransaction.save({ session });
+
+        // [!!!] إنشاء الإشعار داخل المعاملة [!!!]
+        const notification = new Notification({
+            user: userId,
+            type: 'SELLER_BALANCE_TRANSFER_SUCCESS',
+            title: 'notification_titles.BALANCE_TRANSFER_SUCCESS',
+            message: 'notification_messages.BALANCE_TRANSFER_SUCCESS',
+            messageParams: {
+                amount: formatCurrency(numericAmount, PLATFORM_BASE_CURRENCY)
+            },
+            relatedEntity: { id: newTransaction._id, modelName: 'Transaction' }
+        });
+        await notification.save({ session });
+
+        await session.commitTransaction();
+
+        // إرسال تحديثات Socket.IO
+        if (req.io && req.onlineUsers[userId.toString()]) {
+            const socketId = req.onlineUsers[userId.toString()];
+            req.io.to(socketId).emit('user_balances_updated', {
+                _id: userId.toString(),
+                balance: user.balance,
+                sellerAvailableBalance: user.sellerAvailableBalance
+            });
+            // [!!!] إرسال الإشعار عبر السوكيت [!!!]
+            req.io.to(socketId).emit('new_notification', notification.toObject());
+        }
+
+        res.status(200).json({
+            msg: "Balance transferred successfully!", // رسالة احتياطية
+            successMessage: { key: 'transferBalanceModal.success' }, // مفتاح الترجمة للنجاح
+            updatedUser: {
+                balance: user.balance,
+                sellerAvailableBalance: user.sellerAvailableBalance
+            }
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        console.error("[WalletCtrl TransferSeller] Error:", error.message);
+        res.status(400).json({
+            errorMessage: {
+                key: 'transferBalanceModal.errors.unknown',
+                fallback: error.message || "Failed to transfer balance."
+            }
+        });
+    } finally {
+        if (session) await session.endSession();
     }
 };

@@ -8,6 +8,7 @@ const {
     getTransactionsController, // <-- استيراد الدالة الجديدة
     getSellerPendingFundsDetailsController,
     getDashboardTransactionsController, // <-- استيراد الدالة الجديدة للداشبورد
+    transferSellerBalanceController,
 } = require('../controllers/wallet.controller');
 // ---------------------------------------------------------
 
@@ -18,5 +19,5 @@ router.get('/transactions/dashboard', verifyAuth, getDashboardTransactionsContro
 // --- [!!!] المسار الجديد لجلب تفاصيل الأموال المعلقة للبائع [!!!] ---
 router.get('/seller-pending-details', verifyAuth, getSellerPendingFundsDetailsController);
 // --------------------------------------------------------------------
-
+router.post('/transfer-seller-balance', verifyAuth, transferSellerBalanceController);
 module.exports = router;

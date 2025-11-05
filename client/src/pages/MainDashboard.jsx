@@ -24,7 +24,7 @@ import {
   FaCheckCircle,
   FaQuestionCircle,
   FaExternalLinkAlt,
-  FaInfoCircle,
+  FaExchangeAlt,
 } from "react-icons/fa";
 import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
@@ -58,6 +58,7 @@ import LanguageSwitcher from "../components/commun/LanguageSwitcher";
 import { SocketContext } from "../App";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
+import TransferBalanceModal from "../components/commun/TransferBalanceModal";
 
 // --- [!] مكون منفصل لعرض عنصر المعاملة ---
 const TransactionItem = ({ transaction, onShowDetails }) => {
@@ -78,14 +79,24 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
   let IconComponent = FaReceipt;
   let iconColorClass = "text-secondary";
 
-  let title = transaction.descriptionKey
-    ? t(transaction.descriptionKey, transaction.descriptionParams)
-    : transaction.description ||
+  let title;
+  if (transaction.descriptionKey) {
+    // إذا أرسل الخادم مفتاحًا، استخدمه
+    title = t(transaction.descriptionKey, transaction.descriptionParams);
+  } else {
+    // كحل احتياطي للبيانات القديمة، استخدم الوصف الثابت أو نوع المعاملة
+    title =
+      transaction.description ||
       t(`transactionTypes.${transaction.type}`, {
         defaultValue: transaction.type.replace(/_/g, " "),
       });
+  }
 
   switch (transaction.type) {
+    case "SELLER_BALANCE_TRANSFER":
+      IconComponent = FaExchangeAlt;
+      iconColorClass = "text-primary";
+      break;
     case "MEDIATION_FEE_PAID_BY_BUYER":
       IconComponent = FaBalanceScale; // نفس أيقونة رسوم الوساطة
       iconColorClass = "text-danger"; // لأنها خصم
@@ -295,6 +306,15 @@ const MainDashboard = () => {
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] =
     useState(null);
   const [showSettingsOffcanvas, setShowSettingsOffcanvas] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+
+  const handleShowTransferModal = () => {
+    if (user?.sellerAvailableBalance > 0) {
+      setShowTransferModal(true);
+    } else {
+      toast.info(t("transferBalanceModal.errors.noBalance"));
+    }
+  };
 
   const handleLogout = useCallback(() => {
     if (
@@ -382,7 +402,21 @@ const MainDashboard = () => {
                   <h5 className="mb-0">
                     {t("dashboard.balances.sellerAvailable")}
                   </h5>
-                  <FaBalanceScale size={24} />
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>{t("transferBalanceModal.tooltip")}</Tooltip>
+                      }
+                    >
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="p-0 text-white opacity-75"
+                        onClick={handleShowTransferModal}
+                      >
+                        <FaBalanceScale size={24} />
+                      </Button>
+                    </OverlayTrigger>
                 </div>
                 <h4 className="fw-bold mb-1">
                   {sellerAvailableBalanceDisplay.displayValue}
@@ -397,10 +431,7 @@ const MainDashboard = () => {
                   <OverlayTrigger
                     placement="top"
                     overlay={
-                      <Tooltip>
-                        {t(
-                          "pendingFunds.viewDetailsTooltip")}
-                      </Tooltip>
+                      <Tooltip>{t("pendingFunds.viewDetailsTooltip")}</Tooltip>
                     }
                   >
                     <Button
@@ -610,6 +641,12 @@ const MainDashboard = () => {
         show={showPendingFundsModal}
         onHide={() => setShowPendingFundsModal(false)}
       />
+      {showTransferModal && (
+        <TransferBalanceModal
+          show={showTransferModal}
+          onHide={() => setShowTransferModal(false)}
+        />
+      )}
     </div>
   );
 };

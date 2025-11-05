@@ -188,17 +188,30 @@
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "Fonds libérés",
-    "PRODUCT_PURCHASE_COMPLETED": "Achat",
-    "PRODUCT_SALE_FUNDS_PENDING": "Fonds en attente",
+    "PRODUCT_PURCHASE_COMPLETED": "Achat de produit",
+    "PRODUCT_SALE_FUNDS_PENDING": "Fonds de vente en attente",
     "LEVEL_UP_REWARD_RECEIVED": "Récompense de niveau",
     "DEPOSIT_COMPLETED": "Dépôt",
     "WITHDRAWAL_COMPLETED": "Retrait",
-    "MEDIATION_FEE_RECEIVED": "Frais de médiation reçus"
+    "MEDIATION_FEE_RECEIVED": "Frais de médiation reçus",
+    "MEDIATION_FEE_PAID_BY_BUYER": "Frais de médiation payés",
+    "DISPUTE_PAYOUT_SELLER_WON": "Paiement de litige (Gagné)",
+    "ESCROW_RETURNED_MEDIATION_CANCELLED": "Remboursement séquestre (Annulé)",
+    "SELLER_BALANCE_TRANSFER": "Transfert du solde vendeur"
   },
   "transactionDescriptions": {
-    "mediationFeeReceived": "Frais reçus pour la médiation de '{{productName}}'.",
-    "saleFundsPending": "Les fonds de la vente de '{{productName}}' sont en attente.",
-    "purchaseCompleted": "Achat de '{{productName}}' auprès du vendeur {{sellerName}}.",
+    "sellerBalanceTransfer": "Transfert de {{amount}} vers le solde principal",
+    "depositApproved": "Dépôt approuvé : {{amount}} via {{method}}",
+    "escrowFunded": "Fonds séquestrés pour '{{productName}}'",
+    "saleFundsPending": "Fonds de vente en attente pour '{{productName}}'",
+    "mediationFeeReceived": "Frais de médiation reçus pour '{{productName}}'",
+    "purchaseCompleted": "Achat de '{{productName}}' auprès de {{sellerName}}",
+    "feeAdminCancel": "Demi-frais (annulation admin) pour '{{productName}}'",
+    "refundAdminCancel": "Remboursement (annulation admin) pour '{{productName}}'",
+    "feeDeductionCancel": "Déduction des frais (annulation admin) pour '{{productName}}'",
+    "refundDisputeWon": "Remboursement séquestre (litige gagné) pour '{{productName}}'",
+    "feeDisputeResolved": "Frais de litige résolu pour '{{productName}}'",
+    "payoutDisputeWon": "Paiement de litige résolu pour '{{productName}}'",
     "saleFundsReleased": "Les fonds de la vente de '{{productName}}' sont maintenant disponibles."
   },
   "pendingFunds": {
@@ -319,7 +332,8 @@
     "MEDIATION_CONFIRMED_BY_PARTY": "Disponibilité & Séquestre confirmés",
     "LEVEL_UP_REWARD": "Félicitations ! Vous avez atteint le niveau {{level}} ! 🎉",
     "RATING_RECEIVED": "Nouvelle évaluation reçue : {{ratingType}} !",
-    "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée"
+    "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée",
+    "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -410,7 +424,8 @@
     "MEDIATION_DISPUTED_BY_YOU": "Vous avez ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
     "MEDIATION_DISPUTED_BY_OTHER": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Votre intervention est requise.",
-    "MEDIATION_ASSIGNED_TO_MEDIATOR": "Vous avez été sélectionné par {{sellerName}} pour une transaction concernant \"{{productName}}\" avec {{buyerName}}. Veuillez examiner et répondre."
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "Vous avez été sélectionné par {{sellerName}} pour une transaction concernant \"{{productName}}\" avec {{buyerName}}. Veuillez examiner et répondre.",
+    "BALANCE_TRANSFER_SUCCESS": "Vous avez transféré avec succès {{amount}} de votre solde vendeur vers votre solde principal."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -2213,6 +2228,25 @@
       "sellerNet": "Montant net pour le vendeur ({{price}} - {{share}})",
       "mediatorEarnings": "Gains totaux pour le médiateur",
       "noData": "Les détails du calcul seront affichés une fois qu'un prix sera convenu."
+    }
+  },
+  "transferBalanceModal": {
+    "title": "Transférer le solde vendeur",
+    "tooltip": "Transférer des fonds vers votre solde principal",
+    "available": "Disponible du solde vendeur : {{balance}}",
+    "amountPlaceholder": "Montant à transférer",
+    "summaryTitle": "Résumé de la transaction",
+    "amountToTransfer": "Montant à transférer",
+    "fee": "Frais de transfert ({{percent}}%)",
+    "totalDeducted": "Total déduit du solde vendeur",
+    "confirmButton": "Confirmer le transfert",
+    "success": "Solde transféré avec succès !",
+    "errors": {
+      "positive": "Le montant doit être un nombre positif.",
+      "minAmount": "Le montant minimum de transfert est de {{amount}}.",
+      "insufficient": "Solde vendeur insuffisant pour ce transfert.",
+      "unknown": "Une erreur inconnue s'est produite. Veuillez réessayer.",
+      "noBalance": "Vous n'avez pas de solde vendeur disponible à transférer."
     }
   }
 }

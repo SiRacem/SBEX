@@ -46,6 +46,7 @@ const TransactionSchema = new Schema({
             'TRANSFER', // تحويل أموال بين المستخدمين (يمكن أن يكون داخلي أو خارجي)
             'ESCROW_RETURNED_MEDIATION_CANCELLED', // إرجاع الأموال من الضمان في حالة إلغاء الوساطة
             'MEDIATION_FEE_PAID_BY_BUYER', //  عمولة الوساطة مدفوعة من المشتري (عادة من الضمان عند الإلغاء)
+            "SELLER_BALANCE_TRANSFER", // تحويل رصيد البائع إلى رصيد الأساسي
         ],
         index: true
     },

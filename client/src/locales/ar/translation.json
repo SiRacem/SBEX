@@ -188,19 +188,32 @@
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "أموال محررة",
-    "PRODUCT_PURCHASE_COMPLETED": "شراء",
-    "PRODUCT_SALE_FUNDS_PENDING": "أموال معلّقة",
+    "PRODUCT_PURCHASE_COMPLETED": "شراء منتج",
+    "PRODUCT_SALE_FUNDS_PENDING": "أموال بيع معلّقة",
     "LEVEL_UP_REWARD_RECEIVED": "مكافأة مستوى",
     "DEPOSIT_COMPLETED": "إيداع",
     "WITHDRAWAL_COMPLETED": "سحب",
-    "MEDIATION_FEE_RECEIVED": "رسوم وساطة مستلمة"
+    "MEDIATION_FEE_RECEIVED": "رسوم وساطة مستلمة",
+    "MEDIATION_FEE_PAID_BY_BUYER": "رسوم وساطة مدفوعة",
+    "DISPUTE_PAYOUT_SELLER_WON": "دفعة نزاع (فوز)",
+    "ESCROW_RETURNED_MEDIATION_CANCELLED": "استرداد ضمان (إلغاء)",
+    "SELLER_BALANCE_TRANSFER": "تحويل رصيد بائع"
   },
   "transactionDescriptions": {
-    "mediationFeeReceived": "رسوم مستلمة للوساطة في '{{productName}}'.",
-    "saleFundsPending": "أموال من بيع '{{productName}}' قيد التعليق.",
-    "purchaseCompleted": "شراء المنتج '{{productName}}' من البائع {{sellerName}}.",
-    "saleFundsReleased": "أموال من بيع '{{productName}}' أصبحت الآن متاحة."
-  },
+  "sellerBalanceTransfer": "تحويل مبلغ {{amount}} إلى الرصيد الأساسي",
+  "depositApproved": "إيداع موافق عليه: {{amount}} عبر {{method}}",
+  "escrowFunded": "أموال محجوزة لـ '{{productName}}'",
+  "saleFundsPending": "أموال بيع معلّقة لـ '{{productName}}'",
+  "mediationFeeReceived": "رسوم وساطة مستلمة لـ '{{productName}}'",
+  "purchaseCompleted": "شراء '{{productName}}' من {{sellerName}}",
+  "feeAdminCancel": "نصف الرسوم (إلغاء إداري) لـ '{{productName}}'",
+  "refundAdminCancel": "استرداد (إلغاء إداري) لـ '{{productName}}'",
+  "feeDeductionCancel": "خصم الرسوم (إلغاء إداري) لـ '{{productName}}'",
+  "refundDisputeWon": "استرداد الضمان (فوز بالنزاع) لـ '{{productName}}'",
+  "feeDisputeResolved": "رسوم من نزاع محسوم لـ '{{productName}}'",
+  "payoutDisputeWon": "دفعة من نزاع محسوم لـ '{{productName}}'",
+  "saleFundsReleased": "أموال من بيع '{{productName}}' أصبحت الآن متاحة."
+},
   "pendingFunds": {
     "viewDetailsTooltip": "عرض تفاصيل الأرصدة المعلّقة والمتاحة",
     "title": "تفاصيل الأرصدة المعلّقة والمتاحة",
@@ -323,7 +336,8 @@
     "MEDIATION_CANCELLED_BY_ADMIN": "لغى الأدمن الوساطة بخصوص '{{productName}}'.",
     "DISPUTE_RESOLVED_WINNER": "تم فتح المشكلة لصالحك بخصوص '{{productName}}'.",
     "DISPUTE_RESOLVED_LOSER": "تم فتح المشكلة موش لصالحك بخصوص '{{productName}}'.",
-    "DISPUTE_RESOLVED_NEUTRAL": "تم فتح المشكلة من عند الأدمن بخصوص '{{productName}}'."
+    "DISPUTE_RESOLVED_NEUTRAL": "تم فتح المشكلة من عند الأدمن بخصوص '{{productName}}'.",
+    "BALANCE_TRANSFER_SUCCESS": "تم تحويل الرصيد بنجاح"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بك، {{name}}! يسعدنا انضمامك إلينا.",
@@ -414,7 +428,8 @@
     "MEDIATION_DISPUTED_BY_YOU": "لقد قمت بفتح نزاع بخصوص '{{productName}}'. سيقوم مسؤول بمراجعة الحالة.",
     "MEDIATION_DISPUTED_BY_OTHER": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. سيقوم مسؤول بمراجعة الحالة.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. مطلوب تدخلكم.",
-    "MEDIATION_ASSIGNED_TO_MEDIATOR": "لقد تم اختيارك من قبل '{{sellerName}}' كوسيط لمعاملة بخصوص \"{{productName}}\" مع المشتري '{{buyerName}}'. يرجى المراجعة والرد."
+    "MEDIATION_ASSIGNED_TO_MEDIATOR": "لقد تم اختيارك من قبل '{{sellerName}}' كوسيط لمعاملة بخصوص \"{{productName}}\" مع المشتري '{{buyerName}}'. يرجى المراجعة والرد.",
+    "BALANCE_TRANSFER_SUCCESS": "لقد قمت بنجاح بتحويل {{amount}} من رصيد البائع إلى رصيدك الأساسي."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -2211,16 +2226,35 @@
     "viewStructure": "عرض هيكل الرسوم",
     "priceRangeUSD": "نطاق السعر (بالدولار الأمريكي)",
     "example": {
-        "title": "مثال توضيحي",
-        "dynamicScenario": "بناءً على السعر المتفق عليه لهذه المعاملة وهو <1>{{price}}</1>:",
-        "rate": "النسبة المطبقة",
-        "totalFee": "إجمالي رسوم الوسيط ({{price}} * {{percent}}%)",
-        "buyerShare": "حصة المشتري (الرسوم / 2)",
-        "sellerShare": "حصة البائع (الرسوم / 2)",
-        "buyerTotal": "المبلغ الإجمالي للمشتري ({{price}} + {{share}})",
-        "sellerNet": "المبلغ الصافي للبائع ({{price}} - {{share}})",
-        "mediatorEarnings": "إجمالي أرباح الوسيط",
-        "noData": "ستظهر تفاصيل الحساب بمجرد الاتفاق على السعر."
+      "title": "مثال توضيحي",
+      "dynamicScenario": "بناءً على السعر المتفق عليه لهذه المعاملة وهو <1>{{price}}</1>:",
+      "rate": "النسبة المطبقة",
+      "totalFee": "إجمالي رسوم الوسيط ({{price}} * {{percent}}%)",
+      "buyerShare": "حصة المشتري (الرسوم / 2)",
+      "sellerShare": "حصة البائع (الرسوم / 2)",
+      "buyerTotal": "المبلغ الإجمالي للمشتري ({{price}} + {{share}})",
+      "sellerNet": "المبلغ الصافي للبائع ({{price}} - {{share}})",
+      "mediatorEarnings": "إجمالي أرباح الوسيط",
+      "noData": "ستظهر تفاصيل الحساب بمجرد الاتفاق على السعر."
+    }
+  },
+  "transferBalanceModal": {
+    "title": "تحويل رصيد البائع",
+    "tooltip": "تحويل الأموال إلى رصيدك الأساسي",
+    "available": "المتاح من رصيد البائع: {{balance}}",
+    "amountPlaceholder": "المبلغ المراد تحويله",
+    "summaryTitle": "ملخص العملية",
+    "amountToTransfer": "المبلغ الذي سيتم تحويله",
+    "fee": "رسوم التحويل ({{percent}}%)",
+    "totalDeducted": "الإجمالي المخصوم من رصيد البائع",
+    "confirmButton": "تأكيد التحويل",
+    "success": "تم تحويل الرصيد بنجاح!",
+    "errors": {
+      "positive": "يجب أن يكون المبلغ رقمًا موجبًا.",
+      "minAmount": "أقل مبلغ للتحويل هو {{amount}}.",
+      "insufficient": "رصيد البائع غير كافٍ لهذا التحويل.",
+      "unknown": "حدث خطأ غير معروف. يرجى المحاولة مرة أخرى.",
+      "noBalance": "ليس لديك رصيد بائع متاح لتحويله."
     }
   }
 }

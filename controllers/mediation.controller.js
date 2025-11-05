@@ -80,29 +80,29 @@ async function initiateMediationChat(mediationRequestId, callingFunctionName = "
         };
 
         const notificationsToSend = [
-            { 
-                user: mediationRequest.seller._id, 
-                type: 'MEDIATION_STARTED', 
-                title: 'notification_titles.MEDIATION_STARTED', 
+            {
+                user: mediationRequest.seller._id,
+                type: 'MEDIATION_STARTED',
+                title: 'notification_titles.MEDIATION_STARTED',
                 message: 'notification_messages.MEDIATION_STARTED',
                 messageParams: notificationParams,
-                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             },
-            { 
-                user: mediationRequest.buyer._id, 
-                type: 'MEDIATION_STARTED', 
-                title: 'notification_titles.MEDIATION_STARTED', 
-                message: 'notification_messages.MEDIATION_STARTED', 
+            {
+                user: mediationRequest.buyer._id,
+                type: 'MEDIATION_STARTED',
+                title: 'notification_titles.MEDIATION_STARTED',
+                message: 'notification_messages.MEDIATION_STARTED',
                 messageParams: notificationParams,
-                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             },
-            { 
-                user: mediationRequest.mediator._id, 
-                type: 'MEDIATION_STARTED', 
-                title: 'notification_titles.MEDIATION_STARTED', 
-                message: 'notification_messages.MEDIATION_STARTED', 
+            {
+                user: mediationRequest.mediator._id,
+                type: 'MEDIATION_STARTED',
+                title: 'notification_titles.MEDIATION_STARTED',
+                message: 'notification_messages.MEDIATION_STARTED',
                 messageParams: notificationParams,
-                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' } 
+                relatedEntity: { id: mediationRequest._id, modelName: 'MediationRequest' }
             }
         ];
         await Notification.insertMany(notificationsToSend, { session });
@@ -758,8 +758,8 @@ exports.mediatorRejectAssignment = async (req, res) => {
         const sellerFullName = mediationRequest.seller?.fullName || 'The Seller'; // اسم البائع للإشعار
 
         // إنشاء وإرسال الإشعارات
-console.log("   Preparing translatable notifications for mediator rejection...");
-        
+        console.log("   Preparing translatable notifications for mediator rejection...");
+
         const notificationParams = {
             mediatorName: rejectingMediatorName,
             productName: productTitle,
@@ -793,7 +793,7 @@ console.log("   Preparing translatable notifications for mediator rejection...")
                 relatedEntity: { id: updatedRequestAfterRejection._id, modelName: 'MediationRequest' }
             }
         ], { session, ordered: true });
-        
+
         console.log(`   Notifications sent for mediator rejection on request ${updatedRequestAfterRejection._id}.`);
 
         await session.commitTransaction();
@@ -1066,12 +1066,12 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
             return res.status(404).json({ msg: "Mediation request not found." });
         }
         if (!mediationRequest.buyer.equals(buyerId)) {
-    await session.abortTransaction();
-    return res.status(403).json({
-        translationKey: "apiErrors.notTheBuyerForThisRequest",
-        msg: "Forbidden: You are not the buyer for this request."
-    });
-}
+            await session.abortTransaction();
+            return res.status(403).json({
+                translationKey: "apiErrors.notTheBuyerForThisRequest",
+                msg: "Forbidden: You are not the buyer for this request."
+            });
+        }
         if (mediationRequest.status !== 'MediationOfferAccepted') {
             await session.abortTransaction();
             return res.status(400).json({ msg: `Action not allowed. Current status is '${mediationRequest.status}'. Expected 'MediationOfferAccepted'.` });
@@ -1122,37 +1122,37 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
 
         // 5. التحقق من رصيد المشتري (بالعملة الأساسية للمنصة)
         if (buyerUser.balance < amountToDeductInPlatformCurrency) {
-    await session.abortTransaction();
+            await session.abortTransaction();
 
-    const requiredAmount = amountToEscrowInOriginalCurrency;
-    const transactionCurrency = originalEscrowCurrency;
-    let availableAmountInTransactionCurrency = buyerUser.balance;
+            const requiredAmount = amountToEscrowInOriginalCurrency;
+            const transactionCurrency = originalEscrowCurrency;
+            let availableAmountInTransactionCurrency = buyerUser.balance;
 
-    if (transactionCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
-        availableAmountInTransactionCurrency = buyerUser.balance / TND_USD_EXCHANGE_RATE;
-    } else if (transactionCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') {
-        availableAmountInTransactionCurrency = buyerUser.balance * TND_USD_EXCHANGE_RATE;
-    }
+            if (transactionCurrency === 'USD' && PLATFORM_BASE_CURRENCY === 'TND') {
+                availableAmountInTransactionCurrency = buyerUser.balance / TND_USD_EXCHANGE_RATE;
+            } else if (transactionCurrency === 'TND' && PLATFORM_BASE_CURRENCY === 'USD') {
+                availableAmountInTransactionCurrency = buyerUser.balance * TND_USD_EXCHANGE_RATE;
+            }
 
-    // دالة تنسيق محلية تستخدم locale الصحيح
-    const formatCurrencyForError = (amount, currency) => {
-        const locale = currency.toUpperCase() === 'USD' ? 'en-US' : 'fr-TN';
-        return new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: currency,
-            minimumFractionDigits: 2,
-        }).format(amount);
-    };
+            // دالة تنسيق محلية تستخدم locale الصحيح
+            const formatCurrencyForError = (amount, currency) => {
+                const locale = currency.toUpperCase() === 'USD' ? 'en-US' : 'fr-TN';
+                return new Intl.NumberFormat(locale, {
+                    style: 'currency',
+                    currency: currency,
+                    minimumFractionDigits: 2,
+                }).format(amount);
+            };
 
-    return res.status(400).json({
-        translationKey: "apiErrors.insufficientBalance",
-        translationParams: {
-            required: formatCurrencyForError(requiredAmount, transactionCurrency),
-            available: formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)
-        },
-        msg: `Insufficient balance. Required: ${formatCurrencyForError(requiredAmount, transactionCurrency)}, Available: ${formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)}`
-    });
-}
+            return res.status(400).json({
+                translationKey: "apiErrors.insufficientBalance",
+                translationParams: {
+                    required: formatCurrencyForError(requiredAmount, transactionCurrency),
+                    available: formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)
+                },
+                msg: `Insufficient balance. Required: ${formatCurrencyForError(requiredAmount, transactionCurrency)}, Available: ${formatCurrencyForError(availableAmountInTransactionCurrency, transactionCurrency)}`
+            });
+        }
 
         // 6. خصم المبلغ من رصيد المشتري
         buyerUser.balance = parseFloat((buyerUser.balance - amountToDeductInPlatformCurrency).toFixed(2));
@@ -1198,10 +1198,13 @@ exports.buyerConfirmReadinessAndEscrow = async (req, res) => {
         const escrowTransaction = new Transaction({
             user: buyerId,
             type: 'ESCROW_FUNDED_BY_BUYER',
-            amount: amountToDeductInPlatformCurrency, // المبلغ المخصوم من رصيده بالعملة الأساسية
+            amount: -Math.abs(amountToDeductInPlatformCurrency), // الخصم يظل سالبًا هنا
             currency: PLATFORM_BASE_CURRENCY,
-            status: 'COMPLETED', // لأن الخصم تم
-            description: `Funds escrowed for mediation of '${mediationRequest.product?.title || 'product'}' (Mediation ID: ${mediationRequestId.toString().slice(-6)}). Original escrow: ${formatCurrency(amountToEscrowInOriginalCurrency, originalEscrowCurrency)}.`,
+            status: 'COMPLETED',
+            descriptionKey: 'transactionDescriptions.escrowFunded',
+            descriptionParams: {
+                productName: mediationRequest.product?.title || 'product'
+            },
             relatedMediationRequest: mediationRequestId,
             metadata: {
                 originalEscrowAmount: amountToEscrowInOriginalCurrency,
@@ -1899,7 +1902,6 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             status: 'ON_HOLD',
             descriptionKey: 'transactionDescriptions.saleFundsPending',
             descriptionParams: { productName: product.title },
-            description: `Funds from sale of '${product.title}' are now on hold.`, // قيمة احتياطية
             relatedProduct: product._id,
             relatedMediationRequest: mediationRequestId,
             metadata: {

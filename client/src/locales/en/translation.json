@@ -188,17 +188,30 @@
   },
   "transactionTypes": {
     "PRODUCT_SALE_FUNDS_RELEASED": "Funds Released",
-    "PRODUCT_PURCHASE_COMPLETED": "Purchase",
-    "PRODUCT_SALE_FUNDS_PENDING": "Funds on Hold",
+    "PRODUCT_PURCHASE_COMPLETED": "Product Purchase",
+    "PRODUCT_SALE_FUNDS_PENDING": "Sale Funds on Hold",
     "LEVEL_UP_REWARD_RECEIVED": "Level Up Reward",
     "DEPOSIT_COMPLETED": "Deposit",
     "WITHDRAWAL_COMPLETED": "Withdrawal",
-    "MEDIATION_FEE_RECEIVED": "Mediation Fee Received"
+    "MEDIATION_FEE_RECEIVED": "Mediation Fee Received",
+    "MEDIATION_FEE_PAID_BY_BUYER": "Mediation Fee Paid",
+    "DISPUTE_PAYOUT_SELLER_WON": "Dispute Payout (Won)",
+    "ESCROW_RETURNED_MEDIATION_CANCELLED": "Escrow Refund (Cancelled)",
+    "SELLER_BALANCE_TRANSFER": "Seller Balance Transfer"
   },
   "transactionDescriptions": {
-    "mediationFeeReceived": "Fee received for mediating '{{productName}}'.",
-    "saleFundsPending": "Funds from sale of '{{productName}}' are on hold.",
-    "purchaseCompleted": "Purchase of '{{productName}}' from seller {{sellerName}}.",
+    "sellerBalanceTransfer": "Transfer of {{amount}} to main balance",
+    "depositApproved": "Approved Deposit: {{amount}} via {{method}}",
+    "escrowFunded": "Funds escrowed for '{{productName}}'",
+    "saleFundsPending": "Sale funds on hold for '{{productName}}'",
+    "mediationFeeReceived": "Mediation fee received for '{{productName}}'",
+    "purchaseCompleted": "Purchase of '{{productName}}' from {{sellerName}}",
+    "feeAdminCancel": "Half-fee (admin cancel) for '{{productName}}'",
+    "refundAdminCancel": "Refund (admin cancel) for '{{productName}}'",
+    "feeDeductionCancel": "Fee deduction (admin cancel) for '{{productName}}'",
+    "refundDisputeWon": "Escrow refund (dispute won) for '{{productName}}'",
+    "feeDisputeResolved": "Fee from resolved dispute for '{{productName}}'",
+    "payoutDisputeWon": "Payout from resolved dispute for '{{productName}}'",
     "saleFundsReleased": "Funds from sale of '{{productName}}' are now available."
   },
   "pendingFunds": {
@@ -320,7 +333,8 @@
     "NEW_CHAT_MESSAGE": "New Message: {{productName}}",
     "LEVEL_UP_REWARD": "Congratulations! You've reached Level {{level}}! 🎉",
     "RATING_RECEIVED": "New Rating Received: {{ratingType}}!",
-    "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message in: {{chatTitle}}"
+    "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message in: {{chatTitle}}",
+    "BALANCE_TRANSFER_SUCCESS": "Balance Transfer Successful"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -411,7 +425,8 @@
     "DISPUTE_RESOLVED_NEUTRAL": "The dispute regarding '{{productName}}' has been resolved by an administrator. Notes: {{notes}}",
     "MEDIATION_DISPUTED_BY_YOU": "You have opened a dispute regarding '{{productName}}'. An admin will review the situation.",
     "MEDIATION_DISPUTED_BY_OTHER": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. An admin will review the situation.",
-    "MEDIATION_DISPUTED_FOR_ADMIN": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. Your intervention is required."
+    "MEDIATION_DISPUTED_FOR_ADMIN": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. Your intervention is required.",
+    "BALANCE_TRANSFER_SUCCESS": "You have successfully transferred {{amount}} from your seller balance to your main balance."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -2217,6 +2232,25 @@
         "mediatorEarnings": "Total earnings for the Mediator",
         "noData": "Calculation details will be shown once a price is agreed upon."
       }
+    }
+  },
+  "transferBalanceModal": {
+    "title": "Transfer Seller Balance",
+    "tooltip": "Transfer funds to your main balance",
+    "available": "Available from seller balance: {{balance}}",
+    "amountPlaceholder": "Amount to transfer",
+    "summaryTitle": "Transaction Summary",
+    "amountToTransfer": "Amount to be transferred",
+    "fee": "Transfer Fee ({{percent}}%)",
+    "totalDeducted": "Total deducted from seller balance",
+    "confirmButton": "Confirm Transfer",
+    "success": "Balance transferred successfully!",
+    "errors": {
+      "positive": "Amount must be a positive number.",
+      "minAmount": "Minimum transfer amount is {{amount}}.",
+      "insufficient": "Insufficient seller balance for this transfer.",
+      "unknown": "An unknown error occurred. Please try again.",
+      "noBalance": "You have no available seller balance to transfer."
     }
   }
 }
