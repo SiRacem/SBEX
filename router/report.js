@@ -12,7 +12,7 @@ const {
 } = require('../controllers/report.controller');
 
 // --- مسارات المستخدمين لتقديم التقارير ---
-router.post('/user', verifyAuth, uploadReportImages.array('reportImages', 10), submitUserReport);
+router.post('/:reportedUserId', verifyAuth, uploadReportImages.array('reportImages', 10), submitUserReport);
 
 // --- Admin routes for managing reports ---
 router.get(

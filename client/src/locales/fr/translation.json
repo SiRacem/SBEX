@@ -425,7 +425,10 @@
     "MEDIATION_DISPUTED_BY_OTHER": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Un administrateur examinera la situation.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "L'utilisateur '{{userName}}' a ouvert un litige concernant '{{productName}}'. Votre intervention est requise.",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "Vous avez été sélectionné par {{sellerName}} pour une transaction concernant \"{{productName}}\" avec {{buyerName}}. Veuillez examiner et répondre.",
-    "BALANCE_TRANSFER_SUCCESS": "Vous avez transféré avec succès {{amount}} de votre solde vendeur vers votre solde principal."
+    "BALANCE_TRANSFER_SUCCESS": "Vous avez transféré avec succès {{amount}} de votre solde vendeur vers votre solde principal.",
+    "REPORT_STATUS_ACTION_TAKEN": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}' et une action appropriée a été prise. Détails : {{details}}",
+    "REPORT_STATUS_DISMISSED": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}'. Après enquête, il a été rejeté. Raison : {{details}}",
+    "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}"
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -1015,7 +1018,9 @@
     "actionNotAllowedAtStatus": "L'action {{action}} n'est pas autorisée à l'état actuel '{{status}}'.",
     "notTheBuyerForThisRequest": "Interdit : Vous n'êtes pas l'acheteur de cette demande.",
     "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter pour des raisons de sécurité.",
-    "forbiddenMediationAccess": "Interdit : Vous n'êtes pas autorisé à accéder à cette discussion de médiation."
+    "forbiddenMediationAccess": "Interdit : Vous n'êtes pas autorisé à accéder à cette discussion de médiation.",
+    "invalidReportedUserId": "L'ID de l'utilisateur signalé est invalide.",
+    "reportFieldsRequired": "Tous les champs de signalement sont obligatoires."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -2043,7 +2048,7 @@
     "conversation": "Conversation",
     "supportTeam": "Équipe de support",
     "user": "Utilisateur",
-    "noReplies": "Aucune réponse pour le moment.",
+    "noReplies": "Aucune réponse pour le moment. Soyez le premier à répondre !",
     "addReply": "Ajouter votre réponse",
     "replyPlaceholder": "Saisissez votre réponse ici...",
     "submitReply": "Envoyer",

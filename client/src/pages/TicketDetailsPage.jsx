@@ -549,7 +549,14 @@ const TicketDetailsPage = () => {
                       const isImage = fileType.startsWith("image/");
                       const isVideo = fileType.startsWith("video/");
                       const isAudio = fileType.startsWith("audio/");
-                      const fullUrl = `/${att.filePath}`;
+
+                      const BACKEND_URL =
+                        process.env.REACT_APP_BACKEND_URL ||
+                        "http://localhost:8000"; // تأكد من أن هذا المتغير موجود في أعلى المكون
+                      const fullUrl = `${BACKEND_URL}/${att.filePath.replace(
+                        /\\/g,
+                        "/"
+                      )}`;
 
                       return (
                         <ListGroup.Item
@@ -632,6 +639,7 @@ const TicketDetailsPage = () => {
                               href={fullUrl}
                               target="_blank"
                               rel="noopener noreferrer"
+                              download={!isImage}
                               className="text-decoration-none fw-semibold d-block"
                             >
                               {att.fileName}

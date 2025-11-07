@@ -426,7 +426,10 @@
     "MEDIATION_DISPUTED_BY_YOU": "You have opened a dispute regarding '{{productName}}'. An admin will review the situation.",
     "MEDIATION_DISPUTED_BY_OTHER": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. An admin will review the situation.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "User '{{userName}}' has opened a dispute regarding '{{productName}}'. Your intervention is required.",
-    "BALANCE_TRANSFER_SUCCESS": "You have successfully transferred {{amount}} from your seller balance to your main balance."
+    "BALANCE_TRANSFER_SUCCESS": "You have successfully transferred {{amount}} from your seller balance to your main balance.",
+    "REPORT_STATUS_ACTION_TAKEN": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}} and appropriate action has been taken. Details: {{details}}",
+    "REPORT_STATUS_DISMISSED": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}}. After investigation, it was dismissed. Reason: {{details}}",
+    "REPORT_STATUS_NEEDS_MORE_INFO": "Admin {{adminName}} is reviewing your report regarding {{reportedUserName}} and requires more information. Details: {{details}}"
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -1016,7 +1019,9 @@
     "actionNotAllowedAtStatus": "Action {{action}} is not allowed at current status '{{status}}'.",
     "notTheBuyerForThisRequest": "Forbidden: You are not the buyer for this request.",
     "sessionExpired": "Your session has expired. Please log in again for security.",
-    "forbiddenMediationAccess": "Forbidden: You are not authorized to access this mediation chat."
+    "forbiddenMediationAccess": "Forbidden: You are not authorized to access this mediation chat.",
+    "invalidReportedUserId": "Invalid reported user ID format.",
+    "reportFieldsRequired": "Reported user, reason, and details are required."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1630,11 +1635,11 @@
     "reasonRequired": "Please select a reason category.",
     "detailsMinLength": "Details must be at least 10 characters.",
     "authError": "Authentication required. Please login again.",
-    "submitSuccess": "Report submitted successfully!",
-    "submitError": "Failed to submit report.",
     "enlarge": "Click to enlarge",
     "preview": "Preview",
-    "remove": "Remove image"
+    "remove": "Remove image",
+    "submitSuccess": "Report submitted successfully! Our team will review it.",
+    "submitError": "Failed to submit the report. Please try again."
   },
   "mediationChatPage": {
     "loadingUser": "Loading user...",
@@ -2035,7 +2040,7 @@
     "conversation": "Conversation",
     "supportTeam": "Support Team",
     "user": "User",
-    "noReplies": "No replies yet.",
+    "noReplies": "No replies yet. Be the first to respond!",
     "addReply": "Add Your Reply",
     "replyPlaceholder": "Type your reply here...",
     "submitReply": "Submit",

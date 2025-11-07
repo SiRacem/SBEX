@@ -589,6 +589,11 @@ app.use(express.json());
 // 5. خدمة الملفات الثابتة (مثل الصور)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// خدمة المجلدات الفرعية بشكل صريح
+app.use('/uploads/ticket_attachments', express.static(path.join(__dirname, 'uploads/ticket_attachments')));
+app.use('/uploads/chat_images', express.static(path.join(__dirname, 'uploads/chat_images')));
+app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
+
 // 6. تطبيق Rate Limiter العام
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

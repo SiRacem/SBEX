@@ -3,76 +3,72 @@ console.log("--- report.controller.js: Module loaded ---");
 const Report = require('../models/Report');
 const User = require('../models/User');
 const MediationRequest = require('../models/MediationRequest');
-const Notification = require('../models/Notification'); // لاستخدامه في إشعارات الأدمن/المستخدمين
+const Notification = require('../models/Notification');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
 
-// --- دالة إرسال البلاغ من المستخدم (تبقى كما هي من الرد السابق) ---
 exports.submitUserReport = async (req, res) => {
     console.log("--- report.controller.js: submitUserReport CALLED ---");
-    console.log("--- [Report Controller] --- submitUserReport ---");
-    console.log("req.body received:", JSON.stringify(req.body, null, 2));
-    console.log("req.files received:", req.files ? req.files.map(f => f.originalname) : 'No files');
-
     const reporterUserId = req.user._id;
-    const { reportedUserId, reasonCategory, details, mediationContext } = req.body;
+    const { reportedUserId } = req.params;
+    const { reasonCategory, details, mediationContext } = req.body;
     const uploadedFiles = req.files;
+
+    // دالة مساعدة لحذف الملفات المرفوعة في حالة حدوث خطأ
+    const cleanupFilesOnError = (files) => {
+        if (files && files.length > 0) {
+            files.forEach(file => {
+                if (fs.existsSync(file.path)) {
+                    fs.unlink(file.path, err => {
+                        if (err) console.error("Error deleting orphaned report image on validation fail:", err);
+                    });
+                }
+            });
+        }
+    };
 
     // --- Input Validations ---
     if (!reportedUserId || !reasonCategory || !details) {
-        if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-        return res.status(400).json({ msg: "Reported user ID, reason category, and details are required." });
+        cleanupFilesOnError(uploadedFiles);
+        return res.status(400).json({ errorMessage: { key: 'apiErrors.reportFieldsRequired', fallback: "Reported user, reason, and details are required." } });
     }
     if (!mongoose.Types.ObjectId.isValid(reportedUserId)) {
-        if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-        return res.status(400).json({ msg: "Invalid reported user ID format." });
+        cleanupFilesOnError(uploadedFiles);
+        return res.status(400).json({ errorMessage: { key: 'apiErrors.invalidReportedUserId', fallback: "Invalid reported user ID format." } });
     }
     if (mediationContext && !mongoose.Types.ObjectId.isValid(mediationContext)) {
-        if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
+        cleanupFilesOnError(uploadedFiles);
         return res.status(400).json({ msg: "Invalid mediation context ID format." });
     }
     if (reporterUserId.equals(reportedUserId)) {
-        if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-        return res.status(400).json({ msg: "You cannot rate yourself." });
+        cleanupFilesOnError(uploadedFiles);
+        return res.status(400).json({ errorMessage: { key: 'apiErrors.cannotReportSelf', fallback: "You cannot report yourself." } });
     }
     const validCategories = ['INAPPROPRIATE_BEHAVIOR', 'HARASSMENT_OR_BULLYING', 'SPAM_OR_SCAM', 'IMPERSONATION', 'HATE_SPEECH', 'INAPPROPRIATE_CONTENT', 'TRANSACTION_ISSUE', 'POLICY_VIOLATION', 'OTHER'];
     if (!validCategories.includes(reasonCategory)) {
-        if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
+        cleanupFilesOnError(uploadedFiles);
         return res.status(400).json({ msg: "Invalid reason category." });
     }
 
     try {
-        const reportedUserExists = await User.findById(reportedUserId).select('_id');
+        const reportedUserExists = await User.findById(reportedUserId).select('_id fullName');
         if (!reportedUserExists) {
-            if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-            return res.status(404).json({ msg: "The user you are trying to report does not exist." });
+            cleanupFilesOnError(uploadedFiles);
+            return res.status(404).json({ errorMessage: { key: 'apiErrors.reportedUserNotFound', fallback: "The user you are trying to report does not exist." } });
         }
-        if (mediationContext) {
-            const mediationExists = await MediationRequest.findById(mediationContext).select('_id');
-            if (!mediationExists) {
-                if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-                return res.status(404).json({ msg: "The referenced mediation context does not exist." });
-            }
-        }
+
         const recentReport = await Report.findOne({
             reporterUser: reporterUserId,
             reportedUser: reportedUserId,
-            reasonCategory: reasonCategory,
             createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
         });
         if (recentReport) {
-            if (uploadedFiles && uploadedFiles.length > 0) { uploadedFiles.forEach(file => fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on validation fail:", err); })); }
-            return res.status(429).json({ msg: "You have recently submitted a similar report against this user. Please wait for our team to review it." });
+            cleanupFilesOnError(uploadedFiles);
+            return res.status(429).json({ errorMessage: { key: 'apiErrors.recentReportExists', fallback: "You have recently submitted a similar report against this user." } });
         }
 
-        const imageUrls = [];
-        if (uploadedFiles && uploadedFiles.length > 0) {
-            uploadedFiles.forEach(file => {
-                const relativePath = file.path.replace(/\\/g, '/').split('uploads/')[1];
-                imageUrls.push(`uploads/${relativePath}`);
-            });
-        }
+        const imageUrls = (uploadedFiles || []).map(file => `uploads/report_images/${file.filename.replace(/\\/g, '/')}`);
 
         const newReport = new Report({
             reporterUser: reporterUserId,
@@ -84,50 +80,54 @@ exports.submitUserReport = async (req, res) => {
         });
         await newReport.save();
 
-        // إشعار للأدمن (مثال بسيط، يمكنك تطويره)
         const admins = await User.find({ userRole: 'Admin' }).select('_id');
-        if (admins.length > 0 && req.io) { // تأكد من وجود req.io
+        if (admins.length > 0) {
             const reporter = await User.findById(reporterUserId).select('fullName').lean();
-            const notificationPromises = admins.map(admin => {
-                return Notification.create({
-                    user: admin._id,
-                    type: 'NEW_USER_REPORT',
-                    title: 'notification_titles.NEW_USER_REPORT', // <-- استخدام مفتاح الترجمة
-                    message: 'notification_messages.NEW_USER_REPORT', // <-- استخدام مفتاح الترجمة
-                    // إضافة متغيرات الرسالة
-                    messageParams: {
-                        reporterName: reporter?.fullName || 'a user',
-                        reportedUserName: reportedUserExists.fullName || 'a user', // ستحتاج لجلب اسم المستخدم المبلغ عنه
-                        reason: reasonCategory
-                    },
-                    relatedEntity: { id: newReport._id, modelName: 'Report' }
+            const notifications = admins.map(admin => ({
+                user: admin._id,
+                type: 'NEW_USER_REPORT',
+                title: 'notification_titles.NEW_USER_REPORT',
+                message: 'notification_messages.NEW_USER_REPORT',
+                messageParams: {
+                    reporterName: reporter?.fullName || 'a user',
+                    reportedUserName: reportedUserExists.fullName || 'a user',
+                    reason: reasonCategory
+                },
+                relatedEntity: { id: newReport._id, modelName: 'Report' }
+            }));
+            const createdNotifications = await Notification.insertMany(notifications);
+
+            // إرسال الإشعارات عبر Socket.IO
+            if (req.io && req.onlineUsers) {
+                createdNotifications.forEach(notification => {
+                    const adminSocketId = req.onlineUsers[notification.user.toString()];
+                    if (adminSocketId) {
+                        req.io.to(adminSocketId).emit('new_notification', notification.toObject());
+                    }
                 });
-            });
-            await Promise.all(notificationPromises);
-            // يمكنك أيضًا إرسال حدث socket لغرفة الأدمن
-            // req.io.to('admin_room').emit('new_report_notification', { reportId: newReport._id, reason: reasonCategory });
-            console.log(`Admin notifications sent for new report ${newReport._id}`);
+            }
         }
 
-
-        console.log(`[Report API] Report ${newReport._id} submitted successfully. Images: ${imageUrls.join(', ')}`);
-        res.status(201).json({ msg: "Report submitted successfully. Our team will review it shortly.", reportId: newReport._id });
+        res.status(201).json({
+            successMessage: { key: 'reportUserModal.submitSuccess' },
+            reportId: newReport._id
+        });
 
     } catch (error) {
         console.error("[Report API] Error submitting report:", error);
-        if (uploadedFiles && uploadedFiles.length > 0) {
-            uploadedFiles.forEach(file => {
-                if (fs.existsSync(file.path)) {
-                    fs.unlink(file.path, err => { if (err) console.error("Error deleting orphaned report image on error:", err); });
-                }
-            });
-        }
+        cleanupFilesOnError(uploadedFiles); // تأكد من حذف الملفات حتى في حالة حدوث خطأ عام
         if (error.name === 'ValidationError') {
-            return res.status(400).json({ msg: "Validation Error: " + error.message, errors: error.errors });
+            return res.status(400).json({ errorMessage: { key: 'apiErrors.validationError', fallback: "Validation Error: " + error.message } });
         }
-        res.status(500).json({ msg: "Server error while submitting the report. Please try again later." });
+        res.status(500).json({
+            errorMessage: {
+                key: 'reportUserModal.submitError',
+                fallback: "Server error while submitting the report. Please try again later."
+            }
+        });
     }
 };
+// [!!!] END: الكود الكامل والنهائي للدالة [!!!]
 
 /**
  * [Admin] Get a list of reports with pagination and filtering.
@@ -284,43 +284,37 @@ exports.adminUpdateReportStatus = async (req, res) => {
             .populate('reportedUser', 'fullName email avatarUrl');
 
         // إرسال إشعار للمستخدم المُبلِّغ إذا تغيرت الحالة إلى حالة نهائية
-        if (updatedFields.status && (updatedFields.status === 'ACTION_TAKEN' || updatedFields.status === 'DISMISSED' || updatedFields.status === 'NEEDS_MORE_INFO')) {
-            let notificationTitle = '';
-            let notificationMessage = '';
+        if (updatedFields.status && ['ACTION_TAKEN', 'DISMISSED', 'NEEDS_MORE_INFO'].includes(updatedFields.status)) {
+            let titleKey = 'notification_titles.REPORT_STATUS_UPDATE';
+            let messageKey = `notification_messages.REPORT_STATUS_${updatedFields.status}`;
 
-            switch (updatedFields.status) {
-                case 'ACTION_TAKEN':
-                    notificationTitle = 'Report Reviewed: Action Taken';
-                    notificationMessage = `Admin ${adminFullName || 'team'} has reviewed your report regarding user ${report.reportedUser.fullName || 'a user'} and appropriate action has been taken.`;
-                    if (updatedReport.resolutionDetails) notificationMessage += ` Details: ${updatedReport.resolutionDetails}`;
-                    break;
-                case 'DISMISSED':
-                    notificationTitle = 'Report Reviewed: Dismissed';
-                    notificationMessage = `Admin ${adminFullName || 'team'} has reviewed your report regarding user ${report.reportedUser.fullName || 'a user'}. After investigation, it was determined that no action is required at this time.`;
-                    if (updatedReport.resolutionDetails) notificationMessage += ` Reason: ${updatedReport.resolutionDetails}`;
-                    break;
-                case 'NEEDS_MORE_INFO':
-                    notificationTitle = 'Report Update: More Information Needed';
-                    notificationMessage = `Admin ${adminFullName || 'team'} is reviewing your report regarding user ${report.reportedUser.fullName || 'a user'} and requires more information. Please check your support tickets or messages for details.`;
-                    // يمكنك هنا توجيه المستخدم لمكان ما لتقديم معلومات إضافية
-                    break;
-            }
+            const notification = await Notification.create({
+                user: report.reporterUser._id,
+                type: 'REPORT_STATUS_UPDATE',
+                title: titleKey,
+                message: messageKey,
+                messageParams: {
+                    adminName: adminFullName || 'Admin',
+                    reportedUserName: report.reportedUser.fullName || 'a user',
+                    details: updatedReport.resolutionDetails || 'No details provided.'
+                },
+                relatedEntity: { id: report._id, modelName: 'Report' }
+            });
 
-            if (notificationTitle) {
-                await Notification.create({
-                    user: report.reporterUser._id, // ID المُبلِّغ
-                    type: 'REPORT_STATUS_UPDATE',
-                    title: notificationTitle,
-                    message: notificationMessage,
-                    relatedEntity: { id: report._id, modelName: 'Report' }
-                });
-                console.log(`Notification sent to reporter ${report.reporterUser.fullName} about report ${report._id} status change to ${updatedFields.status}.`);
+            // بث الإشعار عبر Socket.IO
+            if (req.io && req.onlineUsers[report.reporterUser._id.toString()]) {
+                const socketId = req.onlineUsers[report.reporterUser._id.toString()];
+                req.io.to(socketId).emit('new_notification', notification.toObject());
             }
         }
 
         console.log(`Report ${updatedReport._id} updated successfully by admin ${adminUserId}.`);
-        res.status(200).json({ msg: "Report updated successfully.", report: updatedReport });
-
+        res.status(200).json({
+            // إرسال مفتاح ترجمة للـ toast
+            successMessage: { key: 'admin.reports.updateSuccess' },
+            report: updatedReport
+        });
+        
     } catch (error) {
         console.error(`[Admin Report API] Error updating report ${reportId}:`, error);
         if (error.name === 'ValidationError') {

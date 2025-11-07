@@ -429,7 +429,10 @@
     "MEDIATION_DISPUTED_BY_OTHER": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. سيقوم مسؤول بمراجعة الحالة.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "قام المستخدم '{{userName}}' بفتح نزاع بخصوص '{{productName}}'. مطلوب تدخلكم.",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "لقد تم اختيارك من قبل '{{sellerName}}' كوسيط لمعاملة بخصوص \"{{productName}}\" مع المشتري '{{buyerName}}'. يرجى المراجعة والرد.",
-    "BALANCE_TRANSFER_SUCCESS": "لقد قمت بنجاح بتحويل {{amount}} من رصيد البائع إلى رصيدك الأساسي."
+    "BALANCE_TRANSFER_SUCCESS": "لقد قمت بنجاح بتحويل {{amount}} من رصيد البائع إلى رصيدك الأساسي.",
+    "REPORT_STATUS_ACTION_TAKEN": "قام المسؤول '{{adminName}}' بمراجعة بلاغك بخصوص '{{reportedUserName}}' وتم اتخاذ الإجراء المناسب. التفاصيل: {{details}}",
+    "REPORT_STATUS_DISMISSED": "قام المسؤول '{{adminName}}' بمراجعة بلاغك بخصوص '{{reportedUserName}}'. بعد التحقيق، تم رفض البلاغ. السبب: {{details}}",
+    "REPORT_STATUS_NEEDS_MORE_INFO": "يقوم المسؤول '{{adminName}}' بمراجعة بلاغك بخصوص '{{reportedUserName}}' ويحتاج إلى مزيد من المعلومات. التفاصيل: {{details}}"
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -1019,7 +1022,9 @@
     "actionNotAllowedAtStatus": "الإجراء {{action}} غير مسموح به في الحالة الحالية '{{status}}'.",
     "notTheBuyerForThisRequest": "ممنوع: موش إنت الشاري متاع الطلب هذا.",
     "sessionExpired": "لقد انتهت صلاحية جلستك. الرجاء تسجيل الدخول مرة أخرى لأسباب أمنية.",
-    "forbiddenMediationAccess": "ممنوع: أنت غير مصرح لك بالوصول إلى محادثة الوساطة هذه."
+    "forbiddenMediationAccess": "ممنوع: أنت غير مصرح لك بالوصول إلى محادثة الوساطة هذه.",
+    "invalidReportedUserId": "معرّف المستخدم المبلغ عنه غير صالح.",
+    "reportFieldsRequired": "جميع حقول البلاغ مطلوبة."
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",
@@ -2051,7 +2056,7 @@
     "conversation": "المحادثة",
     "supportTeam": "فريق الدعم",
     "user": "المستخدم",
-    "noReplies": "لا توجد ردود بعد.",
+    "noReplies": "لا توجد ردود بعد. كن أول من يرد!",
     "addReply": "أضف ردك",
     "replyPlaceholder": "اكتب ردك هنا...",
     "submitReply": "إرسال",

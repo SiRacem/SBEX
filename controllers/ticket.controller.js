@@ -58,15 +58,26 @@ exports.createTicket = async (req, res) => {
 
         await session.commitTransaction();
 
-        if (req.io && req.onlineUsers) {
-            const adminIds = admins.map(admin => admin._id.toString());
-            adminIds.forEach(adminId => {
-                const adminSocketId = req.onlineUsers[adminId];
+        // [!!!] START: الكود المعدل والنهائي [!!!]
+        if (req.io && req.onlineUsers && admins.length > 0) {
+            // جلب الإشعارات التي تم إنشاؤها للتو للأدمنز
+            const adminNotifications = await Notification.find({
+                'relatedEntity.id': newTicket._id,
+                'type': 'NEW_TICKET_CREATED'
+            }).session(session).lean();
+
+            adminNotifications.forEach(notification => {
+                const adminSocketId = req.onlineUsers[notification.user.toString()];
                 if (adminSocketId) {
+                    // إرسال الإشعار الفوري لتحديث العداد والـ toast
+                    req.io.to(adminSocketId).emit('new_notification', notification);
+                    // إرسال الحدث الخاص لتحديث قائمة التذاكر في لوحة تحكم الأدمن
                     req.io.to(adminSocketId).emit('new_ticket_created_for_admin', newTicket.toObject());
+                    console.log(`[Socket] Emitted new_notification & new_ticket_created_for_admin to admin ${notification.user.toString()}`);
                 }
             });
         }
+        // [!!!] END: الكود المعدل والنهائي [!!!]
 
         res.status(201).json({ msg: "Support ticket created successfully.", ticket: newTicket });
 

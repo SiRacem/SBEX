@@ -39,10 +39,10 @@ const TicketReplies = ({ replies, currentUser }) => {
 
   if (!replies || replies.length === 0) {
     return (
-      <Card className="mt-4 shadow-sm">
+      <Card className="my-4 shadow-sm">
         <Card.Body className="text-center text-muted py-4">
           {t(
-            "ticketDetails.noRepliesYet",
+            "ticketDetails.noReplies",
             "No replies yet. Be the first to respond!"
           )}
         </Card.Body>

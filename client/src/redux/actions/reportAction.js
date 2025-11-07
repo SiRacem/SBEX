@@ -25,19 +25,21 @@ const getTokenConfig = (isFormData = false) => {
     return { headers };
 };
 
-export const submitReport = (reportData) => async (dispatch) => {
+// [!!!] START: الكود النهائي والمصحح [!!!]
+export const submitReport = (reportedUserId, formData) => async (dispatch) => {
     dispatch({ type: types.SUBMIT_REPORT_REQUEST });
-    const config = getTokenConfig(true); // formData is used
+    const config = getTokenConfig(true);
     if (!config) {
         return dispatch({ type: types.SUBMIT_REPORT_FAIL, payload: { errorMessage: { key: 'apiErrors.notAuthorized' } } });
     }
     try {
-        const { data } = await axios.post('/reports/submit', reportData, config);
-        dispatch({ type: types.SUBMIT_REPORT_SUCCESS, payload: { ...data, successMessage: 'reports.submitSuccess' } });
+        // استخدم المسار الصحيح: /reports/USER_ID
+        const { data } = await axios.post(`/reports/${reportedUserId}`, formData, config);
+        dispatch({ type: types.SUBMIT_REPORT_SUCCESS, payload: { ...data } });
         return data;
     } catch (error) {
-        const { key, fallback, params } = handleError(error, 'reports.submitFail');
-        dispatch({ type: types.SUBMIT_REPORT_FAIL, payload: { errorMessage: { key, fallback, params } } });
+        const errorMessage = handleError(error, 'reportUserModal.submitError');
+        dispatch({ type: types.SUBMIT_REPORT_FAIL, payload: { errorMessage } });
         throw error;
     }
 };
@@ -80,7 +82,7 @@ export const adminUpdateReportStatus = (reportId, updateData) => async (dispatch
     }
     try {
         const { data } = await axios.put(`/reports/admin/${reportId}/status`, updateData, config);
-        dispatch({ type: types.ADMIN_UPDATE_REPORT_STATUS_SUCCESS, payload: { ...data, successMessage: 'admin.reports.updateSuccess' } });
+        dispatch({ type: types.ADMIN_UPDATE_REPORT_STATUS_SUCCESS, payload: { ...data, successMessage: data.successMessage.key } });        
         return data.report;
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'admin.reports.updateFail');

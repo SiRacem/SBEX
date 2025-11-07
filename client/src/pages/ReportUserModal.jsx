@@ -133,8 +133,9 @@ const ReportUserModal = ({
     }
     setError("");
     setLoading(true);
+
+    // بناء FormData بدون reportedUserId
     const formData = new FormData();
-    formData.append("reportedUserId", reportedUserId);
     formData.append("reasonCategory", reasonCategory);
     formData.append("details", details);
     selectedFiles.forEach((file) => {
@@ -147,19 +148,36 @@ const ReportUserModal = ({
         throw new Error(t("reportUserModal.authError"));
       }
       const config = { headers: { Authorization: `Bearer ${token}` } };
-      const response = await axios.post("/reports/user", formData, config);
-      toast.success(response.data.msg || t("reportUserModal.submitSuccess"));
+
+      // [!!!] استخدام المسار الصحيح مع تمرير الـ ID في الـ URL [!!!]
+      const response = await axios.post(
+        `/reports/${reportedUserId}`,
+        formData,
+        config
+      );
+
+      // استخدام مفاتيح الترجمة للاستجابة
+      const successMsg = response.data.successMessage;
+      toast.success(
+        t(successMsg?.key || "reportUserModal.submitSuccess", {
+          fallback: response.data.msg,
+        })
+      );
+
       if (onReportSuccess) {
         onReportSuccess();
       }
       resetModalStateAndClose(true);
     } catch (err) {
-      const errMsg =
-        err.response?.data?.msg ||
-        err.message ||
-        t("reportUserModal.submitError");
-      setError(errMsg);
-      toast.error(errMsg);
+      const errorMsgObj = err.response?.data?.errorMessage;
+      const fallbackMsg =
+        err.response?.data?.msg || t("reportUserModal.submitError");
+      const finalErrorMsg = errorMsgObj
+        ? t(errorMsgObj.key, { fallback: errorMsgObj.fallback || fallbackMsg })
+        : fallbackMsg;
+
+      setError(finalErrorMsg);
+      toast.error(finalErrorMsg);
       setLoading(false);
     }
   };

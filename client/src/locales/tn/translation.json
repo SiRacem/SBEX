@@ -426,7 +426,10 @@
     "MEDIATION_DISPUTED_BY_OTHER": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. الأدمن باش يشوف الموضوع.",
     "MEDIATION_DISPUTED_FOR_ADMIN": "المستخدم '{{userName}}' حل مشكلة بخصوص '{{productName}}'. لازمك تدخل.",
     "MEDIATION_ASSIGNED_TO_MEDIATOR": "اختارك '{{sellerName}}' باش تكون وسيط في معاملة بخصوص \"{{productName}}\" مع الشاري '{{buyerName}}'. يرحم والديك ثبت في الموضوع وجاوب.",
-    "BALANCE_TRANSFER_SUCCESS": "حولّت بالصحيح {{amount}} من رصيد البيعان للرصيد الأساسي متاعك."
+    "BALANCE_TRANSFER_SUCCESS": "حولّت بالصحيح {{amount}} من رصيد البيعان للرصيد الأساسي متاعك.",
+    "REPORT_STATUS_ACTION_TAKEN": "الأدمن '{{adminName}}' شاف البلاغ متاعك على '{{reportedUserName}}' وخذينا الإجراء اللازم. التفاصيل: {{details}}",
+    "REPORT_STATUS_DISMISSED": "الأدمن '{{adminName}}' شاف البلاغ متاعك على '{{reportedUserName}}'. بعد ما ثبتنا، ترفض البلاغ. السبب: {{details}}",
+    "REPORT_STATUS_NEEDS_MORE_INFO": "الأدمن '{{adminName}}' قاعد يشوف في البلاغ متاعك على '{{reportedUserName}}' ويستحق معلومات أكثر. التفاصيل: {{details}}"
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -1016,7 +1019,9 @@
     "actionNotAllowedAtStatus": "الإجراء {{action}} ما يتعداش في الحالة هاذي '{{status}}'.",
     "notTheBuyerForThisRequest": "ممنوع: موش إنت الشاري متاع الطلب هذا.",
     "sessionExpired": "السيّسيون متاعك وفات. يرحم والديك عاود حل الكونت للأمان.",
-    "forbiddenMediationAccess": "ممنوع: ما عندكش الحق باش تدخل للمحادثة متاع الوساطة هاذي."
+    "forbiddenMediationAccess": "ممنوع: ما عندكش الحق باش تدخل للمحادثة متاع الوساطة هاذي.",
+    "invalidReportedUserId": "المستخدم اللي تبلّغت عليه موش صحيح.",
+    "reportFieldsRequired": "لازم تعمّر كل الخانات اللازمة في البلاغ."
   },
   "confirmLogout": "بالرسمي تحب تخرج؟",
   "forSellersOnly": "للبايعة أكهو.",
@@ -2046,7 +2051,7 @@
     "conversation": "المحادثة",
     "supportTeam": "فريق الدعم",
     "user": "المستخدم",
-    "noReplies": "ما فماش جوابات.",
+    "noReplies": "ما فماش جوابات. كون إنت اللولاني اللي يجاوب!",
     "addReply": "زيد جوابك",
     "replyPlaceholder": "اكتب جوابك هوني...",
     "submitReply": "ابعث",
