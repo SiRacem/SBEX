@@ -216,9 +216,13 @@ const submitRating = async (req, res) => {
 
                 if (!isRewardNotificationSufficient) {
                     await Notification.create([{
-                        user: ratedUserDoc._id, type: 'BADGE_UNLOCKED',
-                        title: `🏅 Reputation Update: You are now ${ratedUserDoc.reputationLevel}!`,
-                        message: `Your reputation status has been updated to ${ratedUserDoc.reputationLevel}.`,
+                        user: ratedUserDoc._id,
+                        type: 'BADGE_UPDATED', // [!] استخدم النوع الصحيح
+                        title: 'notification_titles.BADGE_UPDATED', // [!] استخدم مفتاح الترجمة
+                        message: 'notification_messages.BADGE_UPDATED', // [!] استخدم مفتاح الترجمة
+                        messageParams: {
+                            badgeName: ratedUserDoc.reputationLevel // مرر اسم الشارة كمتغير
+                        },
                         relatedEntity: { id: ratedUserDoc._id, modelName: 'User' }
                     }], { session });
                     console.log(`User ${ratedUserDoc._id} received a badge update notification to ${ratedUserDoc.reputationLevel}.`);

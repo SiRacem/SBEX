@@ -50,6 +50,7 @@ import './pages/MainDashboard.css';
 import FAQPage from './pages/FAQPage';
 import AdminFAQManagement from './components/admin/AdminFAQManagement';
 import axios from 'axios';
+import { getActiveFAQs } from './redux/actions/faqAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -334,6 +335,10 @@ function App() {
 
       newSocket.on('ticket_updated', (data) => {
         dispatch({ type: 'UPDATE_TICKET_DETAILS_REALTIME', payload: data.updatedTicket });
+      });
+
+      newSocket.on('faqs_updated', () => {
+        dispatch(getActiveFAQs());
       });
     }
 

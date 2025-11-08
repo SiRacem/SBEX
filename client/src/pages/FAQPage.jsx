@@ -105,17 +105,6 @@ const FAQPage = () => {
     dispatch(getActiveFAQs());
   }, [dispatch]);
 
-  useEffect(() => {
-    if (socket) {
-      const handleFaqUpdate = () => {
-        toast.info(t("faq.listUpdated"), { autoClose: 2000 });
-        dispatch(getActiveFAQs());
-      };
-      socket.on("faqs_updated", handleFaqUpdate);
-      return () => socket.off("faqs_updated", handleFaqUpdate);
-    }
-  }, [socket, dispatch, t]);
-
   const filteredFAQs = useMemo(() => {
     if (!searchQuery) return groupedFAQs;
     const lowercasedQuery = searchQuery.toLowerCase();

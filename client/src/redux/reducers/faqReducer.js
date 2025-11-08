@@ -58,7 +58,7 @@ export const faqReducer = (state = initialState, action) => {
             return {
                 ...state,
                 loadingCUD: false,
-                adminFaqList: state.adminFaqList.filter(faq => faq._id !== action.payload),
+                adminFaqList: state.adminFaqList.filter(faq => faq._id !== action.payload.id),
             };
 
         case types.ADMIN_CREATE_FAQ_FAIL:

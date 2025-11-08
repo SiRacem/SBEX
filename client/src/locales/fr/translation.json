@@ -333,7 +333,8 @@
     "LEVEL_UP_REWARD": "Félicitations ! Vous avez atteint le niveau {{level}} ! 🎉",
     "RATING_RECEIVED": "Nouvelle évaluation reçue : {{ratingType}} !",
     "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée",
-    "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi"
+    "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi",
+    "BADGE_UPDATED": "🏅 Mise à jour de la réputation !"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -428,7 +429,8 @@
     "BALANCE_TRANSFER_SUCCESS": "Vous avez transféré avec succès {{amount}} de votre solde vendeur vers votre solde principal.",
     "REPORT_STATUS_ACTION_TAKEN": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}' et une action appropriée a été prise. Détails : {{details}}",
     "REPORT_STATUS_DISMISSED": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}'. Après enquête, il a été rejeté. Raison : {{details}}",
-    "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}"
+    "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}",
+    "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -1292,7 +1294,10 @@
       "nextReward": "Prochaine Récompense",
       "maxLevel": "Niveau maximum atteint !",
       "totalPointsTooltip": "Total des points de réputation"
-    }
+    },
+    "avatar": {
+    "updateSuccess": "Photo de profil mise à jour avec succès !"
+  }
   },
   "mediatorDashboard": {
     "notAvailable": "N/A",

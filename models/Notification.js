@@ -97,7 +97,8 @@ const NotificationSchema = new Schema({
             'MEDIATION_CANCELLED_BY_BUYER',
             'BID_CANCELLED_BY_UPDATE',
             'BUYER_CONFIRM_AWAITING_YOUR_ACTION',
-            'SELLER_BALANCE_TRANSFER_SUCCESS'
+            'SELLER_BALANCE_TRANSFER_SUCCESS',
+            'BADGE_UPDATED'
         ],
         required: true
     },

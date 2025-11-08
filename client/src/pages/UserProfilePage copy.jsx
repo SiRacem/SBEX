@@ -1,3 +1,5 @@
+// src/pages/UserProfilePage.jsx
+
 import React, { useEffect, useState, useCallback, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -25,15 +27,6 @@ import {
   FaThumbsDown,
   FaExclamationTriangle,
   FaStar,
-  FaQuestionCircle,
-  FaAward,
-  FaMedal,
-  FaTrophy,
-  FaGem,
-  FaCrown,
-  FaSkullCrossbones,
-  FaDragon,
-  FaShieldAlt,
 } from "react-icons/fa";
 import "./UserProfilePage.css";
 import { useSelector } from "react-redux";
@@ -77,49 +70,6 @@ const checkIfRecentlyReported = (reportedUserId) => {
   if (!reportTimestamp) return false;
   const cooldownMilliseconds = REPORT_COOLDOWN_HOURS * 60 * 60 * 1000;
   return Date.now() - reportTimestamp < cooldownMilliseconds;
-};
-
-const ReputationBadgeDisplay = ({ numericLevel, t }) => {
-  const badges = {
-    Mythic: { Icon: FaSkullCrossbones, color: "#A020F0" },
-    Legend: { Icon: FaDragon, color: "#FF8C00" },
-    Grandmaster: { Icon: FaCrown, color: "#FF4500" },
-    Master: { Icon: FaCrown, color: "#D4AF37" },
-    Diamond: { Icon: FaGem, color: "#00BFFF" },
-    Platinum: { Icon: FaShieldAlt, color: "#708090" },
-    Gold: { Icon: FaTrophy, color: "#FFD700" },
-    Silver: { Icon: FaMedal, color: "#A9A9A9" },
-    Bronze: { Icon: FaAward, color: "#CD7F32" },
-    Novice: { Icon: FaStar, color: "#6C757D" },
-  };
-
-  let badgeName = "Novice";
-  if (numericLevel >= 35) badgeName = "Mythic";
-  else if (numericLevel >= 30) badgeName = "Legend";
-  else if (numericLevel >= 25) badgeName = "Grandmaster";
-  else if (numericLevel >= 20) badgeName = "Master";
-  else if (numericLevel >= 15) badgeName = "Diamond";
-  else if (numericLevel >= 10) badgeName = "Platinum";
-  else if (numericLevel >= 7) badgeName = "Gold";
-  else if (numericLevel >= 5) badgeName = "Silver";
-  else if (numericLevel >= 3) badgeName = "Bronze";
-
-  const { Icon, color } = badges[badgeName] || {
-    Icon: FaQuestionCircle,
-    color: "#6c757d",
-  };
-
-  return (
-    <Badge
-      pill
-      bg="light"
-      text="dark"
-      className="d-inline-flex align-items-center reputation-badge"
-    >
-      <Icon className="me-1" style={{ color }} />
-      <span>{t(`reputationLevels.${badgeName}`, badgeName)}</span>
-    </Badge>
-  );
 };
 
 const UserProfilePage = () => {
@@ -296,7 +246,7 @@ const UserProfilePage = () => {
             )}
             <Card.Header className="profile-header bg-light p-4 text-md-start text-center border-0">
               <Row className="align-items-center gy-3">
-                <Col xs={12} md="auto" className="text-center">
+                <Col xs={12} md={2} className="text-center">
                   <Image
                     src={getAvatarSrc()}
                     roundedCircle
@@ -308,39 +258,44 @@ const UserProfilePage = () => {
                     }}
                   />
                 </Col>
-                <Col xs={12} md>
-                  <div className="d-flex flex-column flex-md-row align-items-center mb-2">
+                <Col xs={12} md={canReportThisUser ? 9 : 10}>
+                  <div className="d-flex flex-column flex-md-row align-items-center justify-content-start mb-2">
                     <h2 className="profile-name mb-1 mb-md-0 me-md-3">
                       {userDetails.fullName}
                     </h2>
-                    <div className="d-flex align-items-center">
-                      <Badge
-                        pill
-                        bg="info"
-                        text="dark"
-                        className="profile-role me-2"
-                      >
-                        {t(`common.roles.${userDetails.userRole}`, {
-                          defaultValue: userDetails.userRole,
-                        })}
-                      </Badge>
-                      <ReputationBadgeDisplay
-                        numericLevel={userDetails.level || 1}
-                        t={t}
-                      />
-                      <Badge bg="primary" className="ms-2">
-                        <FaStar size={12} className="me-1" />
-                        {t("common.level", { level: userDetails.level || 1 })}
-                      </Badge>
-                    </div>
+                    <Badge
+                      pill
+                      bg="info"
+                      text="dark"
+                      className="profile-role ms-md-2"
+                    >
+                      {t(`roles.${userDetails.userRole}`, {
+                        defaultValue: userDetails.userRole,
+                      })}
+                    </Badge>
+                    <p className="text-muted small mb-0 ms-md-auto">
+                      <FaCalendarAlt size={14} className="me-1 opacity-75" />
+                      {t("userProfilePage.memberSince")}:{" "}
+                      {new Date(
+                        userDetails.registerDate || Date.now()
+                      ).toLocaleDateString(i18n.language)}
+                    </p>
                   </div>
-                  <p className="text-muted small mb-0">
-                    <FaCalendarAlt size={14} className="me-1 opacity-75" />
-                    {t("userProfilePage.memberSince")}:{" "}
-                    {new Date(
-                      userDetails.registerDate || Date.now()
-                    ).toLocaleDateString(i18n.language)}
-                  </p>
+                  {userDetails.reputationLevel &&
+                    (userDetails.level || userDetails.level === 0) && (
+                      <div className="mt-2">
+                        <Badge bg="secondary" className="me-2">
+                          {t(
+                            `reputationLevels.${userDetails.reputationLevel}`,
+                            { defaultValue: userDetails.reputationLevel }
+                          )}
+                        </Badge>
+                        <Badge bg="primary">
+                          <FaStar size={12} className="me-1" />
+                          {t("common.level", { level: userDetails.level })}
+                        </Badge>
+                      </div>
+                    )}
                 </Col>
               </Row>
             </Card.Header>
@@ -356,7 +311,7 @@ const UserProfilePage = () => {
                         <FaBoxOpen className="me-2 text-primary icon" />
                         {t("userProfilePage.activeListings")}
                       </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
+                      <Badge bg="light" text="dark">
                         {profileData?.activeListingsCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
@@ -365,7 +320,7 @@ const UserProfilePage = () => {
                         <FaCheckCircle className="me-2 text-success icon" />
                         {t("userProfilePage.productsSold")}
                       </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
+                      <Badge bg="light" text="dark">
                         {profileData?.productsSoldCount ?? 0}
                       </Badge>
                     </ListGroup.Item>
