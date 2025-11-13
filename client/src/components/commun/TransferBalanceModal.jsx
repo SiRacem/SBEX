@@ -13,6 +13,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { getProfile } from "../../redux/actions/userAction";
 import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
+import { formatErrorMessage } from "../../utils/errorUtils";
 
 const MIN_TRANSFER_AMOUNT_TND = 6.0;
 const TRANSFER_FEE_PERCENT = 2;
@@ -111,7 +112,9 @@ const TransferBalanceModal = ({ show, onHide }) => {
         <Modal.Title>{t("transferBalanceModal.title")}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && (
+          <Alert variant="danger">{formatErrorMessage(error, t)}</Alert>
+        )}
         <Form.Group className="mb-3">
           <Form.Label>
             {t("transferBalanceModal.available", {

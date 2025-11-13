@@ -39,6 +39,7 @@ const mediationRoute = require('./router/mediation.router');
 const ticketRoute = require('./router/ticket.router');
 const reportRoute = require('./router/report');
 const faqRoute = require('./router/faq.router');
+const newsRouter = require('./router/newsRouter');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -593,6 +594,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/ticket_attachments', express.static(path.join(__dirname, 'uploads/ticket_attachments')));
 app.use('/uploads/chat_images', express.static(path.join(__dirname, 'uploads/chat_images')));
 app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
+app.use('/uploads/news_media', express.static(path.join(__dirname, 'uploads/news_media')));
 
 // 6. تطبيق Rate Limiter العام
 const apiLimiter = rateLimit({
@@ -650,6 +652,7 @@ app.use('/mediation', mediationRoute);
 app.use('/reports', reportRoute);
 app.use('/support', ticketRoute);
 app.use('/faq', faqRoute);
+app.use('/news', newsRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 

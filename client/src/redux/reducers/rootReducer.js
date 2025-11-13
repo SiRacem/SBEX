@@ -14,6 +14,7 @@ import ratingReducer from './ratingReducer';
 import { ticketReducer } from './ticketReducer';
 import { faqReducer } from './faqReducer';
 import { currencyReducer } from './currencyReducer';
+import newsReducer from './newsReducer';
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -33,6 +34,7 @@ const rootReducer = combineReducers({
     ticketReducer,
     faqReducer,
     currencyReducer,
+    newsReducer,
     // orderReducer,
     // cartReducer,
 });

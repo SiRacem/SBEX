@@ -70,7 +70,8 @@
     "mediatorApps": "Mediator Apps",
     "support": "Support",
     "myOrders": "My Orders",
-    "logout": "Logout"
+    "logout": "Logout",
+    "manageNews": "Manage News"
   },
   "dashboard": {
     "balances": {
@@ -106,6 +107,24 @@
       "title": "Settings",
       "languageTitle": "Platform Language"
     }
+  },
+  "news": {
+    "pageTitle": "News & Updates",
+    "markAllRead": "Mark all as read ({{count}})",
+    "noNews": "No news or updates have been posted yet.",
+    "new": "New",
+    "postedOn": "Posted on {{date}}",
+    "views": "Views",
+    "markAsRead": "Mark as read",
+    "readMore": "Read More",
+    "postedBy": "Posted by {{author}}",
+    "videoNotSupported": "Your browser does not support the video tag."
+  },
+  "newsCategories": {
+    "General": "General",
+    "Platform Update": "Platform Update",
+    "Promotion": "Promotion",
+    "Security Alert": "Security Alert"
   },
   "faq": {
     "title": "Advice and answers from our Team",
@@ -559,6 +578,48 @@
     }
   },
   "admin": {
+    "news": {
+      "pageTitle": "News Management",
+      "addButton": "Add New Post",
+      "confirmDelete": "Are you sure you want to delete this news post?",
+      "editTitle": "Edit News Post",
+      "createTitle": "Create New News Post",
+      "createButton": "Create Post",
+      "table": {
+        "title": "Title (EN)",
+        "category": "Category",
+        "likes": "Likes/Dislikes",
+        "createdAt": "Created At",
+        "actions": "Actions",
+        "views": "Views",
+        "stats": "Stats"
+      },
+      "form": {
+        "titleEN": "Title (English)",
+        "contentEN": "Content (English)",
+        "titleAR": "Title (Arabic)",
+        "contentAR": "Content (Arabic)",
+        "titleFR": "Title (French)",
+        "contentFR": "Content (French)",
+        "titleTN": "Title (Tunisian)",
+        "contentTN": "Content (Tunisian)",
+        "category": "Category",
+        "selectMedia": "Select an image or video file",
+        "media": "Media (Image/Video)",
+        "currentMedia": "Current Media",
+        "fileSelected": "File Selected",
+        "dragOrClick": "Drag 'n' drop a file here, or click to select a file",
+        "fileConstraints": "Max file size: 10MB",
+        "previewTitle": "Image Preview"
+      },
+      "noPosts": "No news posts found.",
+      "createSuccess": "News post created successfully!",
+      "updateSuccess": "News post updated successfully!",
+      "deleteSuccess": "News post deleted successfully!",
+      "errors": {
+        "requiredFields": "English title and content are required as a fallback."
+      }
+    },
     "tickets": {
       "page": {
         "title": "Support Tickets Dashboard",

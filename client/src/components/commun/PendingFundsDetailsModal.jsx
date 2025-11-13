@@ -32,6 +32,7 @@ import { Link } from "react-router-dom";
 import useCurrencyDisplay from "../../hooks/useCurrencyDisplay";
 import { toast } from "react-toastify";
 import { useTranslation } from "react-i18next";
+import { formatErrorMessage } from "../../utils/errorUtils";
 
 const formatCurrency = (amount, currencyCode = "TND") => {
   const num = Number(amount);
@@ -158,7 +159,9 @@ const PendingFundsDetailsModal = ({ show, onHide }) => {
             <p className="mt-2">{t("pendingFunds.loading")}</p>
           </div>
         )}
-        {error && <Alert variant="danger">{error}</Alert>}
+        {error && (
+          <Alert variant="danger">{formatErrorMessage(error, t)}</Alert>
+        )}
 
         {!loading && !error && details && (
           <>

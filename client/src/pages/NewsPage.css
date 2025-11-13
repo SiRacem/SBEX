@@ -1,0 +1,60 @@
+.news-card .content-excerpt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 4; /* عدد الأسطر التي ستظهر */
+    -webkit-box-orient: vertical;
+    line-height: 1.6;
+}
+
+.news-card .card-img-top-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.news-card .card-img-overlay-custom {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.news-card:hover .card-img-overlay-custom {
+    opacity: 1;
+}
+
+.news-card .read-more-btn {
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.news-card:hover .read-more-btn {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.unread-news {
+    border-left: 4px solid var(--bs-primary);
+}
+
+.read-more-link {
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+}
+.read-more-link svg {
+    transition: transform 0.2s ease-in-out;
+}
+.read-more-link:hover svg {
+    transform: translateX(4px);
+}

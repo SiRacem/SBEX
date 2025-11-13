@@ -70,7 +70,8 @@
     "mediatorApps": "طلبات الوسطاء",
     "support": "الدعم الفني",
     "myOrders": "طلباتي",
-    "logout": "الخروج"
+    "logout": "الخروج",
+    "manageNews": "جيستيون الأخبار"
   },
   "dashboard": {
     "balances": {
@@ -106,6 +107,24 @@
       "title": "الريڨلاج",
       "languageTitle": "لغة المنصة"
     }
+  },
+  "news": {
+    "pageTitle": "الأخبار والتحديثات",
+    "markAllRead": "تحديد الكل كمقروء ({{count}})",
+    "noNews": "لم يتم نشر أي أخبار أو تحديثات بعد.",
+    "new": "جديد",
+    "postedOn": "نشر في {{date}}",
+    "views": "المشاهدات",
+    "markAsRead": "تحديد كمقروء",
+    "readMore": "اقرا أكثر",
+    "postedBy": "هبطها {{author}}",
+    "videoNotSupported": "المتصفح متاعك ما يخدمش الفيديوات."
+  },
+  "newsCategories": {
+    "General": "عام",
+    "Platform Update": "تحديث للمنصة",
+    "Promotion": "برومو",
+    "Security Alert": "تنبيه أمني"
   },
   "faq": {
     "title": "نصايح و جوابات من ليكيب متاعنا",
@@ -559,6 +578,48 @@
     }
   },
   "admin": {
+    "news": {
+      "pageTitle": "جيستيون الأخبار",
+      "addButton": "زيد خبر جديد",
+      "confirmDelete": "بالرسمي تحب تفسخ الخبر هذا؟",
+      "editTitle": "بدّل الخبر",
+      "createTitle": "اعمل خبر جديد",
+      "createButton": "اعمل الخبر",
+      "table": {
+        "title": "العنوان (EN)",
+        "category": "الصنف",
+        "likes": "جيم/ديسلايك",
+        "createdAt": "وقت اللي تعمل",
+        "actions": "الإجراءات",
+        "views": "مشاهدات",
+        "stats": "الإحصائيات"
+      },
+      "form": {
+        "titleEN": "العنوان (بالأنجليزية)",
+        "contentEN": "المحتوى (بالأنجليزية)",
+        "titleAR": "العنوان (بالعربية)",
+        "contentAR": "المحتوى (بالعربية)",
+        "titleFR": "العنوان (بالفرنسية)",
+        "contentFR": "المحتوى (بالفرنسية)",
+        "titleTN": "العنوان (بالتونسي)",
+        "contentTN": "المحتوى (بالتونسي)",
+        "category": "الصنف",
+        "selectMedia": "اختار صورة و الا فيديو",
+        "media": "الميديا (تصويرة/فيديو)",
+        "currentMedia": "الميديا الموجودة",
+        "fileSelected": "تختار الفيشي",
+        "dragOrClick": "لوّح فيشي هوني، ولا انزل باش تختار واحد",
+        "fileConstraints": "أكبر حجم للفيشي: 10 ميغا",
+        "previewTitle": "معاينة التصويرة"
+      },
+      "noPosts": "ما فماش أخبار.",
+      "createSuccess": "الخبر تزاد بالصحيح!",
+      "updateSuccess": "الخبر تبدل بالصحيح!",
+      "deleteSuccess": "الخبر تفسخ بالصحيح!",
+      "errors": {
+        "requiredFields": "لازم تعمر العنوان والمحتوى بالأنجليزية على الأقل."
+      }
+    },
     "tickets": {
       "page": {
         "title": "لوحة تحكم تذاكر الدعم",

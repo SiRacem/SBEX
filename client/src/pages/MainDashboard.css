@@ -117,7 +117,6 @@
     opacity: 0.8;
 }
 
-
 /* --- [!!!] الحل الأفضل والأبسط لمشكلة المسافات في RTL --- */
 .icon-with-spacing {
     margin-inline-end: 0.75rem !important;
@@ -129,8 +128,15 @@
     /* مسافة أصغر */
 }
 
-/* --- نهاية الحل --- */
-
+.notification-badge-circle {
+    min-width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    font-size: 0.75rem;
+}
 
 /* [!] RTL Specific Adjustments */
 [dir="rtl"] .comms-link:hover {

@@ -18,6 +18,8 @@ import Profile from './components/commun/Profile';
 import Comptes from './pages/Comptes';
 import Wallet from './pages/Wallet';
 import MainDashboard from './pages/MainDashboard';
+import NewsPage from './pages/NewsPage';
+import AdminNewsManagement from './components/admin/AdminNewsManagement';
 import OfflineProd from './components/commun/OfflineProd';
 import Register from './components/commun/Register';
 import Login from './components/commun/Login';
@@ -33,7 +35,6 @@ import MediationChatPage from './pages/MediationChatPage';
 import MediationsListPage from './pages/MediationsListPage';
 import AdminDisputesPage from './components/admin/AdminDisputesPage';
 import AdminReportsPage from './components/admin/AdminReportsPage';
-import { FaComments, FaTicketAlt } from 'react-icons/fa';
 import { getTransactionsForDashboard, getTransactions } from './redux/actions/transactionAction';
 import CreateTicketPage from './pages/CreateTicketPage';
 import TicketDetailsPage from './pages/TicketDetailsPage';
@@ -51,6 +52,7 @@ import FAQPage from './pages/FAQPage';
 import AdminFAQManagement from './components/admin/AdminFAQManagement';
 import axios from 'axios';
 import { getActiveFAQs } from './redux/actions/faqAction';
+import { getNews } from './redux/actions/newsAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -95,10 +97,10 @@ const ProtectedRoute = ({ children, requiredRole, isMediatorRoute = false }) => 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-if (user.blocked) {
+  if (user.blocked) {
     const allowedBlockedPaths = ['/dashboard/profile', '/dashboard/support', '/dashboard/tickets', '/dashboard/support/tickets/:ticketId'];
     const isAllowed = allowedBlockedPaths.some(p => location.pathname.startsWith(p.replace(/:ticketId/, '')));
-    
+
     if (isAllowed) {
       return children;
     }
@@ -171,18 +173,18 @@ function App() {
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
       dispatch({ type: 'CLEAR_USER_MESSAGES' }); // استخدمنا action type مختلف لمسح رسائل النجاح
-    } 
-    
+    }
+
     // عرض رسائل الخطأ
     if (errorFromAPI) {
       const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
       toast.error(
-          t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }),
-          { toastId: errorFromAPI.key } // لمنع التكرار السريع لنفس الخطأ
+        t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }),
+        { toastId: errorFromAPI.key } // لمنع التكرار السريع لنفس الخطأ
       );
       dispatch(clearUserErrors()); // امسح الخطأ بعد عرضه مباشرة
     }
-    
+
     // التعامل مع الأخطاء القديمة (إذا كانت موجودة)
     if (errors) {
       const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
@@ -340,6 +342,10 @@ function App() {
       newSocket.on('faqs_updated', () => {
         dispatch(getActiveFAQs());
       });
+
+      newSocket.on('news_updated', () => {
+        dispatch(getNews()); // استورد getNews من newsAction.js
+      });
     }
 
     // --- دالة التنظيف ---
@@ -413,6 +419,8 @@ function App() {
             <Route path="/register" element={!isAuth || !user ? <Register /> : <Navigate to="/dashboard" replace />} />
             <Route path="/" element={<OfflineProd />} />
             <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/news" element={<ProtectedRoute requiredRole="Admin"><AdminNewsManagement /></ProtectedRoute>} />
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

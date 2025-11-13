@@ -1,0 +1,24 @@
+.file-drop-zone {
+    border: 2px dashed #0d6efd;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.file-drop-zone:hover {
+    background-color: #e2e6ea;
+}
+
+.file-drop-zone .icon {
+    font-size: 2.5rem;
+    color: #0d6efd;
+    margin-bottom: 0.5rem;
+}
+
+.file-drop-zone .file-name {
+    font-weight: bold;
+    color: #198754;
+}

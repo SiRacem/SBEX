@@ -70,7 +70,8 @@
     "mediatorApps": "طلبات الوسطاء",
     "support": "الدعم الفني",
     "myOrders": "طلباتي",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "manageNews": "إدارة الأخبار"
   },
   "dashboard": {
     "balances": {
@@ -106,6 +107,24 @@
       "title": "الإعدادات",
       "languageTitle": "لغة المنصة"
     }
+  },
+  "news": {
+    "pageTitle": "الأخبار والتحديثات",
+    "markAllRead": "تحديد الكل كمقروء ({{count}})",
+    "noNews": "لم يتم نشر أي أخبار أو تحديثات بعد.",
+    "new": "جديد",
+    "postedOn": "نشر في {{date}}",
+    "views": "المشاهدات",
+    "markAsRead": "تحديد كمقروء",
+    "readMore": "اقرأ المزيد",
+    "postedBy": "نُشر بواسطة {{author}}",
+    "videoNotSupported": "متصفحك لا يدعم وسم الفيديو."
+  },
+  "newsCategories": {
+    "General": "عام",
+    "Platform Update": "تحديث للمنصة",
+    "Promotion": "عرض ترويجي",
+    "Security Alert": "تنبيه أمني"
   },
   "faq": {
     "title": "نصائح وإجابات من فريقنا",
@@ -200,20 +219,20 @@
     "SELLER_BALANCE_TRANSFER": "تحويل رصيد بائع"
   },
   "transactionDescriptions": {
-  "sellerBalanceTransfer": "تحويل مبلغ {{amount}} إلى الرصيد الأساسي",
-  "depositApproved": "إيداع موافق عليه: {{amount}} عبر {{method}}",
-  "escrowFunded": "أموال محجوزة لـ '{{productName}}'",
-  "saleFundsPending": "أموال بيع معلّقة لـ '{{productName}}'",
-  "mediationFeeReceived": "رسوم وساطة مستلمة لـ '{{productName}}'",
-  "purchaseCompleted": "شراء '{{productName}}' من {{sellerName}}",
-  "feeAdminCancel": "نصف الرسوم (إلغاء إداري) لـ '{{productName}}'",
-  "refundAdminCancel": "استرداد (إلغاء إداري) لـ '{{productName}}'",
-  "feeDeductionCancel": "خصم الرسوم (إلغاء إداري) لـ '{{productName}}'",
-  "refundDisputeWon": "استرداد الضمان (فوز بالنزاع) لـ '{{productName}}'",
-  "feeDisputeResolved": "رسوم من نزاع محسوم لـ '{{productName}}'",
-  "payoutDisputeWon": "دفعة من نزاع محسوم لـ '{{productName}}'",
-  "saleFundsReleased": "أموال من بيع '{{productName}}' أصبحت الآن متاحة."
-},
+    "sellerBalanceTransfer": "تحويل مبلغ {{amount}} إلى الرصيد الأساسي",
+    "depositApproved": "إيداع موافق عليه: {{amount}} عبر {{method}}",
+    "escrowFunded": "أموال محجوزة لـ '{{productName}}'",
+    "saleFundsPending": "أموال بيع معلّقة لـ '{{productName}}'",
+    "mediationFeeReceived": "رسوم وساطة مستلمة لـ '{{productName}}'",
+    "purchaseCompleted": "شراء '{{productName}}' من {{sellerName}}",
+    "feeAdminCancel": "نصف الرسوم (إلغاء إداري) لـ '{{productName}}'",
+    "refundAdminCancel": "استرداد (إلغاء إداري) لـ '{{productName}}'",
+    "feeDeductionCancel": "خصم الرسوم (إلغاء إداري) لـ '{{productName}}'",
+    "refundDisputeWon": "استرداد الضمان (فوز بالنزاع) لـ '{{productName}}'",
+    "feeDisputeResolved": "رسوم من نزاع محسوم لـ '{{productName}}'",
+    "payoutDisputeWon": "دفعة من نزاع محسوم لـ '{{productName}}'",
+    "saleFundsReleased": "أموال من بيع '{{productName}}' أصبحت الآن متاحة."
+  },
   "pendingFunds": {
     "viewDetailsTooltip": "عرض تفاصيل الأرصدة المعلّقة والمتاحة",
     "title": "تفاصيل الأرصدة المعلّقة والمتاحة",
@@ -562,6 +581,48 @@
     }
   },
   "admin": {
+    "news": {
+      "pageTitle": "إدارة الأخبار",
+      "addButton": "إضافة خبر جديد",
+      "confirmDelete": "هل أنت متأكد من رغبتك في حذف هذا الخبر؟",
+      "editTitle": "تعديل الخبر",
+      "createTitle": "إنشاء خبر جديد",
+      "createButton": "إنشاء الخبر",
+      "table": {
+        "title": "العنوان (EN)",
+        "category": "الفئة",
+        "likes": "الإعجابات/عدم الإعجاب",
+        "createdAt": "تاريخ الإنشاء",
+        "actions": "الإجراءات",
+        "views": "المشاهدات",
+        "stats": "الإحصائيات"
+      },
+      "form": {
+        "titleEN": "العنوان (الإنجليزية)",
+        "contentEN": "المحتوى (الإنجليزية)",
+        "titleAR": "العنوان (العربية)",
+        "contentAR": "المحتوى (العربية)",
+        "titleFR": "العنوان (الفرنسية)",
+        "contentFR": "المحتوى (الفرنسية)",
+        "titleTN": "العنوان (التونسية)",
+        "contentTN": "المحتوى (التونسية)",
+        "category": "الفئة",
+        "media": "الصورة أو الفيديو",
+        "selectMedia": "اختر صورة أو فيديو",
+        "currentMedia": "الوسائط الحالية",
+        "fileSelected": "تم اختيار الملف",
+        "dragOrClick": "اسحب وأفلت ملفًا هنا، أو انقر لاختيار ملف",
+        "fileConstraints": "الحجم الأقصى للملف: 10 ميجابايت",
+        "previewTitle": "معاينة الصورة"
+      },
+      "noPosts": "لم يتم العثور على أي أخبار.",
+      "createSuccess": "تم إنشاء الخبر بنجاح!",
+      "updateSuccess": "تم تحديث الخبر بنجاح!",
+      "deleteSuccess": "تم حذف الخبر بنجاح!",
+      "errors": {
+        "requiredFields": "العنوان والمحتوى باللغة الإنجليزية مطلوبان كقيمة احتياطية."
+      }
+    },
     "tickets": {
       "page": {
         "title": "لوحة تحكم تذاكر الدعم",

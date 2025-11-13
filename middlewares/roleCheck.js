@@ -2,8 +2,10 @@ const MediationRequest = require('../models/MediationRequest'); // استيرا�
 const mongoose = require('mongoose'); // قد تحتاجه للتحقق من ObjectId
 
 exports.isAdmin = (req, res, next) => {
+    console.log("--- [2] isAdmin Middleware: TRIGGERED ---");
     // يفترض أن verifyAuth قد أضاف req.user
     if (req.user && req.user.userRole === 'Admin') {
+        console.log(`--- [2] isAdmin Middleware: SUCCESS. User is Admin. ---`);
         console.log(`Role check: User ${req.user._id} is Admin. Proceeding.`);
         next(); // المستخدم أدمن، اسمح بالمرور
     } else {

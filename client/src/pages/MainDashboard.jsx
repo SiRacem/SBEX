@@ -59,6 +59,7 @@ import { SocketContext } from "../App";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import TransferBalanceModal from "../components/commun/TransferBalanceModal";
+import { getNews } from "../redux/actions/newsAction";
 
 // --- [!] مكون منفصل لعرض عنصر المعاملة ---
 const TransactionItem = ({ transaction, onShowDetails }) => {
@@ -330,6 +331,7 @@ const MainDashboard = () => {
       dispatch(getNotifications());
       dispatch(getMyMediationSummaries());
       dispatch(getTransactionsForDashboard());
+      dispatch(getNews());
     }
   }, [dispatch, isAuth, user?._id]);
 
@@ -343,6 +345,10 @@ const MainDashboard = () => {
     setSelectedTransactionForDetails(transaction);
     setShowTransactionDetailsModal(true);
   }, []);
+
+  const { unreadCount: unreadNewsCount } = useSelector(
+    (state) => state.newsReducer
+  );
 
   if (userLoading && !user)
     return (
@@ -402,21 +408,21 @@ const MainDashboard = () => {
                   <h5 className="mb-0">
                     {t("dashboard.balances.sellerAvailable")}
                   </h5>
-                    <OverlayTrigger
-                      placement="top"
-                      overlay={
-                        <Tooltip>{t("transferBalanceModal.tooltip")}</Tooltip>
-                      }
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={
+                      <Tooltip>{t("transferBalanceModal.tooltip")}</Tooltip>
+                    }
+                  >
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 text-white opacity-75"
+                      onClick={handleShowTransferModal}
                     >
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="p-0 text-white opacity-75"
-                        onClick={handleShowTransferModal}
-                      >
-                        <FaBalanceScale size={24} />
-                      </Button>
-                    </OverlayTrigger>
+                      <FaBalanceScale size={24} />
+                    </Button>
+                  </OverlayTrigger>
                 </div>
                 <h4 className="fw-bold mb-1">
                   {sellerAvailableBalanceDisplay.displayValue}
@@ -472,7 +478,11 @@ const MainDashboard = () => {
                 {/* Badge and Spinner */}
                 <div className="d-flex align-items-center">
                   {!notificationsLoading && unreadCount > 0 && (
-                    <Badge pill bg="danger" className="ms-2">
+                    <Badge
+                      pill
+                      bg="danger"
+                      className="ms-2 notification-badge-circle"
+                    >
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </Badge>
                   )}
@@ -583,11 +593,20 @@ const MainDashboard = () => {
               <ListGroup.Item
                 action
                 as={Link}
-                to="/dashboard/latest-news"
+                to="/dashboard/news"
                 className="d-flex align-items-center option-item"
               >
-                <FaNewspaper size={20} className="me-3 text-primary icon" />
+                <FaNewspaper size={20} className="me-3 text-success icon" />
                 <span>{t("dashboard.quickOptions.news")}</span>
+                {unreadNewsCount > 0 && (
+                  <Badge
+                    pill
+                    bg="info"
+                    className="ms-2 notification-badge-circle"
+                  >
+                    {unreadNewsCount}
+                  </Badge>
+                )}
               </ListGroup.Item>
               <ListGroup.Item
                 action

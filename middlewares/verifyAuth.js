@@ -20,6 +20,7 @@ try {
 }
 
 exports.verifyAuth = async (req, res, next) => {
+    console.log("--- [1] verifyAuth Middleware: TRIGGERED ---");
     console.log("--- verifyAuth Middleware ---");
     const authHeader = req.headers.authorization;
     console.log("Authorization Header received:", authHeader);
@@ -79,6 +80,7 @@ exports.verifyAuth = async (req, res, next) => {
 
         // 8. Attach user object to the request for subsequent handlers
         req.user = user;
+        console.log(`--- [1] verifyAuth Middleware: SUCCESS for user ${user.email} ---`);
         console.log(`User ${user.email} authenticated successfully and attached to req.user.`);
 
         // 9. Proceed to the next middleware or route handler

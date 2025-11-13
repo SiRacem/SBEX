@@ -20,6 +20,7 @@ import {
   FaChalkboardTeacher,
   FaExclamationTriangle,
   FaQuestion,
+  FaNewspaper,
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -168,6 +169,14 @@ const Sidebar = ({ onSearchChange }) => {
             >
               <FaUsers className="icon" />
               <span className="link-text">{t("sidebar.users")}</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/news"
+              title={t("sidebar.manageNews")}
+            >
+              <FaNewspaper className="icon" />
+              <span className="link-text">{t("sidebar.manageNews")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"

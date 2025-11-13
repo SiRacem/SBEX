@@ -70,7 +70,8 @@
     "mediatorApps": "Candidatures",
     "support": "Support",
     "myOrders": "Mes Commandes",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "manageNews": "Gérer les actualités"
   },
   "dashboard": {
     "balances": {
@@ -106,6 +107,24 @@
       "title": "Paramètres",
       "languageTitle": "Langue de la plateforme"
     }
+  },
+  "news": {
+    "pageTitle": "Actualités & Mises à jour",
+    "markAllRead": "Tout marquer comme lu ({{count}})",
+    "noNews": "Aucune actualité ou mise à jour n'a encore été publiée.",
+    "new": "Nouveau",
+    "postedOn": "Publié le {{date}}",
+    "views": "Vues",
+    "markAsRead": "Marquer comme lu",
+    "readMore": "Lire la suite",
+    "postedBy": "Publié par {{author}}",
+    "videoNotSupported": "Votre navigateur ne prend pas en charge la balise vidéo."
+  },
+  "newsCategories": {
+    "General": "Général",
+    "Platform Update": "Mise à jour",
+    "Promotion": "Promotion",
+    "Security Alert": "Alerte de sécurité"
   },
   "faq": {
     "title": "Conseils et réponses de notre équipe",
@@ -558,6 +577,48 @@
     }
   },
   "admin": {
+    "news": {
+      "pageTitle": "Gestion des actualités",
+      "addButton": "Ajouter une actualité",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette actualité ?",
+      "editTitle": "Modifier l'actualité",
+      "createTitle": "Créer une nouvelle actualité",
+      "createButton": "Créer l'actualité",
+      "table": {
+        "title": "Titre (EN)",
+        "category": "Catégorie",
+        "likes": "J'aime/J'aime pas",
+        "createdAt": "Créé le",
+        "actions": "Actions",
+        "views": "Vues",
+        "stats": "Statistiques"
+      },
+      "form": {
+        "titleEN": "Titre (Anglais)",
+        "contentEN": "Contenu (Anglais)",
+        "titleAR": "Titre (Arabe)",
+        "contentAR": "Contenu (Arabe)",
+        "titleFR": "Titre (Français)",
+        "contentFR": "Contenu (Français)",
+        "titleTN": "Titre (Tunisien)",
+        "contentTN": "Contenu (Tunisien)",
+        "category": "Catégorie",
+        "selectMedia": "Sélectionner un image ou une vidéo",
+        "media": "Média (Image/Vidéo)",
+        "currentMedia": "Média actuel",
+        "fileSelected": "Fichier sélectionné",
+        "dragOrClick": "Glissez-déposez un fichier ici, ou cliquez pour sélectionner un fichier",
+        "fileConstraints": "Taille maximale du fichier : 10 Mo",
+        "previewTitle": "Aperçu de l'image"
+      },
+      "noPosts": "Aucune actualité trouvée.",
+      "createSuccess": "Actualité créée avec succès !",
+      "updateSuccess": "Actualité mise à jour avec succès !",
+      "deleteSuccess": "Actualité supprimée avec succès !",
+      "errors": {
+        "requiredFields": "Le titre et le contenu en anglais sont requis comme solution de secours."
+      }
+    },
     "tickets": {
       "page": {
         "title": "Tableau de bord des tickets de support",
@@ -1296,8 +1357,8 @@
       "totalPointsTooltip": "Total des points de réputation"
     },
     "avatar": {
-    "updateSuccess": "Photo de profil mise à jour avec succès !"
-  }
+      "updateSuccess": "Photo de profil mise à jour avec succès !"
+    }
   },
   "mediatorDashboard": {
     "notAvailable": "N/A",
