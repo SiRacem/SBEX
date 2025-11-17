@@ -18,6 +18,7 @@ const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
 const PLATFORM_BASE_CURRENCY = config.get('PLATFORM_BASE_CURRENCY') || 'TND';
 
 const { calculateMediatorFeeDetails } = require('../utils/feeCalculator');
+const { checkAndAwardAchievements } = require('../services/achievementService');
 
 // --- دالة مساعدة لتنسيق العملة ---
 const formatCurrency = (amount, currencyCode = "TND") => {
@@ -1990,7 +1991,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
                     participant.successfulMediationsCount = (participant.successfulMediationsCount || 0) + 1;
                 }
                 const badgeChangedByLevelUpdate = updateUserLevelAndBadge(participant);
-                const rewardGivenByLevelUp = await processLevelUpRewards(participant, oldLevel, session);
+                const rewardGivenByLevelUp = await processLevelUpRewards(participant, oldLevel, req, session);
 
                 if (badgeChangedByLevelUpdate && !rewardGivenByLevelUp && oldLevel === participant.level) {
                     await Notification.create([{
@@ -2042,6 +2043,31 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
         // 10. Commit Transaction
         await session.commitTransaction();
+
+        // [!!!] START: إضافة التحقق من الإنجازات هنا (بعد الـ commit) [!!!]
+        // التحقق للبائع (إتمام عملية بيع)
+        await checkAndAwardAchievements({
+            userId: seller._id,
+            event: 'SALE_COMPLETED',
+            req, // مرر كائن req كاملاً
+        });
+
+        // التحقق للمشتري (إتمام عملية شراء)
+        await checkAndAwardAchievements({
+            userId: buyer._id,
+            event: 'PURCHASE_COMPLETED',
+            req,
+        });
+
+        // التحقق للوسيط (إتمام وساطة ناجحة)
+        if (mediator) {
+            await checkAndAwardAchievements({
+                userId: mediator._id,
+                event: 'MEDIATION_COMPLETED',
+                req,
+            });
+        }
+        // [!!!] END: نهاية التحقق من الإنجازات [!!!]
 
         // 11. تحديث حالة الوسيط بعد الـ commit
         try {

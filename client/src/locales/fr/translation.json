@@ -71,7 +71,9 @@
     "support": "Support",
     "myOrders": "Mes Commandes",
     "logout": "Déconnexion",
-    "manageNews": "Gérer les actualités"
+    "manageNews": "Gérer les actualités",
+    "manageAchievements": "Gérer les Succès",
+    "achievements": "Succès"
   },
   "dashboard": {
     "balances": {
@@ -449,7 +451,8 @@
     "REPORT_STATUS_ACTION_TAKEN": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}' et une action appropriée a été prise. Détails : {{details}}",
     "REPORT_STATUS_DISMISSED": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}'. Après enquête, il a été rejeté. Raison : {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}",
-    "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}."
+    "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}.",
+    "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué le succès : \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -577,6 +580,55 @@
     }
   },
   "admin": {
+    "achievements": {
+    "pageTitle": "Gestion des Succès",
+    "addButton": "Ajouter un Succès",
+    "unlocked": "Débloqué",
+    "errorLoading": "Une erreur est survenue lors du chargement des succès.",
+    "table": {
+      "icon": "Icône",
+      "title": "Titre",
+      "category": "Catégorie",
+      "criteria": "Critère",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "modal": {
+      "createTitle": "Créer un Nouveau Succès",
+      "editTitle": "Modifier le Succès",
+      "titleLabel": "Titre (Multilingue)",
+      "descriptionLabel": "Description (Multilingue)",
+      "iconLabel": "Icône",
+      "iconPlaceholder": "ex: fa-solid fa-trophy ou une URL",
+      "categoryLabel": "Catégorie",
+      "criteriaLabel": "Critère de déverrouillage (JSON)",
+      "criteriaPlaceholder": "ex: {\"type\": \"SALES_COUNT\", \"value\": 10}",
+      "pointsLabel": "Points attribués",
+      "settingsTitle": "Autres Paramètres",
+      "enabledLabel": "Activé (Visible pour les utilisateurs)",
+      "secretLabel": "Secret (Caché jusqu'à déverrouillage)"
+    },
+    "categories": {
+      "SALES": "Ventes",
+      "PURCHASES": "Achats",
+      "COMMUNITY": "Communauté",
+      "SPECIAL": "Spécial"
+    },
+    "statuses": {
+      "enabled": "Activé",
+      "disabled": "Désactivé"
+    },
+    "noAchievements": "Aucun succès n'a encore été créé.",
+    "createSuccess": "Succès créé avec succès !",
+    "updateSuccess": "Succès mis à jour avec succès !",
+    "deleteSuccess": "Succès supprimé avec succès !",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce succès ?",
+    "errors": {
+      "requiredFieldsAR": "Le titre et la description en arabe sont requis.",
+      "invalidJson": "Le format JSON dans le champ 'Critère' est invalide. Veuillez le vérifier.",
+      "genericSubmit": "Échec de la soumission du succès. Veuillez vérifier les entrées."
+    }
+  },
     "news": {
       "pageTitle": "Gestion des actualités",
       "addButton": "Ajouter une actualité",
@@ -2319,5 +2371,13 @@
       "unknown": "Une erreur inconnue s'est produite. Veuillez réessayer.",
       "noBalance": "Vous n'avez pas de solde vendeur disponible à transférer."
     }
+  },
+  "achievements": {
+    "pageTitle": "Des Succès",
+    "pageSubtitle": "Découvrez les étapes que vous pouvez atteindre sur la plateforme.",
+    "progressTitle": "Votre Progression Globale",
+    "progressSubtitle": "Vous avez débloqué {{unlocked}} succès sur {{total}}.",
+    "unlocked": "Débloqué",
+    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !"
   }
 }

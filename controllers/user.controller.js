@@ -9,6 +9,7 @@ const config = require("config");
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const { checkAndAwardAchievements } = require('../services/achievementService');
 
 const MEDIATOR_REQUIRED_LEVEL = 5;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.00;
@@ -104,6 +105,7 @@ const Login = async (req, res) => {
 
         const payload = { _id: user._id, fullName: user.fullName, userRole: user.userRole };
         const secret = config.get("secret");
+        await checkAndAwardAchievements({ userId: user._id, event: 'USER_LOGIN', req });
         const token = jwt.sign(payload, secret, { expiresIn: '2h' });
 
         console.log(`User ${email} logged in successfully. Blocked status: ${user.blocked}`);
@@ -890,11 +892,7 @@ const updateUserProfilePicture = async (req, res) => {
             }
         }
 
-        // --- THIS IS THE FIX: Simplify path creation and add cache-busting timestamp ---
-        // The req.file.path from multer is already correct (e.g., "uploads/avatars/filename.png")
-        // We ensure forward slashes for URL compatibility and add a timestamp to prevent caching issues.
         user.avatarUrl = `${req.file.path.replace(/\\/g, '/')}?t=${new Date().getTime()}`;
-        // --- END OF FIX ---
 
         await user.save();
         const userToReturn = user.toObject();
@@ -902,13 +900,27 @@ const updateUserProfilePicture = async (req, res) => {
         console.log(`Avatar updated successfully for user ${userId}. New URL: ${user.avatarUrl}`);
 
         const targetUserSocketId = req.onlineUsers[userId.toString()];
-        if (targetUserSocketId && req.io) {
-            req.io.to(targetUserSocketId).emit('user_profile_updated', {
-                _id: user._id.toString(),
-                avatarUrl: user.avatarUrl
+        if (req.io) {
+            // 1. أرسل التحديث الشخصي للمستخدم نفسه (كما كان)
+            const targetUserSocketId = req.onlineUsers[userId.toString()];
+            if (targetUserSocketId) {
+                req.io.to(targetUserSocketId).emit('user_profile_updated', {
+                    _id: user._id.toString(),
+                    avatarUrl: user.avatarUrl
+                });
+            }
+
+            // 2. أرسل حدثًا عامًا لجميع العملاء
+            // سنرسل فقط البيانات الأساسية: ID المستخدم وصورته الجديدة
+            req.io.emit('user_avatar_changed', {
+                userId: user._id.toString(),
+                newAvatarUrl: user.avatarUrl
             });
-            console.log(`   Socket event 'user_profile_updated' (for avatar) emitted to user ${userId}.`);
+            console.log(`[Socket] Emitted 'user_avatar_changed' for user ${userId}.`);
         }
+
+        await checkAndAwardAchievements({ userId: req.user._id, event: 'PROFILE_PICTURE_UPDATED', req });
+
         res.status(200).json({
             msg: "Profile picture updated successfully!",
             user: userToReturn

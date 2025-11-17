@@ -30,6 +30,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
+  getMyProducts,
   getProducts,
   deleteProduct,
   acceptBid,
@@ -114,7 +115,7 @@ const CommandsListVendor = () => {
   useEffect(() => {
     if (userId) {
       setIsRefreshing(true);
-      dispatch(getProducts()).finally(() => setIsRefreshing(false));
+      dispatch(getMyProducts()).finally(() => setIsRefreshing(false));
     }
   }, [dispatch, userId]);
 
@@ -130,38 +131,55 @@ const CommandsListVendor = () => {
     pendingProducts,
     mediationProducts,
     soldProducts,
-    completedProducts,
     rejectedProducts,
-    disputedProducts,
-  } = useMemo(
-    () => ({
-      approvedProducts: myProducts.filter(
-        (p) => p && p.status === "approved" && !p.currentMediationRequest
-      ),
-      pendingProducts: myProducts.filter((p) => p && p.status === "pending"),
-      mediationProducts: myProducts.filter(
-        (p) =>
-          p &&
-          [
-            "PendingMediatorSelection",
-            "MediatorAssigned",
-            "InProgress",
-            "MediationOfferAccepted",
-            "EscrowFunded",
-            "PartiesConfirmed",
-          ].includes(String(p.status).trim())
-      ),
-      soldProducts: myProducts.filter((p) => p && p.status === "sold"),
-      completedProducts: myProducts.filter(
-        (p) => p && p.status === "Completed"
-      ),
-      rejectedProducts: myProducts.filter((p) => p && p.status === "rejected"),
-      disputedProducts: myProducts.filter(
-        (p) => p && (p.status === "Disputed" || p.status === "UnderDispute")
-      ),
-    }),
-    [myProducts]
-  );
+    disputedProducts
+  } = useMemo(() => {
+    const approved = [];
+    const pending = [];
+    const mediation = [];
+    const sold = [];
+    const rejected = [];
+    const disputed = [];
+
+    const mediationStatuses = [
+        "PendingMediatorSelection",
+        "MediatorAssigned",
+        "MediationOfferAccepted",
+        "EscrowFunded",
+        "PartiesConfirmed",
+        "InProgress"
+    ];
+
+    for (const p of myProducts) {
+        if (!p || !p.status) continue;
+
+        const status = String(p.status).trim();
+
+        if (mediationStatuses.includes(status)) {
+            mediation.push(p);
+        } else if (status === 'approved') {
+            approved.push(p);
+        } else if (status === 'pending') {
+            pending.push(p);
+        } else if (status === 'sold' || status === 'Completed') { // دمج الحالتين
+            sold.push(p);
+        } else if (status === 'rejected') {
+            rejected.push(p);
+        } else if (status === 'Disputed' || status === 'UnderDispute') {
+            disputed.push(p);
+        }
+    }
+    
+    // إزالة completedProducts لأننا دمجناها مع soldProducts
+    return {
+      approvedProducts: approved,
+      pendingProducts: pending,
+      mediationProducts: mediation,
+      soldProducts: sold,
+      rejectedProducts: rejected,
+      disputedProducts: disputed
+    };
+  }, [myProducts]);
 
   const handleShowImageModal = useCallback((images, index = 0) => {
     setSelectedProductImages(
@@ -327,12 +345,15 @@ const CommandsListVendor = () => {
     (mediationRequestId) => {
       if (!mediationRequestId || sellerConfirmLoading[mediationRequestId])
         return;
+
       setSellerConfirmLoading((prev) => ({
         ...prev,
         [mediationRequestId]: true,
       }));
+
       dispatch(sellerConfirmReadinessAction(mediationRequestId))
-        .then(() => dispatch(getProducts()))
+        // لا تقم باستدعاء getMyProducts() هنا.
+        // اعتمد على تحديثات Socket.IO التي ستأتي تلقائيًا.
         .finally(() =>
           setSellerConfirmLoading((prev) => ({
             ...prev,
@@ -528,7 +549,7 @@ const CommandsListVendor = () => {
             <>
               <FaDollarSign className="me-1" /> {t("myProductsPage.tabs.sold")}{" "}
               <Badge pill bg="secondary" className="ms-1">
-                {soldProducts.length + completedProducts.length}
+                {soldProducts.length}
               </Badge>
             </>
           }
@@ -538,8 +559,8 @@ const CommandsListVendor = () => {
               <Spinner animation="border" size="sm" />
               <p className="mt-2 mb-0">{t("myProductsPage.refreshing")}</p>
             </div>
-          ) : soldProducts.length + completedProducts.length > 0 ? (
-            [...soldProducts, ...completedProducts]
+          ) : soldProducts.length > 0 ? (
+            soldProducts
               .sort(
                 (a, b) =>
                   new Date(b.soldAt || b.updatedAt || 0) -

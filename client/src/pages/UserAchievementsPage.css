@@ -1,0 +1,51 @@
+/* src/pages/UserAchievementsPage.css */
+
+.achievement-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #e9ecef;
+}
+
+.achievement-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.achievement-card.locked {
+    background-color: #f8f9fa;
+    opacity: 0.7;
+}
+
+.achievement-card.locked .card-title {
+    color: #6c757d;
+}
+
+.achievement-icon-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.achievement-card.unlocked .achievement-icon-wrapper {
+    background: radial-gradient(circle, rgba(255, 193, 7, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.achievement-icon-wrapper .lock-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    font-size: 1.2rem;
+    color: rgba(0, 0, 0, 0.4);
+    background-color: white;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+.category-title {
+    border-bottom: 2px solid #ffc107;
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}

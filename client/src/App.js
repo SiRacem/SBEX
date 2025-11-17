@@ -53,6 +53,9 @@ import AdminFAQManagement from './components/admin/AdminFAQManagement';
 import axios from 'axios';
 import { getActiveFAQs } from './redux/actions/faqAction';
 import { getNews } from './redux/actions/newsAction';
+import AdminAchievementsManagement from './components/admin/AdminAchievementsManagement';
+import UserAchievementsPage from './pages/UserAchievementsPage';
+import { adminGetAllAchievements, getAvailableAchievements } from './redux/actions/achievementAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -244,6 +247,13 @@ function App() {
       }
     });
 
+    newSocket.on('user_avatar_changed', (data) => {
+      console.log("--- [1] App.js: 'user_avatar_changed' event received ---", data); // [!] أضف هذا
+      if (data.userId && data.newAvatarUrl) {
+        dispatch({ type: 'UPDATE_BIDDER_AVATAR_IN_PRODUCTS', payload: data });
+      }
+    });
+
     newSocket.on('product_deleted', (data) => {
       console.log('[Socket] Received product_deleted:', data?.productId);
       if (data?.productId) {
@@ -346,6 +356,32 @@ function App() {
       newSocket.on('news_updated', () => {
         dispatch(getNews()); // استورد getNews من newsAction.js
       });
+
+      newSocket.on('achievement_unlocked', (data) => {
+        console.log('[Socket] Received achievement_unlocked:', data.achievement);
+        if (data.achievement) {
+          // Show a toast notification for the new achievement
+          toast.success(`🏆 ${t('achievements.unlockedToast', { name: data.achievement.title[i18n.language] || data.achievement.title.ar })}`);
+
+          // Dispatch an action to update the user's profile in the store
+          dispatch({
+            type: 'UPDATE_USER_ACHIEVEMENTS_IN_STORE',
+            payload: data.achievement
+          });
+        }
+      });
+
+      newSocket.on('achievements_list_updated', () => {
+        console.log('[Socket] Received achievements_list_updated, refetching lists.');
+
+        // 1. قم دائمًا بتحديث قائمة الإنجازات المتاحة لجميع المستخدمين
+        dispatch(getAvailableAchievements());
+
+        // 2. إذا كان المستخدم الحالي مسؤولاً، قم أيضًا بتحديث قائمة الإدارة الخاصة به
+        if (user?.userRole === 'Admin') {
+          dispatch(adminGetAllAchievements());
+        }
+      });
     }
 
     // --- دالة التنظيف ---
@@ -421,6 +457,8 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
             <Route path="/dashboard/admin/news" element={<ProtectedRoute requiredRole="Admin"><AdminNewsManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/achievements" element={<ProtectedRoute requiredRole="Admin"><AdminAchievementsManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/achievements" element={<ProtectedRoute><UserAchievementsPage /></ProtectedRoute>} />
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

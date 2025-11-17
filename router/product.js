@@ -5,6 +5,7 @@ const { isAdmin, isOwnerOrAdmin } = require('../middlewares/roleCheck');
 const {
     addProduct,
     getProducts,
+    getMyProducts,
     getOneProduct,
     updateProducts,
     deleteProducts,
@@ -29,6 +30,7 @@ router.get('/get_products', getProducts);       // جلب كل المنتجات
 router.get('/get_products/:id', getOneProduct); // جلب منتج واحد
 router.get("/get_user/:id", getUserById);       // جلب بيانات مستخدم
 router.get('/:productId/bids', getProductBids); // جلب مزايدات منتج
+router.get('/my-products', verifyAuth, getMyProducts); // جلب منتجات المستخدم الحالي
 
 // --- مسارات تحتاج تسجيل دخول ---
 router.post('/add_product', verifyAuth, addProduct);        // إضافة منتج

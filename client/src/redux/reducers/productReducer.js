@@ -404,22 +404,72 @@ const productReducer = (state = initialState, { type, payload }) => {
                 pendingProducts: state.pendingProducts.filter(p => p._id !== payload.productId),
             };
 
-        case UPDATE_MEDIATION_DETAILS_FROM_SOCKET: {
-            const updatedMediationRequest = payload;
+                case UPDATE_MEDIATION_DETAILS_FROM_SOCKET: {
+            const updatedMediation = payload;
+            
+            // احصل على ID المنتج من الوساطة. يمكن أن يكون كائنًا أو ID.
+            const productId = updatedMediation.product?._id || updatedMediation.product;
 
-            if (!updatedMediationRequest || !updatedMediationRequest.product || !updatedMediationRequest.product._id) {
-                console.warn("productReducer: Received UPDATE_MEDIATION_DETAILS_FROM_SOCKET but no product data was attached.");
+            if (!productId) {
+                console.warn("[productReducer] Ignored mediation update: No product ID in payload.", payload);
                 return state;
             }
 
-            const updatedProductFromMediation = updatedMediationRequest.product;
-            console.log(`[productReducer] Updating product ${updatedProductFromMediation._id} via MEDIATION socket event.`);
+            console.log(`[productReducer] Socket Event: Handling mediation update for product '${productId}'. New mediation status: '${updatedMediation.status}'.`);
+            
+            return {
+                ...state,
+                Products: state.Products.map(product => {
+                    // ابحث عن المنتج الذي نريد تحديثه
+                    if (product._id === productId) {
+                        console.log(`[productReducer] Found product ${productId}. Merging new mediation data.`);
+                        
+                        // [!] النقطة الحاسمة:
+                        // نقوم بدمج بيانات الوساطة الجديدة مع البيانات الموجودة
+                        // لضمان تحديث كل شيء (status, sellerConfirmedStart, etc.)
+                        const newCurrentMediationRequest = {
+                            ...(product.currentMediationRequest || {}), // احتفظ بالبيانات القديمة
+                            ...updatedMediation // ادمج البيانات الجديدة فوقها
+                        };
+
+                        // أرجع نسخة جديدة ومحدثة بالكامل من المنتج
+                        return {
+                            ...product,
+                            status: newCurrentMediationRequest.status, // حدث الحالة من بيانات الوساطة الجديدة
+                            currentMediationRequest: newCurrentMediationRequest, // حدث كائن الوساطة بالكامل
+                        };
+                    }
+                    // إذا لم يكن هو المنتج، أعده كما هو
+                    return product;
+                })
+            };
+        }
+
+        case 'UPDATE_PRODUCT_FROM_MEDIATION_ACTION': {
+            const updatedMediation = payload;
+            const productId = updatedMediation.product?._id || updatedMediation.product;
+
+            if (!productId) {
+                return state;
+            }
 
             return {
                 ...state,
-                Products: state.Products.map(p =>
-                    p._id === updatedProductFromMediation._id ? updatedProductFromMediation : p
-                ),
+                Products: state.Products.map(product => {
+                    if (product._id === productId) {
+                        // هذا هو نفس المنطق الذي استخدمناه لـ Socket.IO
+                        // مما يضمن التناسق
+                        return {
+                            ...product,
+                            status: updatedMediation.status,
+                            currentMediationRequest: {
+                                ...(product.currentMediationRequest || {}),
+                                ...updatedMediation
+                            },
+                        };
+                    }
+                    return product;
+                })
             };
         }
 
@@ -435,6 +485,56 @@ const productReducer = (state = initialState, { type, payload }) => {
                 Products: state.Products.map(p =>
                     p._id === payload._id ? { ...p, ...payload } : p
                 ),
+            };
+
+        case 'UPDATE_BIDDER_AVATAR_IN_PRODUCTS':
+            if (!Array.isArray(state.Products)) {
+                return state;
+            }
+            return {
+                ...state,
+                Products: state.Products.map(product => {
+                    // لا تقم بأي تغيير إذا لم يكن هناك مزايدات
+                    if (!product.bids || product.bids.length === 0) {
+                        return product;
+                    }
+
+                    let hasChanged = false;
+                    const updatedBids = product.bids.map(bid => {
+                        // تحقق مما إذا كانت المزايدة تحتوي على معلومات المستخدم
+                        if (!bid.user) {
+                            return bid;
+                        }
+
+                        // تعامل مع كلتا الحالتين: bid.user ككائن أو كـ ID
+                        const bidderId = (typeof bid.user === 'object' && bid.user !== null)
+                            ? bid.user._id
+                            : bid.user;
+
+                        // إذا تطابق الـ ID، و bid.user هو كائن يمكننا تحديثه
+                        if (bidderId && bidderId.toString() === payload.userId && typeof bid.user === 'object') {
+                            hasChanged = true;
+                            return {
+                                ...bid,
+                                user: {
+                                    ...bid.user,
+                                    avatarUrl: payload.newAvatarUrl
+                                }
+                            };
+                        }
+
+                        // إذا لم يتطابق أو لم يكن كائنًا، أعده كما هو
+                        return bid;
+                    });
+
+                    // أعد المنتج المحدث فقط إذا حدث تغيير بالفعل
+                    if (hasChanged) {
+                        return { ...product, bids: updatedBids };
+                    }
+
+                    // وإلا، أعد المنتج الأصلي
+                    return product;
+                })
             };
         
         default:

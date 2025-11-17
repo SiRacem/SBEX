@@ -3,6 +3,18 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 const mongoosePaginate = require('mongoose-paginate-v2');
 
+const UserAchievementSchema = new Schema({
+    achievement: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Achievement',
+        required: true
+    },
+    unlockedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: false }); // _id: false لمنع mongoose من إنشاء _id لكل عنصر في المصفوفة
+
 const UserSchema = new Schema({
     fullName: { type: String, trim: true, required: true },
     email: { type: String, unique: true, lowercase: true, trim: true, match: [/\S+@\S+\.\S+/, 'auth.validation.emailInvalid'] },
@@ -81,8 +93,14 @@ const UserSchema = new Schema({
     // --- حقول التقييم (تبقى كما هي) ---
     positiveRatings: { type: Number, default: 0, min: 0 },
     negativeRatings: { type: Number, default: 0, min: 0 },
-    productsSoldCount: { type: Number, default: 0, min: 0 }
+    productsSoldCount: { type: Number, default: 0, min: 0 },
     // -----------------------------------------
+
+    // --- [!!!] إضافة حقل الإنجازات الجديد هنا [!!!] ---
+    achievements: {
+        type: [UserAchievementSchema],
+        default: []
+    },
 
 }, { timestamps: true });
 

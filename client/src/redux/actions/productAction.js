@@ -52,6 +52,30 @@ export const getProducts = () => async (dispatch) => {
     }
 };
 
+export const getMyProducts = () => async (dispatch) => {
+    try {
+        dispatch({ type: GET_PRODUCTS_REQUEST });
+
+        // إعداد التوكن لأن هذا مسار محمي
+        const token = localStorage.getItem("token");
+        const config = {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        };
+
+        // استدعاء المسار الجديد الذي أنشأناه
+        const { data } = await axios.get("/product/my-products", config);
+
+        dispatch({ type: GET_PRODUCTS_SUCCESS, payload: data });
+    } catch (error) {
+        dispatch({
+            type: GET_PRODUCTS_FAIL,
+            payload: error.response?.data?.errors || "Failed to fetch products",
+        });
+    }
+};
+
 export const addProduct = (newProductData) => async (dispatch) => {
     dispatch({ type: ADD_PRODUCT_REQUEST });
     const config = getTokenConfig();

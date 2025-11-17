@@ -321,46 +321,60 @@ const ProductEntry = ({
                   </Alert>
                 )}
                 {!sellerHasConfirmed &&
-                  (isMediationOfferAcceptedByMediator ||
-                    isEscrowFundedByBuyer) &&
-                  !isPartiesConfirmed &&
-                  !isActualMediationInProgress && (
+                  (mediationRequestStatus === "MediationOfferAccepted" ||
+                    mediationRequestStatus === "EscrowFunded") &&
+                  productStatus !== "Disputed" &&
+                  productStatus !== "sold" &&
+                  productStatus !== "Completed" && (
                     <div className="mt-2">
-                      <Alert variant="info" className="p-2 small d-block">
-                        <Trans
-                          i18nKey="myProductsPage.productCard.alerts.sellerActionRequiredHTML"
-                          components={{ strong: <strong /> }}
-                        />
-                        <br />
-                        <small className="text-muted">
-                          {isEscrowFundedByBuyer
-                            ? t(
+                      <Alert variant="info" className="p-2">
+                        <div className="d-flex flex-column align-items-start">
+                          <div>
+                            <Trans
+                              i18nKey="myProductsPage.productCard.alerts.sellerActionRequiredHTML"
+                              components={{ strong: <strong /> }}
+                            />
+                          </div>
+                          {mediationRequestStatus === "EscrowFunded" && (
+                            <small className="d-block mt-1 text-muted">
+                              -{" "}
+                              {t(
                                 "myProductsPage.productCard.alerts.buyerActionInfo"
-                              )
-                            : t(
-                                "myProductsPage.productCard.alerts.sellerActionInfo"
                               )}
-                        </small>
+                            </small>
+                          )}
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() =>
+                              handleSellerConfirmReadiness(
+                                currentMediationRequestId
+                              )
+                            }
+                            disabled={isLoadingThisSellerConfirmButton}
+                          >
+                            {isLoadingThisSellerConfirmButton ? (
+                              <>
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                  role="status"
+                                  aria-hidden="true"
+                                />
+                                <span className="ms-2">
+                                  {t("common.processing")}
+                                </span>
+                              </>
+                            ) : (
+                              t(
+                                "myProductsPage.productCard.buttons.confirmReadiness"
+                              )
+                            )}
+                          </Button>
+                        </div>
                       </Alert>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        className="mt-1"
-                        onClick={() =>
-                          handleSellerConfirmReadiness(
-                            currentMediationRequestId
-                          )
-                        }
-                        disabled={isLoadingThisSellerConfirmButton}
-                      >
-                        {isLoadingThisSellerConfirmButton ? (
-                          <Spinner as="span" animation="border" size="sm" />
-                        ) : (
-                          t(
-                            "myProductsPage.productCard.buttons.confirmReadiness"
-                          )
-                        )}
-                      </Button>
                     </div>
                   )}
                 {sellerHasConfirmed &&

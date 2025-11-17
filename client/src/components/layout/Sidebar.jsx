@@ -21,6 +21,7 @@ import {
   FaExclamationTriangle,
   FaQuestion,
   FaNewspaper,
+  FaTrophy,
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -121,6 +122,14 @@ const Sidebar = ({ onSearchChange }) => {
         </NavLink>
         <NavLink
           className="sidebar-link"
+          to="/dashboard/achievements"
+          title={t("sidebar.achievements")}
+        >
+          <FaTrophy className="icon" />
+          <span className="link-text">{t("sidebar.achievements")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
           to="/dashboard/FAQ"
           title={t("sidebar.faq")}
         >
@@ -177,6 +186,16 @@ const Sidebar = ({ onSearchChange }) => {
             >
               <FaNewspaper className="icon" />
               <span className="link-text">{t("sidebar.manageNews")}</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/achievements"
+              title={t("sidebar.manageAchievements")}
+            >
+              <FaTrophy className="icon" />
+              <span className="link-text">
+                {t("sidebar.manageAchievements")}
+              </span>
             </NavLink>
             <NavLink
               className="sidebar-link"

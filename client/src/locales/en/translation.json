@@ -71,7 +71,9 @@
     "support": "Support",
     "myOrders": "My Orders",
     "logout": "Logout",
-    "manageNews": "Manage News"
+    "manageNews": "Manage News",
+    "manageAchievements": "Manage Achievements",
+    "achievements": "Achievements"
   },
   "dashboard": {
     "balances": {
@@ -450,7 +452,8 @@
     "REPORT_STATUS_ACTION_TAKEN": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}} and appropriate action has been taken. Details: {{details}}",
     "REPORT_STATUS_DISMISSED": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}}. After investigation, it was dismissed. Reason: {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "Admin {{adminName}} is reviewing your report regarding {{reportedUserName}} and requires more information. Details: {{details}}",
-    "BADGE_UPDATED": "Your reputation badge has been updated to {{badgeName}}."
+    "BADGE_UPDATED": "Your reputation badge has been updated to {{badgeName}}.",
+    "ACHIEVEMENT_UNLOCKED": "Congratulations! You've unlocked the achievement: \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -578,6 +581,55 @@
     }
   },
   "admin": {
+    "achievements": {
+      "pageTitle": "Achievements Management",
+      "addButton": "Add New Achievement",
+      "unlocked": "Unlocked",
+      "errorLoading": "An error occurred while loading achievements.",
+      "table": {
+        "icon": "Icon",
+        "title": "Title",
+        "category": "Category",
+        "criteria": "Criteria",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "modal": {
+        "createTitle": "Create New Achievement",
+        "editTitle": "Edit Achievement",
+        "titleLabel": "Title (Multi-language)",
+        "descriptionLabel": "Description (Multi-language)",
+        "iconLabel": "Icon",
+        "iconPlaceholder": "e.g., fa-solid fa-trophy or a URL",
+        "categoryLabel": "Category",
+        "criteriaLabel": "Unlock Criteria (JSON)",
+        "criteriaPlaceholder": "e.g., {\"type\": \"SALES_COUNT\", \"value\": 10}",
+        "pointsLabel": "Points Awarded",
+        "settingsTitle": "Other Settings",
+        "enabledLabel": "Enabled (Visible to users)",
+        "secretLabel": "Secret (Hidden until unlocked)"
+      },
+      "categories": {
+        "SALES": "Sales",
+        "PURCHASES": "Purchases",
+        "COMMUNITY": "Community",
+        "SPECIAL": "Special"
+      },
+      "statuses": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "noAchievements": "No achievements have been created yet.",
+      "createSuccess": "Achievement created successfully!",
+      "updateSuccess": "Achievement updated successfully!",
+      "deleteSuccess": "Achievement deleted successfully!",
+      "confirmDelete": "Are you sure you want to delete this achievement?",
+      "errors": {
+        "requiredFieldsAR": "Arabic title and description are required.",
+        "invalidJson": "The JSON format in the 'Criteria' field is invalid. Please check it.",
+        "genericSubmit": "Failed to submit achievement. Please check the inputs."
+      }
+    },
     "news": {
       "pageTitle": "News Management",
       "addButton": "Add New Post",
@@ -2323,5 +2375,13 @@
       "unknown": "An unknown error occurred. Please try again.",
       "noBalance": "You have no available seller balance to transfer."
     }
+  },
+  "achievements": {
+    "pageTitle": "Achievements",
+    "pageSubtitle": "Explore the milestones you can achieve on the platform.",
+    "progressTitle": "Your Overall Progress",
+    "progressSubtitle": "You have unlocked {{unlocked}} out of {{total}} achievements.",
+    "unlocked": "Unlocked",
+    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!"
   }
 }

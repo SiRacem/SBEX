@@ -6,7 +6,8 @@ const Notification = require('../models/Notification');
 const MediationRequest = require('../models/MediationRequest');
 const mongoose = require('mongoose');
 const config = require('config');
-const { sendUserStatsUpdate } = require('./user.controller'); // [!!!] استيراد الدالة الجديدة
+const { sendUserStatsUpdate } = require('./user.controller');
+const { checkAndAwardAchievements } = require('../services/achievementService');
 
 // --- سعر الصرف ---
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
@@ -69,6 +70,7 @@ exports.addProduct = async (req, res) => {
         });
 
         const savedProduct = await newProduct.save();
+        await checkAndAwardAchievements({ userId, event: 'PRODUCT_PUBLISHED', req });
         const populatedProduct = await Product.findById(savedProduct._id).populate('user', 'fullName email').lean();
 
         if (savedProduct.status === 'pending' && userRole === 'Vendor') {
@@ -111,31 +113,62 @@ exports.addProduct = async (req, res) => {
 
 // --- Get ALL Products ---
 exports.getProducts = async (req, res) => {
-    console.log("--- Controller: getProducts ---");
+    console.log("--- Controller: getProducts (Fetching all products for public view) ---");
     try {
-        const products = await Product.find() // يمكنك إضافة فلتر هنا (مثلاً req.query)
+        const products = await Product.find({
+            // أضف فلترًا هنا لعرض المنتجات المعتمدة فقط للعامة
+            status: 'approved'
+        })
             .sort({ date_added: -1 })
             .populate('user', 'fullName email avatarUrl') // معلومات البائع
-            .populate('buyer', 'fullName email avatarUrl') // معلومات المشتري (إذا وجد)
-            // --- [!!!] هذا هو السطر الحاسم الذي يجب إضافته [!!!] ---
             .populate({
                 path: 'bids.user', // المسار: حقل user داخل كل عنصر في مصفوفة bids
-                select: 'fullName avatarUrl' // اختر الحقول التي تحتاجها فقط للأداء الأفضل
+                select: 'fullName avatarUrl' // اختر الحقول التي تحتاجها فقط
             })
-            // -----------------------------------------------------------
-            .populate({ // معلومات طلب الوساطة الحالي (إذا وجد)
+            .populate({
                 path: 'currentMediationRequest',
-                select: '_id status sellerConfirmedStart buyerConfirmedStart mediator bidAmount bidCurrency', // اختر الحقول التي تحتاجها
-                populate: { path: 'mediator', select: 'fullName avatarUrl _id' } // جلب معلومات الوسيط إذا تم تعيينه
+                select: '_id status',
             })
-            .populate('buyer', 'fullName _id avatarUrl')
-            .lean(); // .lean() للأداء إذا كنت لا تحتاج إلى طرق Mongoose الكاملة
+            .lean();
 
-        console.log(`Fetched ${products.length} products.`);
+        if (products.length > 0 && products[0].bids.length > 0) {
+            console.log("--- DEBUG: HIGHEST BIDDER USER OBJECT ---");
+            console.log(products[0].bids[0].user);
+            console.log("-----------------------------------------");
+        }
+        
+        console.log(`[getProducts] Fetched ${products.length} approved products.`);
         res.status(200).json(products);
     } catch (error) {
         console.error("Error in getProducts:", error);
         res.status(500).json({ errors: "Failed to retrieve products." });
+    }
+};
+
+exports.getMyProducts = async (req, res) => {
+    const userId = req.user._id;
+    console.log(`--- Controller: getMyProducts for User ID: ${userId} ---`);
+
+    try {
+        // لا تقم بأي فلترة حسب الحالة هنا. اجلب جميع منتجات المستخدم.
+        const products = await Product.find({ user: userId })
+            .populate('user', 'fullName email avatarUrl')
+            .populate('bids.user', 'fullName email avatarUrl')
+            .populate('buyer', 'fullName email avatarUrl')
+            .populate({
+                path: 'currentMediationRequest',
+                // لا تقم بتحديد حقول معينة باستخدام 'select'.
+                // دع Mongoose يجلب الكائن الكامل بجميع خصائصه.
+                // وهذا يضمن أن `sellerConfirmedStart` و `buyerConfirmedStart` وغيرها ستكون موجودة.
+            })
+            .sort({ createdAt: -1 }); // الترتيب حسب الأحدث
+
+        console.log(`[getMyProducts] Fetched ${products.length} products for user ${userId}.`);
+        res.status(200).json(products);
+
+    } catch (error) {
+        console.error("Error in getMyProducts:", error);
+        res.status(500).json({ errors: "Failed to retrieve your products." });
     }
 };
 
@@ -462,6 +495,8 @@ exports.approveProduct = async (req, res) => {
         });
         await approvalNotification.save({ session: session });
         await session.commitTransaction();
+
+        await checkAndAwardAchievements({ userId: seller._id, event: 'PRODUCT_APPROVED', req });
 
         if (req.io) {
             const populatedProduct = await Product.findById(product._id).populate('user', 'fullName email').lean();

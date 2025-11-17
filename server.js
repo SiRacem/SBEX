@@ -40,6 +40,7 @@ const ticketRoute = require('./router/ticket.router');
 const reportRoute = require('./router/report');
 const faqRoute = require('./router/faq.router');
 const newsRouter = require('./router/newsRouter');
+const achievementRouter = require('./router/achievement.router'); // <-- أضف هذا السطر
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -653,6 +654,7 @@ app.use('/reports', reportRoute);
 app.use('/support', ticketRoute);
 app.use('/faq', faqRoute);
 app.use('/news', newsRouter);
+app.use('/achievements', achievementRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 

@@ -39,6 +39,8 @@ import { toast } from "react-toastify";
 import "./OfflineProdCard.css";
 import { useTranslation } from "react-i18next";
 
+const BACKEND_URL =
+  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 const MINIMUM_BALANCE_TO_PARTICIPATE_BID = 6.0;
 const TND_USD_RATE = 3.0; // 1 USD = 3 TND
 
@@ -71,11 +73,11 @@ const OfflineProdCard = ({ el: product }) => {
   const linkTypeMap = useMemo(
     () => ({
       "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
-      "k": t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
+      k: t("comptes.linkTypes.k", "Konami ID ✅ Gmail ❌ Mail ❌"),
       "k&g&m": t("comptes.linkTypes.k&g&m", "Konami ID ✅ Gmail ✅ Mail ✅"),
       "k&g": t("comptes.linkTypes.k&g", "Konami ID ✅ Gmail ✅ Mail ❌"),
       "g&m": t("comptes.linkTypes.g&m", "Konami ID ❌ Gmail ✅ Mail ✅"),
-      "g": t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
+      g: t("comptes.linkTypes.g", "Konami ID ❌ Gmail ✅ Mail ❌"),
     }),
     [t]
   );
@@ -506,7 +508,29 @@ const OfflineProdCard = ({ el: product }) => {
               <small className="text-muted">{t("home.bidModal.bids")}</small>
               <ListGroup horizontal className="bids-list-horizontal ms-auto">
                 {product.bids.slice(0, 4).map((bid, index) => {
-                  const bidderId = bid?.user?._id || bid?.user;
+                  const isUserPopulated =
+                    typeof bid.user === "object" && bid.user !== null;
+
+                  const bidderId = isUserPopulated ? bid.user._id : bid.user;
+                  const bidderFullName = isUserPopulated
+                    ? bid.user.fullName
+                    : t("home.bidder");
+                  const bidderAvatarUrl = isUserPopulated
+                    ? bid.user.avatarUrl
+                    : null;
+
+                    const highestBidder = product.bids && product.bids.length > 0 ? product.bids[0] : null;
+
+                    if (highestBidder) {
+                      console.log(
+                        "--- DEBUG [FRONTEND]: Highest Bidder Object from props ---"
+                      );
+                      console.log(highestBidder.user);
+                      console.log(
+                        "----------------------------------------------------------"
+                      );
+                    }
+
                   const uniqueBidKey = `${bidderId || "unknown"}-${
                     bid.amount
                   }-${index}`;
@@ -520,7 +544,7 @@ const OfflineProdCard = ({ el: product }) => {
                           placement="top"
                           overlay={
                             <Tooltip>
-                              {bid.user?.fullName || t("home.bidder")} -{" "}
+                              {bidderFullName} -{" "}
                               {formatCurrency(bid.amount, bid.currency)}
                             </Tooltip>
                           }
@@ -532,16 +556,26 @@ const OfflineProdCard = ({ el: product }) => {
                           >
                             <span
                               className="bidder-avatar"
-                              title={bid.user?.fullName}
+                              title={bidderFullName}
                             >
-                              {bid.user?.avatarUrl ? (
+                              {bidderAvatarUrl ? (
                                 <Image
-                                  src={bid.user.avatarUrl}
+                                  src={
+                                    bidderAvatarUrl &&
+                                    bidderAvatarUrl.startsWith("http")
+                                      ? bidderAvatarUrl
+                                      : `${BACKEND_URL}/${bidderAvatarUrl}`
+                                  }
                                   className="bidder-avatar-img"
-                                  alt={bid.user?.fullName}
+                                  alt={bidderFullName}
+                                  onError={(e) => {
+                                    // إضافة معالج خطأ احتياطي
+                                    e.target.style.display = "none"; // إخفاء الصورة إذا فشل التحميل
+                                    // يمكنك عرض الأحرف الأولى من الاسم بدلاً من ذلك
+                                  }}
                                 />
                               ) : (
-                                bid.user?.fullName
+                                bidderFullName
                                   ?.split(" ")
                                   .map((n) => n[0])
                                   .join("")

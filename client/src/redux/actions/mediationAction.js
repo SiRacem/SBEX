@@ -188,7 +188,24 @@ export const sellerConfirmReadinessAction = (mediationRequestId) => async (dispa
     if (!config) return dispatch({ type: types.SELLER_CONFIRM_READINESS_FAIL, payload: { errorMessage: { key: "apiErrors.notAuthorized" } } });
     try {
         const { data } = await axios.put(`${BACKEND_URL}/mediation/seller/confirm-readiness/${mediationRequestId}`, {}, config);
-        dispatch({ type: types.SELLER_CONFIRM_READINESS_SUCCESS, payload: { mediationRequestId, responseData: data, successMessage: 'mediation.seller.confirmSuccess' } });
+        // 1. قم بعمل dispatch لـ action النجاح الأصلي (لـ mediationReducer)
+        dispatch({
+            type: types.SELLER_CONFIRM_READINESS_SUCCESS,
+            payload: {
+                mediationRequestId,
+                responseData: data,
+                successMessage: data.msg // استخدم الرسالة من الخادم
+            }
+        });
+
+        // 2. قم بعمل dispatch لـ action جديد ومباشر لتحديث المنتج في productReducer
+        //    مرر `mediationRequest` المحدث من استجابة الخادم
+        if (data.mediationRequest) {
+            dispatch({
+                type: 'UPDATE_PRODUCT_FROM_MEDIATION_ACTION', // <-- action جديد سنقوم بإنشائه
+                payload: data.mediationRequest
+            });
+        }
         return data;
     } catch (error) {
         const { key, fallback, params } = handleError(error, 'mediation.seller.confirmFail');

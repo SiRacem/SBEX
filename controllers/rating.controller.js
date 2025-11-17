@@ -4,6 +4,7 @@ const Rating = require('../models/Rating');
 const User = require('../models/User'); // Ensure User model has: claimedLevelRewards: [Number], reputationLevel: String, etc.
 const MediationRequest = require('../models/MediationRequest');
 const Notification = require('../models/Notification');
+const { checkAndAwardAchievements } = require('../services/achievementService');
 
 // --- Dynamic Level and Reward Calculation Constants ---
 const BASE_POINTS_FOR_LEVEL_2 = 10;
@@ -99,12 +100,23 @@ const updateUserLevelAndBadge = (userDoc) => { // Exported, so can be used by ot
  * Processes rewards if a new numeric level is achieved and the reward for that level has not been claimed yet.
  * This function modifies the userDoc directly if a reward is given.
  */
-const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, session) => {
+const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, req, session) => {
     if (!userDoc) {
         console.error("processLevelUpRewards called with undefined userDoc");
         return false;
     }
     let rewardProcessedThisCall = false;
+
+    // التحقق من أن المستخدم قد ترقى بالفعل
+    if (userDoc.level > oldNumericLevelBeforePointsUpdate) {
+        // استدعاء خدمة التحقق من الإنجازات لحدث "LEVEL_UP"
+        await checkAndAwardAchievements({
+            userId: userDoc._id,
+            event: 'LEVEL_UP',
+            req, // تمرير كائن req
+            session
+        });
+    }
 
     for (let achievedLevel = oldNumericLevelBeforePointsUpdate + 1; achievedLevel <= userDoc.level; achievedLevel++) {
         if (achievedLevel > MAX_LEVEL_CAP) break;
@@ -195,7 +207,7 @@ const submitRating = async (req, res) => {
         let userDocChangedByPointsOrRatingField = true; // Since points/rating field definitely changed
 
         const structuralChangesFromLevelBadge = updateUserLevelAndBadge(ratedUserDoc);
-        const rewardWasProcessed = await processLevelUpRewards(ratedUserDoc, oldNumericLevelBeforePointsUpdate, session);
+        const rewardWasProcessed = await processLevelUpRewards(ratedUserDoc, oldNumericLevelBeforePointsUpdate, req, session);
 
         if (userDocChangedByPointsOrRatingField || structuralChangesFromLevelBadge || rewardWasProcessed) {
             await ratedUserDoc.save({ session });
@@ -246,6 +258,24 @@ const submitRating = async (req, res) => {
                 messageParams: notificationParams,
                 relatedEntity: { id: mediationRequestId, modelName: 'MediationRequest' }
             }], { session });
+        }
+
+        // التحقق من إنجاز "صوتك مسموع" للمقيِّم (Rater)
+        await checkAndAwardAchievements({
+            userId: raterId,
+            event: 'RATING_GIVEN',
+            req,
+            session
+        });
+
+        // التحقق من إنجاز "سمعة طيبة" للمقيَّم (Rated User)
+        if (ratingType === 'like') {
+            await checkAndAwardAchievements({
+                userId: ratedUserId,
+                event: 'RATING_RECEIVED',
+                req,
+                session
+            });
         }
 
         await session.commitTransaction();

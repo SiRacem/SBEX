@@ -222,15 +222,30 @@ const userReducer = (state = initialState, action) => {
       };
 
     case LOGIN_FAIL:
+      return {
+        ...state,
+        loading: false, // <-- أهم إصلاح: أوقف التحميل
+        isAuth: false,
+        token: null,
+        user: null,
+        errorMessage: payload.errorMessage, // <-- ضع رسالة الخطأ هنا
+      };
+
     case REGISTER_FAIL:
     case GET_PROFILE_FAIL:
     case APPLY_MEDIATOR_FAIL:
     case ADMIN_GET_MEDIATORS_FAIL:
+      return {
+        ...state,
+        loading: false, // <-- أوقف التحميل العام لهذه الحالات أيضًا
+        errorMessage: payload.errorMessage,
+      };
+
     case UPDATE_MEDIATOR_STATUS_FAIL:
       return {
         ...state,
-        loadingUpdateMediatorStatus: false,
-        errorUpdateMediatorStatus: payload.errorMessage, // من الأفضل استخدام حالة خطأ منفصلة أيضاً
+        loadingUpdateMediatorStatus: false, // هذه تستخدم حالة تحميل خاصة بها
+        errorMessage: payload.errorMessage,
       };
 
     case LOGOUT:
