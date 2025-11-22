@@ -98,7 +98,8 @@ const NotificationSchema = new Schema({
             'BID_CANCELLED_BY_UPDATE',
             'BUYER_CONFIRM_AWAITING_YOUR_ACTION',
             'SELLER_BALANCE_TRANSFER_SUCCESS',
-            'BADGE_UPDATED'
+            'BADGE_UPDATED',
+            'ACHIEVEMENT_UNLOCKED'
         ],
         required: true
     },

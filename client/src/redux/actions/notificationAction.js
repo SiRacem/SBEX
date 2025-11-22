@@ -1,7 +1,7 @@
 import axios from 'axios';
 import {
     GET_NOTIFICATIONS_REQUEST, GET_NOTIFICATIONS_SUCCESS, GET_NOTIFICATIONS_FAIL,
-    MARK_READ_REQUEST, MARK_READ_SUCCESS, MARK_READ_FAIL, CLEAR_NOTIFICATIONS
+    MARK_READ_REQUEST, MARK_READ_SUCCESS, MARK_READ_FAIL, CLEAR_NOTIFICATIONS, ADD_NOTIFICATION_REALTIME
 } from '../actionTypes/notificationActionType';
 
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
@@ -65,3 +65,11 @@ export const markNotificationsRead = (notificationIds) => async (dispatch) => {
 };
 
 export const clearNotifications = () => ({ type: CLEAR_NOTIFICATIONS });
+
+export const addNotificationFromSocket = (notification) => (dispatch) => {
+    // يمكنك إضافة أي منطق هنا إذا احتجت في المستقبل
+    dispatch({
+        type: ADD_NOTIFICATION_REALTIME,
+        payload: notification
+    });
+};

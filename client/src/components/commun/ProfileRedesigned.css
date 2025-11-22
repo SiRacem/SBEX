@@ -380,6 +380,85 @@
     border-bottom: none !important;
 }
 
+/* --- تنسيق أيقونات الإنجازات في البروفيل --- */
+
+.achievement-icon-display {
+    display: inline-block;
+    margin: 0 5px;
+    transition: transform 0.3s ease;
+}
+
+.achievement-icon-display:hover {
+    transform: scale(1.2) rotate(5deg);
+}
+
+/* إزالة الألوان الافتراضية */
+.achievement-icon-display i {
+    color: #6c757d; /* لون رمادي افتراضي */
+}
+
+/* === تخصيص الألوان لكل أيقونة (بناءً على قاعدة بياناتك) === */
+
+/* 1. المبيعات (برتقالي/ذهبي) */
+.achievement-icon-display .fa-cloud-arrow-up,   /* أول خطوة */
+.achievement-icon-display .fa-box-open,
+.achievement-icon-display .fa-handshake,        /* أول عملية بيع */
+.achievement-icon-display .fa-cash-register {   /* تاجر جاد */
+    color: #f39c12 !important; 
+}
+
+/* 2. المشتريات (أزرق سماوي) */
+.achievement-icon-display .fa-cart-shopping,    /* بداية الرحلة */
+.achievement-icon-display .fa-bag-shopping,
+.achievement-icon-display .fa-basket-shopping,
+.achievement-icon-display .fa-tags {            /* صائد الصفقات */
+    color: #3498db !important; 
+}
+
+/* 3. الحظ والتميز (أخضر/تركواز) */
+.achievement-icon-display .fa-clover,           /* المحظوظ */
+.achievement-icon-display .fa-check-double,     /* تمت الموافقة */
+.achievement-icon-display .fa-user-pen {        /* مكتمل */
+    color: #2ecc71 !important; 
+}
+
+/* 4. المستويات والرتب (ألوان فخمة) */
+.achievement-icon-display .fa-star {            /* مخضرم */
+    color: #9b59b6 !important; /* بنفسجي */
+}
+.achievement-icon-display .fa-medal {           /* عضو فضي */
+    color: #95a5a6 !important; /* فضي */
+}
+.achievement-icon-display .fa-award {           /* عضو ذهبي / الوصول للقمة */
+    color: #f1c40f !important; /* ذهبي لامع */
+}
+.achievement-icon-display .fa-crown {           /* أسطورة */
+    color: #e74c3c !important; /* أحمر ملكي */
+}
+.achievement-icon-display .fa-gem {             /* عضو ألماسي */
+    color: #00d2d3 !important; /* سماوي لامع (Cyan) */
+}
+
+/* 5. المجتمع والوساطة (ألوان داكنة ورسمية) */
+.achievement-icon-display .fa-gavel,            /* قاضي محنك */
+.achievement-icon-display .fa-scale-balanced,   /* صانع السلام */
+.achievement-icon-display .fa-shield-halved,    /* حارس الثقة */
+.achievement-icon-display .fa-user-shield {
+    color: #34495e !important; /* كحلي */
+}
+
+/* 6. التقييمات (وردي/أحمر) */
+.achievement-icon-display .fa-heart,            /* سمعة طيبة */
+.achievement-icon-display .fa-comment-dots,     /* صوتك مسموع */
+.achievement-icon-display .fa-comments {
+    color: #e84393 !important; 
+}
+
+/* تأثير اللمعان عند التحويم */
+.achievement-icon-display:hover i {
+    filter: drop-shadow(0 0 8px rgba(0,0,0,0.2));
+}
+
 /* .card-footer.border-0 { border-top: none !important; } /* أبقيت على هذا معلقًا لأن Card.Footer في Profile.jsx يستخدم border-top */
 /* --- Reputation Badge Styles (General and Specific) --- */
 .reputation-badge {

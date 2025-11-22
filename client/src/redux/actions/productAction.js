@@ -14,14 +14,12 @@ import {
 } from '../actionTypes/productActionType';
 
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
-    // [!!!] تعديل للتعامل مع translationKey و translationParams [!!!]
     if (error.response?.data?.translationKey) {
         return {
             key: error.response.data.translationKey,
             params: error.response.data.translationParams || {}
         };
     }
-    // باقي المنطق يبقى كما هو
     if (error.response) {
         if (error.response.data.msg) {
             const fallback = error.response.data.msg;

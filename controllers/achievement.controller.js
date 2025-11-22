@@ -59,7 +59,7 @@ exports.createAchievement = asyncHandler(async (req, res) => {
 exports.getAllAchievements = asyncHandler(async (req, res) => {
     // سنستخدم paginate إذا كان متاحًا، وإلا سنستخدم الطريقة العادية
     // بما أن Achievement model لا يستخدم plugin mongoose-paginate، سنقوم بالترقيم يدويًا
-    const pageSize = parseInt(req.query.limit) || 15;
+    const pageSize = 100;
     const page = parseInt(req.query.page) || 1;
 
     const count = await Achievement.countDocuments();

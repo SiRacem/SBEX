@@ -1,51 +1,82 @@
 /* src/pages/UserAchievementsPage.css */
 
 .achievement-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    border: 1px solid #e9ecef;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    background: #f8f9fa; /* لون رمادي فاتح للمقفل */
+}
+
+.achievement-card.unlocked {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.05);
 }
 
 .achievement-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
-}
-
-.achievement-card.locked {
-    background-color: #f8f9fa;
-    opacity: 0.7;
-}
-
-.achievement-card.locked .card-title {
-    color: #6c757d;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
 }
 
 .achievement-icon-wrapper {
     position: relative;
-    width: 80px;
     height: 80px;
-    margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-bottom: 1rem;
 }
 
-.achievement-card.unlocked .achievement-icon-wrapper {
-    background: radial-gradient(circle, rgba(255, 193, 7, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+.achievement-icon {
+    transition: color 0.3s ease;
 }
 
-.achievement-icon-wrapper .lock-overlay {
+/* --- ألوان الفئات --- */
+/* مبيعات: ذهبي/برتقالي */
+.achievement-sales .achievement-icon { color: #f39c12; }
+.cat-sales { background-color: #f39c12; }
+
+/* مشتريات: أزرق */
+.achievement-purchases .achievement-icon { color: #3498db; }
+.cat-purchases { background-color: #3498db; }
+
+/* مجتمع: أخضر */
+.achievement-community .achievement-icon { color: #2ecc71; }
+.cat-community { background-color: #2ecc71; }
+
+/* خاص: بنفسجي */
+.achievement-special .achievement-icon { color: #9b59b6; }
+.cat-special { background-color: #9b59b6; }
+
+/* المقفل: رمادي */
+.locked .achievement-icon {
+    color: #bdc3c7 !important;
+    opacity: 0.5;
+}
+
+.lock-overlay {
     position: absolute;
-    bottom: 0;
-    right: 0;
-    font-size: 1.2rem;
-    color: rgba(0, 0, 0, 0.4);
-    background-color: white;
-    border-radius: 50%;
-    padding: 2px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    color: #7f8c8d;
+    opacity: 0.8;
 }
 
 .category-title {
-    border-bottom: 2px solid #ffc107;
-    padding-bottom: 0.5rem;
+    color: #2c3e50;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.cat-indicator {
     display: inline-block;
+    width: 10px;
+    height: 25px;
+    margin-right: 10px;
+    border-radius: 4px;
+}
+
+.drop-shadow {
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
 }

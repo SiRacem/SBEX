@@ -2044,30 +2044,41 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         // 10. Commit Transaction
         await session.commitTransaction();
 
-        // [!!!] START: إضافة التحقق من الإنجازات هنا (بعد الـ commit) [!!!]
-        // التحقق للبائع (إتمام عملية بيع)
+// 1. للبائع (إنجاز بيع + المتفاوض)
         await checkAndAwardAchievements({
             userId: seller._id,
             event: 'SALE_COMPLETED',
-            req, // مرر كائن req كاملاً
+            data: { product: productDoc || product }, // <--- [!!!] هذا السطر كان ناقصاً!
+            req
         });
 
-        // التحقق للمشتري (إتمام عملية شراء)
+        // 2. للمشتري (إنجاز شراء + صائد الصفقات + المحظوظ)
         await checkAndAwardAchievements({
             userId: buyer._id,
             event: 'PURCHASE_COMPLETED',
-            req,
+            data: { product: productDoc || product }, // <--- تأكد أن هذا موجود أيضاً
+            req
         });
 
-        // التحقق للوسيط (إتمام وساطة ناجحة)
+        // 3. للوسيط (إنجاز وساطة ناجحة)
         if (mediator) {
             await checkAndAwardAchievements({
                 userId: mediator._id,
                 event: 'MEDIATION_COMPLETED',
-                req,
+                req
             });
         }
-        // [!!!] END: نهاية التحقق من الإنجازات [!!!]
+
+        // 4. التحقق من إنجازات المستوى لجميع الأطراف (لأن نقاطهم زادت)
+        for (const participant of [seller, buyer, mediator]) {
+            if (participant) {
+                await checkAndAwardAchievements({
+                    userId: participant._id,
+                    event: 'LEVEL_UP', // هذا الحدث يفحص إذا وصل المستخدم لمستوى معين
+                    req
+                });
+            }
+        }
 
         // 11. تحديث حالة الوسيط بعد الـ commit
         try {

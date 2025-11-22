@@ -56,6 +56,7 @@ import { getNews } from './redux/actions/newsAction';
 import AdminAchievementsManagement from './components/admin/AdminAchievementsManagement';
 import UserAchievementsPage from './pages/UserAchievementsPage';
 import { adminGetAllAchievements, getAvailableAchievements } from './redux/actions/achievementAction';
+import { addNotificationFromSocket } from './redux/actions/notificationAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -318,7 +319,7 @@ function App() {
 
       newSocket.on('new_notification', (notification) => {
         toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right" });
-        dispatch({ type: 'ADD_NOTIFICATION_REALTIME', payload: notification });
+        dispatch(addNotificationFromSocket(notification));
       });
 
       newSocket.on('dispute_opened_for_admin', () => {

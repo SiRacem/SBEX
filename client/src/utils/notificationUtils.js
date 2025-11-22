@@ -17,7 +17,8 @@ import {
     FaTimesCircle,
     FaUserShield,
     FaUsersCog,
-    FaBullhorn
+    FaBullhorn,
+    FaTrophy
 } from "react-icons/fa";
 import {
     FiAlertTriangle,
@@ -134,6 +135,10 @@ export const getNotificationIcon = (type, isRead) => {
             return <FaTimesCircle size={20} className="text-danger" />;
         case 'ACCOUNT_UNBLOCKED':
             return <FaCheckCircle size={20} className="text-success" />;
+
+        case 'ACHIEVEMENT_UNLOCKED':
+            // يمكنك استخدام FaMedal أو FaTrophy
+            return <FaMedal size={20} className="text-warning" />;
 
         // --- أيقونة افتراضية ---
         default:

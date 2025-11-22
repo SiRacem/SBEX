@@ -304,6 +304,30 @@ const userReducer = (state = initialState, action) => {
     case SET_ONLINE_USERS:
       return { ...state, onlineUsers: Array.isArray(payload) ? payload : [] };
 
+    case 'UPDATE_USER_ACHIEVEMENTS_IN_STORE':
+      if (!state.user) return state;
+
+      // التحقق مما إذا كان الإنجاز موجوداً بالفعل لتجنب التكرار
+      const achievementExists = state.user.achievements.some(
+        ua => ua.achievement._id === payload._id || ua.achievement === payload._id
+      );
+
+      if (achievementExists) return state;
+
+      return {
+        ...state,
+        user: {
+          ...state.user,
+          achievements: [
+            ...state.user.achievements,
+            {
+              achievement: payload, // الإنجاز الجديد بكامل تفاصيله
+              unlockedAt: new Date().toISOString()
+            }
+          ]
+        }
+      };
+
     default:
       return state;
   }

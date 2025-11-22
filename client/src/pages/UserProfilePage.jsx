@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useContext } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import {
@@ -16,6 +22,7 @@ import {
   OverlayTrigger,
 } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
+import { LinkContainer } from "react-router-bootstrap";
 import {
   FaCalendarAlt,
   FaBoxOpen,
@@ -185,7 +192,15 @@ const UserProfilePage = () => {
     };
   }, [socket, viewedUserId]);
 
-  const userDetails = profileData?.user || profileData;
+  const userDetails = profileData?.user;
+
+  const unlockedAchievements = useMemo(() => {
+    return (userDetails?.achievements || [])
+      .filter((a) => a.achievement)
+      .sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt))
+      .slice(0, 5);
+  }, [userDetails?.achievements]);
+
   const canReportThisUser =
     currentUser && userDetails && currentUser._id !== userDetails._id;
   const reportButtonDisabled = isRecentlyReported;
@@ -412,6 +427,66 @@ const UserProfilePage = () => {
                   )}
                 </Col>
               </Row>
+            </Card.Body>
+          </Card>
+
+          <Card className="shadow-sm border-0 mt-4">
+            <Card.Header className="bg-white p-3 border-0">
+              <h5 className="mb-0 section-title-modern">
+                <FaTrophy className="me-2 text-primary" />{" "}
+                {t("profilePage.achievementsSectionTitle")}
+              </h5>
+            </Card.Header>
+            <Card.Body className="p-4">
+              {unlockedAchievements.length > 0 ? (
+                <Row className="g-3">
+                  {unlockedAchievements.map((userAchievement) => (
+                    <Col key={userAchievement.achievement._id} xs="auto">
+                      <OverlayTrigger
+                        placement="top"
+                        overlay={
+                          <Tooltip
+                            id={`tooltip-public-${userAchievement.achievement._id}`}
+                          >
+                            <strong>
+                              {userAchievement.achievement.title[
+                                i18n.language
+                              ] || userAchievement.achievement.title.ar}
+                            </strong>
+                            <br />
+                            <small>
+                              {userAchievement.achievement.description[
+                                i18n.language
+                              ] || userAchievement.achievement.description.ar}
+                            </small>
+                          </Tooltip>
+                        }
+                      >
+                        <div className="achievement-icon-display">
+                          <i
+                            className={`${userAchievement.achievement.icon} fa-2x`}
+                          ></i>
+                        </div>
+                      </OverlayTrigger>
+                    </Col>
+                  ))}
+                  {(userDetails.achievements?.length || 0) > 5 && (
+                    <Col xs={12} className="mt-3">
+                      <LinkContainer to="/dashboard/achievements">
+                        <Button variant="link" size="sm" className="p-0">
+                          {t("profilePage.viewAllAchievements", {
+                            count: userDetails.achievements.length,
+                          })}
+                        </Button>
+                      </LinkContainer>
+                    </Col>
+                  )}
+                </Row>
+              ) : (
+                <p className="text-muted text-center mb-0">
+                  {t("profilePage.noAchievements")}
+                </p>
+              )}
             </Card.Body>
           </Card>
         </Col>

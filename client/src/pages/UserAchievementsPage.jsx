@@ -15,36 +15,37 @@ import {
 import { useTranslation } from "react-i18next";
 import { FaTrophy, FaLock } from "react-icons/fa";
 import { getAvailableAchievements } from "../redux/actions/achievementAction";
-import "./UserAchievementsPage.css"; // سنقوم بإنشاء هذا الملف للتنسيق
+import "./UserAchievementsPage.css";
 
 const AchievementCard = ({ achievement, unlocked, lang }) => {
   const { t } = useTranslation();
   const title = achievement.title[lang] || achievement.title.ar;
-  const description =
-    achievement.description[lang] || achievement.description.ar;
+  const description = achievement.description[lang] || achievement.description.ar;
+  const categoryClass = `achievement-${achievement.category?.toLowerCase() || 'special'}`;
 
   return (
     <Card
-      className={`h-100 shadow-sm achievement-card ${
-        unlocked ? "unlocked" : "locked"
-      }`}
+      className={`h-100 shadow-sm achievement-card ${unlocked ? "unlocked" : "locked"} ${unlocked ? categoryClass : ''}`}
     >
       <Card.Body className="d-flex flex-column text-center">
-        <div className="achievement-icon-wrapper mb-3">
+        <div className={`achievement-icon-wrapper mb-3 ${unlocked ? 'glow' : ''}`}>
           <i
-            className={`${achievement.icon} fa-3x ${
-              unlocked ? "text-warning" : "text-muted"
-            }`}
+            className={`${achievement.icon} fa-3x achievement-icon`}
           ></i>
-          {!unlocked && <FaLock className="lock-overlay" />}
+          {!unlocked && <div className="lock-overlay"><FaLock /></div>}
         </div>
-        <Card.Title as="h5" className="fw-bold">
+        <Card.Title as="h5" className="fw-bold achievement-title">
           {title}
         </Card.Title>
-        <Card.Text className="text-muted flex-grow-1">{description}</Card.Text>
-        {unlocked && (
-          <Badge pill bg="success" className="mt-auto align-self-center">
-            <FaTrophy className="me-1" /> {t("achievements.unlocked")}
+        <Card.Text className="text-muted flex-grow-1 small">{description}</Card.Text>
+
+        {unlocked ? (
+          <Badge bg="light" text="dark" className="mt-auto align-self-center border status-badge">
+            <FaTrophy className="me-1 text-warning" /> {t('achievements.unlocked')}
+          </Badge>
+        ) : (
+          <Badge bg="secondary" className="mt-auto align-self-center opacity-50">
+            {t('achievements.locked')}
           </Badge>
         )}
       </Card.Body>
@@ -67,13 +68,15 @@ const UserAchievementsPage = () => {
   }, [dispatch]);
 
   const userAchievementIds = useMemo(() => {
-    return new Set(user?.achievements?.map((a) => a.achievement) || []);
+    if (!user?.achievements) return new Set();
+    return new Set(user.achievements.map((a) => {
+      return a.achievement._id ? a.achievement._id.toString() : a.achievement.toString();
+    }));
   }, [user]);
 
   const unlockedCount = userAchievementIds.size;
   const totalCount = availableAchievements.length;
-  const progress =
-    totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const progress = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
   const categorizedAchievements = useMemo(() => {
     if (!availableAchievements) return {};
@@ -98,19 +101,21 @@ const UserAchievementsPage = () => {
         </Col>
       </Row>
 
-      <Card className="mb-5 shadow-sm">
-        <Card.Body>
-          <Row className="align-items-center">
+      <Card className="mb-5 shadow-sm border-0 bg-gradient-primary text-white" style={{ background: 'linear-gradient(45deg, #2b32b2, #1488cc)' }}>
+        <Card.Body className="p-4">
+          <Row className="align-items-center text-white">
             <Col md={8}>
-              <Card.Title>{t("achievements.progressTitle")}</Card.Title>
-              <ProgressBar
-                now={progress}
-                label={`${progress}%`}
-                variant="warning"
-                className="mb-2"
-                style={{ height: "25px" }}
-              />
-              <p className="mb-0 text-muted">
+              <Card.Title className="fs-3 mb-3">{t("achievements.progressTitle")}</Card.Title>
+              <div className="d-flex align-items-center mb-2">
+                <ProgressBar
+                  now={progress}
+                  className="flex-grow-1 me-3 bg-white-50"
+                  variant="warning"
+                  style={{ height: "15px", borderRadius: '10px' }}
+                />
+                <span className="fw-bold">{progress}%</span>
+              </div>
+              <p className="mb-0 opacity-75">
                 {t("achievements.progressSubtitle", {
                   unlocked: unlockedCount,
                   total: totalCount,
@@ -118,7 +123,7 @@ const UserAchievementsPage = () => {
               </p>
             </Col>
             <Col md={4} className="text-center text-md-end mt-3 mt-md-0">
-              <FaTrophy size="4em" className="text-warning" />
+              <FaTrophy size="5em" className="text-warning drop-shadow" />
             </Col>
           </Row>
         </Card.Body>
@@ -139,9 +144,10 @@ const UserAchievementsPage = () => {
           (category) =>
             categorizedAchievements[category] && (
               <div key={category} className="mb-5">
-                <h2 className="category-title mb-4">
+                <h3 className="category-title mb-4 border-bottom pb-2">
+                  <span className={`cat-indicator cat-${category.toLowerCase()}`}></span>
                   {t(`admin.achievements.categories.${category}`, category)}
-                </h2>
+                </h3>
                 <Row xs={1} sm={2} md={3} lg={4} className="g-4">
                   {categorizedAchievements[category].map((ach) => (
                     <Col key={ach._id}>

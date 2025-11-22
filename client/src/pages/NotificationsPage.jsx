@@ -10,7 +10,7 @@ import {
   markNotificationsRead,
 } from "../redux/actions/notificationAction";
 import { useNavigate } from "react-router-dom";
-import { getNotificationIcon } from "../utils/notificationUtils"; // استيراد الدالة من الملف المساعد
+import { getNotificationIcon } from "../utils/notificationUtils";
 import "./NotificationsPage.css";
 
 const NotificationsPage = () => {
@@ -43,94 +43,90 @@ const NotificationsPage = () => {
     dispatch(getNotifications());
   }, [dispatch]);
 
+  // --- [!] دالة جديدة لمعالجة المعايير متعددة اللغات ---
+  const processMessageParams = (params) => {
+    if (!params) return {};
+    const newParams = { ...params };
+
+    // معالجة خاصة لاسم الإنجاز إذا كان كائناً
+    if (
+      newParams.achievementName &&
+      typeof newParams.achievementName === "object"
+    ) {
+      // نحاول أخذ اللغة الحالية، ثم العربية، ثم الإنجليزية، أو نعيد نصاً فارغاً
+      newParams.achievementName =
+        newParams.achievementName[i18n.language] ||
+        newParams.achievementName["ar"] ||
+        newParams.achievementName["en"] ||
+        "";
+    }
+    return newParams;
+  };
+  // -------------------------------------------------------
+
   const handleNotificationClick = useCallback(
     (notification) => {
-      // أولاً، قم بتمييز الإشعار كمقروء إذا لم يكن كذلك
       if (!notification.isRead && !loadingMarkRead) {
         dispatch(markNotificationsRead([notification._id]));
       }
 
-      // ثانياً، حدد المسار المناسب للانتقال إليه
       let path = null;
       const entityId = notification.relatedEntity?.id;
       const modelName = notification.relatedEntity?.modelName;
       const notificationType = notification.type;
       const currentUserRole = user?.userRole;
 
+      // ... (نفس كود التوجيه السابق بدون تغيير) ...
       switch (modelName) {
         case "Product":
-          if (currentUserRole === "Admin") {
-            // الأدمن دائماً يذهب إلى صفحة إدارة المنتجات للموافقة/الرفض
-            path = "/dashboard/admin/products";
-          } else if (currentUserRole === "Vendor") {
-            // البائع يذهب إلى صفحة "حساباتي" الخاصة به
+          if (currentUserRole === "Admin") path = "/dashboard/admin/products";
+          else if (currentUserRole === "Vendor")
             path = "/dashboard/comptes_bids";
-          } else {
-            // المستخدم العادي يمكن توجيهه لصفحة المنتج الرئيسية (إذا كان لديك مسار لها)
-            // حالياً نوجهه إلى الصفحة الرئيسية كحل بديل
-            path = "/";
-          }
+          else path = "/";
           break;
-
         case "MediationRequest":
-          // التعامل مع الحالات بناءً على دور المستخدم
-          if (currentUserRole === "Admin") {
-            path = `/dashboard/admin/disputes`;
-          } else if (user?.isMediatorQualified) {
+          if (currentUserRole === "Admin") path = `/dashboard/admin/disputes`;
+          else if (user?.isMediatorQualified)
             path = "/dashboard/mediator/assignments";
-          } else {
-            // التحقق إذا كان المستخدم هو البائع أم المشتري
-            const isSellerNotification = [
+          else {
+            const isSellerNotif = [
               "MEDIATION_REJECTED_BY_MEDIATOR_SELECT_NEW",
               "BUYER_CONFIRMED_AWAITING_YOUR_ACTION",
             ].includes(notificationType);
-
-            if (isSellerNotification) {
-              path = "/dashboard/comptes_bids"; // البائع
-            } else {
-              path = "/my-mediation-requests"; // المشتري
-            }
+            path = isSellerNotif
+              ? "/dashboard/comptes_bids"
+              : "/my-mediation-requests";
           }
-          // حالة خاصة للمحادثات، تتجاوز ما سبق
-          if (notificationType.includes("CHAT")) {
+          if (notificationType.includes("CHAT"))
             path = `/dashboard/mediation-chat/${entityId}`;
-          }
           break;
-
         case "User":
           if (
             notificationType === "NEW_MEDIATOR_APPLICATION" &&
             currentUserRole === "Admin"
-          ) {
+          )
             path = "/dashboard/admin/mediator-review";
-          } else {
-            path = "/dashboard/profile";
-          }
+          else path = "/dashboard/profile"; // للإنجازات نذهب للملف الشخصي
           break;
-
         case "DepositRequest":
-          if (currentUserRole === "Admin") {
-            path = "/dashboard/admin/deposits";
-          } else {
-            path = "/dashboard/wallet";
-          }
+          path =
+            currentUserRole === "Admin"
+              ? "/dashboard/admin/deposits"
+              : "/dashboard/wallet";
           break;
-
         case "WithdrawalRequest":
-          if (currentUserRole === "Admin") {
-            path = "/dashboard/admin/withdrawals";
-          } else {
-            path = "/dashboard/wallet";
-          }
+          path =
+            currentUserRole === "Admin"
+              ? "/dashboard/admin/withdrawals"
+              : "/dashboard/wallet";
           break;
-
         case "Ticket":
+          // ... منطق التذاكر ...
           if (entityId) {
-            if (currentUserRole === "Admin" || currentUserRole === "Support") {
-              path = `/dashboard/admin/ticket-view/${entityId}`;
-            } else {
-              path = `/dashboard/support/tickets/${entityId}`;
-            }
+            path =
+              currentUserRole === "Admin" || currentUserRole === "Support"
+                ? `/dashboard/admin/ticket-view/${entityId}`
+                : `/dashboard/support/tickets/${entityId}`;
           } else {
             path =
               currentUserRole === "Admin" || currentUserRole === "Support"
@@ -138,40 +134,25 @@ const NotificationsPage = () => {
                 : "/dashboard/tickets";
           }
           break;
-
         case "Report":
-          if (currentUserRole === "Admin") {
-            path = "/dashboard/admin/reports";
-          }
+          if (currentUserRole === "Admin") path = "/dashboard/admin/reports";
           break;
-
-        // حالات عامة لا تعتمد على كيان محدد
-        case "Transaction":
         default:
-          if (
+          // للإنجازات نذهب للملف الشخصي
+          if (notificationType === "ACHIEVEMENT_UNLOCKED") {
+            path = "/dashboard/achievements";
+          } else if (
             notificationType.startsWith("FUNDS_") ||
             notificationType.startsWith("ADMIN_BALANCE_")
           ) {
             path = "/dashboard/wallet";
           } else {
-            // مسار افتراضي إذا لم يتم تحديد أي مسار آخر
             path = "/dashboard";
           }
           break;
       }
 
-      // أخيراً، قم بالتوجيه إذا تم تحديد مسار
-      if (path) {
-        console.log(
-          `Navigating to: ${path} for notification type: ${notificationType}`
-        );
-        navigate(path);
-      } else {
-        console.warn(
-          "Could not determine navigation path for notification:",
-          notification
-        );
-      }
+      if (path) navigate(path);
     },
     [dispatch, loadingMarkRead, navigate, user]
   );
@@ -219,49 +200,54 @@ const NotificationsPage = () => {
       {!loading && !error && (
         <ListGroup className="shadow-sm notification-list">
           {notifications.length > 0 ? (
-            notifications.map((notif) => (
-              <ListGroup.Item
-                key={notif._id}
-                action
-                onClick={() => handleNotificationClick(notif)}
-                className={`d-flex align-items-start notification-list-item ${
-                  !notif.isRead ? "unread-item" : ""
-                }`}
-              >
-                <div className="icon-area me-3">
-                  {getNotificationIcon(notif.type, notif.isRead)}
-                </div>
-                <div className="content-area flex-grow-1">
-                  <p
-                    className={`mb-1 notification-title ${
-                      !notif.isRead ? "fw-bold" : ""
-                    }`}
-                  >
-                    {t(notif.title, {
-                      ...notif.messageParams,
-                      defaultValue:
-                        notif.title || t("notificationsPage.defaultTitle"),
-                    })}
-                  </p>
-                  <p
-                    className={`mb-1 notification-message small ${
-                      !notif.isRead ? "" : "text-muted"
-                    }`}
-                  >
-                    {t(notif.message, {
-                      ...notif.messageParams,
-                      defaultValue: notif.message,
-                    })}
-                  </p>
-                  <small className="text-muted notification-date">
-                    {new Date(notif.createdAt).toLocaleString(i18n.language, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
-                  </small>
-                </div>
-              </ListGroup.Item>
-            ))
+            notifications.map((notif) => {
+              // [!] هنا نستخدم الدالة الجديدة لمعالجة البارامترات
+              const safeParams = processMessageParams(notif.messageParams);
+
+              return (
+                <ListGroup.Item
+                  key={notif._id}
+                  action
+                  onClick={() => handleNotificationClick(notif)}
+                  className={`d-flex align-items-start notification-list-item ${
+                    !notif.isRead ? "unread-item" : ""
+                  }`}
+                >
+                  <div className="icon-area me-3">
+                    {getNotificationIcon(notif.type, notif.isRead)}
+                  </div>
+                  <div className="content-area flex-grow-1">
+                    <p
+                      className={`mb-1 notification-title ${
+                        !notif.isRead ? "fw-bold" : ""
+                      }`}
+                    >
+                      {t(notif.title, {
+                        ...safeParams, // استخدام البارامترات المعالجة
+                        defaultValue:
+                          notif.title || t("notificationsPage.defaultTitle"),
+                      })}
+                    </p>
+                    <p
+                      className={`mb-1 notification-message small ${
+                        !notif.isRead ? "" : "text-muted"
+                      }`}
+                    >
+                      {t(notif.message, {
+                        ...safeParams, // استخدام البارامترات المعالجة
+                        defaultValue: notif.message,
+                      })}
+                    </p>
+                    <small className="text-muted notification-date">
+                      {new Date(notif.createdAt).toLocaleString(i18n.language, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </small>
+                  </div>
+                </ListGroup.Item>
+              );
+            })
           ) : (
             <ListGroup.Item className="text-center text-muted py-5">
               <FaInfoCircle size={30} className="mb-3 d-block mx-auto" />

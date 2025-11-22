@@ -76,7 +76,6 @@ exports.addProduct = async (req, res) => {
         if (savedProduct.status === 'pending' && userRole === 'Vendor') {
             const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
             if (admins.length > 0) {
-                // ***** [!!!] هذا هو التعديل الأهم هنا [!!!] *****
                 const notificationDocs = admins.map(admin => ({
                     user: admin._id,
                     type: 'NEW_PRODUCT_PENDING',
@@ -88,7 +87,6 @@ exports.addProduct = async (req, res) => {
                     },
                     relatedEntity: { id: savedProduct._id, modelName: 'Product' }
                 }));
-                // ***** نهاية التعديل *****
 
                 const createdNotifications = await Notification.insertMany(notificationDocs);
 
@@ -136,7 +134,7 @@ exports.getProducts = async (req, res) => {
             console.log(products[0].bids[0].user);
             console.log("-----------------------------------------");
         }
-        
+
         console.log(`[getProducts] Fetched ${products.length} approved products.`);
         res.status(200).json(products);
     } catch (error) {
@@ -496,6 +494,13 @@ exports.approveProduct = async (req, res) => {
         await approvalNotification.save({ session: session });
         await session.commitTransaction();
 
+        // التحقق من إنجازات البائع (منتجات تمت الموافقة عليها) 
+        await checkAndAwardAchievements({
+            userId: seller._id,
+            event: 'PRODUCT_APPROVED',
+            req // تمرير الطلب لإرسال إشعارات الـ Socket
+        });
+
         await checkAndAwardAchievements({ userId: seller._id, event: 'PRODUCT_APPROVED', req });
 
         if (req.io) {
@@ -832,7 +837,7 @@ exports.returnToSale = async (req, res) => {
         const product = await Product.findById(productId).session(session);
         if (!product) throw new Error("Product not found.");
         if (!product.user.equals(sellerId)) throw new Error("Forbidden: You are not the seller of this product.");
-        
+
         // تحقق من أن المنتج في حالة تسمح بالإرجاع
         if (product.status !== 'PendingMediatorSelection') {
             throw new Error(`Cannot return to sale. Product status is '${product.status}'.`);
@@ -852,8 +857,8 @@ exports.returnToSale = async (req, res) => {
         if (mediationRequestId) {
             await MediationRequest.findByIdAndUpdate(
                 mediationRequestId,
-                { 
-                    $set: { 
+                {
+                    $set: {
                         status: 'Cancelled',
                         cancellationDetails: {
                             cancelledBy: sellerId,
@@ -861,7 +866,7 @@ exports.returnToSale = async (req, res) => {
                             reason: 'Product was returned to sale by the seller.',
                             cancelledAt: new Date()
                         }
-                    } 
+                    }
                 },
                 { session }
             );
@@ -877,7 +882,7 @@ exports.returnToSale = async (req, res) => {
             req.io.emit('product_updated', finalUpdatedProduct);
             console.log(`[Socket] Emitted 'product_updated' for product ${productId} after returning to sale.`);
         }
-        
+
         res.status(200).json({
             msg: "Product has been returned to sale successfully.",
             translationKey: "myProductsPage.productCard.alerts.returnToSaleSuccess", // للإشعار المترجم

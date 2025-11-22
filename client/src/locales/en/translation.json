@@ -356,7 +356,8 @@
     "RATING_RECEIVED": "New Rating Received: {{ratingType}}!",
     "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message in: {{chatTitle}}",
     "BALANCE_TRANSFER_SUCCESS": "Balance Transfer Successful",
-    "BADGE_UPDATED": "🏅 Reputation Update!"
+    "BADGE_UPDATED": "🏅 Reputation Update!",
+    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -453,7 +454,7 @@
     "REPORT_STATUS_DISMISSED": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}}. After investigation, it was dismissed. Reason: {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "Admin {{adminName}} is reviewing your report regarding {{reportedUserName}} and requires more information. Details: {{details}}",
     "BADGE_UPDATED": "Your reputation badge has been updated to {{badgeName}}.",
-    "ACHIEVEMENT_UNLOCKED": "Congratulations! You've unlocked the achievement: \"{{achievementName}}\"."
+    "ACHIEVEMENT_UNLOCKED": "Congratulations! You unlocked a new achievement: \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -1136,7 +1137,10 @@
     "sessionExpired": "Your session has expired. Please log in again for security.",
     "forbiddenMediationAccess": "Forbidden: You are not authorized to access this mediation chat.",
     "invalidReportedUserId": "Invalid reported user ID format.",
-    "reportFieldsRequired": "Reported user, reason, and details are required."
+    "reportFieldsRequired": "Reported user, reason, and details are required.",
+    "loginFailed": "Login failed. Please check your credentials.",
+    "serverError": "Server error. Please try again later.",
+    "Account_blocked": "Your account is blocked. Please contact support."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1400,6 +1404,9 @@
     "statsSectionTitle": "User Statistics",
     "statsActiveListings": "Active Listings",
     "statsProductsSold": "Products Sold",
+    "achievementsSectionTitle": "Achievements & Levels",
+    "noAchievements": "No achievements earned yet.",
+    "viewAllAchievements": "View All Achievements →",
     "levelWidget": {
       "level": "Level {{level}}",
       "points": "{{points}} pts",
@@ -2382,6 +2389,8 @@
     "progressTitle": "Your Overall Progress",
     "progressSubtitle": "You have unlocked {{unlocked}} out of {{total}} achievements.",
     "unlocked": "Unlocked",
-    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!"
+    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!",
+    "unlockedToast": "Achievement Unlocked: {{name}}!",
+    "locked": "Locked"
   }
 }

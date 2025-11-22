@@ -26,7 +26,7 @@ import {
 import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
 import {
-  getProducts,
+  getMyProducts,
   addProduct,
   deleteProduct,
   updateProduct,
@@ -329,7 +329,7 @@ const Comptes = () => {
   };
 
   useEffect(() => {
-    if (user?._id) dispatch(getProducts());
+    if (user?._id) dispatch(getMyProducts());
   }, [dispatch, user?._id]);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 // src/redux/reducers/notificationReducer.js
 import {
     GET_NOTIFICATIONS_REQUEST, GET_NOTIFICATIONS_SUCCESS, GET_NOTIFICATIONS_FAIL,
-    MARK_READ_REQUEST, MARK_READ_SUCCESS, MARK_READ_FAIL, CLEAR_NOTIFICATIONS // <-- مضاف
+    MARK_READ_REQUEST, MARK_READ_SUCCESS, MARK_READ_FAIL, CLEAR_NOTIFICATIONS, ADD_NOTIFICATION_REALTIME
 } from '../actionTypes/notificationActionType';
 
 const initialState = { notifications: [], unreadCount: 0, loading: false, error: null, loadingMarkRead: false };
@@ -17,16 +17,18 @@ const notificationReducer = (state = initialState, action) => {
         case MARK_READ_FAIL: return { ...state, loadingMarkRead: false, error: payload };
         case CLEAR_NOTIFICATIONS: return { ...initialState }; // <-- مضاف لإعادة التعيين عند الخروج
 
-        // --- [!] حالة جديدة لاستقبال إشعار لحظي ---
-        case 'ADD_NOTIFICATION_REALTIME':
-            if (!payload || typeof payload !== 'object' || !payload._id) return state; // تحقق أساسي
-            // تجنب إضافة إشعار مكرر (احتياطي)
-            if (state.notifications.some(n => n._id === payload._id)) return state;
+        case ADD_NOTIFICATION_REALTIME:
+            // تحقق من أن الإشعار صالح وليس مكررًا
+            if (!payload?._id || state.notifications.some(n => n._id === payload._id)) {
+                return state;
+            }
+
+            // قم بإنشاء نسخة جديدة من مصفوفة الإشعارات مع الإشعار الجديد في الأعلى
+            const updatedNotifications = [payload, ...state.notifications];
+
             return {
                 ...state,
-                // إضافة الإشعار الجديد في بداية المصفوفة
-                notifications: [payload, ...state.notifications],
-                // زيادة عدد غير المقروء
+                notifications: updatedNotifications,
                 unreadCount: state.unreadCount + 1,
             };
 

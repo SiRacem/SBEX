@@ -23,30 +23,42 @@ import { toast } from 'react-toastify';
 import i18n from '../../i18n';
 
 const handleError = (error, defaultKey = 'apiErrors.unknownError') => {
-    // 1. تحقق من بنية الخطأ الجديدة أولاً (الأكثر تفصيلاً)
-    if (error.response?.data?.errorMessage?.key) {
-        return error.response.data.errorMessage;
+    // 1. التحقق من استجابة الخطأ القياسية (Standard Error Response)
+    if (error.response?.data) {
+        const data = error.response.data;
+
+        // إذا كان السيرفر يرسل مفتاح ترجمة جاهز
+        if (data.translationKey) {
+            return {
+                key: data.translationKey,
+                params: data.translationParams || {}
+            };
+        }
+
+        // إذا كان السيرفر يرسل رسالة نصية (msg)
+        if (data.msg) {
+            // حاول تحويل الرسالة إلى مفتاح ترجمة (مثلاً: "Invalid credentials" -> "apiErrors.Invalid_credentials")
+            // إزالة المسافات والرموز لجعلها مفتاحاً صالحاً
+            const cleanMsg = data.msg.replace(/\s+/g, '_').replace(/[!'.]/g, '');
+            // نتحقق إن كان هذا المفتاح موجوداً (نرسله للواجهة وهي تتصرف)
+            return {
+                key: `apiErrors.${cleanMsg}`,
+                fallback: data.msg
+            };
+        }
+
+        // إذا كان الخطأ عبارة عن كائن errorMessage
+        if (data.errorMessage) {
+            return data.errorMessage;
+        }
     }
-    // 2. تحقق من البنية القديمة (للتوافق مع الأجزاء الأخرى من الكود)
-    if (error.response?.data?.translationKey) {
-        return {
-            key: error.response.data.translationKey,
-            params: error.response.data.translationParams || {}
-        };
+
+    // 2. أخطاء الشبكة
+    if (error.request) {
+        return { key: 'apiErrors.networkError', fallback: 'Network Error.' };
     }
-    // 3. التعامل مع رسائل الخطأ النصية العادية
-    if (error.response?.data?.msg) {
-        const fallback = error.response.data.msg;
-        const key = `apiErrors.${fallback.replace(/\s+/g, '_').replace(/[!'.]/g, '')}`;
-        return { key, fallback };
-    }
-    // 4. الحالات العامة
-    if (error.response) {
-        return { key: 'apiErrors.requestFailedWithCode', params: { code: error.response.status }, fallback: `Request failed with status code ${error.response.status}` };
-    } else if (error.request) {
-        return { key: 'apiErrors.networkError', fallback: 'Network Error. Please check your connection.' };
-    }
-    // 5. الخطأ الافتراضي
+
+    // 3. خطأ غير معروف
     return { key: defaultKey, params: { message: error.message }, fallback: 'An unknown error occurred.' };
 };
 
@@ -82,13 +94,10 @@ export const loginUser = (loggedUser) => async (dispatch) => {
 
     try {
         const { data } = await axios.post("/user/login", loggedUser);
-        if (!data.token || !data.user) throw new Error("Login response missing token or user data.");
-
-        /* if (data.user.blocked) {
-            const errorMessage = { key: "auth.toast.accountBlocked", fallback: 'Your account is blocked.' };
-            dispatch({ type: 'LOGIN_FAIL', payload: { errorMessage } });loginUser 
-            return; // توقف هنا
-        } */
+        
+        if (!data.token || !data.user) {
+             throw new Error("Login response missing token or user data.");
+        }
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.user._id);
@@ -101,8 +110,12 @@ export const loginUser = (loggedUser) => async (dispatch) => {
         dispatch({ type: 'LOGIN_SUCCESS', payload });
 
     } catch (error) {
-        const errorMessage = handleError(error);
-        // [!!!] فقط قم بإرسال الخطأ إلى Redux. لا تعرض أي toast من هنا. [!!!]
+        // هنا التعديل: نمرر مفتاح خطأ افتراضي خاص بتسجيل الدخول
+        const errorMessage = handleError(error, 'apiErrors.loginFailed');
+        
+        // طباعة الخطأ في الكونسول للتطوير
+        console.error("Login Error Payload:", errorMessage);
+
         dispatch({ type: 'LOGIN_FAIL', payload: { errorMessage } });
     }
 };

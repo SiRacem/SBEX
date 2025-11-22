@@ -355,7 +355,8 @@
     "RATING_RECEIVED": "Nouvelle évaluation reçue : {{ratingType}} !",
     "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée",
     "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi",
-    "BADGE_UPDATED": "🏅 Mise à jour de la réputation !"
+    "BADGE_UPDATED": "🏅 Mise à jour de la réputation !",
+    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -452,7 +453,7 @@
     "REPORT_STATUS_DISMISSED": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}'. Après enquête, il a été rejeté. Raison : {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}",
     "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}.",
-    "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué le succès : \"{{achievementName}}\"."
+    "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué un nouveau succès : \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -1135,7 +1136,10 @@
     "sessionExpired": "Votre session a expiré. Veuillez vous reconnecter pour des raisons de sécurité.",
     "forbiddenMediationAccess": "Interdit : Vous n'êtes pas autorisé à accéder à cette discussion de médiation.",
     "invalidReportedUserId": "L'ID de l'utilisateur signalé est invalide.",
-    "reportFieldsRequired": "Tous les champs de signalement sont obligatoires."
+    "reportFieldsRequired": "Tous les champs de signalement sont obligatoires.",
+    "loginFailed": "Échec de la connexion. Veuillez vérifier vos identifiants.",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
+    "Account_blocked": "Votre compte est bloqué. Veuillez contacter le support."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -1399,6 +1403,9 @@
     "statsSectionTitle": "Statistiques de l'utilisateur",
     "statsActiveListings": "Annonces Actives",
     "statsProductsSold": "Produits Vendus",
+    "achievementsSectionTitle": "Réalisations & Réputation",
+    "noAchievements": "Aucune réalisation pour le moment.",
+    "viewAllAchievements": "Voir toutes les réalisations →",
     "levelWidget": {
       "level": "Niveau {{level}}",
       "points": "{{points}} pts",
@@ -2378,6 +2385,8 @@
     "progressTitle": "Votre Progression Globale",
     "progressSubtitle": "Vous avez débloqué {{unlocked}} succès sur {{total}}.",
     "unlocked": "Débloqué",
-    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !"
+    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !",
+    "unlockedToast": "Succès Débloqué: {{name}}!",
+    "locked": "Verrouillé"
   }
 }

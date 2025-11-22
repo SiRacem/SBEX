@@ -91,7 +91,11 @@ const Login = async (req, res) => {
     const { email, password } = req.body;
     console.log(`--- Controller: Login attempt for ${email} ---`);
     try {
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() })
+            .populate({ // أضف هذا الـ populate
+                path: 'achievements.achievement',
+                model: 'Achievement'
+            });
         if (!user) {
             console.warn(`Login failed: User ${email} not found.`);
             return res.status(401).json({ msg: "Invalid credentials" });
@@ -144,6 +148,7 @@ const Login = async (req, res) => {
                 productsSoldCount: user.productsSoldCount,
                 escrowBalance: user.escrowBalance,
                 activeListingsCount: await Product.countDocuments({ user: user._id, status: 'approved' }),
+                achievements: user.achievements
             }
         });
 
@@ -163,11 +168,23 @@ const Auth = async (req, res) => {
     }
 
     try {
-        const userFromDb = await User.findById(req.user._id).select('-password').lean();
+        const userFromDb = await User.findById(req.user._id)
+            .select('-password')
+            .populate({
+                path: 'achievements.achievement',
+                model: 'Achievement'
+            })
+            .lean();
         if (!userFromDb) {
             console.warn(`Auth Controller: User not found in DB for ID: ${req.user._id}. Token might be for a deleted user.`);
             return res.status(401).json({ msg: "User associated with token not found." });
         }
+
+        await checkAndAwardAchievements({ 
+            userId: req.user._id, 
+            event: 'USER_LOGIN', 
+            req 
+        });
 
         const activeListingsCount = await Product.countDocuments({
             user: userFromDb._id,
@@ -380,8 +397,12 @@ const getUserPublicProfile = async (req, res) => {
     try {
         // الخطوة 1: جلب بيانات المستخدم الأساسية من قاعدة البيانات
         const userProfile = await User.findById(userId)
-            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount level reputationLevel')
-            .lean(); // استخدم .lean() لتحسين الأداء
+            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount level reputationLevel achievements') // أضف achievements هنا
+            .populate({
+                path: 'achievements.achievement', // نفس المسار
+                model: 'Achievement'
+            })
+            .lean();
 
         if (!userProfile) {
             return res.status(404).json({ msg: "User not found." });
@@ -404,6 +425,7 @@ const getUserPublicProfile = async (req, res) => {
                 blocked: userProfile.blocked,
                 level: userProfile.level,
                 reputationLevel: userProfile.reputationLevel,
+                achievements: userProfile.achievements
             },
             // الإحصائيات تكون في المستوى الأعلى من الكائن
             activeListingsCount: activeListings,
