@@ -102,6 +102,21 @@ const UserSchema = new Schema({
         default: []
     },
 
+    // --- [!!!] إضافات جديدة للترتيب (Leaderboards) [!!!] ---
+    productsBoughtCount: { type: Number, default: 0, index: true }, // عدد عمليات الشراء الناجحة
+    bidsPlacedCount: { type: Number, default: 0, index: true },    // عدد المزايدات التي قام بها
+    referralsCount: { type: Number, default: 0, index: true },     // عدد الإحالات الناجحة (للمستقبل)
+
+    // [!!!] START: الحقل الجديد لتخزين الترتيب السابق [!!!]
+    previousRanks: {
+        reputation: { type: Number, default: 0 }, // للأساطير
+        sales: { type: Number, default: 0 },      // للبائعين
+        mediation: { type: Number, default: 0 },  // للوسطاء
+        buys: { type: Number, default: 0 },       // للمشترين
+        bids: { type: Number, default: 0 }        // للمزايدين
+    },
+    // [!!!] END: نهاية الإضافة [!!!]
+
 }, { timestamps: true });
 
 // Indexes إضافية لتحسين الأداء

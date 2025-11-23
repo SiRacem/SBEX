@@ -73,7 +73,8 @@
     "logout": "Déconnexion",
     "manageNews": "Gérer les actualités",
     "manageAchievements": "Gérer les Succès",
-    "achievements": "Succès"
+    "achievements": "Succès",
+    "leaderboard": "Classement"
   },
   "dashboard": {
     "balances": {
@@ -2388,5 +2389,34 @@
     "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !",
     "unlockedToast": "Succès Débloqué: {{name}}!",
     "locked": "Verrouillé"
+  },
+  "leaderboard": {
+    "pageTitle": "Tableau des classements",
+    "pageSubtitle": "Découvrez les meilleurs utilisateurs de la plateforme.",
+    "tabs": {
+      "legends": "👑 Les meilleurs",
+      "sellers": "💼 Les meilleurs vendeurs",
+      "mediators": "⚖️ Les meilleurs médiateurs",
+      "buyers": "🎯 Les meilleurs acheteurs",
+      "bidders": "✋ Les meilleurs meneurs d'enchères"
+    },
+    "table": {
+      "rank": "Classement",
+      "user": "Utilisateur",
+      "level": "Niveau",
+      "score": "Score / Nombre"
+    },
+    "myRank": {
+      "label": "Votre classement:",
+      "scoreLabel": "Score",
+      "rankLabel": "Classement",
+      "notRanked": "Non classé",
+      "points": "pts",
+      "sales": "ventes",
+      "mediations": "médiateurs",
+      "purchases": "achats",
+      "bids": "meneurs d'enchères"
+    },
+    "empty": "Pas assez de données pour ce classement."
   }
 }

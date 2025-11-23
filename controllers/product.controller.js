@@ -707,6 +707,7 @@ exports.placeBidOnProduct = async (req, res) => {
             product.bids[existingBidIndex].createdAt = new Date();
         } else {
             product.bids.push({ user: bidderId, amount: numericAmount, currency: bidCurrency, createdAt: new Date() });
+            await User.findByIdAndUpdate(bidderId, { $inc: { bidsPlacedCount: 1 } }, { session });
         }
         product.bids.sort((a, b) => b.amount - a.amount);
         await product.save({ session });
@@ -745,6 +746,8 @@ exports.placeBidOnProduct = async (req, res) => {
 
         if (req.io) {
             req.io.emit('product_updated', finalUpdatedProduct);
+            req.io.emit('leaderboard_updated'); 
+            console.log(`[Socket] Emitted 'leaderboard_updated' after new bid.`);
         }
 
         res.status(isNewBid ? 201 : 200).json({

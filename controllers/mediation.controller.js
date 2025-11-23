@@ -1981,6 +1981,8 @@ exports.buyerConfirmReceiptController = async (req, res) => {
             seller.productsSoldCount = (seller.productsSoldCount || 0) + 1;
         }
 
+        await User.findByIdAndUpdate(buyerId, { $inc: { productsBoughtCount: 1 } }, { session });
+
         // 8. تحديث نقاط السمعة
         const participants = [seller, buyer, mediator];
         for (const participant of participants) {
@@ -2044,7 +2046,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
         // 10. Commit Transaction
         await session.commitTransaction();
 
-// 1. للبائع (إنجاز بيع + المتفاوض)
+        // 1. للبائع (إنجاز بيع + المتفاوض)
         await checkAndAwardAchievements({
             userId: seller._id,
             event: 'SALE_COMPLETED',
@@ -2126,6 +2128,7 @@ exports.buyerConfirmReceiptController = async (req, res) => {
                     req.io.to(req.onlineUsers[involvedUserIdString]).emit('dashboard_transactions_updated');
                 }
             });
+            req.io.emit('leaderboard_updated');
         }
 
         const finalResponseMediationRequest = await MediationRequest.findById(mediationRequestId)

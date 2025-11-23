@@ -73,7 +73,8 @@
     "logout": "Logout",
     "manageNews": "Manage News",
     "manageAchievements": "Manage Achievements",
-    "achievements": "Achievements"
+    "achievements": "Achievements",
+    "leaderboard": "Leaderboard"
   },
   "dashboard": {
     "balances": {
@@ -2392,5 +2393,34 @@
     "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!",
     "unlockedToast": "Achievement Unlocked: {{name}}!",
     "locked": "Locked"
+  },
+  "leaderboard": {
+    "pageTitle": "Leaderboards",
+    "pageSubtitle": "Meet the legends and most active members of the platform.",
+    "tabs": {
+      "legends": "👑 Legends",
+      "sellers": "💼 Top Sellers",
+      "mediators": "⚖️ Top Mediators",
+      "buyers": "🎯 Top Buyers",
+      "bidders": "✋ Most Active"
+    },
+    "table": {
+      "rank": "Rank",
+      "user": "User",
+      "level": "Level",
+      "score": "Score / Count"
+    },
+    "myRank": {
+      "label": "Your Rank:",
+      "scoreLabel": "Score",
+      "rankLabel": "Rank",
+      "notRanked": "Not Ranked",
+      "points": "pts",
+      "sales": "sales",
+      "mediations": "mediations",
+      "purchases": "buys",
+      "bids": "bids"
+    },
+    "empty": "Not enough data for this leaderboard yet."
   }
 }

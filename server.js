@@ -12,6 +12,7 @@ const { releaseDuePendingFunds } = require('./services/pendingFundsReleaseServic
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { handleExpiredMediationAssignments } = require('./controllers/mediation.controller');
+const { updateLeaderboardSnapshots } = require('./services/leaderboardService');
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -41,6 +42,7 @@ const reportRoute = require('./router/report');
 const faqRoute = require('./router/faq.router');
 const newsRouter = require('./router/newsRouter');
 const achievementRouter = require('./router/achievement.router'); // <-- أضف هذا السطر
+const leaderboardRouter = require('./router/leaderboard.router');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -570,6 +572,13 @@ cron.schedule('* * * * *', async () => {
 });
 // [!!!] END: نهاية المهمة المجدولة الجديدة
 
+// [!!!] START: مهمة تحديث الترتيب كل 6 ساعات [!!!]
+// التوقيت: الدقيقة 0، الساعة 0, 6, 12, 18
+cron.schedule('0 0,6,12,18 * * *', async () => {
+    await updateLeaderboardSnapshots(io); // <-- مرر io هنا
+});
+// [!!!] END: نهاية الإضافة [!!!]
+
 // --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 // 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
@@ -655,6 +664,7 @@ app.use('/support', ticketRoute);
 app.use('/faq', faqRoute);
 app.use('/news', newsRouter);
 app.use('/achievements', achievementRouter);
+app.use('/leaderboards', leaderboardRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 
@@ -667,6 +677,9 @@ app.use((err, req, res, next) => {
         res.status(statusCode).json({ status: 'error', message: message, ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }) });
     }
 });
+
+// [!!!] للاختبار اليدوي فقط: قم بإلغاء التعليق عن هذا السطر [!!!]
+// updateLeaderboardSnapshots(io);
 
 server.listen(PORT, () => console.log(`🚀 Server with Socket.IO listening on port ${PORT}`));
 

@@ -292,6 +292,7 @@ const submitRating = async (req, res) => {
             };
             req.io.emit('user_profile_updated', updatedProfileSummary);
             console.log(`SOCKET: Emitted 'user_profile_updated' for user ${updatedProfileSummary._id}`);
+            req.io.emit('leaderboard_updated');
         }
         res.status(201).json({ msg: "Rating submitted successfully!", rating: newRating });
 

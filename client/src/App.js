@@ -57,6 +57,8 @@ import AdminAchievementsManagement from './components/admin/AdminAchievementsMan
 import UserAchievementsPage from './pages/UserAchievementsPage';
 import { adminGetAllAchievements, getAvailableAchievements } from './redux/actions/achievementAction';
 import { addNotificationFromSocket } from './redux/actions/notificationAction';
+import LeaderboardPage from './pages/LeaderboardPage';
+import { getLeaderboards } from './redux/actions/leaderboardAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -383,6 +385,12 @@ function App() {
           dispatch(adminGetAllAchievements());
         }
       });
+
+      newSocket.on('leaderboard_updated', () => {
+            console.log('[App.js] Received leaderboard_updated signal. Refreshing leaderboard data...');
+            // نقوم بتحديث البيانات في الـ Store مباشرة
+            dispatch(getLeaderboards()); 
+        });
     }
 
     // --- دالة التنظيف ---
@@ -460,6 +468,7 @@ function App() {
             <Route path="/dashboard/admin/news" element={<ProtectedRoute requiredRole="Admin"><AdminNewsManagement /></ProtectedRoute>} />
             <Route path="/dashboard/admin/achievements" element={<ProtectedRoute requiredRole="Admin"><AdminAchievementsManagement /></ProtectedRoute>} />
             <Route path="/dashboard/achievements" element={<ProtectedRoute><UserAchievementsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

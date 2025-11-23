@@ -22,6 +22,7 @@ import {
   FaQuestion,
   FaNewspaper,
   FaTrophy,
+  FaMedal,
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -127,6 +128,14 @@ const Sidebar = ({ onSearchChange }) => {
         >
           <FaTrophy className="icon" />
           <span className="link-text">{t("sidebar.achievements")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/leaderboard"
+          title={t("sidebar.leaderboard")}
+        >
+          <FaMedal className="icon" />
+          <span className="link-text">{t("sidebar.leaderboard")}</span>
         </NavLink>
         <NavLink
           className="sidebar-link"
