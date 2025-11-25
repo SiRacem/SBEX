@@ -43,11 +43,13 @@ const faqRoute = require('./router/faq.router');
 const newsRouter = require('./router/newsRouter');
 const achievementRouter = require('./router/achievement.router'); // <-- أضف هذا السطر
 const leaderboardRouter = require('./router/leaderboard.router');
+const referralRouter = require('./router/referral.router');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
 const MediationRequest = require('./models/MediationRequest');
 const User = require('./models/User');
+const SystemSetting = require('./models/SystemSetting');
 
 const connectDB = require('./config/connectDB');
 
@@ -637,6 +639,27 @@ if (!fs.existsSync(chatImageUploadPath)) {
     fs.mkdirSync(chatImageUploadPath, { recursive: true });
 }
 
+// إضافة إعدادات نظام الإحالات
+const initSystemSettings = async () => {
+    try {
+        const referralConfig = await SystemSetting.findOne({ key: 'referral_config' });
+        if (!referralConfig) {
+            await SystemSetting.create({
+                key: 'referral_config',
+                value: {
+                    commissionRate: 1, // 1%
+                    minTransferAmount: 30, // 30 دينار
+                    transferFee: 2 // 2%
+                },
+                description: 'إعدادات نظام الإحالات: النسبة، الحد الأدنى، ورسوم التحويل'
+            });
+            console.log('Initialized default referral settings.');
+        }
+    } catch (error) {
+        console.error('Error initializing settings:', error);
+    }
+};
+
 // إضافة io و onlineUsers إلى كل طلب API
 app.use((req, res, next) => {
     req.io = io;
@@ -645,7 +668,10 @@ app.use((req, res, next) => {
 });
 
 // الاتصال بقاعدة البيانات
-connectDB();
+connectDB().then(() => {
+    console.log("Checking/Initializing System Settings...");
+    initSystemSettings();
+});
 
 // --- Routers ---
 app.use("/user", user);
@@ -665,6 +691,7 @@ app.use('/faq', faqRoute);
 app.use('/news', newsRouter);
 app.use('/achievements', achievementRouter);
 app.use('/leaderboards', leaderboardRouter);
+app.use('/referral', referralRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 

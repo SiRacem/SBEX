@@ -125,6 +125,12 @@ const LeaderboardPage = () => {
             scoreField: 'bidsPlacedCount',
             unit: t('leaderboard.myRank.bids'),
             rankKey: 'bids'
+        },
+        referrers: { 
+            dataKey: 'topReferrers', 
+            scoreField: 'referralsCount', 
+            unit: t('leaderboard.myRank.referrals'), // سنضيف الترجمة
+            rankKey: 'referrals'
         }
     };
 

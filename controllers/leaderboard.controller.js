@@ -45,7 +45,8 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
         getTopUsers('productsSoldCount', limit),
         getTopUsers('successfulMediationsCount', limit),
         getTopUsers('productsBoughtCount', limit),
-        getTopUsers('bidsPlacedCount', limit)
+        getTopUsers('bidsPlacedCount', limit),
+        getTopUsers('referralsCount', limit)
     ]);
 
     // 2. حساب ترتيب المستخدم الحالي (إذا كان مسجلاً)
@@ -56,7 +57,8 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
             getUserRank(currentUserId, 'productsSoldCount'),
             getUserRank(currentUserId, 'successfulMediationsCount'),
             getUserRank(currentUserId, 'productsBoughtCount'),
-            getUserRank(currentUserId, 'bidsPlacedCount')
+            getUserRank(currentUserId, 'bidsPlacedCount'),
+            getUserRank(currentUserId, 'referralsCount')
         ]);
         
         myRanks = {
@@ -64,7 +66,8 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
             topSellers: rankSeller,
             topMediators: rankMediator,
             topBuyers: rankBuyer,
-            topBidders: rankBidder
+            topBidders: rankBidder,
+            topReferrers: rankReferrer
         };
     }
 
@@ -74,7 +77,8 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
             topSellers,
             topMediators,
             topBuyers,
-            topBidders
+            topBidders,
+            topReferrers
         },
         myRanks
     });

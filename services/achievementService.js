@@ -231,6 +231,18 @@ exports.checkAndAwardAchievements = async ({ userId, event, data = {}, req, sess
                     }
                     break;
 
+                // 17. REFERRALS_COUNT (إنجازات الإحالة)
+                case 'REFERRALS_COUNT':
+                    // يتحقق من عدد الأشخاص الذين دعاهم المستخدم وقاموا بنشاط (isReferralActive = true)
+                    // أو ببساطة عدد المسجلين (referralsCount الذي أضفناه في User model)
+                    // سنعتمد على referralsCount لأنه يتم تحديثه عند أول إيداع للمدعو
+                    if (event === 'REFERRAL_ACTIVE' || event === 'USER_LOGIN') { 
+                        if (user.referralsCount >= criteria.value) {
+                            unlocked = true;
+                        }
+                    }
+                    break;
+
                 default:
                     break;
             }

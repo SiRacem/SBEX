@@ -17,6 +17,7 @@ import { currencyReducer } from './currencyReducer';
 import newsReducer from './newsReducer';
 import achievementReducer from './achievementReducer';
 import leaderboardReducer from './leaderboardReducer';
+import referralReducer from './referralReducer';
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -39,6 +40,7 @@ const rootReducer = combineReducers({
     newsReducer,
     achievementReducer,
     leaderboardReducer,
+    referralReducer,
     // orderReducer,
     // cartReducer,
 });

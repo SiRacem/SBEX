@@ -11,7 +11,7 @@ import {
   Card,
 } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   registerUser,
@@ -25,6 +25,7 @@ const Register = () => {
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // States for form fields
   const [fullName, setFullName] = useState("");
@@ -34,8 +35,8 @@ const Register = () => {
   const [userRole, setUserRole] = useState("User");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
 
-  // ***** [!!!] حالة جديدة لتخزين أخطاء التحقق [!!!] *****
   const [formErrors, setFormErrors] = useState({});
 
   const loading = useSelector((state) => state.userReducer?.loading ?? false);
@@ -47,6 +48,15 @@ const Register = () => {
     document.documentElement.dir = i18n.dir();
   }, [i18n, i18n.language]);
 
+  // استخراج كود الإحالة من الرابط تلقائياً
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refCode = params.get("ref");
+    if (refCode) {
+      setReferralCode(refCode);
+    }
+  }, [location]);
+
   useEffect(() => {
     if (registrationStatus === "success") {
       dispatch(clearRegistrationStatus());
@@ -54,78 +64,54 @@ const Register = () => {
     }
   }, [registrationStatus, dispatch, navigate]);
 
-  // ***** [!!!] دالة التحقق من صحة البيانات [!!!] *****
   const validateForm = () => {
     const newErrors = {};
 
-    // 1. التحقق من الاسم الكامل
     if (!fullName.trim()) {
-      newErrors.fullName = t(
-        "auth.validation.fullNameRequired",
-        "Full name is required."
-      );
+      newErrors.fullName = t("auth.validation.fullNameRequired", "Full name is required.");
     }
 
-    // 2. التحقق من البريد الإلكتروني
     if (!email.trim()) {
-      newErrors.email = t(
-        "auth.validation.emailRequired",
-        "Email is required."
-      );
+      newErrors.email = t("auth.validation.emailRequired", "Email is required.");
     } else if (!/^\S+@\S+\.\S+$/.test(email)) {
-      newErrors.email = t(
-        "auth.validation.emailInvalid",
-        "Email address is invalid."
-      );
+      newErrors.email = t("auth.validation.emailInvalid", "Email address is invalid.");
     }
 
-    // 3. التحقق من كلمة المرور
     if (!password) {
-      newErrors.password = t(
-        "auth.validation.passwordRequired",
-        "Password is required."
-      );
+      newErrors.password = t("auth.validation.passwordRequired", "Password is required.");
     } else if (password.length < 6) {
-      newErrors.password = t(
-        "auth.validation.passwordLength",
-        "Password must be at least 6 characters."
-      );
+      newErrors.password = t("auth.validation.passwordLength", "Password must be at least 6 characters.");
     }
 
-    // 4. التحقق من تطابق كلمتي المرور
     if (password !== confirmPassword) {
-      newErrors.confirmPassword = t(
-        "auth.validation.passwordsDoNotMatch",
-        "Passwords do not match!"
-      );
+      newErrors.confirmPassword = t("auth.validation.passwordsDoNotMatch", "Passwords do not match!");
     }
 
     setFormErrors(newErrors);
-    // إذا لم تكن هناك أخطاء، سيعود `true`
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(clearUserErrors()); // امسح أخطاء الخادم القديمة
+    dispatch(clearUserErrors());
 
-    // قم بالتحقق من البيانات قبل الإرسال
     if (validateForm()) {
-      // إذا كانت البيانات صالحة، قم بإرسالها
-      console.log("Form is valid, dispatching registerUser...");
       dispatch(
-        registerUser({ fullName, email, phone, address, userRole, password })
+        registerUser({
+          fullName,
+          email,
+          phone,
+          address,
+          userRole,
+          password,
+          referredByCode: referralCode // نرسل كود الدعوة (إن وجد) تحت هذا الاسم
+        })
       );
     } else {
-      // إذا كانت هناك أخطاء، اعرض رسالة toast
-      console.log("Form validation failed.");
-      toast.warn(
-        t("auth.validation.fixErrors", "Please fix the errors in the form.")
-      );
+      toast.warn(t("auth.validation.fixErrors", "Please fix the errors in the form."));
     }
   };
 
-  // دالة لمسح الخطأ عند تغيير المدخلات
   const handleInputChange = (setter, fieldName) => (e) => {
     setter(e.target.value);
     if (formErrors[fieldName]) {
@@ -158,7 +144,7 @@ const Register = () => {
                         value={fullName}
                         onChange={handleInputChange(setFullName, "fullName")}
                         required
-                        isInvalid={!!formErrors.fullName} // <-- إظهار الخطأ
+                        isInvalid={!!formErrors.fullName}
                       />
                       <Form.Control.Feedback type="invalid">
                         {formErrors.fullName}
@@ -174,7 +160,7 @@ const Register = () => {
                         value={email}
                         onChange={handleInputChange(setEmail, "email")}
                         required
-                        isInvalid={!!formErrors.email} // <-- إظهار الخطأ
+                        isInvalid={!!formErrors.email}
                       />
                       <Form.Control.Feedback type="invalid">
                         {formErrors.email}
@@ -234,6 +220,20 @@ const Register = () => {
                       </Col>
                     </Row>
                   </Col>
+
+                  {/* حقل كود الدعوة الجديد */}
+                  <Col xs={12} className="mb-3">
+                    <Form.Group>
+                      <Form.Label>{t("auth.referralCodeLabel", "كود الدعوة (اختياري)")}</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder={t("auth.referralCodePlaceholder", "أدخل كود الدعوة إذا وجد")}
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value)}
+                      />
+                    </Form.Group>
+                  </Col>
+
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label>{t("auth.passwordLabel")}</Form.Label>
@@ -244,7 +244,7 @@ const Register = () => {
                         onChange={handleInputChange(setPassword, "password")}
                         required
                         minLength={6}
-                        isInvalid={!!formErrors.password} // <-- إظهار الخطأ
+                        isInvalid={!!formErrors.password}
                       />
                       <Form.Control.Feedback type="invalid">
                         {formErrors.password}
@@ -263,7 +263,7 @@ const Register = () => {
                           "confirmPassword"
                         )}
                         required
-                        isInvalid={!!formErrors.confirmPassword} // <-- إظهار الخطأ
+                        isInvalid={!!formErrors.confirmPassword}
                       />
                       <Form.Control.Feedback type="invalid">
                         {formErrors.confirmPassword}

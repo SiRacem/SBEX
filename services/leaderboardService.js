@@ -13,7 +13,8 @@ exports.updateLeaderboardSnapshots = async (io) => { // <-- أضف io هنا
         { dbField: 'productsSoldCount', rankField: 'previousRanks.sales' },
         { dbField: 'successfulMediationsCount', rankField: 'previousRanks.mediation' },
         { dbField: 'productsBoughtCount', rankField: 'previousRanks.buys' },
-        { dbField: 'bidsPlacedCount', rankField: 'previousRanks.bids' }
+        { dbField: 'bidsPlacedCount', rankField: 'previousRanks.bids' },
+        { dbField: 'referralsCount', rankField: 'previousRanks.referrals' }
     ];
 
     try {

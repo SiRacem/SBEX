@@ -23,6 +23,8 @@ import {
   FaNewspaper,
   FaTrophy,
   FaMedal,
+  FaUserPlus,
+  FaCogs
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -139,6 +141,14 @@ const Sidebar = ({ onSearchChange }) => {
         </NavLink>
         <NavLink
           className="sidebar-link"
+          to="/dashboard/referrals"
+          title={t("sidebar.referrals")}
+        >
+          <FaUserPlus className="icon" />
+          <span className="link-text">{t("sidebar.referrals")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
           to="/dashboard/FAQ"
           title={t("sidebar.faq")}
         >
@@ -205,6 +215,10 @@ const Sidebar = ({ onSearchChange }) => {
               <span className="link-text">
                 {t("sidebar.manageAchievements")}
               </span>
+            </NavLink>
+            <NavLink className="sidebar-link" to="/dashboard/admin/referrals">
+              <FaCogs className="icon" />
+              <span className="link-text">{t("sidebar.manageReferrals")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"

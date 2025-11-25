@@ -74,7 +74,9 @@
     "manageNews": "Gérer les actualités",
     "manageAchievements": "Gérer les Succès",
     "achievements": "Succès",
-    "leaderboard": "Classement"
+    "leaderboard": "Classement",
+    "referrals": "Programme de récompenses",
+    "manageReferrals": "Gérer le Programme de récompenses"
   },
   "dashboard": {
     "balances": {
@@ -219,7 +221,9 @@
     "MEDIATION_FEE_PAID_BY_BUYER": "Frais de médiation payés",
     "DISPUTE_PAYOUT_SELLER_WON": "Paiement de litige (Gagné)",
     "ESCROW_RETURNED_MEDIATION_CANCELLED": "Remboursement séquestre (Annulé)",
-    "SELLER_BALANCE_TRANSFER": "Transfert du solde vendeur"
+    "SELLER_BALANCE_TRANSFER": "Transfert du solde vendeur",
+    "REFERRAL_BALANCE_TRANSFER": "Transfert du solde d'invitation",
+    "REFERRAL_COMMISSION_EARNED": "Commission d'invitation gagnée"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfert de {{amount}} vers le solde principal",
@@ -234,7 +238,9 @@
     "refundDisputeWon": "Remboursement séquestre (litige gagné) pour '{{productName}}'",
     "feeDisputeResolved": "Frais de litige résolu pour '{{productName}}'",
     "payoutDisputeWon": "Paiement de litige résolu pour '{{productName}}'",
-    "saleFundsReleased": "Les fonds de la vente de '{{productName}}' sont maintenant disponibles."
+    "saleFundsReleased": "Les fonds de la vente de '{{productName}}' sont maintenant disponibles.",
+    "referralBalanceTransfer": "Transfert du solde de parrainage. Frais : {{fee}} TND ({{percent}}%)",
+    "referralCommissionEarned": "Commission de parrainage : {{userName}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "Voir les détails des fonds en attente et disponibles",
@@ -569,6 +575,7 @@
     "reject": "Rejeter",
     "edit": "Modifier",
     "delete": "Supprimer",
+    "confirmTransfer": "Confirmer le transfert",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -582,55 +589,66 @@
     }
   },
   "admin": {
+    "referrals": {
+        "rateLabel": "taux de commission de l'invitation (%)",
+        "minTransferLabel": "le minimum de transfert (دينار)",
+        "feeLabel": "Frais de transfert (%)",
+        "saveButton": "Enregistrer les paramètres",
+        "success": "Paramètres mis à jour avec succès!",
+        "descRate": "la commission que le référant reçoit pour chaque dépôt.",
+        "descMin": "le minimum que l'utilisateur peut transférer de l'équilibre des invitations.",
+        "descFee": "la commission que le site déduit lors du transfert.",
+        "pageTitle": "Programme des partenaires"
+    },
     "achievements": {
-    "pageTitle": "Gestion des Succès",
-    "addButton": "Ajouter un Succès",
-    "unlocked": "Débloqué",
-    "errorLoading": "Une erreur est survenue lors du chargement des succès.",
-    "table": {
-      "icon": "Icône",
-      "title": "Titre",
-      "category": "Catégorie",
-      "criteria": "Critère",
-      "status": "Statut",
-      "actions": "Actions"
+      "pageTitle": "Gestion des Succès",
+      "addButton": "Ajouter un Succès",
+      "unlocked": "Débloqué",
+      "errorLoading": "Une erreur est survenue lors du chargement des succès.",
+      "table": {
+        "icon": "Icône",
+        "title": "Titre",
+        "category": "Catégorie",
+        "criteria": "Critère",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "modal": {
+        "createTitle": "Créer un Nouveau Succès",
+        "editTitle": "Modifier le Succès",
+        "titleLabel": "Titre (Multilingue)",
+        "descriptionLabel": "Description (Multilingue)",
+        "iconLabel": "Icône",
+        "iconPlaceholder": "ex: fa-solid fa-trophy ou une URL",
+        "categoryLabel": "Catégorie",
+        "criteriaLabel": "Critère de déverrouillage (JSON)",
+        "criteriaPlaceholder": "ex: {\"type\": \"SALES_COUNT\", \"value\": 10}",
+        "pointsLabel": "Points attribués",
+        "settingsTitle": "Autres Paramètres",
+        "enabledLabel": "Activé (Visible pour les utilisateurs)",
+        "secretLabel": "Secret (Caché jusqu'à déverrouillage)"
+      },
+      "categories": {
+        "SALES": "Ventes",
+        "PURCHASES": "Achats",
+        "COMMUNITY": "Communauté",
+        "SPECIAL": "Spécial"
+      },
+      "statuses": {
+        "enabled": "Activé",
+        "disabled": "Désactivé"
+      },
+      "noAchievements": "Aucun succès n'a encore été créé.",
+      "createSuccess": "Succès créé avec succès !",
+      "updateSuccess": "Succès mis à jour avec succès !",
+      "deleteSuccess": "Succès supprimé avec succès !",
+      "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce succès ?",
+      "errors": {
+        "requiredFieldsAR": "Le titre et la description en arabe sont requis.",
+        "invalidJson": "Le format JSON dans le champ 'Critère' est invalide. Veuillez le vérifier.",
+        "genericSubmit": "Échec de la soumission du succès. Veuillez vérifier les entrées."
+      }
     },
-    "modal": {
-      "createTitle": "Créer un Nouveau Succès",
-      "editTitle": "Modifier le Succès",
-      "titleLabel": "Titre (Multilingue)",
-      "descriptionLabel": "Description (Multilingue)",
-      "iconLabel": "Icône",
-      "iconPlaceholder": "ex: fa-solid fa-trophy ou une URL",
-      "categoryLabel": "Catégorie",
-      "criteriaLabel": "Critère de déverrouillage (JSON)",
-      "criteriaPlaceholder": "ex: {\"type\": \"SALES_COUNT\", \"value\": 10}",
-      "pointsLabel": "Points attribués",
-      "settingsTitle": "Autres Paramètres",
-      "enabledLabel": "Activé (Visible pour les utilisateurs)",
-      "secretLabel": "Secret (Caché jusqu'à déverrouillage)"
-    },
-    "categories": {
-      "SALES": "Ventes",
-      "PURCHASES": "Achats",
-      "COMMUNITY": "Communauté",
-      "SPECIAL": "Spécial"
-    },
-    "statuses": {
-      "enabled": "Activé",
-      "disabled": "Désactivé"
-    },
-    "noAchievements": "Aucun succès n'a encore été créé.",
-    "createSuccess": "Succès créé avec succès !",
-    "updateSuccess": "Succès mis à jour avec succès !",
-    "deleteSuccess": "Succès supprimé avec succès !",
-    "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce succès ?",
-    "errors": {
-      "requiredFieldsAR": "Le titre et la description en arabe sont requis.",
-      "invalidJson": "Le format JSON dans le champ 'Critère' est invalide. Veuillez le vérifier.",
-      "genericSubmit": "Échec de la soumission du succès. Veuillez vérifier les entrées."
-    }
-  },
     "news": {
       "pageTitle": "Gestion des actualités",
       "addButton": "Ajouter une actualité",
@@ -917,7 +935,10 @@
     },
     "detailsModal": {
       "title": "Détails de la Demande de {{type}}",
-      "types": { "deposit": "Dépôt", "withdrawal": "Retrait" },
+      "types": {
+        "deposit": "Dépôt",
+        "withdrawal": "Retrait"
+      },
       "noData": "Données de la demande non disponibles.",
       "userTitle": "Informations Utilisateur",
       "userName": "Nom",
@@ -2398,7 +2419,8 @@
       "sellers": "💼 Les meilleurs vendeurs",
       "mediators": "⚖️ Les meilleurs médiateurs",
       "buyers": "🎯 Les meilleurs acheteurs",
-      "bidders": "✋ Les meilleurs meneurs d'enchères"
+      "bidders": "✋ Les meilleurs meneurs d'enchères",
+      "referrers": "🗣️ Les meilleurs référents"
     },
     "table": {
       "rank": "Classement",
@@ -2415,8 +2437,53 @@
       "sales": "ventes",
       "mediations": "médiateurs",
       "purchases": "achats",
-      "bids": "meneurs d'enchères"
+      "bids": "meneurs d'enchères",
+      "referrals": "référents"
     },
     "empty": "Pas assez de données pour ce classement."
+  },
+  "referrals": {
+    "pageTitle": "Programme des partenaires",
+    "noReferralsYet": "Pas de partenaires pour le moment. Partagez votre code!",
+    "newReferralJoinedToast": "Bienvenue {{name}}! Vous avez rejoint notre programme.",
+    "transferAmountLabel": "Transfer Amount",
+    "minTransferInfo": "Minimum: {{min}} TND. Fee: {{fee}}%.",
+    "transferAmount": "Transfer Amount",
+    "transferFee": "Transfer Fee",
+    "netReceive": "Net Amount Received",
+    "available": "Disponible pour le transfert",
+    "inviteCard": {
+      "title": "Invitez vos amis et gagnez",
+      "subtitle": "Partagez votre code et recevez une commission permanente sur chaque dépôt effectué par eux.",
+      "codeLabel": "Votre code de récompense",
+      "copy": "Copier",
+      "copied": "Copié!",
+      "shareLink": "Ou copier le lien direct"
+    },
+    "bindCard": {
+      "title": "Vous avez un code de récompense ?",
+      "subtitle": "Entrez le code de votre ami pour le soutenir.",
+      "placeholder": "Entrez le code ici",
+      "button": "Soutenir",
+      "success": "Soutenu avec succès!"
+    },
+    "stats": {
+      "balance": "Solde des récompenses",
+      "totalEarnings": "Total des récompenses",
+      "partners": "Partenaires",
+      "active": "Actif",
+      "inactive": "Nouveau",
+      "transferButton": "Transférer au solde",
+      "transferModalTitle": "Transférer les récompenses",
+      "totalInvited": "Total des invités",
+      "activePartners": "Partenaires actifs",
+      "transferSuccess": "Transfert effectué avec succès!"
+    },
+    "table": {
+      "user": "Utilisateur",
+      "date": "Date d'inscription",
+      "status": "Statut",
+      "earnings": "Aub"
+    }
   }
 }

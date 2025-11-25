@@ -267,7 +267,7 @@ const AdminAchievementsManagement = () => {
         </Table>
       </Card>
 
-      <Modal show={modalShow} onHide={handleClose} size="lg" backdrop="static">
+      <Modal show={modalShow} onHide={handleClose} size="lg" backdrop="static" style={{ marginRight: "5%" }}>
         <Form onSubmit={handleSubmit}>
           <Modal.Header closeButton>
             <Modal.Title>

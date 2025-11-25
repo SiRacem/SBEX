@@ -11,6 +11,10 @@ const path = require('path');
 const multer = require('multer');
 const { checkAndAwardAchievements } = require('../services/achievementService');
 
+const generateReferralCode = () => {
+    return Math.random().toString(36).substring(2, 10).toUpperCase();
+};
+
 const MEDIATOR_REQUIRED_LEVEL = 5;
 const MEDIATOR_ESCROW_AMOUNT_TND = 150.00;
 
@@ -58,32 +62,87 @@ const sendUserStatsUpdate = async (req, userId) => {
 };
 
 const Register = async (req, res) => {
-    const { fullName, email, phone, address, password, userRole, blocked = false } = req.body;
+    const { fullName, email, phone, address, password, userRole, blocked = false, referredByCode } = req.body;
     console.log("--- Controller: Register Request ---");
+
+    let session = null;
+
     try {
-        const existantUser = await User.findOne({ email: email.toLowerCase() });
+        session = await mongoose.startSession();
+        session.startTransaction();
+
+        const existantUser = await User.findOne({ email: email.toLowerCase() }).session(session);
         if (existantUser) {
-            console.warn(`Registration attempt failed: Email ${email} already exists.`);
+            await session.abortTransaction();
+            session.endSession();
             return res.status(409).json({ msg: "Email already exists" });
         }
 
-        const newUser = new User({ fullName, email: email.toLowerCase(), phone, address, password, userRole, blocked });
+        // 1. Generate Referral Code
+        let newReferralCode = generateReferralCode();
+        let isCodeUnique = false;
+        while (!isCodeUnique) {
+            const existingCodeUser = await User.findOne({ referralCode: newReferralCode }).session(session);
+            if (!existingCodeUser) isCodeUnique = true;
+            else newReferralCode = generateReferralCode();
+        }
+
+        // 2. Handle Referral Link
+        let referrerId = null;
+        if (referredByCode) {
+            const referrer = await User.findOne({ referralCode: referredByCode }).session(session);
+            if (referrer) {
+                referrerId = referrer._id;
+            }
+        }
+
+        const newUser = new User({
+            fullName,
+            email: email.toLowerCase(),
+            phone,
+            address,
+            password,
+            userRole,
+            blocked,
+            referralCode: newReferralCode,
+            referredBy: referrerId
+        });
+
         const salt = await bcrypt.genSalt(10);
         newUser.password = await bcrypt.hash(password, salt);
-        await newUser.save();
-        console.log(`User registered successfully: ${newUser.email} (ID: ${newUser._id})`);
+
+        await newUser.save({ session });
+
+        await session.commitTransaction(); // Commit first
+
+        // [!!!] START: Socket Event - Outside Transaction [!!!]
+        if (referrerId && req.io && req.onlineUsers) {
+            const referrerSocketId = req.onlineUsers[referrerId.toString()];
+            if (referrerSocketId) {
+                console.log(`[Socket] Sending 'new_referral_joined' to referrer ${referrerId}`);
+                req.io.to(referrerSocketId).emit('new_referral_joined', {
+                    _id: newUser._id,
+                    fullName: newUser.fullName,
+                    createdAt: newUser.createdAt,
+                    isReferralActive: false // New users are inactive initially
+                });
+                
+                // Also update referrer's stats immediately
+                const updatedReferrer = await User.findById(referrerId).select('referralsCount');
+                 if(updatedReferrer){
+                    // We can just increment locally on frontend for now or fetch
+                }
+            }
+        }
 
         res.status(201).json({ msg: "Registration successful! Please login." });
 
     } catch (error) {
-        console.error("Registration Controller Error:", error);
-        if (error.name === 'ValidationError') {
-            const errors = Object.values(error.errors).map(el => ({ msg: el.message, param: el.path }));
-            return res.status(400).json({ errors });
-        }
-        if (!res.headersSent) {
-            res.status(500).json({ msg: "Server error during registration.", error: error.message });
-        }
+        if (session) await session.abortTransaction();
+        console.error("Registration Error:", error);
+        if (!res.headersSent) res.status(500).json({ msg: "Server error." });
+    } finally {
+        if (session) session.endSession();
     }
 };
 
@@ -148,7 +207,9 @@ const Login = async (req, res) => {
                 productsSoldCount: user.productsSoldCount,
                 escrowBalance: user.escrowBalance,
                 activeListingsCount: await Product.countDocuments({ user: user._id, status: 'approved' }),
-                achievements: user.achievements
+                achievements: user.achievements,
+                referralCode: user.referralCode,
+                referredBy: user.referredBy,
             }
         });
 
@@ -180,10 +241,10 @@ const Auth = async (req, res) => {
             return res.status(401).json({ msg: "User associated with token not found." });
         }
 
-        await checkAndAwardAchievements({ 
-            userId: req.user._id, 
-            event: 'USER_LOGIN', 
-            req 
+        await checkAndAwardAchievements({
+            userId: req.user._id,
+            event: 'USER_LOGIN',
+            req
         });
 
         const activeListingsCount = await Product.countDocuments({
@@ -194,6 +255,8 @@ const Auth = async (req, res) => {
         const userProfileData = {
             ...userFromDb,
             activeListingsCount: activeListingsCount,
+            referredBy: userFromDb.referredBy,
+            referralCode: userFromDb.referralCode
         };
 
         console.log(`Auth Controller: Successfully fetched profile for user ID: ${req.user._id}. Sending data wrapped in 'user' object.`);

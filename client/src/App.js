@@ -59,6 +59,10 @@ import { adminGetAllAchievements, getAvailableAchievements } from './redux/actio
 import { addNotificationFromSocket } from './redux/actions/notificationAction';
 import LeaderboardPage from './pages/LeaderboardPage';
 import { getLeaderboards } from './redux/actions/leaderboardAction';
+import ReferralsPage from './pages/ReferralsPage';
+import AdminReferralSettings from './components/admin/AdminReferralSettings';
+import { addNewReferralFromSocket } from './redux/actions/referralAction';
+import { getReferralStats } from './redux/actions/referralAction';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -391,6 +395,25 @@ function App() {
             // نقوم بتحديث البيانات في الـ Store مباشرة
             dispatch(getLeaderboards()); 
         });
+
+      newSocket.on('new_referral_joined', (data) => {
+          console.log('[Socket] New referral joined:', data);
+          // 1. إظهار إشعار Toast (تأكد من إضافة الترجمة)
+          toast.success(t('referrals.newReferralJoinedToast', { name: data.fullName, defaultValue: `New referral joined: ${data.fullName}` }));
+          
+          // 2. تحديث الـ Redux Store
+          dispatch(addNewReferralFromSocket(data));
+      });
+
+      newSocket.on('user_balances_updated', (data) => {
+        if (data?._id === currentUserId) {
+          dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data });
+          
+          if (data.referralBalance !== undefined) {
+              dispatch(getReferralStats()); 
+          }
+        }
+      });
     }
 
     // --- دالة التنظيف ---
@@ -469,6 +492,8 @@ function App() {
             <Route path="/dashboard/admin/achievements" element={<ProtectedRoute requiredRole="Admin"><AdminAchievementsManagement /></ProtectedRoute>} />
             <Route path="/dashboard/achievements" element={<ProtectedRoute><UserAchievementsPage /></ProtectedRoute>} />
             <Route path="/dashboard/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
+            <Route path="/dashboard/referrals" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/referrals" element={<ProtectedRoute requiredRole="Admin"><AdminReferralSettings /></ProtectedRoute>} />
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

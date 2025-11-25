@@ -1,0 +1,136 @@
+/* src/pages/ReferralsPage.css */
+
+.referrals-page {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* --- Header --- */
+.referrals-page h2 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    font-size: 1.75rem;
+}
+
+/* --- Invite Card (The Hero Section) --- */
+.bg-gradient-primary-light {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+    border: 1px solid #e1e8f0 !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.bg-gradient-primary-light::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 150px; height: 150px;
+    background: radial-gradient(circle, rgba(13, 110, 253, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+}
+
+.invite-card-title {
+    font-weight: 700;
+    color: #0d6efd;
+}
+
+.referral-code-input {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    background-color: #fff;
+    border-color: #ced4da;
+    height: 50px;
+}
+
+.referral-copy-btn {
+    height: 50px;
+    width: 50px;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* --- Bind Card --- */
+.bind-card {
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    transition: box-shadow 0.3s ease;
+}
+.bind-card:hover {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
+}
+
+/* --- Stat Cards --- */
+.stat-card {
+    border-radius: 12px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: #fff;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
+}
+
+.stat-card .card-body {
+    padding: 1.5rem;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.text-success-dark { color: #198754; }
+.text-primary-dark { color: #0d6efd; }
+
+/* --- Table Styles --- */
+.referrals-table-card {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.table thead th {
+    background-color: #f1f3f5;
+    color: #495057;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.table tbody td {
+    vertical-align: middle;
+    padding: 1rem;
+    color: #212529;
+}
+
+.table-row-hover:hover {
+    background-color: #f8f9fa;
+}
+
+.badge-status {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .stat-card .card-body {
+        text-align: center;
+    }
+    .stat-card .d-flex {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

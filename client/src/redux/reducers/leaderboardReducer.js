@@ -6,7 +6,8 @@ const initialState = {
         topSellers: [],
         topMediators: [],
         topBuyers: [],
-        topBidders: []
+        topBidders: [],
+        topReferrers: []
     },
     myRanks: {}, // لتخزين ترتيب المستخدم الحالي
     loading: false,

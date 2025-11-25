@@ -113,9 +113,41 @@ const UserSchema = new Schema({
         sales: { type: Number, default: 0 },      // للبائعين
         mediation: { type: Number, default: 0 },  // للوسطاء
         buys: { type: Number, default: 0 },       // للمشترين
-        bids: { type: Number, default: 0 }        // للمزايدين
+        bids: { type: Number, default: 0 },       // للمزايدين
+        referrals: { type: Number, default: 0 }   // للمدعوين
     },
     // [!!!] END: نهاية الإضافة [!!!]
+
+    // --- [!!!] START: نظام الإحالات الجديد [!!!] ---
+    referralCode: { 
+        type: String, 
+        unique: true, 
+        sparse: true, // يسمح بالقيم الفارغة (للمستخدمين القدامى مؤقتاً)
+        index: true 
+    },
+    referredBy: { 
+        type: Schema.Types.ObjectId, 
+        ref: 'User',
+        index: true 
+    },
+    referralBalance: { 
+        type: Number, 
+        default: 0, 
+        min: 0 
+    }, // رصيد الإحالات المنفصل
+    totalReferralEarnings: { 
+        type: Number, 
+        default: 0 
+    }, // إجمالي ما كسبه من الإحالات (للإحصائيات والإنجازات)
+    referralsCount: { 
+        type: Number, 
+        default: 0 
+    }, // عدد الأشخاص الذين دعاهم (للإنجازات)
+    isReferralActive: {
+        type: Boolean,
+        default: false
+    }, // هل قام هذا المستخدم بأول نشاط (إيداع) ليُحسب كإحالة ناجحة؟
+    earningsGeneratedForReferrer: { type: Number, default: 0 }, // كم حقق هذا المستخدم لداعيه
 
 }, { timestamps: true });
 

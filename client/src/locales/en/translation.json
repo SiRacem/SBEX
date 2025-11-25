@@ -74,7 +74,9 @@
     "manageNews": "Manage News",
     "manageAchievements": "Manage Achievements",
     "achievements": "Achievements",
-    "leaderboard": "Leaderboard"
+    "leaderboard": "Leaderboard",
+    "referrals": "Referral Program",
+    "manageReferrals": "Manage Referral Program"
   },
   "dashboard": {
     "balances": {
@@ -219,7 +221,9 @@
     "MEDIATION_FEE_PAID_BY_BUYER": "Mediation Fee Paid",
     "DISPUTE_PAYOUT_SELLER_WON": "Dispute Payout (Won)",
     "ESCROW_RETURNED_MEDIATION_CANCELLED": "Escrow Refund (Cancelled)",
-    "SELLER_BALANCE_TRANSFER": "Seller Balance Transfer"
+    "SELLER_BALANCE_TRANSFER": "Seller Balance Transfer",
+    "REFERRAL_BALANCE_TRANSFER": "Referral Balance Transfer",
+    "REFERRAL_COMMISSION_EARNED": "Referral Commission Earned"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfer of {{amount}} to main balance",
@@ -234,7 +238,9 @@
     "refundDisputeWon": "Escrow refund (dispute won) for '{{productName}}'",
     "feeDisputeResolved": "Fee from resolved dispute for '{{productName}}'",
     "payoutDisputeWon": "Payout from resolved dispute for '{{productName}}'",
-    "saleFundsReleased": "Funds from sale of '{{productName}}' are now available."
+    "saleFundsReleased": "Funds from sale of '{{productName}}' are now available.",
+    "referralBalanceTransfer": "Transfer from Referral Balance. Fee: {{fee}} TND ({{percent}}%)",
+    "referralCommissionEarned": "Commission from referral: {{userName}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "View On Hold & Available Funds Details",
@@ -566,6 +572,7 @@
     "reject": "Reject",
     "edit": "Edit",
     "delete": "Delete",
+    "confirmTransfer": "Confirm Transfer",
     "loading": "Loading...",
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",
@@ -583,6 +590,17 @@
     }
   },
   "admin": {
+    "referrals": {
+        "rateLabel": "Referral Rate (%)",
+        "minTransferLabel": "Minimum Transfer (TND)",
+        "feeLabel": "Transfer Fee (%)",
+        "saveButton": "Save Settings",
+        "success": "Settings updated successfully!",
+        "descRate": "The amount the referrer receives from each deposit.",
+        "descMin": "The minimum amount a user can transfer from the referral balance.",
+        "descFee": "The amount deducted by the site when transferring.",
+        "pageTitle": "Referrals Management"
+    },
     "achievements": {
       "pageTitle": "Achievements Management",
       "addButton": "Add New Achievement",
@@ -918,7 +936,10 @@
     },
     "detailsModal": {
       "title": "{{type}} Request Details",
-      "types": { "deposit": "Deposit", "withdrawal": "Withdrawal" },
+      "types": {
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal"
+      },
       "noData": "Request data not available.",
       "userTitle": "User Information",
       "userName": "User Name",
@@ -2402,7 +2423,8 @@
       "sellers": "💼 Top Sellers",
       "mediators": "⚖️ Top Mediators",
       "buyers": "🎯 Top Buyers",
-      "bidders": "✋ Most Active"
+      "bidders": "✋ Most Active",
+      "referrers": "🗣️ Top Referrers"
     },
     "table": {
       "rank": "Rank",
@@ -2419,8 +2441,53 @@
       "sales": "sales",
       "mediations": "mediations",
       "purchases": "buys",
-      "bids": "bids"
+      "bids": "bids",
+      "referrals": "referrals"
     },
     "empty": "Not enough data for this leaderboard yet."
+  },
+  "referrals": {
+    "pageTitle": "Programme des partenaires",
+    "noReferralsYet": "No referrals yet. Share your code!",
+    "newReferralJoinedToast": "Welcome {{name}}! You have joined our program.",
+    "transferAmountLabel": "Transfer Amount",
+    "minTransferInfo": "Minimum: {{min}} TND. Fee: {{fee}}%.",
+    "transferAmount": "Transfer Amount",
+    "transferFee": "Transfer Fee",
+    "netReceive": "Net Amount Received",
+    "available": "Available to transfer",
+    "inviteCard": {
+      "title": "Invite Friends and Earn",
+      "subtitle": "Share your referral code and earn a permanent commission from every deposit they make.",
+      "codeLabel": "Your Referral Code",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "shareLink": "Or copy the direct link"
+    },
+    "bindCard": {
+      "title": "Do you have a referral code?",
+      "subtitle": "Enter your friend's code to support them.",
+      "placeholder": "Enter code here",
+      "button": "Link Account",
+      "success": "Account linked successfully!"
+    },
+    "stats": {
+      "balance": "Referral Balance",
+      "totalEarnings": "Total Earnings",
+      "partners": "Partners",
+      "active": "Active",
+      "inactive": "New",
+      "transferButton": "Transfer to Balance",
+      "transferModalTitle": "Transfer Earnings",
+      "totalInvited": "Total Invited",
+      "activePartners": "Active Partners",
+      "transferSuccess": "Transfer completed successfully!"
+    },
+    "table": {
+      "user": "User",
+      "date": "Date Joined",
+      "status": "Status",
+      "earnings": "Earnings"
+    }
   }
 }

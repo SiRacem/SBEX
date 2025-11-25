@@ -7,6 +7,8 @@ const Notification = require('../models/Notification');
 const Transaction = require('../models/Transaction');
 const mongoose = require('mongoose');
 const config = require('config');
+const SystemSetting = require('../models/SystemSetting');
+const { checkAndAwardAchievements } = require('../services/achievementService');
 
 // --- سعر الصرف ---
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
@@ -195,13 +197,16 @@ exports.adminGetDepositRequests = async (req, res) => {
 exports.adminApproveDeposit = async (req, res) => {
     const { id } = req.params;
     const adminUserId = req.user._id;
+
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ msg: "Invalid ID." });
+
     const session = await mongoose.startSession();
     session.startTransaction();
+
     try {
         const depositRequest = await DepositRequest.findById(id)
             .populate('paymentMethod')
-            .populate('user', 'balance sellerAvailableBalance sellerPendingBalance')
+            .populate('user') // [!] نحتاج لكائن المستخدم كاملاً للتحقق من referredBy
             .session(session);
 
         if (!depositRequest) throw new Error("Request not found.");
@@ -210,28 +215,112 @@ exports.adminApproveDeposit = async (req, res) => {
         const userToUpdate = depositRequest.user;
         if (!userToUpdate) throw new Error("User associated with the deposit request not found.");
 
+        // 1. حساب المبلغ المراد إضافته
         let amountToAdd = depositRequest.netAmountCredited;
         const userBalanceCurrency = 'TND';
 
         if (depositRequest.currency.toUpperCase() !== userBalanceCurrency) {
-            if (depositRequest.currency.toUpperCase() === 'USD') amountToAdd = depositRequest.netAmountCredited * TND_USD_EXCHANGE_RATE;
-            else throw new Error(`Unsupported currency conversion from ${depositRequest.currency} to ${userBalanceCurrency}.`);
+            if (depositRequest.currency.toUpperCase() === 'USD') {
+                amountToAdd = depositRequest.netAmountCredited * TND_USD_EXCHANGE_RATE;
+            } else {
+                throw new Error(`Unsupported currency conversion from ${depositRequest.currency} to ${userBalanceCurrency}.`);
+            }
             amountToAdd = Number(amountToAdd.toFixed(2));
         }
 
-        const updatedUserAfterDeposit = await User.findByIdAndUpdate(
-            userToUpdate._id,
-            { $inc: { balance: amountToAdd, depositBalance: amountToAdd } },
-            { session, new: true, runValidators: true }
-        ).select('balance depositBalance withdrawalBalance sellerAvailableBalance sellerPendingBalance');
+        // 2. تحديث رصيد المستخدم (المودع)
+        userToUpdate.balance = (userToUpdate.balance || 0) + amountToAdd;
+        userToUpdate.depositBalance = (userToUpdate.depositBalance || 0) + amountToAdd;
+        
+        // سنقوم بحفظ userToUpdate لاحقًا بعد معالجة الإحالة
 
-        if (!updatedUserAfterDeposit) throw new Error("User not found or failed to update balance.");
+        // 3. منطق نظام الإحالات (Referral System)
+        if (userToUpdate.referredBy) {
+            console.log(`[Deposit] User ${userToUpdate._id} was referred by ${userToUpdate.referredBy}. Calculating commission...`);
+            
+            const referrer = await User.findById(userToUpdate.referredBy).session(session);
+            
+            if (referrer) {
+                // جلب النسبة من الإعدادات (مع التعامل مع الأخطاء)
+                let commissionRate = 1; // الافتراضي
+                try {
+                    const settingsDoc = await SystemSetting.findOne({ key: 'referral_config' }).session(session);
+                    if (settingsDoc && settingsDoc.value && settingsDoc.value.commissionRate !== undefined) {
+                        commissionRate = Number(settingsDoc.value.commissionRate);
+                        console.log(`[Deposit] Loaded commission rate from DB: ${commissionRate}%`);
+                    } else {
+                        console.warn(`[Deposit] Referral settings not found. Using default: ${commissionRate}%`);
+                    }
+                } catch (err) {
+                    console.error(`[Deposit] Error fetching settings:`, err);
+                }
 
+                // حساب مبلغ الإيداع الأصلي بالدينار (للعمولة)
+                const baseAmountForCommission = amountToAdd; // نستخدم المبلغ المحول للدينار
+                
+                const commission = (baseAmountForCommission * commissionRate) / 100;
+                console.log(`[Deposit] Base: ${baseAmountForCommission}, Commission: ${commission}`);
+
+                if (commission > 0) {
+                    // تحديث رصيد الداعي
+                    referrer.referralBalance = (referrer.referralBalance || 0) + commission;
+                    referrer.totalReferralEarnings = (referrer.totalReferralEarnings || 0) + commission;
+                    
+                    // تحديث أرباح المستخدم المحدد (في سجل المدعو نفسه لتسهيل العرض لاحقاً)
+                    userToUpdate.earningsGeneratedForReferrer = (userToUpdate.earningsGeneratedForReferrer || 0) + commission;
+
+                    // تفعيل الحالة إذا كانت المرة الأولى
+                    let isFirstActive = false;
+                    if (!userToUpdate.isReferralActive) {
+                        userToUpdate.isReferralActive = true;
+                        referrer.referralsCount = (referrer.referralsCount || 0) + 1;
+                        isFirstActive = true;
+                        console.log(`[Deposit] User ${userToUpdate._id} became active referral.`);
+                    }
+                    
+                    await referrer.save({ session });
+
+                    // تسجيل المعاملة للداعي
+                    const refTransaction = new Transaction({
+                        user: referrer._id,
+                        type: 'REFERRAL_COMMISSION_EARNED',
+                        amount: commission,
+                        currency: 'TND',
+                        status: 'COMPLETED',
+                        
+                        descriptionKey: 'transactionDescriptions.referralCommissionEarned',
+                        descriptionParams: {
+                            userName: userToUpdate.fullName
+                        },
+                        
+                        metadata: { depositId: depositRequest._id }
+                    });
+                    await refTransaction.save({ session });
+
+                    // التحقق من إنجازات الداعي (بعد الـ commit لضمان عدم التعارض، أو هنا)
+                    // سنضعه هنا لكن التنفيذ الفعلي يفضل أن يكون بعد الـ commit إذا كان يرسل socket
+                    // لكن checkAndAwardAchievements تتعامل مع الـ session لذا لا بأس
+                    if (isFirstActive) {
+                         // ملاحظة: سنستدعيها بعد الـ commit لضمان أن البيانات قد حفظت
+                    }
+                }
+            }
+        }
+
+        // حفظ المستخدم بعد تحديث الرصيد (ومنطق الإحالة)
+        await userToUpdate.save({ session });
+
+        // 4. تحديث حالة طلب الإيداع
         depositRequest.status = 'approved';
         depositRequest.processedAt = new Date();
         depositRequest.processedBy = adminUserId;
+        // (اختياري) حفظ المبلغ المحول في الطلب
+        depositRequest.amountInPlatformCurrency = amountToAdd; 
+        depositRequest.platformCurrency = userBalanceCurrency;
+        
         await depositRequest.save({ session });
 
+        // 5. تسجيل معاملة الإيداع
         const completedTransaction = new Transaction({
             user: userToUpdate._id,
             amount: amountToAdd,
@@ -243,11 +332,11 @@ exports.adminApproveDeposit = async (req, res) => {
                 amount: formatCurrency(depositRequest.amount, depositRequest.currency),
                 method: depositRequest.paymentMethod?.displayName || 'N/A'
             },
-            relatedDepositRequest: depositRequest._id // [!] غيرت اسم الحقل ليتطابق مع المخطط
+            relatedDepositRequest: depositRequest._id
         });
         await completedTransaction.save({ session });
 
-        // [!!!] تعديل: إشعار الموافقة يستخدم مفاتيح الترجمة
+        // 6. إنشاء إشعار للمستخدم
         const approvalNotification = new Notification({
             user: userToUpdate._id,
             type: 'DEPOSIT_APPROVED',
@@ -258,28 +347,61 @@ exports.adminApproveDeposit = async (req, res) => {
         });
         await approvalNotification.save({ session });
 
+        // --- إتمام المعاملة ---
         await session.commitTransaction();
+        
+        // --- ما بعد الـ Commit (Socket.IO & Achievements) ---
+        req.io.emit('leaderboard_updated');
 
+        // 1. تحديث واجهة المستخدم (المودع)
         const userSocketId = req.onlineUsers ? req.onlineUsers[userToUpdate._id.toString()] : null;
         if (userSocketId) {
             req.io.to(userSocketId).emit('new_notification', approvalNotification.toObject());
             req.io.to(userSocketId).emit('user_balances_updated', {
                 _id: userToUpdate._id.toString(),
-                balance: updatedUserAfterDeposit.balance,
-                depositBalance: updatedUserAfterDeposit.depositBalance,
-                withdrawalBalance: updatedUserAfterDeposit.withdrawalBalance,
-                sellerAvailableBalance: updatedUserAfterDeposit.sellerAvailableBalance,
-                sellerPendingBalance: updatedUserAfterDeposit.sellerPendingBalance
+                balance: userToUpdate.balance,
+                depositBalance: userToUpdate.depositBalance,
             });
             req.io.to(userSocketId).emit('dashboard_transactions_updated', {});
         }
+        
+        // 2. تحديث واجهة الداعي (Referrer) إذا كان موجوداً
+        if (userToUpdate.referredBy) {
+             // نحتاج لجلب الداعي مرة أخرى أو تمرير المعلومات من داخل الـ try block
+             // للتبسيط، سنقوم بالتحقق السريع هنا
+             const referrer = await User.findById(userToUpdate.referredBy);
+             if (referrer && req.onlineUsers) {
+                 const referrerSocketId = req.onlineUsers[referrer._id.toString()];
+                 if (referrerSocketId) {
+                     req.io.to(referrerSocketId).emit('user_balances_updated', {
+                         _id: referrer._id,
+                         referralBalance: referrer.referralBalance
+                     });
+                     
+                    // إرسال إشعار (اختياري)
+                     req.io.to(referrerSocketId).emit('new_notification', {
+                         title: 'Referral Bonus',
+                         message: 'You earned a commission!'
+                     });
+                 }
+                 
+                 // التحقق من إنجازات الداعي (الآن آمن بعد الـ commit)
+                 if (userToUpdate.isReferralActive) { // نتحقق من الحالة المحفوظة
+                      await checkAndAwardAchievements({ 
+                            userId: referrer._id, 
+                            event: 'REFERRAL_ACTIVE', 
+                            req 
+                        });
+                 }
+             }
+        }
 
+        // 3. الاستجابة النهائية
         const finalUpdatedRequest = await DepositRequest.findById(id)
             .populate('user', 'fullName email balance phone depositBalance sellerAvailableBalance sellerPendingBalance')
             .populate('paymentMethod')
             .lean();
 
-        // [!!!] تعديل: رسالة النجاح للادمن تستخدم نصا ثابتا (لا يحتاج ترجمة)
         res.status(200).json({ msg: "Deposit approved and balance updated.", request: finalUpdatedRequest });
 
     } catch (error) {
