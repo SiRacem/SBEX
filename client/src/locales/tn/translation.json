@@ -364,7 +364,8 @@
     "LEVEL_UP_REWARD": "مبروك! وصلت للمستوى {{level}}! 🎉",
     "BALANCE_TRANSFER_SUCCESS": "الفلوس تحولت بالصحيح",
     "BADGE_UPDATED": "🏅 تحديث السمعة!",
-    "ACHIEVEMENT_UNLOCKED": "🏆 إنجاز جديد!"
+    "ACHIEVEMENT_UNLOCKED": "🏆 إنجاز جديد!",
+    "REFERRAL_BONUS": "🎉 إشارة جديدة!"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بيك، {{name}}! فرحانين بيك معانا.",
@@ -461,7 +462,8 @@
     "REPORT_STATUS_DISMISSED": "الأدمن '{{adminName}}' شاف البلاغ متاعك على '{{reportedUserName}}'. بعد ما ثبتنا، ترفض البلاغ. السبب: {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "الأدمن '{{adminName}}' قاعد يشوف في البلاغ متاعك على '{{reportedUserName}}' ويستحق معلومات أكثر. التفاصيل: {{details}}",
     "BADGE_UPDATED": "شارة السمعة متاعك تبدلت لـ {{badgeName}}.",
-    "ACHIEVEMENT_UNLOCKED": "صحيت! حليت إنجاز جديد: \"{{achievementName}}\". كمل هكا!"
+    "ACHIEVEMENT_UNLOCKED": "صحيت! حليت إنجاز جديد: \"{{achievementName}}\". كمل هكا!",
+    "REFERRAL_BONUS": "صحيت! حليت إشارة جديدة: \"{{achievementName}}\". كمل هكا!"
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",

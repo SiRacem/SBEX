@@ -364,7 +364,8 @@
     "NEW_ADMIN_SUBCHAT_MESSAGE": "New Message in: {{chatTitle}}",
     "BALANCE_TRANSFER_SUCCESS": "Balance Transfer Successful",
     "BADGE_UPDATED": "🏅 Reputation Update!",
-    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!"
+    "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!",
+    "REFERRAL_BONUS": "🎉 New Referral Bonus!"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -461,7 +462,8 @@
     "REPORT_STATUS_DISMISSED": "Admin {{adminName}} has reviewed your report regarding {{reportedUserName}}. After investigation, it was dismissed. Reason: {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "Admin {{adminName}} is reviewing your report regarding {{reportedUserName}} and requires more information. Details: {{details}}",
     "BADGE_UPDATED": "Your reputation badge has been updated to {{badgeName}}.",
-    "ACHIEVEMENT_UNLOCKED": "Congratulations! You unlocked a new achievement: \"{{achievementName}}\"."
+    "ACHIEVEMENT_UNLOCKED": "Congratulations! You unlocked a new achievement: \"{{achievementName}}\".",
+    "REFERRAL_BONUS": "Congratulations! You received a referral bonus: \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",

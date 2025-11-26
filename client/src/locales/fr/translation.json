@@ -363,7 +363,8 @@
     "MEDIATOR_SELECTION_CONFIRMED": "Sélection du médiateur confirmée",
     "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi",
     "BADGE_UPDATED": "🏅 Mise à jour de la réputation !",
-    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !"
+    "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !",
+    "REFERRAL_BONUS": "🎉 Nouveau Bonus !"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -460,7 +461,8 @@
     "REPORT_STATUS_DISMISSED": "L'administrateur {{adminName}} a examiné votre signalement concernant '{{reportedUserName}}'. Après enquête, il a été rejeté. Raison : {{details}}",
     "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}",
     "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}.",
-    "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué un nouveau succès : \"{{achievementName}}\"."
+    "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué un nouveau succès : \"{{achievementName}}\".",
+    "REFERRAL_BONUS": "Félicitations ! Vous avez reçu un bonus de réference : \"{{achievementName}}\"."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
