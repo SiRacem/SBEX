@@ -379,9 +379,15 @@ exports.adminApproveDeposit = async (req, res) => {
                      });
                      
                     // إرسال إشعار (اختياري)
+                     const commissionAmountFormatted = formatCurrency(commission, 'TND');
                      req.io.to(referrerSocketId).emit('new_notification', {
-                         title: 'Referral Bonus',
-                         message: 'You earned a commission!'
+                         type: 'REFERRAL_BONUS',
+                         title: 'notification_titles.REFERRAL_BONUS', // مفتاح الترجمة
+                         message: 'notification_messages.REFERRAL_BONUS', // مفتاح الترجمة
+                         messageParams: { // بارامترات للترجمة
+                             amount: commissionAmountFormatted,
+                             userName: userToUpdate.fullName
+                         }
                      });
                  }
                  

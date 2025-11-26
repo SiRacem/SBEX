@@ -40,7 +40,7 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
     const currentUserId = req.user?._id; // اختياري
 
     // 1. جلب القوائم (Tabs)
-    const [topReputation, topSellers, topMediators, topBuyers, topBidders] = await Promise.all([
+    const [topReputation, topSellers, topMediators, topBuyers, topBidders, topReferrers] = await Promise.all([
         getTopUsers('reputationPoints', limit),
         getTopUsers('productsSoldCount', limit),
         getTopUsers('successfulMediationsCount', limit),
@@ -52,7 +52,7 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
     // 2. حساب ترتيب المستخدم الحالي (إذا كان مسجلاً)
     let myRanks = {};
     if (currentUserId) {
-        const [rankReputation, rankSeller, rankMediator, rankBuyer, rankBidder] = await Promise.all([
+        const [rankReputation, rankSeller, rankMediator, rankBuyer, rankBidder, rankReferrer] = await Promise.all([
             getUserRank(currentUserId, 'reputationPoints'),
             getUserRank(currentUserId, 'productsSoldCount'),
             getUserRank(currentUserId, 'successfulMediationsCount'),
@@ -78,8 +78,8 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
             topMediators,
             topBuyers,
             topBidders,
-            topReferrers
+            topReferrers,
         },
-        myRanks
+        myRanks,
     });
 });
