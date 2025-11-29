@@ -76,7 +76,13 @@
     "achievements": "Achievements",
     "leaderboard": "Leaderboard",
     "referrals": "Referral Program",
-    "manageReferrals": "Manage Referral Program"
+    "manageReferrals": "Manage Referral Program",
+    "wishlist": "My Wishlist",
+    "luckyWheel": "Lucky Wheel",
+    "quests": "Quests & Rewards",
+    "manageQuests": "Manage Quests & Rewards",
+    "checkInSettings": "Check-in Settings",
+    "wheelSettings": "Wheel Settings"
   },
   "dashboard": {
     "balances": {
@@ -106,7 +112,8 @@
       "settings": "Settings & Language",
       "news": "Latest News & Updates",
       "support": "Technical Support",
-      "logout": "Logout"
+      "logout": "Logout",
+      "quests": "Daily Registration"
     },
     "settings": {
       "title": "Settings",
@@ -223,7 +230,9 @@
     "ESCROW_RETURNED_MEDIATION_CANCELLED": "Escrow Refund (Cancelled)",
     "SELLER_BALANCE_TRANSFER": "Seller Balance Transfer",
     "REFERRAL_BALANCE_TRANSFER": "Referral Balance Transfer",
-    "REFERRAL_COMMISSION_EARNED": "Referral Commission Earned"
+    "REFERRAL_COMMISSION_EARNED": "Referral Commission Earned",
+    "LUCKY_WHEEL_REWARD": "Lucky Wheel Reward",
+    "LEVEL_UP_REWARD": "Level Up Reward"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfer of {{amount}} to main balance",
@@ -240,7 +249,9 @@
     "payoutDisputeWon": "Payout from resolved dispute for '{{productName}}'",
     "saleFundsReleased": "Funds from sale of '{{productName}}' are now available.",
     "referralBalanceTransfer": "Transfer from Referral Balance. Fee: {{fee}} TND ({{percent}}%)",
-    "referralCommissionEarned": "Commission from referral: {{userName}}"
+    "referralCommissionEarned": "Commission from referral: {{userName}}",
+    "luckyWheelReward": "Won {{amount}} TND from Lucky Wheel",
+    "levelUpReward": "Reward for reaching Level {{level}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "View On Hold & Available Funds Details",
@@ -365,7 +376,9 @@
     "BALANCE_TRANSFER_SUCCESS": "Balance Transfer Successful",
     "BADGE_UPDATED": "🏅 Reputation Update!",
     "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!",
-    "REFERRAL_BONUS": "🎉 New Referral Bonus!"
+    "REFERRAL_BONUS": "🎉 New Referral Bonus!",
+    "NEW_FOLLOWER": "New Follower!",
+    "QUEST_COMPLETED": "Quest Completed! 🏆"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -463,7 +476,9 @@
     "REPORT_STATUS_NEEDS_MORE_INFO": "Admin {{adminName}} is reviewing your report regarding {{reportedUserName}} and requires more information. Details: {{details}}",
     "BADGE_UPDATED": "Your reputation badge has been updated to {{badgeName}}.",
     "ACHIEVEMENT_UNLOCKED": "Congratulations! You unlocked a new achievement: \"{{achievementName}}\".",
-    "REFERRAL_BONUS": "Congratulations! You received a referral bonus: \"{{achievementName}}\"."
+    "REFERRAL_BONUS": "Congratulations! You received a referral bonus: \"{{achievementName}}\".",
+    "NEW_FOLLOWER": "Congratulations! You have a new follower: \"{{followerName}}\".",
+    "QUEST_COMPLETED": "You have completed the quest: {{questTitle}}. Go to Quests Board to claim your reward."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -514,6 +529,10 @@
     }
   },
   "home": {
+    "addToWishlist": "Add to Wishlist",
+    "removeFromWishlist": "Remove from Wishlist",
+    "pleaseLoginToWishlist": "Please login to manage your wishlist",
+    "pleaseLoginToFollow": "Please login to follow users",
     "heroTitle": "Find Your Next Favorite",
     "heroSubtitle": "Explore a wide range of unique products offered by our community. Secure transactions and great deals await.",
     "filterByType": "Filter by Link Type",
@@ -567,9 +586,13 @@
     }
   },
   "common": {
-    "close": "Close",
+    "active": "Active",
+    "inactive": "Inactive",
+    "optional": "Optional",
     "cancel": "Cancel",
+    "create": "Create",
     "saveChanges": "Save Changes",
+    "close": "Close",
     "accept": "Accept",
     "reject": "Reject",
     "edit": "Edit",
@@ -592,16 +615,72 @@
     }
   },
   "admin": {
+    "wheelSettings": {
+      "title": "Lucky Wheel Config",
+      "saveSuccess": "Wheel updated successfully! 🎉",
+      "saveError": "Failed to save ❌",
+      "segment": "Segment",
+      "type": "Type",
+      "empty": "Empty (Hard Luck)",
+      "amount": "Amount",
+      "chance": "Chance (Weight)",
+      "chanceHelp": "Higher number = higher probability",
+      "color": "Color",
+      "textLabel": "Display Text (Optional)",
+      "textPlaceholder": "e.g. 50 Credits",
+      "addSegment": "Add Segment"
+    },
+    "checkInSettings": {
+      "title": "Daily Check-in Rewards Config",
+      "description": "Define the rewards for each day. The cycle will loop automatically after the last day.",
+      "amountLabel": "Credits",
+      "addDay": "Add Day",
+      "saveSuccess": "Settings updated successfully!",
+      "saveError": "Failed to save settings",
+      "loadError": "Failed to load settings"
+    },
+    "quests": {
+      "pageTitle": "Quest Management System",
+      "addNew": "Add New Quest",
+      "validationError": "Arabic title is required!",
+      "table": {
+        "title": "Title",
+        "type": "Type",
+        "trigger": "Trigger / Target",
+        "rewards": "Rewards",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "modal": {
+        "createTitle": "Create New Quest",
+        "editTitle": "Edit Quest"
+      },
+      "form": {
+        "titleAr": "Title (Arabic)",
+        "titleEn": "Title (English)",
+        "descAr": "Description (Arabic)",
+        "descEn": "Description (English)",
+        "type": "Type",
+        "trigger": "Trigger Event",
+        "target": "Target Count"
+      },
+      "toast": {
+        "createSuccess": "Quest created successfully ✅",
+        "updateSuccess": "Quest updated successfully ✅",
+        "deleteSuccess": "Quest deleted successfully 🗑️",
+        "error": "An error occurred while processing the quest ❌"
+      }
+    },
     "referrals": {
-        "rateLabel": "Referral Rate (%)",
-        "minTransferLabel": "Minimum Transfer (TND)",
-        "feeLabel": "Transfer Fee (%)",
-        "saveButton": "Save Settings",
-        "success": "Settings updated successfully!",
-        "descRate": "The amount the referrer receives from each deposit.",
-        "descMin": "The minimum amount a user can transfer from the referral balance.",
-        "descFee": "The amount deducted by the site when transferring.",
-        "pageTitle": "Referrals Management"
+      "rateLabel": "Referral Rate (%)",
+      "minTransferLabel": "Minimum Transfer (TND)",
+      "feeLabel": "Transfer Fee (%)",
+      "saveButton": "Save Settings",
+      "success": "Settings updated successfully!",
+      "descRate": "The amount the referrer receives from each deposit.",
+      "descMin": "The minimum amount a user can transfer from the referral balance.",
+      "descFee": "The amount deducted by the site when transferring.",
+      "pageTitle": "Referrals Management"
     },
     "achievements": {
       "pageTitle": "Achievements Management",
@@ -1442,7 +1521,21 @@
     },
     "avatar": {
       "updateSuccess": "Profile picture updated successfully!"
-    }
+    },
+    "wishlist": {
+      "added": "Product added to your wishlist",
+      "removed": "Product removed from your wishlist"
+    },
+    "followMessages": {
+      "success": "You are now following this user",
+      "selfError": "You cannot follow yourself"
+    },
+    "unfollowMessages": {
+      "success": "You have unfollowed this user"
+    },
+    "following": "Following",
+    "followBtn": "Follow",
+    "followers": "Followers"
   },
   "mediatorDashboard": {
     "notAvailable": "N/A",
@@ -2490,6 +2583,51 @@
       "date": "Date Joined",
       "status": "Status",
       "earnings": "Earnings"
+    }
+  },
+  "luckyWheel": {
+    "title": "Lucky Wheel",
+    "spinBtn": "SPIN NOW!",
+    "subtitle": "Spin for {{cost}} Credits and win amazing prizes!",
+    "balance": "Your Balance: <span className=\"text-warning fw-bold\">{{credits}} Credits</span>",
+    "winMessage": "🎉 You won {{prize}}!",
+    "loseMessage": "Hard luck! Try again. 😢",
+    "noCredits": "Insufficient credits for spin!",
+    "balanceLabel": "Credits Balance",
+    "prizes": {
+      "credits": "Credits",
+      "xp": "XP",
+      "currency": "TND"
+    },
+    "history": {
+      "title": "Spin History",
+      "date": "Date",
+      "cost": "Cost",
+      "prize": "Prize",
+      "empty": "No spins yet. Try your luck!"
+    }
+  },
+  "quests": {
+    "pageTitle": "Quests Board",
+    "subtitle": "Complete tasks to earn credits and XP!",
+    "progress": "Progress",
+    "claimBtn": "CLAIM REWARD",
+    "completedBtn": "Completed",
+    "inProgressBtn": "In Progress",
+    "completedToast": "Quest Completed: {{title}}! Claim your reward.",
+    "types": {
+      "Daily": "Daily",
+      "OneTime": "One Time",
+      "Weekly": "Weekly"
+    },
+    "checkIn": {
+      "title": "Check In For 7 Days",
+      "subtitle": "Get extra Credits to spin the Lucky Wheel!",
+      "streak": "Streak: {{count}} days 🔥",
+      "day": "Day",
+      "button": "Check In Now",
+      "comeBackTomorrow": "Come back tomorrow for more!",
+      "toastSuccess": "📅 Check In Success! Streak: {{streak}} days. (+{{reward}} Credits)"
     }
   }
 }

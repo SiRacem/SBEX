@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const config = require('config');
 const { sendUserStatsUpdate } = require('./user.controller');
 const { checkAndAwardAchievements } = require('../services/achievementService');
+const { triggerQuestEvent } = require('../services/questService');
 
 // --- سعر الصرف ---
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
@@ -70,6 +71,7 @@ exports.addProduct = async (req, res) => {
         });
 
         const savedProduct = await newProduct.save();
+        await triggerQuestEvent(req.user._id, 'ADD_PRODUCT', req.io, req.onlineUsers);
         await checkAndAwardAchievements({ userId, event: 'PRODUCT_PUBLISHED', req });
         const populatedProduct = await Product.findById(savedProduct._id).populate('user', 'fullName email').lean();
 
@@ -915,6 +917,7 @@ exports.acceptBid = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     console.log(`--- Controller: acceptBid for Product: ${productId} by Seller: ${sellerId} ---`);
+    
     try {
         const product = await Product.findById(productId).session(session);
         const buyer = await User.findById(bidUserId).session(session);
@@ -959,7 +962,6 @@ exports.acceptBid = async (req, res) => {
 
         await session.commitTransaction();
 
-        // [!!!] إعادة جلب المنتج مع populate كامل بعد إتمام كل شيء [!!!]
         const finalUpdatedProduct = await Product.findById(productId)
             .populate('user', 'fullName email avatarUrl')
             .populate('bids.user', 'fullName email avatarUrl')
@@ -968,16 +970,15 @@ exports.acceptBid = async (req, res) => {
                 path: 'currentMediationRequest',
                 model: 'MediationRequest'
             })
-            .lean(); // استخدم lean هنا
+            .lean();
 
         if (req.io) {
             req.io.emit('product_updated', finalUpdatedProduct);
-            console.log(`[Socket] Emitted 'product_updated' for product ${productId} after bid acceptance.`);
         }
 
         res.status(200).json({
             msg: "Bid accepted successfully! Please select a mediator.",
-            updatedProduct: finalUpdatedProduct // أرسل المنتج المحدث بالكامل
+            updatedProduct: finalUpdatedProduct
         });
 
     } catch (error) {
@@ -1033,13 +1034,7 @@ exports.rejectBid = async (req, res) => {
                 type: 'BID_REJECTED_BY_YOU',
                 title: 'notification_titles.BID_REJECTED_BY_YOU',
                 message: 'notification_messages.BID_REJECTED_BY_YOU',
-                // =========================================================================
-                // [!!!] START: هذا هو السطر الذي تم إصلاحه [!!!]
-                // =========================================================================
                 messageParams: { productName: product.title, bidderName: bidderFullName },
-                // =========================================================================
-                // [!!!] END: نهاية السطر الذي تم إصلاحه [!!!]
-                // =========================================================================
                 relatedEntity: { id: productId, modelName: 'Product' }
             }
         ];

@@ -11,7 +11,9 @@ import {
   UPDATE_MEDIATOR_STATUS_REQUEST, UPDATE_MEDIATOR_STATUS_SUCCESS, UPDATE_MEDIATOR_STATUS_FAIL,
   UPDATE_USER_BALANCE, UPDATE_AVATAR_REQUEST, UPDATE_AVATAR_SUCCESS, UPDATE_AVATAR_FAIL,
   UPDATE_AVATAR_RESET, SET_ONLINE_USERS, UPDATE_USER_BALANCES_SOCKET, ADMIN_ADD_PENDING_MEDIATOR_APPLICATION,
-  UPDATE_USER_PROFILE_SOCKET, UPDATE_USER_STATS, AUTH_CHECK_COMPLETE, LOGOUT_NO_TOKEN_ON_LOAD
+  UPDATE_USER_PROFILE_SOCKET, UPDATE_USER_STATS, AUTH_CHECK_COMPLETE, LOGOUT_NO_TOKEN_ON_LOAD,
+  TOGGLE_WISHLIST_REQUEST, TOGGLE_WISHLIST_SUCCESS, TOGGLE_WISHLIST_FAIL,
+  TOGGLE_FOLLOW_REQUEST, TOGGLE_FOLLOW_SUCCESS, TOGGLE_FOLLOW_FAIL
 } from "../actionTypes/userActionType";
 
 const initialState = {
@@ -43,6 +45,8 @@ const initialState = {
   successMessage: null,
   successMessageParams: null,
   errorMessage: null,
+  myWishlist: [], // <-- إضافة
+  loadingWishlistPage: false,
 };
 
 const userReducer = (state = initialState, action) => {
@@ -184,9 +188,6 @@ const userReducer = (state = initialState, action) => {
         authChecked: true,
       };
 
-    // =========================================================================
-    // [!!!] START: الكود المعدل والمصحح هنا [!!!]
-    // =========================================================================
     case UPDATE_AVATAR_SUCCESS:
       // الـ payload يحتوي على { user: { ... }, msg: "..." }
       // لذا، يجب أن ندمج payload.user
@@ -199,9 +200,6 @@ const userReducer = (state = initialState, action) => {
         successMessage: payload.successMessage,
         errorUpdateAvatar: null,
       };
-    // =========================================================================
-    // [!!!] END: نهاية الكود المعدل [!!!]
-    // =========================================================================
 
     case APPLY_MEDIATOR_SUCCESS:
       return {
@@ -327,6 +325,40 @@ const userReducer = (state = initialState, action) => {
           ]
         }
       };
+
+    // --- Wishlist Cases ---
+    case TOGGLE_WISHLIST_REQUEST:
+      return { ...state, loadingWishlist: true }; // يمكن إضافة loading خاص
+    case TOGGLE_WISHLIST_SUCCESS:
+      return {
+        ...state,
+        loadingWishlist: false,
+        user: { ...state.user, wishlist: payload.wishlist },
+        successMessage: payload.successMessage
+      };
+    case TOGGLE_WISHLIST_FAIL:
+      return { ...state, loadingWishlist: false, errorMessage: payload.errorMessage };
+
+    // --- Follow Cases ---
+    case TOGGLE_FOLLOW_REQUEST:
+      return { ...state, loadingFollow: true };
+    case TOGGLE_FOLLOW_SUCCESS:
+      return {
+        ...state,
+        loadingFollow: false,
+        user: { ...state.user, following: payload.following },
+        successMessage: payload.successMessage
+        // ملاحظة: إذا كنا في صفحة البروفايل لهذا المستخدم، قد نحتاج لتحديث followersCount في state محلي في الكمبوننت
+      };
+    case TOGGLE_FOLLOW_FAIL:
+      return { ...state, loadingFollow: false, errorMessage: payload.errorMessage };
+
+    case 'GET_WISHLIST_REQUEST':
+      return { ...state, loadingWishlistPage: true };
+    case 'GET_WISHLIST_SUCCESS':
+      return { ...state, loadingWishlistPage: false, myWishlist: payload };
+    case 'GET_WISHLIST_FAIL':
+      return { ...state, loadingWishlistPage: false, error: payload }; // أو تعامل مع الخطأ
 
     default:
       return state;

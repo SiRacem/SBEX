@@ -24,7 +24,10 @@ import {
   FaTrophy,
   FaMedal,
   FaUserPlus,
-  FaCogs
+  FaCogs,
+  FaHeart,
+  FaDice,
+  FaCalendarCheck,
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -133,6 +136,30 @@ const Sidebar = ({ onSearchChange }) => {
         </NavLink>
         <NavLink
           className="sidebar-link"
+          to="/dashboard/wishlist"
+          title={t("sidebar.achievements")}
+        >
+          <FaHeart className="icon" />
+          <span className="link-text">{t("sidebar.wishlist")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/lucky-wheel"
+          title={t("sidebar.luckyWheel")}
+        >
+          <FaDice className="icon" />
+          <span className="link-text">{t("sidebar.luckyWheel")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/quests"
+          title={t("sidebar.quests")}
+        >
+          <FaClipboardList className="icon" />
+          <span className="link-text">{t("sidebar.quests")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
           to="/dashboard/leaderboard"
           title={t("sidebar.leaderboard")}
         >
@@ -214,6 +241,36 @@ const Sidebar = ({ onSearchChange }) => {
               <FaTrophy className="icon" />
               <span className="link-text">
                 {t("sidebar.manageAchievements")}
+              </span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/quests"
+              title={t("sidebar.manageQuests")}
+            >
+              <FaTasks className="icon" />
+              <span className="link-text">
+                {t("sidebar.manageQuests")}
+              </span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/check-in-settings"
+              title={t("sidebar.checkInSettings")}
+            >
+              <FaCalendarCheck className="icon" />
+              <span className="link-text">
+                {t("sidebar.checkInSettings")}
+              </span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/wheel-settings"
+              title={t("sidebar.wheelSettings")}
+            >
+              <FaCogs className="icon" />
+              <span className="link-text">
+                {t("sidebar.wheelSettings")}
               </span>
             </NavLink>
             <NavLink className="sidebar-link" to="/dashboard/admin/referrals">

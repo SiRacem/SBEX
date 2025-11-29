@@ -41,11 +41,16 @@ import {
   FaSkullCrossbones,
   FaDragon,
   FaShieldAlt,
+  FaUserPlus,   // <-- إضافة
+  FaUserCheck,  // <-- إضافة
+  FaUsers       // <-- إضافة
 } from "react-icons/fa";
 import "./UserProfilePage.css";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux"; // <-- إضافة useDispatch
 import ReportUserModal from "./ReportUserModal";
 import { SocketContext } from "../App";
+import { toggleFollow } from "../redux/actions/userAction"; // <-- إضافة الأكشن
+import { toast } from "react-toastify"; // <-- إضافة toast
 
 const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const REPORT_COOLDOWN_HOURS = 24;
@@ -132,6 +137,7 @@ const ReputationBadgeDisplay = ({ numericLevel, t }) => {
 const UserProfilePage = () => {
   const { t, i18n } = useTranslation();
   const { userId: viewedUserId } = useParams();
+  const dispatch = useDispatch(); // <-- تعريف dispatch هنا (كان مفقوداً)
   const currentUser = useSelector((state) => state.userReducer.user);
   const socket = useContext(SocketContext);
 
@@ -193,6 +199,20 @@ const UserProfilePage = () => {
   }, [socket, viewedUserId]);
 
   const userDetails = profileData?.user;
+
+  // --- منطق المتابعة الجديد ---
+  const isFollowing = useMemo(() => {
+    return currentUser?.following?.includes(viewedUserId);
+  }, [currentUser?.following, viewedUserId]);
+
+  const handleFollowClick = () => {
+    if (!currentUser) {
+      toast.info(t("auth.loginRequired")); // تم إصلاح خطأ toast
+      return;
+    }
+    dispatch(toggleFollow(viewedUserId)); // تم إصلاح خطأ dispatch
+  };
+  // -------------------------
 
   const unlockedAchievements = useMemo(() => {
     return (userDetails?.achievements || [])
@@ -259,12 +279,12 @@ const UserProfilePage = () => {
 
   const reportButtonTooltipText = isRecentlyReported
     ? t("userProfilePage.reportTooltipCooldown", {
-        name: userDetails?.fullName || "this user",
-        hours: REPORT_COOLDOWN_HOURS,
-      })
+      name: userDetails?.fullName || "this user",
+      hours: REPORT_COOLDOWN_HOURS,
+    })
     : t("userProfilePage.reportTooltip", {
-        name: userDetails?.fullName || "this user",
-      });
+      name: userDetails?.fullName || "this user",
+    });
 
   return (
     <Container className="user-profile-page py-4 py-md-5">
@@ -281,9 +301,8 @@ const UserProfilePage = () => {
                 }
               >
                 <div
-                  className={`position-absolute top-0 m-3 ${
-                    i18n.dir() === "rtl" ? "start-0" : "end-0"
-                  }`}
+                  className={`position-absolute top-0 m-3 ${i18n.dir() === "rtl" ? "start-0" : "end-0"
+                    }`}
                   style={{
                     zIndex: 10,
                     cursor: reportButtonDisabled ? "not-allowed" : "pointer",
@@ -328,7 +347,7 @@ const UserProfilePage = () => {
                     <h2 className="profile-name mb-1 mb-md-0 me-md-3">
                       {userDetails.fullName}
                     </h2>
-                    <div className="d-flex align-items-center">
+                    <div className="d-flex align-items-center flex-wrap">
                       <Badge
                         pill
                         bg="info"
@@ -347,15 +366,35 @@ const UserProfilePage = () => {
                         <FaStar size={12} className="me-1" />
                         {t("common.level", { level: userDetails.level || 1 })}
                       </Badge>
+
+                      {/* زر المتابعة الجديد */}
+                      {currentUser && currentUser._id !== viewedUserId && (
+                        <Button
+                          variant={isFollowing ? "outline-secondary" : "primary"}
+                          size="sm"
+                          className="ms-3 d-flex align-items-center"
+                          onClick={handleFollowClick}
+                        >
+                          {isFollowing ? <FaUserCheck className="me-1" /> : <FaUserPlus className="me-1" />}
+                          {isFollowing ? t("profilePage.following") : t("profilePage.followBtn")}
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <p className="text-muted small mb-0">
-                    <FaCalendarAlt size={14} className="me-1 opacity-75" />
-                    {t("userProfilePage.memberSince")}:{" "}
-                    {new Date(
-                      userDetails.registerDate || Date.now()
-                    ).toLocaleDateString(i18n.language)}
-                  </p>
+                  <div className="d-flex align-items-center text-muted small mb-0">
+                    <span className="me-3">
+                      <FaCalendarAlt size={14} className="me-1 opacity-75" />
+                      {t("userProfilePage.memberSince")}:{" "}
+                      {new Date(
+                        userDetails.registerDate || Date.now()
+                      ).toLocaleDateString(i18n.language)}
+                    </span>
+                    {/* عداد المتابعين الجديد */}
+                    <span>
+                      <FaUsers size={14} className="me-1 opacity-75" />
+                      {userDetails.followersCount || 0} {t("profilePage.followers")}
+                    </span>
+                  </div>
                 </Col>
               </Row>
             </Card.Header>

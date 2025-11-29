@@ -12,6 +12,7 @@ const fs = require('fs');
 const { sendUserStatsUpdate } = require('./user.controller');
 const { updateUserLevelAndBadge, processLevelUpRewards } = require('./rating.controller');
 const config = require('config');
+const { triggerQuestEvent } = require('../services/questService');
 
 // --- ثوابت العملات وأسعار الصرف ---
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
@@ -2045,6 +2046,24 @@ exports.buyerConfirmReceiptController = async (req, res) => {
 
         // 10. Commit Transaction
         await session.commitTransaction();
+
+        // =================================================================
+        // [!!!] START: Gamification Triggers (Quests & Achievements) [!!!]
+        // =================================================================
+        
+        // 1. مهمة الشراء (للمشتري) - الآن الشراء اكتمل فعلياً
+        await triggerQuestEvent(buyerId, 'BUY_PRODUCT', req.io, req.onlineUsers);
+
+        // 2. مهمة البيع (للبائع)
+        // ملاحظة: يمكن أيضاً تفعيلها هنا، أو تركها في pendingFundsReleaseService عند تحرير الأموال فعلياً
+        // الخيار الأفضل هو هنا لأن البيع "تم"، حتى لو كانت الأموال معلقة
+        if (seller && seller._id) {
+            await triggerQuestEvent(seller._id, 'SELL_PRODUCT', req.io, req.onlineUsers);
+        }
+
+        // =================================================================
+        // [!!!] END: Gamification Triggers (Quests & Achievements) [!!!]
+        // =================================================================
 
         // 1. للبائع (إنجاز بيع + المتفاوض)
         await checkAndAwardAchievements({

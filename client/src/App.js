@@ -63,6 +63,13 @@ import ReferralsPage from './pages/ReferralsPage';
 import AdminReferralSettings from './components/admin/AdminReferralSettings';
 import { addNewReferralFromSocket } from './redux/actions/referralAction';
 import { getReferralStats } from './redux/actions/referralAction';
+import WishlistPage from './pages/WishlistPage';
+import LuckyWheelPage from './pages/LuckyWheelPage';
+import QuestsPage from './pages/QuestsPage';
+import AdminQuestManagement from './components/admin/AdminQuestManagement';
+import { getUserQuests, adminGetAllQuests, getCheckInConfig } from './redux/actions/questAction';
+import AdminCheckInSettings from './components/admin/AdminCheckInSettings';
+import AdminWheelSettings from './components/admin/AdminWheelSettings';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -391,28 +398,81 @@ function App() {
       });
 
       newSocket.on('leaderboard_updated', () => {
-            console.log('[App.js] Received leaderboard_updated signal. Refreshing leaderboard data...');
-            // نقوم بتحديث البيانات في الـ Store مباشرة
-            dispatch(getLeaderboards()); 
-        });
+        console.log('[App.js] Received leaderboard_updated signal. Refreshing leaderboard data...');
+        // نقوم بتحديث البيانات في الـ Store مباشرة
+        dispatch(getLeaderboards());
+      });
 
       newSocket.on('new_referral_joined', (data) => {
-          console.log('[Socket] New referral joined:', data);
-          // 1. إظهار إشعار Toast (تأكد من إضافة الترجمة)
-          toast.success(t('referrals.newReferralJoinedToast', { name: data.fullName, defaultValue: `New referral joined: ${data.fullName}` }));
-          
-          // 2. تحديث الـ Redux Store
-          dispatch(addNewReferralFromSocket(data));
+        console.log('[Socket] New referral joined:', data);
+        // 1. إظهار إشعار Toast (تأكد من إضافة الترجمة)
+        toast.success(t('referrals.newReferralJoinedToast', { name: data.fullName, defaultValue: `New referral joined: ${data.fullName}` }));
+
+        // 2. تحديث الـ Redux Store
+        dispatch(addNewReferralFromSocket(data));
       });
 
       newSocket.on('user_balances_updated', (data) => {
         if (data?._id === currentUserId) {
           dispatch({ type: 'UPDATE_USER_BALANCES_SOCKET', payload: data });
-          
+
           if (data.referralBalance !== undefined) {
-              dispatch(getReferralStats()); 
+            dispatch(getReferralStats());
           }
         }
+      });
+
+      newSocket.on('quests_updated', () => {
+        // تحديث للمستخدمين (صفحة المهام)
+        dispatch(getUserQuests());
+
+        // تحديث للأدمن (صفحة الإدارة)
+        if (user?.userRole === 'Admin') {
+          dispatch(adminGetAllQuests());
+        }
+      });
+
+      newSocket.on('quest_completed_toast', (data) => {
+        // نختار اللغة المناسبة، أو العربية كخيار بديل
+        const currentLang = i18n.language;
+        const title = data.questTitle[currentLang] || data.questTitle['ar'] || data.questTitle['en'] || "Quest";
+
+        // عرض الإشعار
+        toast.success(`🏆 ${t('quests.completedToast', { title })}`, {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+
+        // تحديث القائمة
+        dispatch(getUserQuests());
+      });
+
+      // مستمع لتحديث إعدادات الجوائز
+      newSocket.on('check_in_config_updated', (newRewards) => {
+          console.log('[Socket] Check-in config updated:', newRewards);
+          // تحديث الريدكس فوراً
+          dispatch({ type: 'SET_CHECK_IN_CONFIG', payload: newRewards }); 
+      });
+
+      // [!!!] مستمع لتحديث إعدادات العجلة [!!!]
+      newSocket.on('wheel_config_updated', (newSegments) => {
+          console.log('[Socket] Wheel config updated:', newSegments);
+          // نحتاج لطريقة لتحديث LuckyWheelPage.
+          // الخيار الأفضل هو تخزين الإعدادات في Redux (مثل checkIn)
+          // لكن للسرعة، سنرسل حدثاً (Event) للمتصفح أو نستخدم Redux.
+          
+          // الخيار الأسهل: Redux
+          dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
+      });
+
+      newSocket.on('wheel_config_updated', (newSegments) => {
+          console.log('[Socket] Wheel config updated:', newSegments);
+          // [!!!] تحديث Redux فوراً [!!!]
+          dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
       });
     }
 
@@ -497,6 +557,12 @@ function App() {
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/dashboard/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+            <Route path="/dashboard/lucky-wheel" element={<ProtectedRoute><LuckyWheelPage /></ProtectedRoute>} />
+            <Route path="/dashboard/quests" element={<ProtectedRoute><QuestsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/quests" element={<ProtectedRoute requiredRole="Admin"><AdminQuestManagement /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/check-in-settings" element={<ProtectedRoute requiredRole="Admin"><AdminCheckInSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/wheel-settings" element={<ProtectedRoute requiredRole="Admin"><AdminWheelSettings /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             <Route path="/my-mediation-requests" element={<ProtectedRoute><MyMediationRequestsPage /></ProtectedRoute>} />
             <Route path="/dashboard/mediations" element={<ProtectedRoute><MediationsListPage /></ProtectedRoute>} />

@@ -15,9 +15,8 @@ const NotificationSchema = new Schema({
             'ORDER_STATUS_UPDATE', 'FUNDS_SENT', 'FUNDS_RECEIVED',
 
             // Bidding related
-            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER', // هذا قديم، يمكن إزالته إذا لم يعد مستخدمًا
-            'BID_ACCEPTED_BUYER',  // هذا قديم، يمكن إزالته إذا لم يعد مستخدمًا
-            'BID_REJECTED_BY_YOU', 'BID_UPDATED',
+            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER', 
+            'BID_ACCEPTED_BUYER', 'BID_REJECTED_BY_YOU', 'BID_UPDATED',
 
             // Deposit related
             'NEW_DEPOSIT_REQUEST', 'DEPOSIT_APPROVED', 'DEPOSIT_REJECTED', 'DEPOSIT_PENDING',
@@ -29,15 +28,10 @@ const NotificationSchema = new Schema({
             // Admin Actions
             'ADMIN_BALANCE_ADJUSTMENT', 'USER_BALANCE_ADJUSTED',
 
-            // --- أنواع إشعارات الوساطة ---
-            // 'BID_ACCEPTED_PENDING_MEDIATION',   // للمشتري عند قبول مزايدته وبدء انتظار الوسيط <-- كان مكررًا ومحذوفًا
-            'BID_ACCEPTED_AWAITING_SELLER',   // هذا موجود بالفعل
-            'BID_ACCEPTED_SELECT_MEDIATOR',   // هذا موجود بالفعل للبائع
-
-            // --- [!!!] إضافة النوع الناقص هنا بشكل واضح ---
-            'BID_ACCEPTED_PENDING_MEDIATOR',  // للمشتري: تم قبول مزايدتك، ينتظر البائع اختيار وسيط
-            // -----------------------------------------------
-
+            // Mediation related
+            'BID_ACCEPTED_AWAITING_SELLER',
+            'BID_ACCEPTED_SELECT_MEDIATOR',
+            'BID_ACCEPTED_PENDING_MEDIATOR',
             'NEW_MEDIATION_REQUEST_ASSIGNMENT',
             'MEDIATION_ASSIGNED',
             'MEDIATION_ACCEPTED_BY_MEDIATOR',
@@ -48,11 +42,13 @@ const NotificationSchema = new Schema({
             'MEDIATION_CANCELLED',
             'MEDIATION_DISPUTED',
 
-            // --- أنواع طلبات الانضمام كوسيط ---
+            // Mediator Application related
             'NEW_MEDIATOR_APPLICATION',
             'MEDIATOR_APP_APPROVED',
             'MEDIATOR_APP_REJECTED',
             'MEDIATOR_APP_PENDING',
+            'MEDIATOR_APP_PENDING_GUARANTEE', // <-- ربما نسينا هذا أيضاً سابقاً
+            'MEDIATOR_APP_REJECTED_GUARANTEE_RETURNED', // <-- وهذا
             'MEDIATOR_SELECTED_BY_SELLER',
             'MEDIATOR_SELECTION_CONFIRMED',
             'MEDIATOR_SELECTION_REJECTED',
@@ -68,14 +64,14 @@ const NotificationSchema = new Schema({
             'MEDIATION_CANCELLATION_CONFIRMED',
             'PARTIES_CONFIRMED_AWAITING_CHAT',
 
-            // General/Other
+            // Chat
             'NEW_MESSAGE',
-            'WELCOME',
-
-            // --- [!!!] أضف هذا النوع هنا [!!!] ---
             'NEW_CHAT_MESSAGE',
-            // ------------------------------------
-            'MEDIATION_DISPUTED',
+            'NEW_ADMIN_SUBCHAT_INVITATION',
+            'NEW_ADMIN_SUBCHAT_MESSAGE',
+
+            // General/Other
+            'WELCOME',
             'RATING_RECEIVED',
             'LEVEL_UP_REWARD',
             'SALE_FUNDS_PENDING',
@@ -85,8 +81,6 @@ const NotificationSchema = new Schema({
             'REPORT_STATUS_UPDATE',
             'DISPUTE_RESOLVED_ADMIN',
             'FUNDS_NOW_AVAILABLE',
-            'NEW_ADMIN_SUBCHAT_INVITATION',
-            'NEW_ADMIN_SUBCHAT_MESSAGE',
             'NEW_TICKET_CREATED',
             'TICKET_REPLY',
             'TICKET_REPLY_UNASSIGNED',
@@ -99,7 +93,9 @@ const NotificationSchema = new Schema({
             'BUYER_CONFIRM_AWAITING_YOUR_ACTION',
             'SELLER_BALANCE_TRANSFER_SUCCESS',
             'BADGE_UPDATED',
-            'ACHIEVEMENT_UNLOCKED'
+            'ACHIEVEMENT_UNLOCKED',
+            'NEW_FOLLOWER',
+            'QUEST_COMPLETED'
         ],
         required: true
     },
@@ -108,16 +104,20 @@ const NotificationSchema = new Schema({
     messageParams: { type: Schema.Types.Mixed, default: {} },
     relatedEntity: {
         id: { type: Schema.Types.ObjectId },
-        // --- [!] إضافة MediationRequest هنا [!] ---
-        modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest', 'Report', 'Ticket',] }
-        // --------------------------------------
+        modelName: { 
+            type: String, 
+            enum: [
+                'Product', 'Order', 'Message', 'User', 'Bid', 
+                'Transaction', 'DepositRequest', 'WithdrawalRequest', 
+                'MediationRequest', 'Report', 'Ticket',
+                'UserQuest'
+            ] 
+        }
     },
-    // --- [!] إضافة حقل ثانوي للربط (مفيد للوساطة) [!] ---
     secondaryRelatedEntity: {
         id: { type: Schema.Types.ObjectId },
         modelName: { type: String, enum: ['Product', 'Order', 'Message', 'User', 'Bid', 'Transaction', 'DepositRequest', 'WithdrawalRequest', 'MediationRequest'] }
     },
-    // -------------------------------------------------
     isRead: { type: Boolean, default: false, index: true },
     createdAt: { type: Date, default: Date.now }
 });

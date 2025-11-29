@@ -31,7 +31,6 @@ const TransactionSchema = new Schema({
             'PRODUCT_SALE_FUNDS_PENDING', // أموال بيع منتج أُضيفت إلى الرصيد المعلق للبائع
             'PRODUCT_SALE_FUNDS_RELEASED',// أموال بيع منتج تم فك تجميدها وأصبحت متاحة للبائع
             'PRODUCT_PURCHASE_COMPLETED', // (للمشتري) شراء منتج اكتمل، الأموال ذهبت للبائع (معلقة أو متاحة)
-            // 'MEDIATION_FEE_PAID_BY_USER', // دفع المستخدم لرسوم وساطة
             'MEDIATION_FEE_RECEIVED',// رسوم وساطة استلمها الوسيط
             'LEVEL_UP_REWARD_RECEIVED',  // مكافأة ترقية مستوى استلمها المستخدم
             'ESCROW_FUNDED_BY_BUYER',    // المشتري قام بتمويل الضمان (تجميد من رصيده)
@@ -49,6 +48,8 @@ const TransactionSchema = new Schema({
             "SELLER_BALANCE_TRANSFER", // تحويل رصيد البائع إلى رصيد الأساسي
             "REFERRAL_COMMISSION_EARNED", // عمولة الإحالة
             "REFERRAL_BALANCE_TRANSFER", // تحويل رصيد الإحالة إلى رصيد الأساسي
+            "LUCKY_WHEEL_REWARD", // جائزة عجلة الزهر
+            "LEVEL_UP_REWARD" // مكافأة ترقية مستوى
         ],
         index: true
     },

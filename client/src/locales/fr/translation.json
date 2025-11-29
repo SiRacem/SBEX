@@ -76,7 +76,13 @@
     "achievements": "Succès",
     "leaderboard": "Classement",
     "referrals": "Programme de récompenses",
-    "manageReferrals": "Gérer le Programme de récompenses"
+    "manageReferrals": "Gérer le Programme de récompenses",
+    "wishlist": "Ma liste d'envies",
+    "luckyWheel": "La roulette",
+    "quests": "Quêtes et Récompenses",
+    "manageQuests": "Gérer les Quêtes",
+    "checkInSettings": "Gérer Connexion Quotidienne",
+    "wheelSettings": "Gérer Roulette"
   },
   "dashboard": {
     "balances": {
@@ -106,7 +112,8 @@
       "settings": "Paramètres & Langue",
       "news": "Actualités",
       "support": "Support Technique",
-      "logout": "Déconnexion"
+      "logout": "Déconnexion",
+      "quests": "Inscription Quotidienne"
     },
     "settings": {
       "title": "Paramètres",
@@ -223,7 +230,9 @@
     "ESCROW_RETURNED_MEDIATION_CANCELLED": "Remboursement séquestre (Annulé)",
     "SELLER_BALANCE_TRANSFER": "Transfert du solde vendeur",
     "REFERRAL_BALANCE_TRANSFER": "Transfert du solde d'invitation",
-    "REFERRAL_COMMISSION_EARNED": "Commission d'invitation gagnée"
+    "REFERRAL_COMMISSION_EARNED": "Commission d'invitation gagnée",
+    "LUCKY_WHEEL_REWARD": "Récompense Roue de la Fortune",
+    "LEVEL_UP_REWARD": "Récompense de niveau"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfert de {{amount}} vers le solde principal",
@@ -240,7 +249,9 @@
     "payoutDisputeWon": "Paiement de litige résolu pour '{{productName}}'",
     "saleFundsReleased": "Les fonds de la vente de '{{productName}}' sont maintenant disponibles.",
     "referralBalanceTransfer": "Transfert du solde de parrainage. Frais : {{fee}} TND ({{percent}}%)",
-    "referralCommissionEarned": "Commission de parrainage : {{userName}}"
+    "referralCommissionEarned": "Commission de parrainage : {{userName}}",
+    "luckyWheelReward": "Vous avez gagné {{amount}} TND à la Roue de la Fortune",
+    "levelUpReward": "Récompense pour avoir atteint le niveau {{level}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "Voir les détails des fonds en attente et disponibles",
@@ -364,7 +375,9 @@
     "BALANCE_TRANSFER_SUCCESS": "Transfert de solde réussi",
     "BADGE_UPDATED": "🏅 Mise à jour de la réputation !",
     "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !",
-    "REFERRAL_BONUS": "🎉 Nouveau Bonus !"
+    "REFERRAL_BONUS": "🎉 Nouveau Bonus !",
+    "NEW_FOLLOWER": "Nouveau follower !",
+    "QUEST_COMPLETED": "Quête Terminée ! 🏆"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -462,7 +475,9 @@
     "REPORT_STATUS_NEEDS_MORE_INFO": "L'administrateur {{adminName}} examine votre signalement concernant '{{reportedUserName}}' et a besoin de plus d'informations. Détails : {{details}}",
     "BADGE_UPDATED": "Votre badge de réputation a été mis à jour en {{badgeName}}.",
     "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué un nouveau succès : \"{{achievementName}}\".",
-    "REFERRAL_BONUS": "Félicitations ! Vous avez reçu un bonus de réference : \"{{achievementName}}\"."
+    "REFERRAL_BONUS": "Félicitations ! Vous avez reçu un bonus de réference : \"{{achievementName}}\".",
+    "NEW_FOLLOWER": "{{followerName}} a commencé à vous suivre.",
+    "QUEST_COMPLETED": "Vous avez terminé la quête : {{questTitle}}. Allez au tableau des quêtes pour réclamer votre récompense."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -513,6 +528,10 @@
     }
   },
   "home": {
+    "addToWishlist": "Ajouter aux favoris",
+    "removeFromWishlist": "Retirer des favoris",
+    "pleaseLoginToWishlist": "Veuillez vous connecter pour gérer votre liste",
+    "pleaseLoginToFollow": "Veuillez vous connecter pour suivre des utilisateurs",
     "heroTitle": "Trouvez votre prochain favori",
     "heroSubtitle": "Explorez une large gamme de produits uniques proposés par notre communauté. Transactions sécurisées et offres exceptionnelles vous attendent.",
     "filterByType": "Filtrer par type de lien",
@@ -566,7 +585,11 @@
     }
   },
   "common": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "optional": "Optionnel",
     "cancel": "Annuler",
+    "create": "Créer",
     "close": "Fermer",
     "loading": "Chargement...",
     "processing": "En cours...",
@@ -591,16 +614,72 @@
     }
   },
   "admin": {
+    "wheelSettings": {
+        "title": "Configuration Roue de la Fortune",
+        "saveSuccess": "Roue mise à jour avec succès ! 🎉",
+        "saveError": "Échec de l'enregistrement ❌",
+        "segment": "Segment",
+        "type": "Type",
+        "empty": "Vide (Pas de chance)",
+        "amount": "Montant",
+        "chance": "Chance (Poids)",
+        "chanceHelp": "Nombre plus élevé = probabilité plus élevée",
+        "color": "Couleur",
+        "textLabel": "Texte affiché (Optionnel)",
+        "textPlaceholder": "ex: 50 Crédits",
+        "addSegment": "Ajouter un segment"
+    },
+    "checkInSettings": {
+      "title": "Configuration des Récompenses Quotidiennes",
+      "description": "Définissez les récompenses pour chaque jour. Le cycle se répétera automatiquement après le dernier jour.",
+      "amountLabel": "Crédits",
+      "addDay": "Ajouter un jour",
+      "saveSuccess": "Paramètres mis à jour avec succès !",
+      "saveError": "Échec de l'enregistrement des paramètres",
+      "loadError": "Échec du chargement des paramètres"
+    },
+    "quests": {
+      "pageTitle": "Système de Gestion des Quêtes",
+      "addNew": "Ajouter une nouvelle quête",
+      "validationError": "Le titre en arabe est requis !",
+      "table": {
+        "title": "Titre",
+        "type": "Type",
+        "trigger": "Déclencheur / Objectif",
+        "rewards": "Récompenses",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "modal": {
+        "createTitle": "Créer une nouvelle quête",
+        "editTitle": "Modifier la quête"
+      },
+      "form": {
+        "titleAr": "Titre (Arabe)",
+        "titleEn": "Titre (Anglais)",
+        "descAr": "Description (Arabe)",
+        "descEn": "Description (Anglais)",
+        "type": "Type",
+        "trigger": "Événement déclencheur",
+        "target": "Nombre cible"
+      },
+      "toast": {
+        "createSuccess": "Quête créée avec succès ✅",
+        "updateSuccess": "Quête mise à jour avec succès ✅",
+        "deleteSuccess": "Quête supprimée avec succès 🗑️",
+        "error": "Une erreur est survenue lors du traitement de la quête ❌"
+      }
+    },
     "referrals": {
-        "rateLabel": "taux de commission de l'invitation (%)",
-        "minTransferLabel": "le minimum de transfert (دينار)",
-        "feeLabel": "Frais de transfert (%)",
-        "saveButton": "Enregistrer les paramètres",
-        "success": "Paramètres mis à jour avec succès!",
-        "descRate": "la commission que le référant reçoit pour chaque dépôt.",
-        "descMin": "le minimum que l'utilisateur peut transférer de l'équilibre des invitations.",
-        "descFee": "la commission que le site déduit lors du transfert.",
-        "pageTitle": "Programme des partenaires"
+      "rateLabel": "taux de commission de l'invitation (%)",
+      "minTransferLabel": "le minimum de transfert (دينار)",
+      "feeLabel": "Frais de transfert (%)",
+      "saveButton": "Enregistrer les paramètres",
+      "success": "Paramètres mis à jour avec succès!",
+      "descRate": "la commission que le référant reçoit pour chaque dépôt.",
+      "descMin": "le minimum que l'utilisateur peut transférer de l'équilibre des invitations.",
+      "descFee": "la commission que le site déduit lors du transfert.",
+      "pageTitle": "Programme des partenaires"
     },
     "achievements": {
       "pageTitle": "Gestion des Succès",
@@ -1441,7 +1520,21 @@
     },
     "avatar": {
       "updateSuccess": "Photo de profil mise à jour avec succès !"
-    }
+    },
+    "wishlist": {
+      "added": "Produit ajouté à votre liste de souhaits",
+      "removed": "Produit retiré de votre liste de souhaits"
+    },
+    "followMessages": {
+      "success": "Vous suivez maintenant cet utilisateur",
+      "selfError": "Vous ne pouvez pas vous suivre vous-même"
+    },
+    "unfollowMessages": {
+      "success": "Vous ne suivez plus cet utilisateur"
+    },
+    "following": "Abonné",
+    "followBtn": "Suivre",
+    "followers": "Abonnés"
   },
   "mediatorDashboard": {
     "notAvailable": "N/A",
@@ -2486,6 +2579,51 @@
       "date": "Date d'inscription",
       "status": "Statut",
       "earnings": "Aub"
+    }
+  },
+  "luckyWheel": {
+    "title": "Roue de la Fortune",
+    "spinBtn": "LANCER !",
+    "subtitle": "Tournez pour {{cost}} Crédits et gagnez des prix incroyables !",
+    "balance": "Votre Solde : <span class=\"text-warning fw-bold\">{{credits}} Crédits</span>",
+    "winMessage": "🎉 Félicitations ! Vous avez gagné {{prize}} !",
+    "loseMessage": "Pas de chance cette fois ! Réessayez. 😢",
+    "noCredits": "Crédits insuffisants pour jouer !",
+    "balanceLabel": "Solde Crédits",
+    "prizes": {
+        "credits": "Crédits",
+        "xp": "XP",
+        "currency": "TND"
+    },
+    "history": {
+        "title": "Historique des Spins",
+        "date": "Date",
+        "cost": "Coût",
+        "prize": "Prix",
+        "empty": "Aucun spin pour le moment. Tentez votre chance !"
+    }
+  },
+  "quests": {
+    "pageTitle": "Tableau des Quêtes",
+    "subtitle": "Terminez des tâches pour gagner des crédits et de l'XP !",
+    "progress": "Progression",
+    "claimBtn": "RÉCLAMER",
+    "completedBtn": "Terminé",
+    "inProgressBtn": "En cours",
+    "completedToast": "Quête terminée : {{title}} ! Réclamez votre récompense.",
+    "types": {
+      "Daily": "Quotidienne",
+      "OneTime": "Une fois",
+      "Weekly": "Hebdomadaire"
+    },
+    "checkIn": {
+      "title": "Défi de 7 Jours",
+      "subtitle": "Gagnez des crédits supplémentaires pour la Roue de la Fortune !",
+      "streak": "Série : {{count}} jours 🔥",
+      "day": "Jour",
+      "button": "Valider ma présence",
+      "comeBackTomorrow": "Revenez demain pour plus de récompenses !",
+      "toastSuccess": "📅 Présence validée ! Série : {{streak}} jours. (+{{reward}} Crédits)"
     }
   }
 }

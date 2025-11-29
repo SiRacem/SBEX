@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { checkAndAwardAchievements } = require('../services/achievementService');
+const { triggerQuestEvent } = require('../services/questService');
 
 const generateReferralCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -172,6 +173,7 @@ const Login = async (req, res) => {
         const token = jwt.sign(payload, secret, { expiresIn: '2h' });
 
         console.log(`User ${email} logged in successfully. Blocked status: ${user.blocked}`);
+        await triggerQuestEvent(user._id, 'LOGIN', req.io, req.onlineUsers);
         res.status(200).json({
             token,
             user: {
@@ -1121,6 +1123,172 @@ const adminUpdateUserBlockStatus = async (req, res) => {
     }
 };
 
+// --- Toggle Wishlist (Add/Remove Product) ---
+const toggleWishlist = async (req, res) => {
+    const userId = req.user._id;
+    const { productId } = req.body;
+
+    console.log(`--- Controller: toggleWishlist - User: ${userId}, Product: ${productId} ---`);
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ msg: "User not found" });
+
+        const productIndex = user.wishlist.indexOf(productId);
+        let action = '';
+
+        if (productIndex > -1) {
+            // Product exists, remove it
+            user.wishlist.splice(productIndex, 1);
+            action = 'removed';
+        } else {
+            // Product doesn't exist, add it
+            user.wishlist.push(productId);
+            action = 'added';
+        }
+
+        await user.save();
+
+        // Optional: Check achievement for first wishlist item
+        if (action === 'added') {
+            await checkAndAwardAchievements({ userId: user._id, event: 'ADD_TO_WISHLIST', req });
+        }
+
+        res.status(200).json({ 
+            msg: action === 'added' ? "Product added to wishlist" : "Product removed from wishlist",
+            wishlist: user.wishlist,
+            action 
+        });
+
+    } catch (error) {
+        console.error("Error toggling wishlist:", error);
+        res.status(500).json({ msg: "Server error updating wishlist." });
+    }
+};
+
+// --- Toggle Follow User (Follow/Unfollow Vendor) ---
+const toggleFollowUser = async (req, res) => {
+    const followerId = req.user._id; // أنا (من يقوم بالمتابعة)
+    const { targetUserId } = req.body; // البائع (من تتم متابعته)
+
+    console.log(`--- Controller: toggleFollowUser - Follower: ${followerId} -> Target: ${targetUserId} ---`);
+
+    if (followerId.toString() === targetUserId.toString()) {
+        return res.status(400).json({ msg: "You cannot follow yourself." });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const follower = await User.findById(followerId).session(session);
+        const targetUser = await User.findById(targetUserId).session(session);
+
+        if (!targetUser) {
+            throw new Error("User to follow not found.");
+        }
+
+        const isFollowing = follower.following.includes(targetUserId);
+        let action = '';
+
+        if (isFollowing) {
+            // Unfollow
+            follower.following.pull(targetUserId);
+            targetUser.followersCount = Math.max(0, targetUser.followersCount - 1);
+            action = 'unfollowed';
+        } else {
+            // Follow
+            follower.following.push(targetUserId);
+            targetUser.followersCount += 1;
+            action = 'followed';
+        }
+
+        await follower.save({ session });
+        await targetUser.save({ session });
+
+        // Notifications & Achievements (Only on Follow)
+        if (action === 'followed') {
+            // Create Notification
+            const notification = new Notification({
+                user: targetUserId,
+                type: 'NEW_FOLLOWER',
+                title: 'notification_titles.NEW_FOLLOWER',
+                message: 'notification_messages.NEW_FOLLOWER',
+                messageParams: { followerName: follower.fullName },
+                relatedEntity: { id: followerId, modelName: 'User' }
+            });
+            await notification.save({ session });
+
+            // Send Real-time Notification
+            if (req.io && req.onlineUsers[targetUserId.toString()]) {
+                req.io.to(req.onlineUsers[targetUserId.toString()]).emit('new_notification', notification);
+            }
+
+            // Check Achievements (For both: Follower gets "Supporter", Target gets "Famous")
+            // Note: Currently calling this outside session wrapper in your architecture usually, 
+            // but we can trigger it after commit.
+        }
+
+        await session.commitTransaction();
+
+        // Post-Transaction Socket Updates
+        // 1. Update Follower (Me) - update my following list locally
+        // (Handled by response usually, but strictly speaking we return the new list)
+        
+        // 2. Update Target (Seller) - update their followers count in real-time
+        if (req.io && req.onlineUsers[targetUserId.toString()]) {
+            req.io.to(req.onlineUsers[targetUserId.toString()]).emit('user_profile_updated', {
+                _id: targetUserId,
+                followersCount: targetUser.followersCount
+            });
+        }
+        
+        // 3. If viewing public profile, anyone looking at the seller needs update
+        // This broadcasts to everyone that this user's stats changed (Optional, but good for live counters)
+        // req.io.emit('user_stats_updated', { userId: targetUserId, followersCount: targetUser.followersCount });
+
+        if (action === 'followed') {
+             await checkAndAwardAchievements({ userId: followerId, event: 'USER_FOLLOW_OTHERS', req });
+             // await checkAndAwardAchievements({ userId: targetUserId, event: 'USER_GETS_FOLLOWER', req }); // Future implementation
+        }
+
+        res.status(200).json({ 
+            msg: action === 'followed' ? "User followed" : "User unfollowed",
+            following: follower.following,
+            targetFollowersCount: targetUser.followersCount,
+            action
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("Error toggling follow:", error);
+        res.status(500).json({ msg: error.message || "Server error updating follow status." });
+    } finally {
+        session.endSession();
+    }
+};
+
+// --- Get My Wishlist (Populated) ---
+const getMyWishlist = async (req, res) => {
+    const userId = req.user._id;
+    try {
+        const user = await User.findById(userId).populate({
+            path: 'wishlist',
+            match: { status: 'approved' }, // جلب المنتجات المتاحة فقط
+            populate: { path: 'user', select: 'fullName avatarUrl' } // جلب بيانات البائع
+        });
+
+        if (!user) {
+            return res.status(404).json({ msg: "User not found" });
+        }
+
+        res.status(200).json({ wishlist: user.wishlist });
+    } catch (error) {
+        console.error("Error fetching wishlist:", error);
+        res.status(500).json({ msg: "Server error fetching wishlist." });
+    }
+};
+
 module.exports = {
     Register,
     Login,
@@ -1138,5 +1306,8 @@ module.exports = {
     updateMyMediatorStatus,
     updateUserProfilePicture, // Make sure this is exported
     adminUpdateUserBlockStatus,
-    sendUserStatsUpdate
+    sendUserStatsUpdate,
+    toggleWishlist,
+    toggleFollowUser,
+    getMyWishlist
 };

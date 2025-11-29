@@ -1,0 +1,114 @@
+.daily-checkin-modal .modal-content {
+    background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+    color: #fff;
+    border-radius: 20px;
+    border: 1px solid #444;
+}
+
+.daily-checkin-modal .modal-header {
+    border-bottom: none;
+}
+
+.daily-checkin-modal .modal-header .btn-close {
+    filter: invert(1);
+}
+
+/* --- التغيير الجذري هنا: استخدام Grid بدلاً من Flex --- */
+.days-grid-container {
+    display: grid;
+    /* هذا يعني: اصنع 4 أعمدة متساوية */
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* الكارت العادي */
+.day-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+/* --- تعديل اليوم الأخير --- */
+/* إذا كان لدينا 7 أيام، اليوم السابع سيأخذ ضعف المساحة ليكون مميزاً ويملأ الفراغ */
+.day-card.day-last {
+    /* يأخذ عمودين بدلاً من واحد */
+    grid-column: span 2; 
+    
+    background: linear-gradient(135deg, #6610f2 0%, #520dc2 100%);
+    flex-direction: row; /* الأيقونة بجانب النص */
+    gap: 15px;
+}
+
+/* --- حالات الكارت (نشط، تم، إلخ) --- */
+.day-card.status-active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-color: #4da3ff;
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+    z-index: 2;
+}
+
+.day-card.status-done {
+    background: rgba(40, 167, 69, 0.8);
+    border-color: #28a745;
+    opacity: 0.8;
+}
+
+/* التاج (قيمة الجائزة) */
+.bonus-tag {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #ffc107;
+}
+
+.day-card.day-last .bonus-tag {
+    font-size: 0.9rem;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.icon-container {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.day-card.day-last .icon-container {
+    font-size: 2.5rem;
+    margin-bottom: 0;
+}
+
+.day-label {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.day-card.status-active .day-label, 
+.day-card.status-done .day-label,
+.day-card.day-last .day-label {
+    color: #fff;
+    font-weight: bold;
+}
+
+.checkin-btn {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.countdown-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+}

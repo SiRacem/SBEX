@@ -25,6 +25,7 @@ import {
   FaQuestionCircle,
   FaExternalLinkAlt,
   FaExchangeAlt,
+  FaDice,
 } from "react-icons/fa";
 import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
@@ -60,6 +61,9 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import TransferBalanceModal from "../components/commun/TransferBalanceModal";
 import { getNews } from "../redux/actions/newsAction";
+import DailyCheckInModal from '../components/quests/DailyCheckInModal'; // تأكد من المسار
+import { getUserQuests } from '../redux/actions/questAction'; // لاستدعاء البيانات
+import { FaCalendarCheck } from 'react-icons/fa'; // أيقونة للزر
 
 // --- [!] مكون منفصل لعرض عنصر المعاملة ---
 const TransactionItem = ({ transaction, onShowDetails }) => {
@@ -137,6 +141,10 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
     case "TRANSFER_RECEIVED":
       IconComponent = FiInbox;
       iconColorClass = "text-success";
+      break;
+    case "LUCKY_WHEEL_REWARD":
+      IconComponent = FaDice; // أيقونة النرد
+      iconColorClass = "text-warning"; // لون ذهبي/أصفر
       break;
     default:
       if (transaction.amount > 0) iconColorClass = "text-success";
@@ -235,11 +243,10 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
         <Badge
           pill
           bg={statusBadgeVariant}
-          className={`status-badge-dash d-flex align-items-center ${
-            statusBadgeVariant === "warning" || statusBadgeVariant === "info"
+          className={`status-badge-dash d-flex align-items-center ${statusBadgeVariant === "warning" || statusBadgeVariant === "info"
               ? "text-dark"
               : ""
-          }`}
+            }`}
         >
           {StatusIcon && <StatusIcon className="me-1" />}
           <span>{statusText}</span>
@@ -308,6 +315,7 @@ const MainDashboard = () => {
     useState(null);
   const [showSettingsOffcanvas, setShowSettingsOffcanvas] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const handleShowTransferModal = () => {
     if (user?.sellerAvailableBalance > 0) {
@@ -332,6 +340,7 @@ const MainDashboard = () => {
       dispatch(getMyMediationSummaries());
       dispatch(getTransactionsForDashboard());
       dispatch(getNews());
+      dispatch(getUserQuests());
     }
   }, [dispatch, isAuth, user?._id]);
 
@@ -592,6 +601,15 @@ const MainDashboard = () => {
               </ListGroup.Item>
               <ListGroup.Item
                 action
+                onClick={() => setShowCheckInModal(true)}
+                className="d-flex align-items-center option-item"
+                style={{ cursor: "pointer" }}
+              >
+                <FaCalendarCheck size={20} className="me-3 text-primary icon" />
+                <span>{t("dashboard.quickOptions.quests")}</span>
+              </ListGroup.Item>
+              <ListGroup.Item
+                action
                 as={Link}
                 to="/dashboard/news"
                 className="d-flex align-items-center option-item"
@@ -666,6 +684,10 @@ const MainDashboard = () => {
           onHide={() => setShowTransferModal(false)}
         />
       )}
+      <DailyCheckInModal
+        show={showCheckInModal}
+        handleClose={() => setShowCheckInModal(false)}
+      />
     </div>
   );
 };

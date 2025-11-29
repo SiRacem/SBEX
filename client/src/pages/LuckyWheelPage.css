@@ -1,0 +1,163 @@
+.lucky-wheel-container {
+    background: radial-gradient(circle, #2b1055 0%, #7597de 100%);
+    min-height: 80vh;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.wheel-wrapper {
+    transform: scale(0.8); /* تصغير العجلة قليلاً للشاشات الصغيرة */
+}
+
+/* الخلفية العامة */
+.lucky-wheel-page {
+    background: radial-gradient(circle at center, #2b32b2 0%, #141e30 100%);
+    min-height: 100vh;
+    padding-bottom: 50px;
+    border-radius: 0; /* لإزالة التدوير من الكونتينر الرئيسي إذا كان موجوداً */
+}
+
+/* شارة الرصيد */
+.user-balance-badge {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 10px 25px;
+    border-radius: 50px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    margin-top: 10px;
+}
+
+.user-balance-badge .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffc107;
+}
+
+/* حاوية العجلة */
+.wheel-container-wrapper {
+    display: flex;
+    justify-content: center;
+    transform: scale(0.9);
+}
+
+.wheel-border {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* زر التدوير */
+.spin-action-btn {
+    padding: 15px 60px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-radius: 50px;
+    box-shadow: 0 0 20px #ffc107;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.spin-action-btn:hover:not(:disabled) {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 0 30px #ffc107;
+}
+
+/* --- تصميم السجل (History) --- */
+.history-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 15px;
+    transition: transform 0.2s ease;
+    border-left: 5px solid transparent;
+}
+
+/* تأثير الزجاج */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(5px);
+}
+
+.history-icon-wrapper {
+    width: 45px;
+    height: 45px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-right: 15px; /* Adjust for RTL if needed */
+}
+
+/* دعم RTL */
+[dir="rtl"] .history-icon-wrapper {
+    margin-right: 0;
+    margin-left: 15px;
+}
+
+.history-content {
+    flex-grow: 1;
+}
+
+.history-prize-title {
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.history-date {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+.history-cost {
+    color: #ff6b6b;
+    font-weight: bold;
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 5px 10px;
+    border-radius: 8px;
+}
+
+@media (min-width: 768px) {
+    .wheel-wrapper {
+        transform: scale(1);
+    }
+}
+
+.spin-btn {
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.6);
+    transition: transform 0.2s;
+}
+
+.spin-btn:hover:not(:disabled) {
+    transform: scale(1.1);
+}

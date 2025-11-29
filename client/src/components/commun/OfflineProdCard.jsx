@@ -27,14 +27,14 @@ import {
   FaUserCircle,
   FaUsers,
 } from "react-icons/fa";
-import { BsCartPlus, BsImage, BsX } from "react-icons/bs";
+import { BsCartPlus, BsImage, BsX, BsBookmark, BsBookmarkFill } from "react-icons/bs"; // <-- إضافة أيقونات Wishlist
 import Carousel from "react-bootstrap/Carousel";
 import {
   toggleLikeProduct,
   placeBid,
   clearProductError,
 } from "../../redux/actions/productAction";
-import { getProfile } from "../../redux/actions/userAction";
+import { getProfile, toggleWishlist } from "../../redux/actions/userAction"; // <-- إضافة toggleWishlist
 import { toast } from "react-toastify";
 import "./OfflineProdCard.css";
 import { useTranslation } from "react-i18next";
@@ -56,6 +56,12 @@ const OfflineProdCard = ({ el: product }) => {
 
   const isAuth = useSelector((state) => state.userReducer?.isAuth ?? false);
   const loggedInUser = useSelector((state) => state.userReducer?.user);
+  
+  // --- منطق قائمة الرغبات الجديد ---
+  const userWishlist = useSelector(state => state.userReducer.user?.wishlist || []);
+  const isInWishlist = useMemo(() => userWishlist.includes(product?._id), [userWishlist, product?._id]);
+  // ------------------------------
+
   const cartLoading = useSelector(
     (state) => state.cartReducer?.cartLoading ?? false
   );
@@ -69,7 +75,6 @@ const OfflineProdCard = ({ el: product }) => {
     (state) => state.productReducer?.productErrors?.[product?._id] ?? null
   );
 
-  // [!!!] START: هذا هو الكود الجديد الذي يجب إضافته
   const linkTypeMap = useMemo(
     () => ({
       "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
@@ -85,7 +90,6 @@ const OfflineProdCard = ({ el: product }) => {
   const displayLinkType = product
     ? linkTypeMap[product.linkType] || product.linkType
     : "";
-  // [!!!] END: نهاية الكود الجديد
 
   const [showImageModal, setShowImageModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -197,6 +201,15 @@ const OfflineProdCard = ({ el: product }) => {
       setIsLiked(previousIsLiked);
       setLikeCount(previousLikeCount);
     });
+  };
+
+  const handleToggleWishlist = (e) => {
+    e.stopPropagation();
+    if (!isAuth) {
+        toast.info(t("home.pleaseLoginToWishlist"));
+        return;
+    }
+    dispatch(toggleWishlist(product._id));
   };
 
   const formatCurrency = useCallback(
@@ -425,6 +438,20 @@ const OfflineProdCard = ({ el: product }) => {
                   <span className="action-count ms-1">{likeCount}</span>
                 </Button>
               </OverlayTrigger>
+
+              {/* زر قائمة الرغبات الجديد */}
+              <OverlayTrigger placement="top" overlay={<Tooltip>{isInWishlist ? t("home.removeFromWishlist") : t("home.addToWishlist")}</Tooltip>}>
+                <Button 
+                    variant="link" 
+                    className={`action-btn wishlist-btn ${isInWishlist ? "active" : ""}`} 
+                    onClick={handleToggleWishlist}
+                    style={{ color: isInWishlist ? '#ffc107' : '#6c757d' }}
+                >
+                    {isInWishlist ? <BsBookmarkFill /> : <BsBookmark />}
+                </Button>
+              </OverlayTrigger>
+              {/* نهاية زر قائمة الرغبات */}
+
               <OverlayTrigger
                 placement="top"
                 overlay={<Tooltip>{t("home.bidders")}</Tooltip>}

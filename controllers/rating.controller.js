@@ -5,6 +5,7 @@ const User = require('../models/User'); // Ensure User model has: claimedLevelRe
 const MediationRequest = require('../models/MediationRequest');
 const Notification = require('../models/Notification');
 const { checkAndAwardAchievements } = require('../services/achievementService');
+const Transaction = require('../models/Transaction');
 
 // --- Dynamic Level and Reward Calculation Constants ---
 const BASE_POINTS_FOR_LEVEL_2 = 10;
@@ -100,50 +101,76 @@ const updateUserLevelAndBadge = (userDoc) => { // Exported, so can be used by ot
  * Processes rewards if a new numeric level is achieved and the reward for that level has not been claimed yet.
  * This function modifies the userDoc directly if a reward is given.
  */
-const processLevelUpRewards = async (userDoc, oldNumericLevelBeforePointsUpdate, req, session) => {
-    if (!userDoc) {
-        console.error("processLevelUpRewards called with undefined userDoc");
-        return false;
-    }
-    let rewardProcessedThisCall = false;
+const processLevelUpRewards = async (user, oldLevel, req, session) => {
+    if (user.level > oldLevel) {
+        // حساب المكافأة التراكمية للمستويات التي تم تخطيها
+        let totalReward = 0;
+        const levelsRewarded = [];
 
-    // التحقق من أن المستخدم قد ترقى بالفعل
-    if (userDoc.level > oldNumericLevelBeforePointsUpdate) {
-        // استدعاء خدمة التحقق من الإنجازات لحدث "LEVEL_UP"
-        await checkAndAwardAchievements({
-            userId: userDoc._id,
-            event: 'LEVEL_UP',
-            req, // تمرير كائن req
-            session
-        });
-    }
+        for (let i = oldLevel + 1; i <= user.level; i++) {
+            if (!user.claimedLevelRewards.includes(i)) {
+                // معادلة المكافأة: 2 دينار لكل مستوى (كمثال)
+                const rewardAmount = 2 + (i - 2) * 2; 
+                if (rewardAmount > 0) {
+                    totalReward += rewardAmount;
+                    levelsRewarded.push(i);
+                }
+                user.claimedLevelRewards.push(i);
+            }
+        }
 
-    for (let achievedLevel = oldNumericLevelBeforePointsUpdate + 1; achievedLevel <= userDoc.level; achievedLevel++) {
-        if (achievedLevel > MAX_LEVEL_CAP) break;
-        const rewardDetails = calculateRewardForLevel(achievedLevel);
-        if (rewardDetails.amount > 0 && !(userDoc.claimedLevelRewards || []).includes(achievedLevel)) {
-            userDoc.balance = (userDoc.balance || 0) + rewardDetails.amount;
-            if (!Array.isArray(userDoc.claimedLevelRewards)) userDoc.claimedLevelRewards = [];
-            userDoc.claimedLevelRewards.push(achievedLevel);
-            rewardProcessedThisCall = true;
-            console.log(`User ${userDoc._id} received reward for Level ${achievedLevel}.`);
+        if (totalReward > 0) {
+            user.balance += totalReward;
 
-            const notificationParams = {
-                level: achievedLevel,
-                rewardAmount: rewardDetails.amount,
-                rewardCurrency: rewardDetails.currency,
-            };
-            await Notification.create([{
-                user: userDoc._id,
+            // 1. إنشاء سجل المعاملة (هذا ما كان ينقصك!)
+            const rewardTx = new Transaction({
+                user: user._id,
+                type: 'LEVEL_UP_REWARD_RECEIVED', // تأكد أن هذا النوع موجود في Transaction.js enum
+                amount: totalReward,
+                currency: 'TND', // العملة الأساسية
+                status: 'COMPLETED',
+                descriptionKey: 'transactionDescriptions.levelUpReward',
+                descriptionParams: { level: user.level },
+                description: `Reward for reaching Level ${user.level}`
+            });
+            
+            if (session) {
+                await rewardTx.save({ session });
+            } else {
+                await rewardTx.save();
+            }
+
+            // 2. إرسال الإشعار
+            const notificationData = {
+                user: user._id,
                 type: 'LEVEL_UP_REWARD',
                 title: 'notification_titles.LEVEL_UP_REWARD',
                 message: 'notification_messages.LEVEL_UP_REWARD',
-                messageParams: notificationParams,
-                relatedEntity: { id: userDoc._id, modelName: 'User' }
-            }], { session });
+                messageParams: { 
+                    amount: totalReward.toFixed(2), 
+                    level: user.level 
+                },
+                relatedEntity: { id: user._id, modelName: 'User' }
+            };
+
+            if (session) {
+                await Notification.create([notificationData], { session });
+            } else {
+                await Notification.create(notificationData);
+            }
+
+            // 3. تحديث السوكت
+            if (req && req.io && req.onlineUsers && req.onlineUsers[user._id.toString()]) {
+                const socketId = req.onlineUsers[user._id.toString()];
+                req.io.to(socketId).emit('new_notification', notificationData);
+                // تحديث قائمة المعاملات فوراً
+                req.io.to(socketId).emit('dashboard_transactions_updated');
+            }
+            
+            return true; // تم منح مكافأة
         }
     }
-    return rewardProcessedThisCall;
+    return false;
 };
 
 // --- Main Controller Functions defined with const ---
@@ -330,5 +357,4 @@ module.exports = {
     updateUserLevelAndBadge,    // Exported for potential use in mediationController
     processLevelUpRewards,      // Exported for potential use in mediationController
     calculateCumulativePointsForLevel, // Exported for potential use
-    // determineReputationBadge // Exported for potential use
 };

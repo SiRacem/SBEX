@@ -16,6 +16,8 @@ import {
     UPDATE_AVATAR_RESET,
     SET_ONLINE_USERS,
     UPDATE_USER_BALANCES_SOCKET,
+    TOGGLE_WISHLIST_REQUEST, TOGGLE_WISHLIST_SUCCESS, TOGGLE_WISHLIST_FAIL,
+    TOGGLE_FOLLOW_REQUEST, TOGGLE_FOLLOW_SUCCESS, TOGGLE_FOLLOW_FAIL
 } from "../actionTypes/userActionType";
 import { clearNotifications } from './notificationAction';
 import { clearTransactions as clearWalletTransactions } from './transactionAction';
@@ -277,3 +279,55 @@ export const updateProfilePicture = (formData) => async (dispatch) => {
 export const resetUpdateAvatarStatus = () => ({ type: UPDATE_AVATAR_RESET });
 export const setOnlineUsers = (onlineUserIds) => ({ type: SET_ONLINE_USERS, payload: onlineUserIds });
 export const updateUserBalances = (balanceData) => (dispatch) => { dispatch({ type: UPDATE_USER_BALANCES_SOCKET, payload: balanceData }); };
+
+export const toggleWishlist = (productId) => async (dispatch) => {
+    dispatch({ type: TOGGLE_WISHLIST_REQUEST });
+    const config = getTokenConfig();
+    try {
+        const { data } = await axios.put("/user/wishlist/toggle", { productId }, config);
+        dispatch({ 
+            type: TOGGLE_WISHLIST_SUCCESS, 
+            payload: { 
+                wishlist: data.wishlist, 
+                successMessage: data.action === 'added' ? 'profilePage.wishlist.added' : 'profilePage.wishlist.removed'
+            } 
+        });
+        // تحديث رسالة نجاح صغيرة (اختياري)
+    } catch (error) {
+        const { key, fallback } = handleError(error, 'apiErrors.wishlistUpdateFail');
+        dispatch({ type: TOGGLE_WISHLIST_FAIL, payload: { errorMessage: { key, fallback } } });
+    }
+};
+
+export const toggleFollow = (targetUserId) => async (dispatch) => {
+    dispatch({ type: TOGGLE_FOLLOW_REQUEST });
+    const config = getTokenConfig();
+    try {
+        const { data } = await axios.put("/user/follow/toggle", { targetUserId }, config);
+        
+        dispatch({ 
+            type: TOGGLE_FOLLOW_SUCCESS, 
+            payload: { 
+                following: data.following, // قائمتي المحدثة
+                targetUserId: targetUserId, // الشخص الذي تابعته/ألغيت متابعته
+                action: data.action,
+                successMessage: data.action === 'followed' ? 'profilePage.followMessages.success' : 'profilePage.unfollowMessages.success'
+            } 
+        });
+    } catch (error) {
+        const { key, fallback } = handleError(error, 'apiErrors.followUpdateFail');
+        dispatch({ type: TOGGLE_FOLLOW_FAIL, payload: { errorMessage: { key, fallback } } });
+    }
+};
+
+export const getMyWishlist = () => async (dispatch) => {
+    dispatch({ type: 'GET_WISHLIST_REQUEST' }); // تأكد من إضافة هذا النوع في actionTypes أو استخدم string مؤقتاً
+    const config = getTokenConfig();
+    try {
+        const { data } = await axios.get("/user/my-wishlist", config);
+        dispatch({ type: 'GET_WISHLIST_SUCCESS', payload: data.wishlist });
+    } catch (error) {
+        const errorMessage = handleError(error, 'apiErrors.general');
+        dispatch({ type: 'GET_WISHLIST_FAIL', payload: errorMessage });
+    }
+};

@@ -119,35 +119,64 @@ const UserSchema = new Schema({
     // [!!!] END: نهاية الإضافة [!!!]
 
     // --- [!!!] START: نظام الإحالات الجديد [!!!] ---
-    referralCode: { 
-        type: String, 
-        unique: true, 
+    referralCode: {
+        type: String,
+        unique: true,
         sparse: true, // يسمح بالقيم الفارغة (للمستخدمين القدامى مؤقتاً)
-        index: true 
+        index: true
     },
-    referredBy: { 
-        type: Schema.Types.ObjectId, 
+    referredBy: {
+        type: Schema.Types.ObjectId,
         ref: 'User',
-        index: true 
+        index: true
     },
-    referralBalance: { 
-        type: Number, 
-        default: 0, 
-        min: 0 
+    referralBalance: {
+        type: Number,
+        default: 0,
+        min: 0
     }, // رصيد الإحالات المنفصل
-    totalReferralEarnings: { 
-        type: Number, 
-        default: 0 
+    totalReferralEarnings: {
+        type: Number,
+        default: 0
     }, // إجمالي ما كسبه من الإحالات (للإحصائيات والإنجازات)
-    referralsCount: { 
-        type: Number, 
-        default: 0 
+    referralsCount: {
+        type: Number,
+        default: 0
     }, // عدد الأشخاص الذين دعاهم (للإنجازات)
     isReferralActive: {
         type: Boolean,
         default: false
     }, // هل قام هذا المستخدم بأول نشاط (إيداع) ليُحسب كإحالة ناجحة؟
     earningsGeneratedForReferrer: { type: Number, default: 0 }, // كم حقق هذا المستخدم لداعيه
+
+    // --- [!!!] START: Wishlist & Following System [!!!] ---
+    wishlist: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Product'
+    }],
+    following: [{ // قائمة البائعين الذين يتابعهم هذا المستخدم
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    followersCount: { // عدد الأشخاص الذين يتابعون هذا المستخدم
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    // --- [!!!] END: Wishlist & Following System [!!!] ---
+
+    // --- [!!!] START: Gamification & Check-in System [!!!] ---
+    credits: { // العملة الجديدة الخاصة بالمهام وعجلة الحظ
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    dailyCheckIn: {
+        lastCheckInDate: { type: Date, default: null }, // تاريخ آخر تسجيل دخول (زر Check-in)
+        streak: { type: Number, default: 0 }, // عدد الأيام المتتالية
+        claimedToday: { type: Boolean, default: false } // هل استلم الجائزة اليوم؟
+    },
+    // --- [!!!] END: Gamification & Check-in System [!!!] ---
 
 }, { timestamps: true });
 

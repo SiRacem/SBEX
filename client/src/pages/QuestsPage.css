@@ -1,0 +1,44 @@
+.quests-page-container {
+    min-height: 80vh;
+}
+
+.header-section {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+
+.quest-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: #fff;
+}
+
+.quest-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+
+/* تأثير للبطاقات القابلة للاستلام */
+.quest-card.claimable {
+    border: 2px solid #198754 !important;
+    background-color: #f8fff9;
+}
+
+/* تأثير للبطاقات المنتهية */
+.quest-card.claimed {
+    opacity: 0.7;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.quest-icon-wrapper {
+    background-color: #f0f2f5;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.credits-display {
+    font-size: 1.1rem;
+}

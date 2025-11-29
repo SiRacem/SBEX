@@ -18,6 +18,7 @@ import newsReducer from './newsReducer';
 import achievementReducer from './achievementReducer';
 import leaderboardReducer from './leaderboardReducer';
 import referralReducer from './referralReducer';
+import questReducer from './questReducer'
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -41,6 +42,7 @@ const rootReducer = combineReducers({
     achievementReducer,
     leaderboardReducer,
     referralReducer,
+    questReducer,
     // orderReducer,
     // cartReducer,
 });
