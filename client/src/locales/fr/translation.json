@@ -2611,6 +2611,7 @@
     "completedBtn": "Terminé",
     "inProgressBtn": "En cours",
     "completedToast": "Quête terminée : {{title}} ! Réclamez votre récompense.",
+    "claimSuccess": "Récompense réclamée avec succès ! 🎉",
     "types": {
       "Daily": "Quotidienne",
       "OneTime": "Une fois",

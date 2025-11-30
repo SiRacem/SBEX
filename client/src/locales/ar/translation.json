@@ -2620,6 +2620,7 @@
     "completedBtn": "مكتملة",
     "inProgressBtn": "قيد التنفيذ",
     "completedToast": "مهمة مكتملة: {{title}}! استلم جائزتك الآن.",
+    "claimSuccess": "تم استلام المكافأة بنجاح! 🎉",
     "types": {
       "Daily": "يومية",
       "OneTime": "مرة واحدة",

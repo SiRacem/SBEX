@@ -72,7 +72,11 @@ const TransactionSchema = new Schema({
     relatedTransaction: { type: Schema.Types.ObjectId, ref: 'Transaction' }, // لربط معاملات ببعضها (مثل استرداد مرتبط ببيع)
     
     // (اختياري) بيانات إضافية خاصة بنوع المعاملة، مثل تفاصيل وسيلة الدفع، معرف خارجي، إلخ.
-    metadata: { type: Schema.Types.Mixed } 
+    metadata: { type: Schema.Types.Mixed },
+
+    // مفاتيح الترجمة للواجهة الأمامية
+    descriptionKey: { type: String },
+    descriptionParams: { type: Schema.Types.Mixed }
 
 }, { timestamps: true }); // createdAt و updatedAt
 

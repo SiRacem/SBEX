@@ -74,11 +74,17 @@ const questReducer = (state = initialState, action) => {
         case CLAIM_REWARD_SUCCESS:
             return {
                 ...state,
-                user: {
-                    ...state.user,
-                    credits: payload.credits,
-                    reputationPoints: payload.reputation || state.user.reputationPoints
-                }
+                loading: false,
+                credits: payload.newCredits,
+                quests: state.quests.map(quest => {
+                    if (quest._id === payload.questId || quest.userQuestId === payload.questId) {
+                        return {
+                            ...quest,
+                            isClaimed: true
+                        };
+                    }
+                    return quest;
+                })
             };
 
         case SPIN_WHEEL_SUCCESS:
@@ -87,7 +93,7 @@ const questReducer = (state = initialState, action) => {
                 user: {
                     ...state.user,
                     credits: payload.remainingCredits,
-                    balance: payload.newBalance || state.user.balance // إذا ربح مالاً
+                    balance: payload.newBalance || state.user.balance
                 }
             };
 

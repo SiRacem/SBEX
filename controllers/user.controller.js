@@ -460,11 +460,11 @@ const getUserPublicProfile = async (req, res) => {
     }
 
     try {
-        // الخطوة 1: جلب بيانات المستخدم الأساسية من قاعدة البيانات
+        // [!!!] التعديل هنا: أضفنا followersCount إلى قائمة الحقول المطلوبة [!!!]
         const userProfile = await User.findById(userId)
-            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount level reputationLevel achievements') // أضف achievements هنا
+            .select('fullName registerDate userRole avatarUrl positiveRatings negativeRatings blocked productsSoldCount level reputationLevel achievements followersCount') 
             .populate({
-                path: 'achievements.achievement', // نفس المسار
+                path: 'achievements.achievement',
                 model: 'Achievement'
             })
             .lean();
@@ -473,12 +473,9 @@ const getUserPublicProfile = async (req, res) => {
             return res.status(404).json({ msg: "User not found." });
         }
 
-        // الخطوة 2: جلب الإحصائيات الإضافية بشكل منفصل
         const activeListings = await Product.countDocuments({ user: userId, status: 'approved' });
 
-        // الخطوة 3: بناء كائن الاستجابة بالبنية الصحيحة التي تتوقعها الواجهة الأمامية
         const responseData = {
-            // كائن user يحتوي على تفاصيل المستخدم
             user: {
                 _id: userProfile._id,
                 fullName: userProfile.fullName,
@@ -490,9 +487,9 @@ const getUserPublicProfile = async (req, res) => {
                 blocked: userProfile.blocked,
                 level: userProfile.level,
                 reputationLevel: userProfile.reputationLevel,
-                achievements: userProfile.achievements
+                achievements: userProfile.achievements,
+                followersCount: userProfile.followersCount || 0 // [!!!] تأكد من تمريره هنا
             },
-            // الإحصائيات تكون في المستوى الأعلى من الكائن
             activeListingsCount: activeListings,
             productsSoldCount: userProfile.productsSoldCount || 0,
         };

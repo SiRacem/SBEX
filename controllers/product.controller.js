@@ -516,6 +516,7 @@ exports.approveProduct = async (req, res) => {
                 sendUserStatsUpdate(req, seller._id);
             }
         }
+        notifyFollowersOfNewProduct(seller._id, product, req);
         res.status(200).json(product);
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();

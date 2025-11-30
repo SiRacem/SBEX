@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import { FaCheck, FaCoins, FaClock } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
-import { performCheckIn, getCheckInConfig } from '../../redux/actions/questAction'; // تأكد من استيراد getCheckInConfig
+import { performCheckIn, getCheckInConfig } from '../../redux/actions/questAction';
 import { useTranslation } from 'react-i18next';
 import './DailyCheckIn.css';
 
@@ -10,22 +10,12 @@ const DailyCheckInModal = ({ show, handleClose }) => {
     const { t } = useTranslation();
     const dispatch = useDispatch();
     
-    // [!!!] نقرأ الإعدادات من Redux بدلاً من State محلي
     const { checkIn, loading, rewardsConfig } = useSelector(state => state.questReducer);
-    
-    // نستخدم rewardsConfig من الريدكس، أو مصفوفة فارغة مؤقتاً
     const rewardsList = rewardsConfig || [];
 
     const currentStreak = checkIn?.streak || 0;
     const isClaimedToday = checkIn?.claimedToday;
     const lastCheckInDate = checkIn?.lastCheckInDate;
-
-    // جلب الإعدادات عند الفتح (للتأكد فقط، رغم أن السوكت سيحدثها)
-    useEffect(() => {
-        if (show) {
-            dispatch(getCheckInConfig());
-        }
-    }, [show, dispatch]);
 
     const calculateTimeLeft = () => {
         if (!lastCheckInDate) return 0;
@@ -41,13 +31,22 @@ const DailyCheckInModal = ({ show, handleClose }) => {
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
-        if (isClaimedToday) {
+        if (show) {
+            dispatch(getCheckInConfig());
+            setTimeLeft(calculateTimeLeft());
+        }
+    }, [show, dispatch, lastCheckInDate]);
+
+    useEffect(() => {
+        if (timeLeft > 0) {
             const timer = setInterval(() => {
-                setTimeLeft(calculateTimeLeft());
+                const newTime = calculateTimeLeft();
+                setTimeLeft(newTime);
+                if (newTime <= 0) clearInterval(timer);
             }, 1000);
             return () => clearInterval(timer);
         }
-    }, [isClaimedToday, lastCheckInDate]);
+    }, [timeLeft, lastCheckInDate]);
 
     const handleCheckIn = () => {
         dispatch(performCheckIn());
@@ -60,9 +59,27 @@ const DailyCheckInModal = ({ show, handleClose }) => {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const isButtonDisabled = (isClaimedToday && timeLeft > 0) || loading;
+
     const cycleLength = rewardsList.length || 7;
-    let activeDayIndex = isClaimedToday ? (currentStreak - 1) % cycleLength : currentStreak % cycleLength;
-    if (activeDayIndex < 0) activeDayIndex = 0;
+    
+    const renderDayStatus = (index) => {
+        let targetStreak;
+
+        if (!isButtonDisabled) {
+            targetStreak = currentStreak + 1;
+        } else {
+            targetStreak = currentStreak;
+        }
+
+        const activeIndex = (targetStreak - 1) % cycleLength;
+
+        if (index < activeIndex) return 'done';
+        if (index === activeIndex) {
+            return isButtonDisabled ? 'done' : 'active';
+        }
+        return 'locked';
+    };
 
     return (
         <Modal show={show} onHide={handleClose} centered className="daily-checkin-modal">
@@ -83,15 +100,7 @@ const DailyCheckInModal = ({ show, handleClose }) => {
                 <div className="days-grid-container mb-4">
                     {rewardsList.map((amount, index) => {
                         const dayNum = index + 1;
-                        let status = 'locked';
-                        
-                        if (isClaimedToday) {
-                            if (index <= activeDayIndex) status = 'done';
-                        } else {
-                            if (index < activeDayIndex) status = 'done';
-                            else if (index === activeDayIndex) status = 'active';
-                        }
-
+                        const status = renderDayStatus(index);
                         const isLastDay = index === rewardsList.length - 1;
                         const cardClass = isLastDay ? 'day-card day-last' : 'day-card';
 
@@ -112,15 +121,15 @@ const DailyCheckInModal = ({ show, handleClose }) => {
                 </div>
 
                 <Button 
-                    variant={isClaimedToday ? "secondary" : "primary"} 
+                    variant={isButtonDisabled ? "secondary" : "primary"} 
                     size="lg" 
                     className="w-75 rounded-pill shadow-sm checkin-btn"
                     onClick={handleCheckIn}
-                    disabled={isClaimedToday || loading}
+                    disabled={isButtonDisabled}
                 >
                     {loading ? (
                         t('common.processing')
-                    ) : isClaimedToday ? (
+                    ) : isButtonDisabled ? (
                         <div className="d-flex align-items-center justify-content-center gap-2">
                             <FaClock /> <span>{formatTime(timeLeft)}</span>
                         </div>
@@ -129,7 +138,7 @@ const DailyCheckInModal = ({ show, handleClose }) => {
                     )}
                 </Button>
                 
-                {isClaimedToday && (
+                {isButtonDisabled && (
                     <p className="mt-2 text-muted small">{t('quests.checkIn.comeBackTomorrow')}</p>
                 )}
             </Modal.Body>

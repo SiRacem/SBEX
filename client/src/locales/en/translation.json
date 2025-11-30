@@ -2615,6 +2615,7 @@
     "completedBtn": "Completed",
     "inProgressBtn": "In Progress",
     "completedToast": "Quest Completed: {{title}}! Claim your reward.",
+    "claimSuccess": "Reward claimed successfully! 🎉",
     "types": {
       "Daily": "Daily",
       "OneTime": "One Time",

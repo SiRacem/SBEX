@@ -200,19 +200,35 @@ const UserProfilePage = () => {
 
   const userDetails = profileData?.user;
 
-  // --- منطق المتابعة الجديد ---
+  // --- التحقق من المتابعة ---
   const isFollowing = useMemo(() => {
     return currentUser?.following?.includes(viewedUserId);
   }, [currentUser?.following, viewedUserId]);
 
-  const handleFollowClick = () => {
+  // [!!!] دالة المتابعة المحسنة [!!!]
+  const handleFollowClick = async () => {
     if (!currentUser) {
-      toast.info(t("auth.loginRequired")); // تم إصلاح خطأ toast
+      toast.info(t("auth.loginRequired"));
       return;
     }
-    dispatch(toggleFollow(viewedUserId)); // تم إصلاح خطأ dispatch
+
+    // 1. التحديث المحلي الفوري (Optimistic Update)
+    // إذا كنت أتابع حالياً -> سأنقص 1، إذا لم أكن أتابع -> سأزيد 1
+    const newCount = isFollowing 
+        ? Math.max(0, (userDetails.followersCount || 0) - 1) 
+        : (userDetails.followersCount || 0) + 1;
+
+    setProfileData(prev => ({
+        ...prev,
+        user: {
+            ...prev.user,
+            followersCount: newCount
+        }
+    }));
+
+    // 2. إرسال الطلب للريدكس (الذي يحدث السيرفر)
+    await dispatch(toggleFollow(viewedUserId));
   };
-  // -------------------------
 
   const unlockedAchievements = useMemo(() => {
     return (userDetails?.achievements || [])
@@ -221,8 +237,7 @@ const UserProfilePage = () => {
       .slice(0, 5);
   }, [userDetails?.achievements]);
 
-  const canReportThisUser =
-    currentUser && userDetails && currentUser._id !== userDetails._id;
+  const canReportThisUser = currentUser && userDetails && currentUser._id !== userDetails._id;
   const reportButtonDisabled = isRecentlyReported;
 
   const handleReportSuccess = () => {
@@ -234,57 +249,22 @@ const UserProfilePage = () => {
   const getAvatarSrc = () => {
     const avatarUrl = userDetails?.avatarUrl;
     if (avatarUrl) {
-      if (avatarUrl.startsWith("http")) {
-        return avatarUrl;
-      }
+      if (avatarUrl.startsWith("http")) return avatarUrl;
       return `${BACKEND_URL}/${avatarUrl.replace(/\\/g, "/")}`;
     }
     return defaultAvatar;
   };
 
-  if (loading)
-    return (
-      <Container className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">{t("userProfilePage.loading")}</p>
-      </Container>
-    );
-  if (error)
-    return (
-      <Container className="py-5">
-        <Alert variant="danger" className="text-center">
-          <Alert.Heading>{t("userProfilePage.errorTitle")}</Alert.Heading>
-          <p>{error}</p>
-          <Button as={Link} to="/" variant="outline-danger">
-            {t("userProfilePage.goHome")}
-          </Button>
-        </Alert>
-      </Container>
-    );
-  if (!userDetails)
-    return (
-      <Container className="py-5">
-        <Alert variant="warning" className="text-center">
-          {t("userProfilePage.dataNotFound")}
-        </Alert>
-      </Container>
-    );
+  if (loading) return <Container className="text-center py-5"><Spinner animation="border" variant="primary" /><p className="mt-2 text-muted">{t("userProfilePage.loading")}</p></Container>;
+  if (error) return <Container className="py-5"><Alert variant="danger" className="text-center"><Alert.Heading>{t("userProfilePage.errorTitle")}</Alert.Heading><p>{error}</p><Button as={Link} to="/" variant="outline-danger">{t("userProfilePage.goHome")}</Button></Alert></Container>;
+  if (!userDetails) return <Container className="py-5"><Alert variant="warning" className="text-center">{t("userProfilePage.dataNotFound")}</Alert></Container>;
 
-  const totalRatings =
-    (userDetails?.positiveRatings ?? 0) + (userDetails?.negativeRatings ?? 0);
-  const positivePercentage =
-    totalRatings > 0
-      ? Math.round(((userDetails.positiveRatings ?? 0) / totalRatings) * 100)
-      : 0;
+  const totalRatings = (userDetails?.positiveRatings ?? 0) + (userDetails?.negativeRatings ?? 0);
+  const positivePercentage = totalRatings > 0 ? Math.round(((userDetails.positiveRatings ?? 0) / totalRatings) * 100) : 0;
 
   const reportButtonTooltipText = isRecentlyReported
-    ? t("userProfilePage.reportTooltipCooldown", {
-      name: userDetails?.fullName || "this user",
-      hours: REPORT_COOLDOWN_HOURS,
-    })
-    : t("userProfilePage.reportTooltip", {
-      name: userDetails?.fullName || "this user",
-    });
+    ? t("userProfilePage.reportTooltipCooldown", { name: userDetails?.fullName || "this user", hours: REPORT_COOLDOWN_HOURS })
+    : t("userProfilePage.reportTooltip", { name: userDetails?.fullName || "this user" });
 
   return (
     <Container className="user-profile-page py-4 py-md-5">
@@ -292,38 +272,10 @@ const UserProfilePage = () => {
         <Col lg={10} xl={9}>
           <Card className="shadow-sm profile-card-main overflow-hidden position-relative">
             {canReportThisUser && (
-              <OverlayTrigger
-                placement={i18n.dir() === "rtl" ? "right" : "left"}
-                overlay={
-                  <Tooltip id={`tooltip-report-${userDetails._id}`}>
-                    {reportButtonTooltipText}
-                  </Tooltip>
-                }
-              >
-                <div
-                  className={`position-absolute top-0 m-3 ${i18n.dir() === "rtl" ? "start-0" : "end-0"
-                    }`}
-                  style={{
-                    zIndex: 10,
-                    cursor: reportButtonDisabled ? "not-allowed" : "pointer",
-                  }}
-                >
-                  <Button
-                    variant="link"
-                    onClick={() =>
-                      !reportButtonDisabled && setShowReportModal(true)
-                    }
-                    className="p-0 report-user-icon-button"
-                    disabled={reportButtonDisabled}
-                    aria-label={reportButtonTooltipText}
-                  >
-                    <FaExclamationTriangle
-                      size={24}
-                      style={{
-                        color: reportButtonDisabled ? "#adb5bd" : "#dc3545",
-                        opacity: reportButtonDisabled ? 0.6 : 1,
-                      }}
-                    />
+              <OverlayTrigger placement={i18n.dir() === "rtl" ? "right" : "left"} overlay={<Tooltip id={`tooltip-report-${userDetails._id}`}>{reportButtonTooltipText}</Tooltip>}>
+                <div className={`position-absolute top-0 m-3 ${i18n.dir() === "rtl" ? "start-0" : "end-0"}`} style={{ zIndex: 10, cursor: reportButtonDisabled ? "not-allowed" : "pointer" }}>
+                  <Button variant="link" onClick={() => !reportButtonDisabled && setShowReportModal(true)} className="p-0 report-user-icon-button" disabled={reportButtonDisabled} aria-label={reportButtonTooltipText}>
+                    <FaExclamationTriangle size={24} style={{ color: reportButtonDisabled ? "#adb5bd" : "#dc3545", opacity: reportButtonDisabled ? 0.6 : 1 }} />
                   </Button>
                 </div>
               </OverlayTrigger>
@@ -331,43 +283,17 @@ const UserProfilePage = () => {
             <Card.Header className="profile-header bg-light p-4 text-md-start text-center border-0">
               <Row className="align-items-center gy-3">
                 <Col xs={12} md="auto" className="text-center">
-                  <Image
-                    src={getAvatarSrc()}
-                    roundedCircle
-                    className="profile-avatar"
-                    alt={`${userDetails.fullName}'s avatar`}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = defaultAvatar;
-                    }}
-                  />
+                  <Image src={getAvatarSrc()} roundedCircle className="profile-avatar" alt={`${userDetails.fullName}'s avatar`} onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }} />
                 </Col>
                 <Col xs={12} md>
                   <div className="d-flex flex-column flex-md-row align-items-center mb-2">
-                    <h2 className="profile-name mb-1 mb-md-0 me-md-3">
-                      {userDetails.fullName}
-                    </h2>
+                    <h2 className="profile-name mb-1 mb-md-0 me-md-3">{userDetails.fullName}</h2>
                     <div className="d-flex align-items-center flex-wrap">
-                      <Badge
-                        pill
-                        bg="info"
-                        text="dark"
-                        className="profile-role me-2"
-                      >
-                        {t(`common.roles.${userDetails.userRole}`, {
-                          defaultValue: userDetails.userRole,
-                        })}
-                      </Badge>
-                      <ReputationBadgeDisplay
-                        numericLevel={userDetails.level || 1}
-                        t={t}
-                      />
-                      <Badge bg="primary" className="ms-2">
-                        <FaStar size={12} className="me-1" />
-                        {t("common.level", { level: userDetails.level || 1 })}
-                      </Badge>
-
-                      {/* زر المتابعة الجديد */}
+                      <Badge pill bg="info" text="dark" className="profile-role me-2">{t(`common.roles.${userDetails.userRole}`, { defaultValue: userDetails.userRole })}</Badge>
+                      <ReputationBadgeDisplay numericLevel={userDetails.level || 1} t={t} />
+                      <Badge bg="primary" className="ms-2"><FaStar size={12} className="me-1" />{t("common.level", { level: userDetails.level || 1 })}</Badge>
+                      
+                      {/* زر المتابعة */}
                       {currentUser && currentUser._id !== viewedUserId && (
                         <Button
                           variant={isFollowing ? "outline-secondary" : "primary"}
@@ -384,12 +310,8 @@ const UserProfilePage = () => {
                   <div className="d-flex align-items-center text-muted small mb-0">
                     <span className="me-3">
                       <FaCalendarAlt size={14} className="me-1 opacity-75" />
-                      {t("userProfilePage.memberSince")}:{" "}
-                      {new Date(
-                        userDetails.registerDate || Date.now()
-                      ).toLocaleDateString(i18n.language)}
+                      {t("userProfilePage.memberSince")}: {new Date(userDetails.registerDate || Date.now()).toLocaleDateString(i18n.language)}
                     </span>
-                    {/* عداد المتابعين الجديد */}
                     <span>
                       <FaUsers size={14} className="me-1 opacity-75" />
                       {userDetails.followersCount || 0} {t("profilePage.followers")}
@@ -401,68 +323,37 @@ const UserProfilePage = () => {
             <Card.Body className="p-4">
               <Row>
                 <Col md={6} className="mb-4 mb-md-0">
-                  <h5 className="mb-3 section-sub-title">
-                    {t("userProfilePage.userStats")}
-                  </h5>
+                  <h5 className="mb-3 section-sub-title">{t("userProfilePage.userStats")}</h5>
                   <ListGroup variant="flush" className="stats-list">
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                      <span>
-                        <FaBoxOpen className="me-2 text-primary icon" />
-                        {t("userProfilePage.activeListings")}
-                      </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
-                        {profileData?.activeListingsCount ?? 0}
-                      </Badge>
+                      <span><FaBoxOpen className="me-2 text-primary icon" />{t("userProfilePage.activeListings")}</span>
+                      <Badge bg="light" text="dark" className="stat-badge">{profileData?.activeListingsCount ?? 0}</Badge>
                     </ListGroup.Item>
                     <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                      <span>
-                        <FaCheckCircle className="me-2 text-success icon" />
-                        {t("userProfilePage.productsSold")}
-                      </span>
-                      <Badge bg="light" text="dark" className="stat-badge">
-                        {profileData?.productsSoldCount ?? 0}
-                      </Badge>
+                      <span><FaCheckCircle className="me-2 text-success icon" />{t("userProfilePage.productsSold")}</span>
+                      <Badge bg="light" text="dark" className="stat-badge">{profileData?.productsSoldCount ?? 0}</Badge>
                     </ListGroup.Item>
                     {userDetails.address && (
                       <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                        <span>
-                          <FaMapMarkerAlt className="me-2 text-secondary icon" />
-                          {t("userProfilePage.location")}
-                        </span>
-                        <span className="text-muted small">
-                          {userDetails.address}
-                        </span>
+                        <span><FaMapMarkerAlt className="me-2 text-secondary icon" />{t("userProfilePage.location")}</span>
+                        <span className="text-muted small">{userDetails.address}</span>
                       </ListGroup.Item>
                     )}
                   </ListGroup>
                 </Col>
                 <Col md={6}>
-                  <h5 className="mb-3 section-sub-title">
-                    {t("userProfilePage.userRating")}
-                  </h5>
+                  <h5 className="mb-3 section-sub-title">{t("userProfilePage.userRating")}</h5>
                   {totalRatings > 0 ? (
                     <div className="rating-box text-center p-3 bg-light rounded border">
-                      <div className="rating-percentage display-4 fw-bold text-success">
-                        {positivePercentage}%
-                      </div>
-                      <div className="rating-text small text-muted mb-2">
-                        {t("userProfilePage.positiveRating")}
-                      </div>
+                      <div className="rating-percentage display-4 fw-bold text-success">{positivePercentage}%</div>
+                      <div className="rating-text small text-muted mb-2">{t("userProfilePage.positiveRating")}</div>
                       <div className="d-flex justify-content-center small">
-                        <span className="me-3 rating-count positive">
-                          <FaThumbsUp className="me-1" />
-                          {userDetails.positiveRatings ?? 0}
-                        </span>
-                        <span className="rating-count negative">
-                          <FaThumbsDown className="me-1" />
-                          {userDetails.negativeRatings ?? 0}
-                        </span>
+                        <span className="me-3 rating-count positive"><FaThumbsUp className="me-1" />{userDetails.positiveRatings ?? 0}</span>
+                        <span className="rating-count negative"><FaThumbsDown className="me-1" />{userDetails.negativeRatings ?? 0}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-muted p-3 bg-light rounded border">
-                      <small>{t("userProfilePage.noRatings")}</small>
-                    </div>
+                    <div className="text-center text-muted p-3 bg-light rounded border"><small>{t("userProfilePage.noRatings")}</small></div>
                   )}
                 </Col>
               </Row>
@@ -471,60 +362,31 @@ const UserProfilePage = () => {
 
           <Card className="shadow-sm border-0 mt-4">
             <Card.Header className="bg-white p-3 border-0">
-              <h5 className="mb-0 section-title-modern">
-                <FaTrophy className="me-2 text-primary" />{" "}
-                {t("profilePage.achievementsSectionTitle")}
-              </h5>
+              <h5 className="mb-0 section-title-modern"><FaTrophy className="me-2 text-primary" /> {t("profilePage.achievementsSectionTitle")}</h5>
             </Card.Header>
             <Card.Body className="p-4">
               {unlockedAchievements.length > 0 ? (
                 <Row className="g-3">
                   {unlockedAchievements.map((userAchievement) => (
                     <Col key={userAchievement.achievement._id} xs="auto">
-                      <OverlayTrigger
-                        placement="top"
-                        overlay={
-                          <Tooltip
-                            id={`tooltip-public-${userAchievement.achievement._id}`}
-                          >
-                            <strong>
-                              {userAchievement.achievement.title[
-                                i18n.language
-                              ] || userAchievement.achievement.title.ar}
-                            </strong>
-                            <br />
-                            <small>
-                              {userAchievement.achievement.description[
-                                i18n.language
-                              ] || userAchievement.achievement.description.ar}
-                            </small>
-                          </Tooltip>
-                        }
-                      >
-                        <div className="achievement-icon-display">
-                          <i
-                            className={`${userAchievement.achievement.icon} fa-2x`}
-                          ></i>
-                        </div>
+                      <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-public-${userAchievement.achievement._id}`}>
+                        <strong>{userAchievement.achievement.title[i18n.language] || userAchievement.achievement.title.ar}</strong><br />
+                        <small>{userAchievement.achievement.description[i18n.language] || userAchievement.achievement.description.ar}</small>
+                      </Tooltip>}>
+                        <div className="achievement-icon-display"><i className={`${userAchievement.achievement.icon} fa-2x`}></i></div>
                       </OverlayTrigger>
                     </Col>
                   ))}
                   {(userDetails.achievements?.length || 0) > 5 && (
                     <Col xs={12} className="mt-3">
                       <LinkContainer to="/dashboard/achievements">
-                        <Button variant="link" size="sm" className="p-0">
-                          {t("profilePage.viewAllAchievements", {
-                            count: userDetails.achievements.length,
-                          })}
-                        </Button>
+                        <Button variant="link" size="sm" className="p-0">{t("profilePage.viewAllAchievements", { count: userDetails.achievements.length })}</Button>
                       </LinkContainer>
                     </Col>
                   )}
                 </Row>
               ) : (
-                <p className="text-muted text-center mb-0">
-                  {t("profilePage.noAchievements")}
-                </p>
+                <p className="text-muted text-center mb-0">{t("profilePage.noAchievements")}</p>
               )}
             </Card.Body>
           </Card>

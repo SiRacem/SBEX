@@ -56,6 +56,15 @@ const userReducer = (state = initialState, action) => {
     case REGISTER_REQUEST:
     case LOGIN_REQUEST:
     case GET_PROFILE_REQUEST:
+      return {
+        ...state,
+        // [!!!] التعديل هنا: لا تضع loading: true إذا كان المستخدم موجوداً بالفعل
+        // هذا يمنع الشاشة البيضاء عند التحديث التلقائي عبر السوكت
+        loading: state.user ? false : true, 
+        isUpdatingBackground: true, // (اختياري) علم جديد لتعرف أن هناك تحديث خلفي
+        errorMessage: null,
+        successMessage: null
+      };
     case APPLY_MEDIATOR_REQUEST:
     case ADMIN_GET_MEDIATORS_REQUEST:
       return {
@@ -183,6 +192,7 @@ const userReducer = (state = initialState, action) => {
         ...state,
         user: payload.user,
         loading: false,
+        isUpdatingBackground: false, // إيقاف العلم
         isAuth: true,
         errors: null,
         authChecked: true,
@@ -290,10 +300,10 @@ const userReducer = (state = initialState, action) => {
           user: {
             ...state.user,
             balance: payload.balance !== undefined ? payload.balance : state.user.balance,
-            depositBalance: payload.depositBalance !== undefined ? payload.depositBalance : state.user.depositBalance,
-            withdrawalBalance: payload.withdrawalBalance !== undefined ? payload.withdrawalBalance : state.user.withdrawalBalance,
-            sellerAvailableBalance: payload.sellerAvailableBalance !== undefined ? payload.sellerAvailableBalance : state.user.sellerAvailableBalance,
-            sellerPendingBalance: payload.sellerPendingBalance !== undefined ? payload.sellerPendingBalance : state.user.sellerPendingBalance,
+            credits: payload.credits !== undefined ? payload.credits : state.user.credits,
+            reputationPoints: payload.reputationPoints !== undefined ? payload.reputationPoints : state.user.reputationPoints,
+            level: payload.level !== undefined ? payload.level : state.user.level,
+            reputationLevel: payload.reputationLevel !== undefined ? payload.reputationLevel : state.user.reputationLevel,
           },
         };
       }
@@ -319,7 +329,7 @@ const userReducer = (state = initialState, action) => {
           achievements: [
             ...state.user.achievements,
             {
-              achievement: payload, // الإنجاز الجديد بكامل تفاصيله
+              achievement: payload,
               unlockedAt: new Date().toISOString()
             }
           ]

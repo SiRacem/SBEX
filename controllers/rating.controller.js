@@ -103,13 +103,11 @@ const updateUserLevelAndBadge = (userDoc) => { // Exported, so can be used by ot
  */
 const processLevelUpRewards = async (user, oldLevel, req, session) => {
     if (user.level > oldLevel) {
-        // حساب المكافأة التراكمية للمستويات التي تم تخطيها
         let totalReward = 0;
         const levelsRewarded = [];
 
         for (let i = oldLevel + 1; i <= user.level; i++) {
             if (!user.claimedLevelRewards.includes(i)) {
-                // معادلة المكافأة: 2 دينار لكل مستوى (كمثال)
                 const rewardAmount = 2 + (i - 2) * 2; 
                 if (rewardAmount > 0) {
                     totalReward += rewardAmount;
@@ -122,52 +120,47 @@ const processLevelUpRewards = async (user, oldLevel, req, session) => {
         if (totalReward > 0) {
             user.balance += totalReward;
 
-            // 1. إنشاء سجل المعاملة (هذا ما كان ينقصك!)
+            // 1. Transaction Record
             const rewardTx = new Transaction({
                 user: user._id,
-                type: 'LEVEL_UP_REWARD_RECEIVED', // تأكد أن هذا النوع موجود في Transaction.js enum
+                type: 'LEVEL_UP_REWARD_RECEIVED', 
                 amount: totalReward,
-                currency: 'TND', // العملة الأساسية
+                currency: 'TND',
                 status: 'COMPLETED',
                 descriptionKey: 'transactionDescriptions.levelUpReward',
-                descriptionParams: { level: user.level },
+                descriptionParams: { level: user.level }, // هذا للـ Transactions list ويعمل جيداً
                 description: `Reward for reaching Level ${user.level}`
             });
             
-            if (session) {
-                await rewardTx.save({ session });
-            } else {
-                await rewardTx.save();
-            }
+            if (session) await rewardTx.save({ session });
+            else await rewardTx.save();
 
-            // 2. إرسال الإشعار
+            // 2. Notification Record [!!! هنا التغيير المهم !!!]
             const notificationData = {
                 user: user._id,
                 type: 'LEVEL_UP_REWARD',
                 title: 'notification_titles.LEVEL_UP_REWARD',
                 message: 'notification_messages.LEVEL_UP_REWARD',
                 messageParams: { 
-                    amount: totalReward.toFixed(2), 
+                    // [FIX] قمنا بتغيير الأسماء لتطابق ملف الترجمة {{rewardAmount}}
+                    rewardAmount: totalReward.toFixed(2), 
+                    rewardCurrency: 'TND', // أضفنا العملة
                     level: user.level 
                 },
                 relatedEntity: { id: user._id, modelName: 'User' }
             };
 
-            if (session) {
-                await Notification.create([notificationData], { session });
-            } else {
-                await Notification.create(notificationData);
-            }
+            if (session) await Notification.create([notificationData], { session });
+            else await Notification.create(notificationData);
 
-            // 3. تحديث السوكت
+            // 3. Socket Update
             if (req && req.io && req.onlineUsers && req.onlineUsers[user._id.toString()]) {
                 const socketId = req.onlineUsers[user._id.toString()];
                 req.io.to(socketId).emit('new_notification', notificationData);
-                // تحديث قائمة المعاملات فوراً
                 req.io.to(socketId).emit('dashboard_transactions_updated');
             }
             
-            return true; // تم منح مكافأة
+            return true; 
         }
     }
     return false;
