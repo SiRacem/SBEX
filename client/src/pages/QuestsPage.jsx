@@ -1,16 +1,19 @@
 import React, { useEffect } from 'react';
-import { Container, Row, Col, Card, ProgressBar, Button, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, ProgressBar, Button, Badge, Spinner, Alert } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import { getUserQuests, claimReward } from '../redux/actions/questAction';
-import { FaCoins, FaTrophy, FaCheckCircle, FaTasks } from 'react-icons/fa';
+import { FaCoins, FaTrophy, FaCheckCircle, FaTasks, FaGift } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import './QuestsPage.css'; // سننشئه تالياً
+import { formatErrorMessage } from '../utils/errorUtils'; 
+import './QuestsPage.css'; 
 
 const QuestsPage = () => {
     const { t, i18n } = useTranslation();
     const dispatch = useDispatch();
     
-    const { quests, credits, loading } = useSelector(state => state.questReducer);
+    // [!!!] جلبنا freeSpins من state.userReducer [!!!]
+    const { user } = useSelector(state => state.userReducer || {});
+    const { quests, credits, loading, error } = useSelector(state => state.questReducer);
 
     useEffect(() => {
         dispatch(getUserQuests());
@@ -20,8 +23,7 @@ const QuestsPage = () => {
         dispatch(claimReward(questId));
     };
 
-    // ترتيب المهمات: القابلة للاستلام أولاً، ثم الجارية، ثم المكتملة
-    const sortedQuests = [...quests].sort((a, b) => {
+    const sortedQuests = [...(quests || [])].sort((a, b) => {
         const aClaimable = a.isCompleted && !a.isClaimed;
         const bClaimable = b.isCompleted && !b.isClaimed;
         if (aClaimable && !bClaimable) return -1;
@@ -34,26 +36,47 @@ const QuestsPage = () => {
     return (
         <Container className="py-5 quests-page-container">
             {/* Header Section */}
-            <div className="d-flex justify-content-between align-items-center mb-5 header-section text-white p-4 rounded-3 shadow-sm">
+            <div className="d-flex justify-content-between align-items-center mb-5 header-section text-white p-4 rounded-3 shadow-sm flex-wrap gap-3">
                 <div>
                     <h2 className="fw-bold mb-1">
                         <FaTasks className="me-2" /> {t('quests.pageTitle')}
                     </h2>
                     <p className="mb-0 opacity-75">{t('quests.subtitle')}</p>
                 </div>
-                <div className="credits-display bg-white text-dark px-4 py-2 rounded-pill shadow fw-bold">
-                    <FaCoins className="text-warning me-2" />
-                    {credits} Credits
+                
+                {/* [!!!] عرض الرصيد واللفات بشكل مترجم [!!!] */}
+                <div className="d-flex gap-2">
+                    <div className="credits-display bg-white text-dark px-3 py-2 rounded-pill shadow fw-bold d-flex align-items-center">
+                        <FaCoins className="text-warning me-2" />
+                        {/* ترجمة العملات */}
+                        {t('quests.header.credits', { count: credits || 0 })}
+                    </div>
+                    
+                    {/* [!!!] خانة اللفات المجانية الجديدة [!!!] */}
+                    <div className="credits-display bg-success text-white px-3 py-2 rounded-pill shadow fw-bold d-flex align-items-center">
+                        <FaGift className="text-white me-2" />
+                        {/* ترجمة اللفات */}
+                        {t('quests.header.freeSpins', { count: user?.freeSpins || 0 })}
+                    </div>
                 </div>
             </div>
 
-            {loading && quests.length === 0 ? (
+            {error && (
+                <Alert variant="danger" className="mb-4">
+                    {formatErrorMessage(error, t)}
+                </Alert>
+            )}
+
+            {loading && (!quests || quests.length === 0) ? (
                 <div className="text-center py-5 text-white">
                     <Spinner animation="border" />
+                    <p className="mt-2">{t('common.loading')}</p>
                 </div>
             ) : (
                 <Row className="g-4">
-                    {sortedQuests.map((quest) => {
+                    {sortedQuests.length > 0 ? sortedQuests.map((quest) => {
+                        if (!quest) return null;
+
                         const progressPercent = Math.min(100, (quest.progress / quest.targetCount) * 100);
                         const isClaimable = quest.isCompleted && !quest.isClaimed;
 
@@ -71,28 +94,32 @@ const QuestsPage = () => {
                                         </div>
 
                                         <Card.Title className="fw-bold mb-2">
-                                            {quest.title[i18n.language] || quest.title.en}
+                                            {quest.title ? (quest.title[i18n.language] || quest.title.en) : 'Untitled'}
                                         </Card.Title>
                                         
                                         <Card.Text className="text-muted small flex-grow-1">
-                                            {quest.description[i18n.language] || quest.description.en}
+                                            {quest.description ? (quest.description[i18n.language] || quest.description.en) : ''}
                                         </Card.Text>
 
-                                        {/* Rewards Display */}
-                                        <div className="rewards-badge mb-3">
-                                            {quest.reward.credits > 0 && (
-                                                <Badge bg="light" text="dark" className="me-2 border">
+                                        <div className="rewards-badge mb-3 d-flex flex-wrap gap-2">
+                                            {quest.reward?.credits > 0 && (
+                                                <Badge bg="light" text="dark" className="border">
                                                     <FaCoins className="text-warning me-1" /> +{quest.reward.credits}
                                                 </Badge>
                                             )}
-                                            {quest.reward.xp > 0 && (
+                                            {quest.reward?.xp > 0 && (
                                                 <Badge bg="light" text="dark" className="border">
                                                     ⭐ +{quest.reward.xp} XP
                                                 </Badge>
                                             )}
+                                            {/* [!!!] ترجمة كلمة Spin [!!!] */}
+                                            {quest.reward?.freeSpins > 0 && (
+                                                <Badge bg="success" className="border border-success">
+                                                    <FaGift className="me-1" /> +{quest.reward.freeSpins} {t('quests.rewards.spin')}
+                                                </Badge>
+                                            )}
                                         </div>
 
-                                        {/* Progress Bar */}
                                         <div className="mt-auto">
                                             <div className="d-flex justify-content-between small mb-1 fw-bold">
                                                 <span>{t('quests.progress')}</span>
@@ -127,7 +154,11 @@ const QuestsPage = () => {
                                 </Card>
                             </Col>
                         );
-                    })}
+                    }) : (
+                        <div className="text-center w-100 py-5 text-white">
+                            <p>{t('quests.noQuests')}</p>
+                        </div>
+                    )}
                 </Row>
             )}
         </Container>

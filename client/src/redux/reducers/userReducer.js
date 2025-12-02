@@ -60,7 +60,7 @@ const userReducer = (state = initialState, action) => {
         ...state,
         // [!!!] التعديل هنا: لا تضع loading: true إذا كان المستخدم موجوداً بالفعل
         // هذا يمنع الشاشة البيضاء عند التحديث التلقائي عبر السوكت
-        loading: state.user ? false : true, 
+        loading: state.user ? false : true,
         isUpdatingBackground: true, // (اختياري) علم جديد لتعرف أن هناك تحديث خلفي
         errorMessage: null,
         successMessage: null
@@ -352,14 +352,19 @@ const userReducer = (state = initialState, action) => {
     // --- Follow Cases ---
     case TOGGLE_FOLLOW_REQUEST:
       return { ...state, loadingFollow: true };
+
     case TOGGLE_FOLLOW_SUCCESS:
       return {
         ...state,
         loadingFollow: false,
-        user: { ...state.user, following: payload.following },
+        user: {
+          ...state.user,
+          // تحديث قائمة المتابعة فوراً من استجابة السيرفر
+          following: payload.following
+        },
         successMessage: payload.successMessage
-        // ملاحظة: إذا كنا في صفحة البروفايل لهذا المستخدم، قد نحتاج لتحديث followersCount في state محلي في الكمبوننت
       };
+
     case TOGGLE_FOLLOW_FAIL:
       return { ...state, loadingFollow: false, errorMessage: payload.errorMessage };
 

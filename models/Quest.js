@@ -3,13 +3,13 @@ const Schema = mongoose.Schema;
 
 const QuestSchema = new Schema({
     title: {
-        ar: { type: String, required: true }, // <-- العربية إجبارية
-        en: { type: String, default: "" },    // <-- الإنجليزية اختيارية
+        ar: { type: String, required: true },
+        en: { type: String, default: "" },
         fr: { type: String, default: "" },
         tn: { type: String, default: "" }
     },
     description: {
-        ar: { type: String }, // الوصف اختياري عموماً، لكن العربية هي الأساس
+        ar: { type: String },
         en: { type: String, default: "" },
         fr: { type: String, default: "" },
         tn: { type: String, default: "" }
@@ -27,7 +27,8 @@ const QuestSchema = new Schema({
     targetCount: { type: Number, required: true, default: 1 },
     reward: {
         credits: { type: Number, default: 0 },
-        xp: { type: Number, default: 0 }
+        xp: { type: Number, default: 0 },
+        freeSpins: { type: Number, default: 0 } 
     },
     icon: { type: String, default: 'FaTasks' },
     isActive: { type: Boolean, default: true }

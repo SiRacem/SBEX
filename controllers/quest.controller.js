@@ -164,12 +164,22 @@ const spinWheel = async (req, res) => {
 
     try {
         const user = await User.findById(userId).session(session);
-        if ((user.credits || 0) < SPIN_COST) {
-            await session.abortTransaction();
-            return res.status(400).json({ msg: "Insufficient credits." });
-        }
+        
+        let costType = 'credits'; 
+        let spinCost = SPIN_COST;
 
-        user.credits -= SPIN_COST;
+        // خصم التكلفة (لفات مجانية أو رصيد)
+        if (user.freeSpins && user.freeSpins > 0) {
+            user.freeSpins -= 1;
+            costType = 'free_spin';
+            spinCost = 0; 
+        } else {
+            if ((user.credits || 0) < SPIN_COST) {
+                await session.abortTransaction();
+                return res.status(400).json({ msg: "Insufficient credits." });
+            }
+            user.credits -= SPIN_COST;
+        }
 
         const items = await getWheelConfigData();
         const totalChance = items.reduce((sum, item) => sum + Number(item.chance), 0);
@@ -186,6 +196,7 @@ const spinWheel = async (req, res) => {
 
         const amount = Number(selectedItem.amount);
 
+        // [!!!] منطق الجوائز (بما في ذلك اللفات المجانية) [!!!]
         if (selectedItem.type === 'credits') {
             user.credits += amount;
         } 
@@ -209,10 +220,15 @@ const spinWheel = async (req, res) => {
             });
             await rewardTransaction.save({ session });
         }
+        else if (selectedItem.type === 'free_spin') { 
+            // [!!!] إضافة اللفات المجانية الجديدة [!!!]
+            user.freeSpins = (user.freeSpins || 0) + amount;
+        }
 
         await SpinHistory.create([{
             user: userId,
-            cost: SPIN_COST,
+            cost: spinCost,
+            costType: costType,
             reward: {
                 type: selectedItem.type,
                 amount: amount
@@ -227,6 +243,7 @@ const spinWheel = async (req, res) => {
             req.io.to(socketId).emit('user_profile_updated', {
                 _id: userId,
                 credits: user.credits,
+                freeSpins: user.freeSpins, // تحديث
                 balance: user.balance,
                 reputationPoints: user.reputationPoints,
                 level: user.level,
@@ -241,11 +258,14 @@ const spinWheel = async (req, res) => {
             msg: "Spin successful!",
             reward: selectedItem,
             remainingCredits: user.credits,
-            newBalance: user.balance
+            remainingFreeSpins: user.freeSpins,
+            newBalance: user.balance,
+            usedFreeSpin: costType === 'free_spin'
         });
 
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
+        console.error("Spin Error", error);
         res.status(500).json({ msg: "Server error during spin." });
     } finally {
         session.endSession();
@@ -262,10 +282,16 @@ const claimQuestReward = async (req, res) => {
         if (!userQuest || !userQuest.isCompleted || userQuest.isClaimed) throw new Error("Invalid claim request.");
 
         const user = await User.findById(userId).session(session);
-        if (userQuest.quest.reward.credits > 0) user.credits = (user.credits || 0) + userQuest.quest.reward.credits;
-        if (userQuest.quest.reward.xp > 0) {
+        const reward = userQuest.quest.reward;
+
+        if (reward.credits > 0) user.credits = (user.credits || 0) + reward.credits;
+        
+        // [!!!] إضافة اللفات المجانية [!!!]
+        if (reward.freeSpins > 0) user.freeSpins = (user.freeSpins || 0) + reward.freeSpins;
+
+        if (reward.xp > 0) {
             const oldLevel = user.level;
-            user.reputationPoints = (user.reputationPoints || 0) + userQuest.quest.reward.xp;
+            user.reputationPoints = (user.reputationPoints || 0) + reward.xp;
             updateUserLevelAndBadge(user);
             await processLevelUpRewards(user, oldLevel, req, session);
         }
@@ -277,11 +303,21 @@ const claimQuestReward = async (req, res) => {
 
         if (req.io && req.onlineUsers[userId.toString()]) {
             req.io.to(req.onlineUsers[userId.toString()]).emit('user_profile_updated', {
-                _id: user._id, credits: user.credits, reputationPoints: user.reputationPoints,
-                level: user.level, balance: user.balance, reputationLevel: user.reputationLevel
+                _id: user._id, 
+                credits: user.credits, 
+                freeSpins: user.freeSpins, // تحديث
+                reputationPoints: user.reputationPoints,
+                level: user.level, 
+                balance: user.balance, 
+                reputationLevel: user.reputationLevel
             });
         }
-        res.status(200).json({ msg: "Reward claimed", credits: user.credits });
+        res.status(200).json({ 
+            msg: "Reward claimed", 
+            credits: user.credits, 
+            freeSpins: user.freeSpins,
+            reputation: user.reputationPoints 
+        });
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         res.status(500).json({ msg: error.message });

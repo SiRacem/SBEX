@@ -41,55 +41,26 @@ import {
   FaSkullCrossbones,
   FaDragon,
   FaShieldAlt,
-  FaUserPlus,   // <-- إضافة
-  FaUserCheck,  // <-- إضافة
-  FaUsers       // <-- إضافة
+  FaUserPlus,
+  FaUserCheck,
+  FaUsers
 } from "react-icons/fa";
 import "./UserProfilePage.css";
-import { useSelector, useDispatch } from "react-redux"; // <-- إضافة useDispatch
+import { useSelector, useDispatch } from "react-redux";
 import ReportUserModal from "./ReportUserModal";
 import { SocketContext } from "../App";
-import { toggleFollow } from "../redux/actions/userAction"; // <-- إضافة الأكشن
-import { toast } from "react-toastify"; // <-- إضافة toast
+import { toggleFollow } from "../redux/actions/userAction";
+import { toast } from "react-toastify";
 
 const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const REPORT_COOLDOWN_HOURS = 24;
 const BACKEND_URL =
   process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-const getRecentlyReportedUsers = () => {
-  try {
-    const reported = localStorage.getItem("recentlyReportedUsers");
-    return reported ? JSON.parse(reported) : {};
-  } catch (e) {
-    console.error(
-      "Failed to parse recently reported users from localStorage",
-      e
-    );
-    return {};
-  }
-};
-
-const markUserAsReported = (reportedUserId) => {
-  const reportedUsers = getRecentlyReportedUsers();
-  reportedUsers[reportedUserId] = Date.now();
-  try {
-    localStorage.setItem(
-      "recentlyReportedUsers",
-      JSON.stringify(reportedUsers)
-    );
-  } catch (e) {
-    console.error("Failed to save recently reported users to localStorage", e);
-  }
-};
-
-const checkIfRecentlyReported = (reportedUserId) => {
-  const reportedUsers = getRecentlyReportedUsers();
-  const reportTimestamp = reportedUsers[reportedUserId];
-  if (!reportTimestamp) return false;
-  const cooldownMilliseconds = REPORT_COOLDOWN_HOURS * 60 * 60 * 1000;
-  return Date.now() - reportTimestamp < cooldownMilliseconds;
-};
+// ... (الدوال المساعدة: getRecentlyReportedUsers, markUserAsReported, checkIfRecentlyReported تبقى كما هي)
+const getRecentlyReportedUsers = () => { try { const reported = localStorage.getItem("recentlyReportedUsers"); return reported ? JSON.parse(reported) : {}; } catch (e) { return {}; } };
+const markUserAsReported = (reportedUserId) => { const reportedUsers = getRecentlyReportedUsers(); reportedUsers[reportedUserId] = Date.now(); try { localStorage.setItem("recentlyReportedUsers", JSON.stringify(reportedUsers)); } catch (e) { console.error(e); } };
+const checkIfRecentlyReported = (reportedUserId) => { const reportedUsers = getRecentlyReportedUsers(); const reportTimestamp = reportedUsers[reportedUserId]; if (!reportTimestamp) return false; return Date.now() - reportTimestamp < REPORT_COOLDOWN_HOURS * 60 * 60 * 1000; };
 
 const ReputationBadgeDisplay = ({ numericLevel, t }) => {
   const badges = {
@@ -122,12 +93,7 @@ const ReputationBadgeDisplay = ({ numericLevel, t }) => {
   };
 
   return (
-    <Badge
-      pill
-      bg="light"
-      text="dark"
-      className="d-inline-flex align-items-center reputation-badge"
-    >
+    <Badge pill bg="light" text="dark" className="d-inline-flex align-items-center reputation-badge">
       <Icon className="me-1" style={{ color }} />
       <span>{t(`reputationLevels.${badgeName}`, badgeName)}</span>
     </Badge>
@@ -137,8 +103,9 @@ const ReputationBadgeDisplay = ({ numericLevel, t }) => {
 const UserProfilePage = () => {
   const { t, i18n } = useTranslation();
   const { userId: viewedUserId } = useParams();
-  const dispatch = useDispatch(); // <-- تعريف dispatch هنا (كان مفقوداً)
-  const currentUser = useSelector((state) => state.userReducer.user);
+  const dispatch = useDispatch();
+  
+  const { user: currentUser, loadingFollow } = useSelector((state) => state.userReducer);
   const socket = useContext(SocketContext);
 
   const [profileData, setProfileData] = useState(null);
@@ -200,34 +167,38 @@ const UserProfilePage = () => {
 
   const userDetails = profileData?.user;
 
-  // --- التحقق من المتابعة ---
+  // 1. التحقق من حالة المتابعة الحالية بناءً على Redux
   const isFollowing = useMemo(() => {
-    return currentUser?.following?.includes(viewedUserId);
-  }, [currentUser?.following, viewedUserId]);
+    if (!currentUser || !currentUser.following) return false;
+    return currentUser.following.some(id => id.toString() === viewedUserId.toString());
+  }, [currentUser, viewedUserId]);
 
-  // [!!!] دالة المتابعة المحسنة [!!!]
-  const handleFollowClick = async () => {
+  // [!!!] 2. دالة المتابعة المحسنة (الحل لمشكلة العداد) [!!!]
+  const handleFollowClick = () => {
     if (!currentUser) {
       toast.info(t("auth.loginRequired"));
       return;
     }
 
-    // 1. التحديث المحلي الفوري (Optimistic Update)
-    // إذا كنت أتابع حالياً -> سأنقص 1، إذا لم أكن أتابع -> سأزيد 1
-    const newCount = isFollowing 
-        ? Math.max(0, (userDetails.followersCount || 0) - 1) 
-        : (userDetails.followersCount || 0) + 1;
+    // A. التحديث الفوري للرقم محلياً (Visual Update Only)
+    // إذا كنت أتابع حالياً (isFollowing = true)، فالضغط يعني إلغاء المتابعة (-1)
+    // إذا لم أكن أتابع (isFollowing = false)، فالضغط يعني المتابعة (+1)
+    const countChange = isFollowing ? -1 : 1;
+    
+    setProfileData(prev => {
+        if (!prev || !prev.user) return prev;
+        const newCount = Math.max(0, (prev.user.followersCount || 0) + countChange);
+        return {
+            ...prev,
+            user: {
+                ...prev.user,
+                followersCount: newCount
+            }
+        };
+    });
 
-    setProfileData(prev => ({
-        ...prev,
-        user: {
-            ...prev.user,
-            followersCount: newCount
-        }
-    }));
-
-    // 2. إرسال الطلب للريدكس (الذي يحدث السيرفر)
-    await dispatch(toggleFollow(viewedUserId));
+    // B. إرسال الطلب للسيرفر (Redux)
+    dispatch(toggleFollow(viewedUserId));
   };
 
   const unlockedAchievements = useMemo(() => {
@@ -300,9 +271,16 @@ const UserProfilePage = () => {
                           size="sm"
                           className="ms-3 d-flex align-items-center"
                           onClick={handleFollowClick}
+                          disabled={loadingFollow}
                         >
-                          {isFollowing ? <FaUserCheck className="me-1" /> : <FaUserPlus className="me-1" />}
-                          {isFollowing ? t("profilePage.following") : t("profilePage.followBtn")}
+                          {loadingFollow ? (
+                            <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                          ) : (
+                            <>
+                              {isFollowing ? <FaUserCheck className="me-1" /> : <FaUserPlus className="me-1" />}
+                              {isFollowing ? t("profilePage.following") : t("profilePage.followBtn")}
+                            </>
+                          )}
                         </Button>
                       )}
                     </div>
@@ -312,6 +290,7 @@ const UserProfilePage = () => {
                       <FaCalendarAlt size={14} className="me-1 opacity-75" />
                       {t("userProfilePage.memberSince")}: {new Date(userDetails.registerDate || Date.now()).toLocaleDateString(i18n.language)}
                     </span>
+                    {/* عداد المتابعين */}
                     <span>
                       <FaUsers size={14} className="me-1 opacity-75" />
                       {userDetails.followersCount || 0} {t("profilePage.followers")}

@@ -378,7 +378,8 @@
     "ACHIEVEMENT_UNLOCKED": "🏆 New Achievement!",
     "REFERRAL_BONUS": "🎉 New Referral Bonus!",
     "NEW_FOLLOWER": "New Follower!",
-    "QUEST_COMPLETED": "Quest Completed! 🏆"
+    "QUEST_COMPLETED": "Quest Completed! 🏆",
+    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 New Item from Seller You Follow!"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -478,7 +479,8 @@
     "ACHIEVEMENT_UNLOCKED": "Congratulations! You unlocked a new achievement: \"{{achievementName}}\".",
     "REFERRAL_BONUS": "Congratulations! You received a referral bonus: \"{{achievementName}}\".",
     "NEW_FOLLOWER": "Congratulations! You have a new follower: \"{{followerName}}\".",
-    "QUEST_COMPLETED": "You have completed the quest: {{questTitle}}. Go to Quests Board to claim your reward."
+    "QUEST_COMPLETED": "You have completed the quest: {{questTitle}}. Go to Quests Board to claim your reward.",
+    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} posted a new product: \"{{productName}}\". Check it out now!"
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -2586,6 +2588,11 @@
     }
   },
   "luckyWheel": {
+    "labels": {
+        "freeSpins": "Free Spins"
+    },
+    "spinFree": "SPIN FREE!",
+    "hasFreeSpins": "You have {{count}} free spins!",
     "title": "Lucky Wheel",
     "spinBtn": "SPIN NOW!",
     "subtitle": "Spin for {{cost}} Credits and win amazing prizes!",
@@ -2595,9 +2602,12 @@
     "noCredits": "Insufficient credits for spin!",
     "balanceLabel": "Credits Balance",
     "prizes": {
-      "credits": "Credits",
-      "xp": "XP",
-      "currency": "TND"
+        "credits": "Credits",
+        "xp": "XP",
+        "balance": "Balance",
+        "free_spin": "Free Spin",
+        "empty": "Hard Luck",
+        "currency": "TND"
     },
     "history": {
       "title": "Spin History",
@@ -2608,6 +2618,13 @@
     }
   },
   "quests": {
+    "header": {
+        "credits": "{{count}} Credits",
+        "freeSpins": "{{count}} Spins"
+    },
+    "rewards": {
+        "spin": "Spin"
+    },
     "pageTitle": "Quests Board",
     "subtitle": "Complete tasks to earn credits and XP!",
     "progress": "Progress",
@@ -2616,6 +2633,7 @@
     "inProgressBtn": "In Progress",
     "completedToast": "Quest Completed: {{title}}! Claim your reward.",
     "claimSuccess": "Reward claimed successfully! 🎉",
+    "noQuests": "No quests available at the moment.",
     "types": {
       "Daily": "Daily",
       "OneTime": "One Time",

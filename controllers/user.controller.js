@@ -1165,8 +1165,8 @@ const toggleWishlist = async (req, res) => {
 
 // --- Toggle Follow User (Follow/Unfollow Vendor) ---
 const toggleFollowUser = async (req, res) => {
-    const followerId = req.user._id; // أنا (من يقوم بالمتابعة)
-    const { targetUserId } = req.body; // البائع (من تتم متابعته)
+    const followerId = req.user._id; 
+    const { targetUserId } = req.body; 
 
     console.log(`--- Controller: toggleFollowUser - Follower: ${followerId} -> Target: ${targetUserId} ---`);
 
@@ -1185,27 +1185,29 @@ const toggleFollowUser = async (req, res) => {
             throw new Error("User to follow not found.");
         }
 
-        const isFollowing = follower.following.includes(targetUserId);
+        // [FIX] تحويل كل IDs إلى String للمقارنة الآمنة
+        const isFollowing = follower.following.some(id => id.toString() === targetUserId.toString());
+        
         let action = '';
 
         if (isFollowing) {
             // Unfollow
-            follower.following.pull(targetUserId);
-            targetUser.followersCount = Math.max(0, targetUser.followersCount - 1);
+            // نقوم بفلترة المصفوفة لإزالة الـ ID
+            follower.following = follower.following.filter(id => id.toString() !== targetUserId.toString());
+            targetUser.followersCount = Math.max(0, (targetUser.followersCount || 0) - 1);
             action = 'unfollowed';
         } else {
             // Follow
-            follower.following.push(targetUserId);
-            targetUser.followersCount += 1;
+            follower.following.push(targetUserId); // Mongoose سيحولها لـ ObjectId تلقائياً عند الحفظ
+            targetUser.followersCount = (targetUser.followersCount || 0) + 1;
             action = 'followed';
         }
 
         await follower.save({ session });
         await targetUser.save({ session });
 
-        // Notifications & Achievements (Only on Follow)
+        // Notifications
         if (action === 'followed') {
-            // Create Notification
             const notification = new Notification({
                 user: targetUserId,
                 type: 'NEW_FOLLOWER',
@@ -1216,48 +1218,37 @@ const toggleFollowUser = async (req, res) => {
             });
             await notification.save({ session });
 
-            // Send Real-time Notification
             if (req.io && req.onlineUsers[targetUserId.toString()]) {
                 req.io.to(req.onlineUsers[targetUserId.toString()]).emit('new_notification', notification);
             }
-
-            // Check Achievements (For both: Follower gets "Supporter", Target gets "Famous")
-            // Note: Currently calling this outside session wrapper in your architecture usually, 
-            // but we can trigger it after commit.
         }
 
         await session.commitTransaction();
 
-        // Post-Transaction Socket Updates
-        // 1. Update Follower (Me) - update my following list locally
-        // (Handled by response usually, but strictly speaking we return the new list)
-        
-        // 2. Update Target (Seller) - update their followers count in real-time
+        // Socket Update for Target Profile (Live Follower Count)
         if (req.io && req.onlineUsers[targetUserId.toString()]) {
             req.io.to(req.onlineUsers[targetUserId.toString()]).emit('user_profile_updated', {
                 _id: targetUserId,
                 followersCount: targetUser.followersCount
             });
         }
-        
-        // 3. If viewing public profile, anyone looking at the seller needs update
-        // This broadcasts to everyone that this user's stats changed (Optional, but good for live counters)
-        // req.io.emit('user_stats_updated', { userId: targetUserId, followersCount: targetUser.followersCount });
 
+        // Achievements check
         if (action === 'followed') {
-             await checkAndAwardAchievements({ userId: followerId, event: 'USER_FOLLOW_OTHERS', req });
-             // await checkAndAwardAchievements({ userId: targetUserId, event: 'USER_GETS_FOLLOWER', req }); // Future implementation
+             // تنفيذ الإنجاز خارج الترانزكشن لتجنب التعقيد
+             // checkAndAwardAchievements(...) 
         }
 
+        // [IMPORTANT] نعيد القائمة الجديدة المحدثة بالكامل للمتابِع
         res.status(200).json({ 
             msg: action === 'followed' ? "User followed" : "User unfollowed",
-            following: follower.following,
+            following: follower.following, // القائمة الجديدة
             targetFollowersCount: targetUser.followersCount,
             action
         });
 
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) await session.abortTransaction();
         console.error("Error toggling follow:", error);
         res.status(500).json({ msg: error.message || "Server error updating follow status." });
     } finally {
@@ -1301,7 +1292,7 @@ module.exports = {
     adminApproveMediatorApplication,
     adminRejectMediatorApplication,
     updateMyMediatorStatus,
-    updateUserProfilePicture, // Make sure this is exported
+    updateUserProfilePicture,
     adminUpdateUserBlockStatus,
     sendUserStatsUpdate,
     toggleWishlist,

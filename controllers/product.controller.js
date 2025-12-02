@@ -2,7 +2,7 @@
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Notification = require('../models/Notification');
-// --- [!!!] استيراد موديل طلب الوساطة [!!!] ---
+// --- استيراد موديل طلب الوساطة ---
 const MediationRequest = require('../models/MediationRequest');
 const mongoose = require('mongoose');
 const config = require('config');
@@ -14,7 +14,7 @@ const { triggerQuestEvent } = require('../services/questService');
 const TND_USD_EXCHANGE_RATE = config.get('TND_USD_EXCHANGE_RATE') || 3.0;
 const MINIMUM_BALANCE_TO_PARTICIPATE = 6; // الحد الأدنى للمشاركة
 
-// --- [!!!] إضافة دالة formatCurrency هنا [!!!] ---
+// --- إضافة دالة formatCurrency هنا ---
 const formatCurrency = (amount, currencyCode = "TND") => {
     const num = Number(amount);
     if (isNaN(num) || amount == null) {
@@ -41,25 +41,75 @@ const formatCurrency = (amount, currencyCode = "TND") => {
     }
 };
 
+// --- دالة مساعدة لإشعار المتابعين ---
+const notifyFollowersOfNewProduct = async (sellerId, product, req) => {
+    try {
+        console.log(`[Notification] Preparing to notify followers of seller: ${sellerId}`);
+        
+        // [FIX] تحويل الـ ID إلى ObjectId صريح لضمان نجاح البحث
+        let sellerObjectId;
+        try {
+            sellerObjectId = new mongoose.Types.ObjectId(sellerId);
+        } catch (e) {
+            console.error("Invalid sellerId format for ObjectId conversion:", sellerId);
+            return;
+        }
+
+        // البحث عن المستخدمين الذين يحتوي حقل 'following' لديهم على هذا الـ ID
+        const followers = await User.find({ following: sellerObjectId }).select('_id');
+        
+        console.log(`[Notification] Found ${followers.length} followers.`);
+
+        if (followers.length === 0) return;
+
+        const seller = await User.findById(sellerId).select('fullName');
+        const sellerName = seller ? seller.fullName : 'A user';
+
+        const notifications = followers.map(follower => ({
+            user: follower._id,
+            type: 'NEW_PRODUCT_FROM_FOLLOWED',
+            title: 'notification_titles.NEW_PRODUCT_FROM_FOLLOWED',
+            message: 'notification_messages.NEW_PRODUCT_FROM_FOLLOWED',
+            messageParams: {
+                sellerName: sellerName,
+                productName: product.title
+            },
+            relatedEntity: { id: product._id, modelName: 'Product' }
+        }));
+
+        const savedNotifications = await Notification.insertMany(notifications);
+
+        if (req.io && req.onlineUsers) {
+            savedNotifications.forEach(notif => {
+                const socketId = req.onlineUsers[notif.user.toString()];
+                if (socketId) {
+                    req.io.to(socketId).emit('new_notification', notif.toObject());
+                    console.log(`[Notification] Socket sent to user ${notif.user}`);
+                }
+            });
+        }
+        
+    } catch (error) {
+        console.error("Error notifying followers:", error);
+    }
+};
+
 // --- Add Product ---
 exports.addProduct = async (req, res) => {
     const userId = req.user?._id;
     const userRole = req.user?.userRole;
 
-    if (!userId) {
-        return res.status(401).json({ msg: "Unauthorized: User ID missing." });
-    }
+    if (!userId) return res.status(401).json({ msg: "Unauthorized: User ID missing." });
 
     const { title, description, imageUrls, linkType, category, price, currency, quantity } = req.body;
     if (!title || !description || !imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0 || !linkType || !price || !currency) {
-        return res.status(400).json({ msg: "Missing required fields or invalid image data." });
+        return res.status(400).json({ msg: "Missing required fields." });
     }
 
     try {
         const parsedPrice = parseFloat(price);
         const parsedQuantity = parseInt(quantity, 10) || 1;
         if (isNaN(parsedPrice) || parsedPrice < 0) return res.status(400).json({ msg: "Invalid price format." });
-        if (isNaN(parsedQuantity) || parsedQuantity < 1) return res.status(400).json({ msg: "Invalid quantity format." });
 
         const defaultStatus = userRole === 'Admin' ? 'approved' : 'pending';
         const newProduct = new Product({
@@ -71,9 +121,16 @@ exports.addProduct = async (req, res) => {
         });
 
         const savedProduct = await newProduct.save();
+        
         await triggerQuestEvent(req.user._id, 'ADD_PRODUCT', req.io, req.onlineUsers);
         await checkAndAwardAchievements({ userId, event: 'PRODUCT_PUBLISHED', req });
+        
         const populatedProduct = await Product.findById(savedProduct._id).populate('user', 'fullName email').lean();
+
+        // [!!!] استدعاء الدالة عند النشر المباشر
+        if (savedProduct.status === 'approved') {
+            notifyFollowersOfNewProduct(userId, savedProduct, req);
+        }
 
         if (savedProduct.status === 'pending' && userRole === 'Vendor') {
             const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
@@ -81,9 +138,9 @@ exports.addProduct = async (req, res) => {
                 const notificationDocs = admins.map(admin => ({
                     user: admin._id,
                     type: 'NEW_PRODUCT_PENDING',
-                    title: 'notification_titles.NEW_PRODUCT_PENDING', // <-- استخدام مفتاح الترجمة
-                    message: 'notification_messages.NEW_PRODUCT_PENDING', // <-- استخدام مفتاح الترجمة
-                    messageParams: { // <-- إضافة المتغيرات
+                    title: 'notification_titles.NEW_PRODUCT_PENDING',
+                    message: 'notification_messages.NEW_PRODUCT_PENDING',
+                    messageParams: {
                         vendorName: req.user.fullName || 'Unknown',
                         productName: savedProduct.title || 'Untitled'
                     },
@@ -293,7 +350,7 @@ exports.updateProducts = async (req, res) => {
             req.io.emit('product_updated', productAfterUpdate.toObject());
         }
 
-        // [!!!] الجزء المُصحح لإشعار المزايدين [!!!]
+        // الجزء المُصحح لإشعار المزايدين
         if (oldBids.length > 0) {
             const uniqueBidders = [...new Set(oldBids.map(bid => bid.user.toString()))];
             const notificationsForBidders = uniqueBidders.map(bidderId => ({
@@ -307,7 +364,7 @@ exports.updateProducts = async (req, res) => {
                 relatedEntity: { id: productId, modelName: 'Product' }
             }));
 
-            // [!!!] الخطوة الصحيحة: استخدم نتيجة insertMany
+            // الخطوة الصحيحة: استخدم نتيجة insertMany
             const createdNotifications = await Notification.insertMany(notificationsForBidders);
 
             if (req.io && req.onlineUsers) {
@@ -476,10 +533,8 @@ exports.approveProduct = async (req, res) => {
         ).populate('user', '_id fullName');
 
         if (!product) {
-            const existingProduct = await Product.findById(productId).session(session);
             await session.abortTransaction();
-            if (existingProduct) return res.status(400).json({ msg: `Product already processed. Current status: ${existingProduct.status}` });
-            return res.status(404).json({ msg: `Product with ID ${productId} not found.` });
+            return res.status(404).json({ msg: `Product not found or already processed.` });
         }
 
         const seller = product.user;
@@ -496,32 +551,27 @@ exports.approveProduct = async (req, res) => {
         await approvalNotification.save({ session: session });
         await session.commitTransaction();
 
-        // التحقق من إنجازات البائع (منتجات تمت الموافقة عليها) 
-        await checkAndAwardAchievements({
-            userId: seller._id,
-            event: 'PRODUCT_APPROVED',
-            req // تمرير الطلب لإرسال إشعارات الـ Socket
-        });
-
         await checkAndAwardAchievements({ userId: seller._id, event: 'PRODUCT_APPROVED', req });
 
         if (req.io) {
             const populatedProduct = await Product.findById(product._id).populate('user', 'fullName email').lean();
-            if (populatedProduct) {
-                req.io.emit('product_updated', populatedProduct);
-            }
+            if (populatedProduct) req.io.emit('product_updated', populatedProduct);
+            
             const sellerSocketId = req.onlineUsers[seller._id.toString()];
             if (sellerSocketId) {
                 req.io.to(sellerSocketId).emit('new_notification', approvalNotification.toObject());
                 sendUserStatsUpdate(req, seller._id);
             }
         }
+
+        // [!!!] استدعاء الدالة عند الموافقة
         notifyFollowersOfNewProduct(seller._id, product, req);
+
         res.status(200).json(product);
     } catch (error) {
         if (session.inTransaction()) await session.abortTransaction();
         console.error("Error approving product:", error);
-        res.status(500).json({ errors: "Failed to approve product due to a server error." });
+        res.status(500).json({ errors: "Failed to approve product." });
     } finally {
         session.endSession();
     }
@@ -993,7 +1043,7 @@ exports.acceptBid = async (req, res) => {
 
 // --- نهاية دالة acceptBid ---
 
-// --- [!!!] دالة رفض المزايدة كاملة ومعدلة [!!!] ---
+// --- دالة رفض المزايدة كاملة ومعدلة ---
 exports.rejectBid = async (req, res) => {
     const { productId } = req.params;
     const sellerId = req.user._id;

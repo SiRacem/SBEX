@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Container, Table, Button, Modal, Form, Row, Col, Badge } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import { adminGetAllQuests, createQuest, updateQuest, deleteQuest } from '../../redux/actions/questAction';
-import { FaEdit, FaTrash, FaPlus, FaCoins, FaStar } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaCoins, FaStar, FaGift } from 'react-icons/fa'; // أيقونة Gift
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 
@@ -23,6 +23,7 @@ const AdminQuestManagement = () => {
         targetCount: 1,
         creditsReward: 0,
         xpReward: 0,
+        freeSpinsReward: 0,
         isActive: true
     };
     const [formData, setFormData] = useState(initialForm);
@@ -48,6 +49,7 @@ const AdminQuestManagement = () => {
             targetCount: quest.targetCount,
             creditsReward: quest.reward.credits,
             xpReward: quest.reward.xp,
+            freeSpinsReward: quest.reward.freeSpins || 0,
             isActive: quest.isActive
         });
         setCurrentId(quest._id);
@@ -67,7 +69,11 @@ const AdminQuestManagement = () => {
             type: formData.type,
             eventTrigger: formData.eventTrigger,
             targetCount: Number(formData.targetCount),
-            reward: { credits: Number(formData.creditsReward), xp: Number(formData.xpReward) },
+            reward: { 
+                credits: Number(formData.creditsReward), 
+                xp: Number(formData.xpReward),
+                freeSpins: Number(formData.freeSpinsReward)
+            },
             isActive: formData.isActive
         };
 
@@ -85,7 +91,6 @@ const AdminQuestManagement = () => {
         }
     };
 
-    // [!!!] دالة الحذف الجديدة لإظهار الـ Toast [!!!]
     const handleDelete = async (id) => {
         if (window.confirm(t('common.confirmDelete', 'Are you sure?'))) {
             try {
@@ -122,38 +127,21 @@ const AdminQuestManagement = () => {
                         <tr key={quest._id}>
                             <td className="text-start">
                                 <strong>{quest.title?.ar}</strong>
-                                {quest.title?.en && quest.title.en !== quest.title.ar && (
-                                    <>
-                                        <br />
-                                        <small className="text-muted">{quest.title.en}</small>
-                                    </>
-                                )}
+                                {quest.title?.en && quest.title.en !== quest.title.ar && <><br /><small className="text-muted">{quest.title.en}</small></>}
                             </td>
                             <td><Badge bg="info">{t(`quests.types.${quest.type}`, quest.type)}</Badge></td>
-                            <td>
-                                <Badge bg="secondary">{quest.eventTrigger}</Badge>
-                                <span className="ms-2">x {quest.targetCount}</span>
-                            </td>
+                            <td><Badge bg="secondary">{quest.eventTrigger}</Badge> <span className="ms-2">x {quest.targetCount}</span></td>
                             <td>
                                 <div className="d-flex justify-content-center gap-2">
                                     {quest.reward?.credits > 0 && <Badge bg="warning" text="dark"><FaCoins /> {quest.reward.credits}</Badge>}
                                     {quest.reward?.xp > 0 && <Badge bg="primary"><FaStar /> {quest.reward.xp}</Badge>}
+                                    {quest.reward?.freeSpins > 0 && <Badge bg="success"><FaGift /> {quest.reward.freeSpins}</Badge>}
                                 </div>
                             </td>
+                            <td>{quest.isActive ? <Badge bg="success">{t('common.active', 'Active')}</Badge> : <Badge bg="danger">{t('common.inactive', 'Inactive')}</Badge>}</td>
                             <td>
-                                {quest.isActive ?
-                                    <Badge bg="success">{t('common.active', 'Active')}</Badge> :
-                                    <Badge bg="danger">{t('common.inactive', 'Inactive')}</Badge>
-                                }
-                            </td>
-                            <td>
-                                <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleOpenEdit(quest)}>
-                                    <FaEdit />
-                                </Button>
-                                {/* [!!!] استخدام دالة handleDelete هنا [!!!] */}
-                                <Button variant="outline-danger" size="sm" onClick={() => handleDelete(quest._id)}>
-                                    <FaTrash />
-                                </Button>
+                                <Button variant="outline-primary" size="sm" className="me-2" onClick={() => handleOpenEdit(quest)}><FaEdit /></Button>
+                                <Button variant="outline-danger" size="sm" onClick={() => handleDelete(quest._id)}><FaTrash /></Button>
                             </td>
                         </tr>
                     ))}
@@ -162,9 +150,7 @@ const AdminQuestManagement = () => {
 
             <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
                 <Modal.Header closeButton>
-                    <Modal.Title>
-                        {editMode ? t('admin.quests.modal.editTitle') : t('admin.quests.modal.createTitle')}
-                    </Modal.Title>
+                    <Modal.Title>{editMode ? t('admin.quests.modal.editTitle') : t('admin.quests.modal.createTitle')}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form>
@@ -172,12 +158,7 @@ const AdminQuestManagement = () => {
                             <Col md={12}>
                                 <Form.Group>
                                     <Form.Label>{t('admin.quests.form.titleAr')} <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        value={formData.titleAr}
-                                        onChange={e => setFormData({ ...formData, titleAr: e.target.value })}
-                                        dir="rtl"
-                                    />
+                                    <Form.Control type="text" value={formData.titleAr} onChange={e => setFormData({ ...formData, titleAr: e.target.value })} dir="rtl" />
                                 </Form.Group>
                             </Col>
                         </Row>
@@ -185,11 +166,7 @@ const AdminQuestManagement = () => {
                             <Col md={12}>
                                 <Form.Group>
                                     <Form.Label>{t('admin.quests.form.titleEn')} <small className="text-muted">({t('common.optional')})</small></Form.Label>
-                                    <Form.Control
-                                        type="text"
-                                        value={formData.titleEn}
-                                        onChange={e => setFormData({ ...formData, titleEn: e.target.value })}
-                                    />
+                                    <Form.Control type="text" value={formData.titleEn} onChange={e => setFormData({ ...formData, titleEn: e.target.value })} />
                                 </Form.Group>
                             </Col>
                         </Row>
@@ -240,35 +217,34 @@ const AdminQuestManagement = () => {
                             </Col>
                         </Row>
                         <Row className="mb-3">
-                            <Col md={4}>
+                            <Col md={3}>
                                 <Form.Group>
                                     <Form.Label>Credits Reward</Form.Label>
                                     <Form.Control type="number" min="0" value={formData.creditsReward} onChange={e => setFormData({ ...formData, creditsReward: e.target.value })} />
                                 </Form.Group>
                             </Col>
-                            <Col md={4}>
+                            <Col md={3}>
                                 <Form.Group>
                                     <Form.Label>XP Reward</Form.Label>
                                     <Form.Control type="number" min="0" value={formData.xpReward} onChange={e => setFormData({ ...formData, xpReward: e.target.value })} />
                                 </Form.Group>
                             </Col>
-                            <Col md={4} className="d-flex align-items-center justify-content-center">
-                                <Form.Check
-                                    type="switch"
-                                    id="custom-switch"
-                                    label={t('common.active')}
-                                    checked={formData.isActive}
-                                    onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                                />
+                            <Col md={3}>
+                                {/* [!!!] حقل اللفات المجانية الجديد [!!!] */}
+                                <Form.Group>
+                                    <Form.Label>Free Spins</Form.Label>
+                                    <Form.Control type="number" min="0" value={formData.freeSpinsReward} onChange={e => setFormData({ ...formData, freeSpinsReward: e.target.value })} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={3} className="d-flex align-items-center justify-content-center">
+                                <Form.Check type="switch" id="custom-switch" label={t('common.active')} checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
                             </Col>
                         </Row>
                     </Form>
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowModal(false)}>{t('common.cancel')}</Button>
-                    <Button variant="primary" onClick={handleSubmit}>
-                        {editMode ? t('common.saveChanges') : t('common.create')}
-                    </Button>
+                    <Button variant="primary" onClick={handleSubmit}>{editMode ? t('common.saveChanges') : t('common.create')}</Button>
                 </Modal.Footer>
             </Modal>
         </Container>

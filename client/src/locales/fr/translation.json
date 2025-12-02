@@ -377,7 +377,8 @@
     "ACHIEVEMENT_UNLOCKED": "🏆 Nouveau Succès !",
     "REFERRAL_BONUS": "🎉 Nouveau Bonus !",
     "NEW_FOLLOWER": "Nouveau follower !",
-    "QUEST_COMPLETED": "Quête Terminée ! 🏆"
+    "QUEST_COMPLETED": "Quête Terminée ! 🏆",
+    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 Nouvel article d'un vendeur suivi !"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -477,7 +478,8 @@
     "ACHIEVEMENT_UNLOCKED": "Félicitations ! Vous avez débloqué un nouveau succès : \"{{achievementName}}\".",
     "REFERRAL_BONUS": "Félicitations ! Vous avez reçu un bonus de réference : \"{{achievementName}}\".",
     "NEW_FOLLOWER": "{{followerName}} a commencé à vous suivre.",
-    "QUEST_COMPLETED": "Vous avez terminé la quête : {{questTitle}}. Allez au tableau des quêtes pour réclamer votre récompense."
+    "QUEST_COMPLETED": "Vous avez terminé la quête : {{questTitle}}. Allez au tableau des quêtes pour réclamer votre récompense.",
+    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} a publié un nouveau produit : \"{{productName}}\". Jetez un œil !"
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -2582,6 +2584,11 @@
     }
   },
   "luckyWheel": {
+    "labels": {
+        "freeSpins": "Tours Gratuits"
+    },
+    "spinFree": "TOURNEZ GRATUIT !",
+    "hasFreeSpins": "Vous avez {{count}} tours gratuits !",
     "title": "Roue de la Fortune",
     "spinBtn": "LANCER !",
     "subtitle": "Tournez pour {{cost}} Crédits et gagnez des prix incroyables !",
@@ -2593,6 +2600,9 @@
     "prizes": {
         "credits": "Crédits",
         "xp": "XP",
+        "balance": "Solde",
+        "free_spin": "Tournee gratuite",
+        "empty": "Pas de chance",
         "currency": "TND"
     },
     "history": {
@@ -2604,6 +2614,13 @@
     }
   },
   "quests": {
+    "header": {
+        "credits": "{{count}} Crédits",
+        "freeSpins": "{{count}} Tours"
+    },
+    "rewards": {
+        "spin": "Tour"
+    },
     "pageTitle": "Tableau des Quêtes",
     "subtitle": "Terminez des tâches pour gagner des crédits et de l'XP !",
     "progress": "Progression",
@@ -2612,6 +2629,7 @@
     "inProgressBtn": "En cours",
     "completedToast": "Quête terminée : {{title}} ! Réclamez votre récompense.",
     "claimSuccess": "Récompense réclamée avec succès ! 🎉",
+    "noQuests": "Aucune quête disponible pour le moment.",
     "types": {
       "Daily": "Quotidienne",
       "OneTime": "Une fois",

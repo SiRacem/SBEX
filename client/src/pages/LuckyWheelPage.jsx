@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Container, Button, Spinner } from 'react-bootstrap';
+import { Container, Button, Spinner, Badge } from 'react-bootstrap';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Wheel } from 'react-custom-roulette';
@@ -7,16 +7,14 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { getProfile } from '../redux/actions/userAction';
 import { getWheelConfig } from '../redux/actions/questAction';
-import { FaCoins, FaStar, FaMoneyBillWave, FaFrown, FaHistory } from 'react-icons/fa';
+import { FaCoins, FaStar, FaMoneyBillWave, FaFrown, FaHistory, FaGift } from 'react-icons/fa';
 import './LuckyWheelPage.css';
 
 const LuckyWheelPage = () => {
     const { t, i18n } = useTranslation();
     const dispatch = useDispatch();
 
-    // استخدام Fallback لتجنب الأخطاء
     const { user } = useSelector(state => state.userReducer || {});
-    // تأكد أنك أنشأت questReducer كما ذكرت سابقاً، أو استخدم مصفوفة فارغة احتياطاً
     const questState = useSelector(state => state.questReducer || {});
     const wheelConfig = questState.wheelConfig || [];
 
@@ -29,17 +27,15 @@ const LuckyWheelPage = () => {
     const pendingResult = useRef(null);
     const SPIN_COST = 100;
 
-    // 1. جلب البيانات عند التحميل
+    const hasFreeSpins = (user?.freeSpins || 0) > 0;
+
     useEffect(() => {
         let isMounted = true;
         const fetchData = async () => {
             try {
-                // جلب إعدادات العجلة إذا لم تكن موجودة
                 if (!wheelConfig || wheelConfig.length === 0) {
                     await dispatch(getWheelConfig());
                 }
-
-                // جلب السجل
                 const token = localStorage.getItem("token");
                 if (token) {
                     const { data } = await axios.get("/quests/spin-history", { headers: { Authorization: `Bearer ${token}` } });
@@ -53,44 +49,46 @@ const LuckyWheelPage = () => {
         };
         fetchData();
         return () => { isMounted = false; };
-        // eslint-disable-next-line
     }, [dispatch]);
 
-    // 2. تجهيز قطاعات العجلة
     const wheelSegments = useMemo(() => {
         if (!wheelConfig || !Array.isArray(wheelConfig) || wheelConfig.length === 0) {
-            // بيانات وهمية للتحميل لتجنب اختفاء العجلة
-            return [
-                { option: '...', style: { backgroundColor: '#ddd' } },
-                { option: '...', style: { backgroundColor: '#bbb' } }
-            ];
+            return [ { option: '...', style: { backgroundColor: '#ddd' } }, { option: '...', style: { backgroundColor: '#bbb' } } ];
         }
-
         return wheelConfig.map(seg => {
             const typeKey = `luckyWheel.prizes.${seg.type}`;
             const translatedType = t(typeKey, { defaultValue: seg.type });
-            const text = seg.text || `${seg.amount} ${translatedType}`;
+            
+            // [!!!] أيقونات عالمية مدعومة في كل الأنظمة [!!!]
+            let iconEmoji = '';
+            switch(seg.type) {
+                case 'credits': iconEmoji = '💰'; break; // كيس مال (يظهر للجميع)
+                case 'xp': iconEmoji = '⭐'; break;      // نجمة
+                case 'balance': iconEmoji = '💵'; break; // ورقة نقدية
+                case 'free_spin': iconEmoji = '🎁'; break; // هدية
+                case 'empty': iconEmoji = '💔'; break;   // قلب مكسور
+                default: iconEmoji = '';
+            }
 
-            let smartFontSize = 14;
-            if (text.length > 15) smartFontSize = 10;
-            else if (text.length > 8) smartFontSize = 12;
-
-            return {
-                option: text,
-                style: { backgroundColor: seg.color, textColor: 'white', fontSize: smartFontSize },
-                original: seg
-            };
+            // استخدام النص المخصص أو النص الافتراضي مع الأيقونة
+            const text = seg.text ? seg.text : `${seg.amount > 0 ? seg.amount : ''} ${translatedType} ${iconEmoji}`;
+            
+            // تكبير الخط قليلاً ليكون واضحاً
+            let smartFontSize = 16;
+            if (text.length > 15) smartFontSize = 11;
+            else if (text.length > 10) smartFontSize = 13;
+            
+            return { option: text, style: { backgroundColor: seg.color, textColor: 'white', fontSize: smartFontSize }, original: seg };
         });
     }, [wheelConfig, t]);
 
-    // 3. زر التدوير
     const handleSpinClick = async () => {
-        if ((user?.credits || 0) < SPIN_COST) {
-            toast.error(t('luckyWheel.noCredits', 'Insufficient Credits'));
+        if (!hasFreeSpins && (user?.credits || 0) < SPIN_COST) {
+            toast.error(t('luckyWheel.noCredits'));
             return;
         }
 
-        setSpinning(true); // قفل الزر
+        setSpinning(true);
 
         try {
             const token = localStorage.getItem("token");
@@ -98,13 +96,10 @@ const LuckyWheelPage = () => {
 
             pendingResult.current = data;
 
-            // تحديد الفائز
-            const winningIndex = wheelSegments.findIndex(seg =>
-                seg.original?.type === data.reward.type &&
+            const winningIndex = wheelSegments.findIndex(seg => 
+                seg.original?.type === data.reward.type && 
                 Number(seg.original?.amount) === Number(data.reward.amount)
             );
-
-            // بدء الدوران نحو الفائز
             setPrizeNumber(winningIndex !== -1 ? winningIndex : 0);
             setMustSpin(true);
 
@@ -116,77 +111,68 @@ const LuckyWheelPage = () => {
         }
     };
 
-    // 4. عند توقف العجلة (هنا نظهر النتيجة)
     const handleStopSpinning = () => {
         setMustSpin(false);
         setSpinning(false);
-
         if (pendingResult.current) {
             const data = pendingResult.current;
             const prizeSeg = wheelSegments[prizeNumber];
-
-            // إظهار التوست
             if (data.reward.type === 'empty') {
-                toast.info(t('luckyWheel.loseMessage', 'Hard Luck!'));
+                toast.info(t('luckyWheel.loseMessage'));
             } else {
                 toast.success(t('luckyWheel.winMessage', { prize: prizeSeg.option }));
             }
-
-            // تحديث السجل محلياً (ليظهر فوراً دون انتظار السيرفر)
-            const newRecord = {
-                _id: Date.now(),
-                createdAt: new Date(),
-                cost: SPIN_COST,
-                reward: data.reward
-            };
+            const newRecord = { _id: Date.now(), createdAt: new Date(), cost: data.usedFreeSpin ? 0 : SPIN_COST, reward: data.reward };
             setSpinHistory([newRecord, ...spinHistory]);
-
-            // الآن نطلب تحديث البروفايل للتأكد من الرصيد
-            dispatch(getProfile());
+            dispatch(getProfile()); 
             pendingResult.current = null;
         }
     };
 
     const getPrizeIcon = (type) => {
-        switch (type) {
+        switch(type) {
             case 'credits': return <FaCoins className="text-warning" />;
             case 'xp': return <FaStar className="text-info" />;
             case 'balance': return <FaMoneyBillWave className="text-success" />;
             case 'empty': return <FaFrown className="text-secondary" />;
+            case 'free_spin': return <FaGift className="text-white" />;
             default: return <FaCoins />;
         }
     };
 
     if (isLoadingData) {
-        return (
-            <Container className="py-5 text-center d-flex align-items-center justify-content-center" style={{ minHeight: '60vh' }}>
-                <Spinner animation="border" variant="light" />
-            </Container>
-        );
+        return ( <Container className="py-5 text-center d-flex align-items-center justify-content-center" style={{minHeight: '60vh'}}> <Spinner animation="border" variant="light" /> </Container> );
     }
 
     return (
         <Container className="py-5 lucky-wheel-page">
             <div className="text-center mb-5">
                 <h2 className="mb-3 text-white fw-bold display-5 wheel-title">
-                    <span className="glow">🎡</span> {t('luckyWheel.title', 'Lucky Wheel')} <span className="glow">🎡</span>
+                    <span className="glow">🎡</span> {t('luckyWheel.title')} <span className="glow">🎡</span>
                 </h2>
-                <div className="user-balance-badge mx-auto">
-                    <span className="label">{t('luckyWheel.balanceLabel')}</span>
+                
+                <div className="d-flex justify-content-center gap-3 flex-wrap">
+                    {/* [!!!] عرض الرصيد بشكل مفصول وسليم [!!!] */}
+                    <div className="user-balance-badge">
+                        <span className="label me-2">{t('luckyWheel.balanceLabel')}</span>
+                        {(user?.credits === undefined || (user?.credits === 0 && isLoadingData)) ? (
+                            <Spinner animation="grow" variant="warning" size="sm" className="mx-2" />
+                        ) : (
+                            <span className="value">{user?.credits}</span>
+                        )}
+                        <FaCoins className="icon ms-2" />
+                    </div>
 
-                    {(user?.credits === undefined || (user?.credits === 0 && isLoadingData)) ? (
-                        <Spinner animation="grow" variant="warning" size="sm" className="mx-2" />
-                    ) : (
-                        <span className="value">{user?.credits}</span>
-                    )}
-
-                    <FaCoins className="icon" />
+                    <div className={`user-balance-badge ${hasFreeSpins ? 'bg-success border-success' : ''}`}>
+                        <span className="label me-2">{t('luckyWheel.labels.freeSpins')}</span>
+                        <span className="value">{user?.freeSpins || 0}</span>
+                        <FaGift className="icon text-white ms-2" />
+                    </div>
                 </div>
             </div>
 
             <div className="wheel-container-wrapper mb-5">
                 <div className="wheel-border">
-                    {/* العجلة موجودة دائماً */}
                     <Wheel
                         mustStartSpinning={mustSpin}
                         prizeNumber={prizeNumber}
@@ -209,24 +195,30 @@ const LuckyWheelPage = () => {
             </div>
 
             <div className="text-center mb-5">
-                <Button
-                    variant="warning"
-                    size="lg"
-                    className="spin-action-btn"
+                <Button 
+                    variant={hasFreeSpins ? "success" : "warning"} 
+                    size="lg" 
+                    className={`spin-action-btn ${hasFreeSpins ? 'pulse-animation' : ''}`}
                     onClick={handleSpinClick}
-                    disabled={spinning || (user?.credits || 0) < SPIN_COST}
+                    disabled={spinning || (!hasFreeSpins && (user?.credits || 0) < SPIN_COST)}
                 >
-                    {spinning ? <Spinner size="sm" animation="border" /> : t('luckyWheel.spinBtn', 'SPIN NOW')}
+                    {spinning ? <Spinner size="sm" animation="border" /> : 
+                     hasFreeSpins ? 
+                        <span><FaGift className="me-2"/> {t('luckyWheel.spinFree')}</span> : 
+                        t('luckyWheel.spinBtn')
+                    }
                 </Button>
                 <div className="text-white mt-2 opacity-75 small">
-                    {t('luckyWheel.subtitle', { cost: SPIN_COST })}
+                    {hasFreeSpins ? 
+                        <span className="text-success fw-bold">{t('luckyWheel.hasFreeSpins', {count: user.freeSpins})}</span> : 
+                        t('luckyWheel.subtitle', { cost: SPIN_COST })
+                    }
                 </div>
             </div>
 
-            {/* قسم السجل */}
             <div className="history-section mt-5">
                 <h4 className="text-white mb-4 d-flex align-items-center justify-content-center">
-                    <FaHistory className="me-2" /> {t('luckyWheel.history.title', 'History')}
+                    <FaHistory className="me-2" /> {t('luckyWheel.history.title')}
                 </h4>
                 <div className="history-list">
                     {spinHistory.length > 0 ? (
@@ -237,9 +229,9 @@ const LuckyWheelPage = () => {
                                 </div>
                                 <div className="history-content">
                                     <div className="history-prize-title">
-                                        {spin.reward?.type === 'empty' ?
-                                            t('luckyWheel.prizes.empty', 'Hard Luck') :
-                                            `+${spin.reward.amount} ${t(`luckyWheel.prizes.${spin.reward.type}`, spin.reward.type)}`
+                                        {spin.reward?.type === 'empty' ? 
+                                            t('luckyWheel.prizes.empty', 'Hard Luck') : 
+                                            `${spin.reward.amount > 0 ? '+' + spin.reward.amount : ''} ${t(`luckyWheel.prizes.${spin.reward.type}`, spin.reward.type)}`
                                         }
                                     </div>
                                     <div className="history-date">
@@ -247,13 +239,13 @@ const LuckyWheelPage = () => {
                                     </div>
                                 </div>
                                 <div className="history-cost">
-                                    -{spin.cost} <FaCoins size={10} />
+                                    {spin.cost === 0 ? <Badge bg="success">Free</Badge> : <span className="text-danger">-{spin.cost} <FaCoins size={10} /></span>}
                                 </div>
                             </div>
                         ))
                     ) : (
                         <div className="text-center text-white-50 py-4 glass-effect rounded">
-                            {t('luckyWheel.history.empty', 'No spins yet')}
+                            {t('luckyWheel.history.empty')}
                         </div>
                     )}
                 </div>

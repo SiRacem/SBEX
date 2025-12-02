@@ -18,7 +18,7 @@ import {
     FaUserShield,
     FaUsersCog,
     FaBullhorn,
-    FaTrophy
+    FaShoppingBag
 } from "react-icons/fa";
 import {
     FiAlertTriangle,
@@ -139,6 +139,9 @@ export const getNotificationIcon = (type, isRead) => {
         case 'ACHIEVEMENT_UNLOCKED':
             // يمكنك استخدام FaMedal أو FaTrophy
             return <FaMedal size={20} className="text-warning" />;
+
+        case 'NEW_PRODUCT_FROM_FOLLOWED':
+            return <FaShoppingBag size={20} className="text-primary" />;
 
         // --- أيقونة افتراضية ---
         default:
