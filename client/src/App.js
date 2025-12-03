@@ -70,14 +70,17 @@ import AdminQuestManagement from './components/admin/AdminQuestManagement';
 import { getUserQuests, adminGetAllQuests, getCheckInConfig } from './redux/actions/questAction';
 import AdminCheckInSettings from './components/admin/AdminCheckInSettings';
 import AdminWheelSettings from './components/admin/AdminWheelSettings';
+import ErrorBoundary from './components/commun/ErrorBoundary';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
 
 const AppWrapper = () => (
-  <Router>
-    <App />
-  </Router>
+  <ErrorBoundary>
+    <Router>
+      <App />
+    </Router>
+  </ErrorBoundary>
 );
 
 const RedirectWithToast = ({ to, messageKey }) => {
@@ -189,23 +192,42 @@ function App() {
     // عرض رسائل النجاح
     if (successMessage) {
       toast.success(t(successMessage, successMessageParams));
-      dispatch({ type: 'CLEAR_USER_MESSAGES' }); // استخدمنا action type مختلف لمسح رسائل النجاح
+      dispatch({ type: 'CLEAR_USER_MESSAGES' });
     }
 
     // عرض رسائل الخطأ
     if (errorFromAPI) {
-      const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
-      toast.error(
-        t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback }),
-        { toastId: errorFromAPI.key } // لمنع التكرار السريع لنفس الخطأ
-      );
-      dispatch(clearUserErrors()); // امسح الخطأ بعد عرضه مباشرة
+      let messageText = "An unknown error occurred";
+
+      // التحقق مما إذا كان الخطأ كائناً يحتوي على مفتاح ترجمة
+      if (typeof errorFromAPI === 'object' && errorFromAPI !== null) {
+        if (errorFromAPI.key) {
+          const fallback = errorFromAPI.fallback || t("apiErrors.unknownError");
+          messageText = t(errorFromAPI.key, { ...errorFromAPI.params, defaultValue: fallback });
+        } else if (errorFromAPI.errorMessage) {
+          // حالة خاصة: إذا كان الكائن متداخلاً { errorMessage: "..." }
+          messageText = typeof errorFromAPI.errorMessage === 'string'
+            ? errorFromAPI.errorMessage
+            : JSON.stringify(errorFromAPI.errorMessage);
+        } else {
+          // حماية أخيرة: تحويل الكائن لنص لتجنب الكراش
+          messageText = JSON.stringify(errorFromAPI);
+        }
+      } else if (typeof errorFromAPI === 'string') {
+        messageText = errorFromAPI;
+      }
+
+      toast.error(messageText, { toastId: 'api-error' });
+      dispatch(clearUserErrors());
     }
 
-    // التعامل مع الأخطاء القديمة (إذا كانت موجودة)
     if (errors) {
-      const errorMessageText = t(`apiErrors.${errors}`, { defaultValue: errors });
-      toast.error(errorMessageText, { toastId: errors });
+      // حماية إضافية هنا أيضاً
+      const errorMessageText = typeof errors === 'string'
+        ? t(`apiErrors.${errors}`, { defaultValue: errors })
+        : t("apiErrors.unknownError");
+
+      toast.error(errorMessageText, { toastId: 'legacy-error' });
       dispatch(clearUserErrors());
     }
   }, [successMessage, errorFromAPI, errors, dispatch, t, successMessageParams]);
@@ -453,26 +475,44 @@ function App() {
 
       // مستمع لتحديث إعدادات الجوائز
       newSocket.on('check_in_config_updated', (newRewards) => {
-          console.log('[Socket] Check-in config updated:', newRewards);
-          // تحديث الريدكس فوراً
-          dispatch({ type: 'SET_CHECK_IN_CONFIG', payload: newRewards }); 
+        console.log('[Socket] Check-in config updated:', newRewards);
+        // تحديث الريدكس فوراً
+        dispatch({ type: 'SET_CHECK_IN_CONFIG', payload: newRewards });
       });
 
       // [!!!] مستمع لتحديث إعدادات العجلة [!!!]
       newSocket.on('wheel_config_updated', (newSegments) => {
-          console.log('[Socket] Wheel config updated:', newSegments);
-          // نحتاج لطريقة لتحديث LuckyWheelPage.
-          // الخيار الأفضل هو تخزين الإعدادات في Redux (مثل checkIn)
-          // لكن للسرعة، سنرسل حدثاً (Event) للمتصفح أو نستخدم Redux.
-          
-          // الخيار الأسهل: Redux
-          dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
+        console.log('[Socket] Wheel config updated:', newSegments);
+        // نحتاج لطريقة لتحديث LuckyWheelPage.
+        // الخيار الأفضل هو تخزين الإعدادات في Redux (مثل checkIn)
+        // لكن للسرعة، سنرسل حدثاً (Event) للمتصفح أو نستخدم Redux.
+
+        // الخيار الأسهل: Redux
+        dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
       });
 
       newSocket.on('wheel_config_updated', (newSegments) => {
-          console.log('[Socket] Wheel config updated:', newSegments);
-          // [!!!] تحديث Redux فوراً [!!!]
-          dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
+        console.log('[Socket] Wheel config updated:', newSegments);
+        // [!!!] تحديث Redux فوراً [!!!]
+        dispatch({ type: 'SET_WHEEL_CONFIG', payload: newSegments });
+      });
+
+      newSocket.on('quests_updated', () => {
+        console.log('[App.js] Received quests_updated signal. Refreshing user quests...');
+
+        // تحديث للمستخدمين (صفحة المهام)
+        dispatch(getUserQuests());
+
+        // تحديث للأدمن (صفحة الإدارة) إذا كان المستخدم أدمناً
+        if (user?.userRole === 'Admin') {
+          dispatch(adminGetAllQuests()); // تأكد من استيراد هذا الأكشن إذا لزم الأمر
+        }
+      });
+
+      // مستمع خاص بإشعارات التقدم (Progress Update) إذا أردت دقة أكبر
+      newSocket.on('quest_progress_updated', (data) => {
+        console.log('[App.js] Quest progress updated:', data);
+        dispatch(getUserQuests());
       });
     }
 

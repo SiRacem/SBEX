@@ -4,7 +4,7 @@ import React, {
   useCallback,
   useState,
   useContext,
-  useMemo, // استيراد useMemo إذا لم يكن موجودًا
+  useMemo,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -26,6 +26,7 @@ import {
   FaExternalLinkAlt,
   FaExchangeAlt,
   FaDice,
+  FaCalendarCheck
 } from "react-icons/fa";
 import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
@@ -61,23 +62,35 @@ import { format } from "date-fns";
 import { toast } from "react-toastify";
 import TransferBalanceModal from "../components/commun/TransferBalanceModal";
 import { getNews } from "../redux/actions/newsAction";
-import DailyCheckInModal from '../components/quests/DailyCheckInModal'; // تأكد من المسار
-import { getUserQuests } from '../redux/actions/questAction'; // لاستدعاء البيانات
-import { FaCalendarCheck } from 'react-icons/fa'; // أيقونة للزر
+import DailyCheckInModal from '../components/quests/DailyCheckInModal';
+import { getUserQuests } from '../redux/actions/questAction';
 
-// --- [!] مكون منفصل لعرض عنصر المعاملة ---
+// ثابت سعر الصرف للعرض (يجب أن يطابق الباك اند)
+const EXCHANGE_RATE_TND_USD = 3.0;
+
+// --- مكون منفصل لعرض عنصر المعاملة ---
 const TransactionItem = ({ transaction, onShowDetails }) => {
   const { t } = useTranslation();
 
-  // [!!!] START: إصلاح الإشارة [!!!]
   const isCredit = transaction.amount > 0;
   const isDebit = transaction.amount < 0;
-  const amountDisplay = useCurrencyDisplay(
-    Math.abs(transaction.amount),
-    transaction.currency
-  );
   const amountPrefix = isCredit ? "+ " : isDebit ? "- " : "";
-  // [!!!] END: إصلاح الإشارة [!!!]
+
+  // [!!!] منطق التحويل للعرض الصحيح [!!!]
+  // 1. تحديد ما إذا كانت العملة دولار
+  const isUSD = transaction.currency === 'USD';
+
+  // 2. حساب المبلغ الذي سيظهر بالخط العريض (بالدينار دائماً للتوحيد)
+  // إذا كان دولار، نضرب في 3، وإلا نتركه كما هو
+  const amountToDisplayInMainCurrency = isUSD 
+      ? Math.abs(transaction.amount) * EXCHANGE_RATE_TND_USD 
+      : Math.abs(transaction.amount);
+
+  // 3. استخدام الهوك لعرض المبلغ المحول بالدينار (TND)
+  const amountDisplay = useCurrencyDisplay(
+    amountToDisplayInMainCurrency,
+    'TND' // نجبر العرض أن يكون بالدينار لأننا حولنا الرقم يدوياً
+  );
 
   if (!transaction || !transaction._id) return null;
 
@@ -103,8 +116,8 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
       iconColorClass = "text-primary";
       break;
     case "MEDIATION_FEE_PAID_BY_BUYER":
-      IconComponent = FaBalanceScale; // نفس أيقونة رسوم الوساطة
-      iconColorClass = "text-danger"; // لأنها خصم
+      IconComponent = FaBalanceScale;
+      iconColorClass = "text-danger";
       break;
     case "PRODUCT_SALE_FUNDS_PENDING":
       IconComponent = FaHourglassHalf;
@@ -143,8 +156,8 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
       iconColorClass = "text-success";
       break;
     case "LUCKY_WHEEL_REWARD":
-      IconComponent = FaDice; // أيقونة النرد
-      iconColorClass = "text-warning"; // لون ذهبي/أصفر
+      IconComponent = FaDice;
+      iconColorClass = "text-warning";
       break;
     default:
       if (transaction.amount > 0) iconColorClass = "text-success";
@@ -192,8 +205,6 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
       className="px-3 py-3 d-flex justify-content-between align-items-center transaction-list-item-dash"
     >
       <div className="d-flex align-items-center" style={{ minWidth: 0 }}>
-        {" "}
-        {/* Prevent overflow */}
         <div
           className={`transaction-icon-dash me-3 ${iconColorClass.replace(
             "text-",
@@ -232,14 +243,14 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
         </div>
       </div>
       <div className="text-end" style={{ whiteSpace: "nowrap" }}>
-        {" "}
-        {/* Prevent wrapping */}
+        {/* المبلغ المحول (التقريبي) بالدينار */}
         <span
           className={`fw-bold d-block transaction-amount-dash ${iconColorClass}`}
         >
           {amountPrefix}
           {amountDisplay.displayValue}
         </span>
+
         <Badge
           pill
           bg={statusBadgeVariant}
@@ -255,7 +266,6 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
     </ListGroup.Item>
   );
 };
-// --- [!!!] نهاية المكون الجديد ---
 
 const MainDashboard = () => {
   const { t, i18n } = useTranslation();
@@ -442,7 +452,6 @@ const MainDashboard = () => {
                 <hr className="border-light opacity-50 my-2" />
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <h5 className="mb-0">{t("dashboard.balances.onHold")}</h5>
-                  {/* [!!!] START: إضافة أيقونة الرصيد المعلّق [!!!] */}
                   <OverlayTrigger
                     placement="top"
                     overlay={
@@ -458,7 +467,6 @@ const MainDashboard = () => {
                       <FaHourglassHalf size={20} />
                     </Button>
                   </OverlayTrigger>
-                  {/* [!!!] END: نهاية إضافة الأيقونة [!!!] */}
                 </div>
                 <h4 className="fw-bold mb-1">
                   {sellerPendingBalanceDisplay.displayValue}
@@ -484,7 +492,6 @@ const MainDashboard = () => {
                 <span className="link-text flex-grow-1">
                   {t("dashboard.notifications.title")}
                 </span>
-                {/* Badge and Spinner */}
                 <div className="d-flex align-items-center">
                   {!notificationsLoading && unreadCount > 0 && (
                     <Badge
@@ -509,7 +516,6 @@ const MainDashboard = () => {
                 <span className="link-text flex-grow-1">
                   {t("dashboard.mediations.title")}
                 </span>
-                {/* Badge and Spinner */}
                 <div className="d-flex align-items-center">
                   {!mediationSummariesLoading &&
                     totalUnreadMediationMessages > 0 && (

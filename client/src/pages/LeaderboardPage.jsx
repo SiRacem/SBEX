@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Container, Card, Tab, Nav, Spinner, Image, Badge, Table } from 'react-bootstrap';
+import { Link } from 'react-router-dom'; // [!!!] استيراد Link
 import { useTranslation } from 'react-i18next';
 import { getLeaderboards } from '../redux/actions/leaderboardAction';
 import { FaCrown, FaTrophy } from 'react-icons/fa';
@@ -23,14 +24,11 @@ const getAvatarSrc = (avatarUrl) => {
     return `${BACKEND_URL}/${cleanPath}`;
 };
 
-// مكون فرعي لعرض مؤشر الصعود/الهبوط
 const TrendIndicator = ({ currentRank, previousRank }) => {
     if (!previousRank || previousRank === 0) {
         return <small className="text-success fw-bold" style={{fontSize: '0.65rem'}}>NEW</small>;
     }
-
-    const diff = previousRank - currentRank; // إيجابي = صعود، سلبي = هبوط
-
+    const diff = previousRank - currentRank;
     if (diff > 0) {
         return <small className="text-success fw-bold" style={{fontSize: '0.7rem'}}>▲ {diff}</small>;
     } else if (diff < 0) {
@@ -52,18 +50,27 @@ const Podium = ({ topThree, scoreKey, label }) => {
             <div className={`podium-item podium-rank-${rank}`}>
                 <div className="podium-avatar-container">
                     {rank === 1 && <FaCrown className="crown-icon" />}
-                    <Image
-                        src={getAvatarSrc(user.avatarUrl)}
-                        roundedCircle
-                        className="podium-avatar"
-                        onError={handleImageError}
-                        alt={user.fullName}
-                    />
+                    {/* [!!!] جعل صورة البوديوم قابلة للضغط [!!!] */}
+                    <Link to={`/profile/${user._id}`}>
+                        <Image
+                            src={getAvatarSrc(user.avatarUrl)}
+                            roundedCircle
+                            className="podium-avatar"
+                            onError={handleImageError}
+                            alt={user.fullName}
+                            style={{ cursor: 'pointer' }} // تغيير المؤشر
+                        />
+                    </Link>
                     <Badge bg="dark" className="position-absolute bottom-0 start-50 translate-middle-x shadow-sm">
                         Lvl {user.level || 1}
                     </Badge>
                 </div>
-                <div className="podium-user-name" title={user.fullName}>{user.fullName}</div>
+                {/* [!!!] جعل اسم البوديوم قابل للضغط [!!!] */}
+                <Link to={`/profile/${user._id}`} className="text-decoration-none text-dark">
+                    <div className="podium-user-name" title={user.fullName} style={{ cursor: 'pointer' }}>
+                        {user.fullName}
+                    </div>
+                </Link>
                 <div className="podium-score">{user[scoreKey]} {label}</div>
                 <div className="podium-base">{rank}</div>
             </div>
@@ -129,7 +136,7 @@ const LeaderboardPage = () => {
         referrers: { 
             dataKey: 'topReferrers', 
             scoreField: 'referralsCount', 
-            unit: t('leaderboard.myRank.referrals'), // سنضيف الترجمة
+            unit: t('leaderboard.myRank.referrals'),
             rankKey: 'referrals'
         }
     };
@@ -198,7 +205,6 @@ const LeaderboardPage = () => {
                                                     <tbody>
                                                         {restOfList.map((u, idx) => {
                                                             const rank = idx + 4;
-                                                            // استخراج الترتيب السابق من الكائن الجديد في قاعدة البيانات
                                                             const previousRank = u.previousRanks ? u.previousRanks[currentConfig.rankKey] : 0;
 
                                                             return (
@@ -206,22 +212,28 @@ const LeaderboardPage = () => {
                                                                     <td className="fw-bold text-muted">
                                                                         <div className="d-flex flex-column align-items-center">
                                                                             <span className="fs-5">#{rank}</span>
-                                                                            {/* استخدام المكون الجديد */}
                                                                             <TrendIndicator currentRank={rank} previousRank={previousRank} />
                                                                         </div>
                                                                     </td>
                                                                     <td>
-                                                                        <Image
-                                                                            src={getAvatarSrc(u.avatarUrl)}
-                                                                            roundedCircle
-                                                                            width={50}
-                                                                            height={50}
-                                                                            className="border shadow-sm"
-                                                                            onError={handleImageError}
-                                                                        />
+                                                                        {/* [!!!] رابط صورة الجدول [!!!] */}
+                                                                        <Link to={`/profile/${u._id}`}>
+                                                                            <Image
+                                                                                src={getAvatarSrc(u.avatarUrl)}
+                                                                                roundedCircle
+                                                                                width={50}
+                                                                                height={50}
+                                                                                className="border shadow-sm"
+                                                                                onError={handleImageError}
+                                                                                style={{ cursor: 'pointer' }}
+                                                                            />
+                                                                        </Link>
                                                                     </td>
                                                                     <td className="text-start fw-bold text-dark">
-                                                                        {u.fullName}
+                                                                        {/* [!!!] رابط الاسم في الجدول [!!!] */}
+                                                                        <Link to={`/profile/${u._id}`} className="text-decoration-none text-dark hover-link">
+                                                                            {u.fullName}
+                                                                        </Link>
                                                                     </td>
                                                                     <td>
                                                                         <Badge bg="light" text="dark" className="border px-3 py-2">
@@ -254,21 +266,25 @@ const LeaderboardPage = () => {
                 </Tab.Container>
             </Container>
 
-            {/* الشريط السفلي بالتصميم الجديد */}
             {user && !loading && myCurrentRankInfo && (
                 <div className="my-rank-bar">
                     <div className="d-flex align-items-center">
-                        <Image
-                            src={getAvatarSrc(user.avatarUrl)}
-                            roundedCircle
-                            width={50}
-                            height={50}
-                            className="me-3 border border-3 border-warning shadow-sm"
-                            onError={handleImageError}
-                        />
+                        <Link to={`/profile/${user._id}`}>
+                            <Image
+                                src={getAvatarSrc(user.avatarUrl)}
+                                roundedCircle
+                                width={50}
+                                height={50}
+                                className="me-3 border border-3 border-warning shadow-sm"
+                                onError={handleImageError}
+                                style={{ cursor: 'pointer' }}
+                            />
+                        </Link>
                         <div>
                             <div className="fw-bold text-dark" style={{ fontSize: '1.1rem' }}>{t('leaderboard.myRank.label')}</div>
-                            <div className="small text-muted">{user.fullName}</div>
+                            <Link to={`/profile/${user._id}`} className="text-decoration-none text-muted small">
+                                {user.fullName}
+                            </Link>
                         </div>
                     </div>
 

@@ -1,49 +1,14 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useContext,
-  useMemo,
-} from "react";
-import { useParams, Link } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useContext, useMemo } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import {
-  Container,
-  Row,
-  Col,
-  Card,
-  Spinner,
-  Alert,
-  Image,
-  Badge,
-  ListGroup,
-  Button,
-  Tooltip,
-  OverlayTrigger,
-} from "react-bootstrap";
+import { Container, Row, Col, Card, Spinner, Alert, Image, Badge, Button, Tooltip, OverlayTrigger } from "react-bootstrap";
 import { useTranslation } from "react-i18next";
 import { LinkContainer } from "react-router-bootstrap";
 import {
-  FaCalendarAlt,
-  FaBoxOpen,
-  FaCheckCircle,
-  FaMapMarkerAlt,
-  FaThumbsUp,
-  FaThumbsDown,
-  FaExclamationTriangle,
-  FaStar,
-  FaQuestionCircle,
-  FaAward,
-  FaMedal,
-  FaTrophy,
-  FaGem,
-  FaCrown,
-  FaSkullCrossbones,
-  FaDragon,
-  FaShieldAlt,
-  FaUserPlus,
-  FaUserCheck,
-  FaUsers
+  FaCalendarAlt, FaBoxOpen, FaCheckCircle, FaMapMarkerAlt, FaThumbsUp, FaThumbsDown,
+  FaExclamationTriangle, FaStar, FaQuestionCircle, FaAward, FaMedal, FaTrophy,
+  FaGem, FaCrown, FaSkullCrossbones, FaDragon, FaShieldAlt,
+  FaUserPlus, FaUserCheck, FaUsers, FaArrowRight, FaArrowLeft
 } from "react-icons/fa";
 import "./UserProfilePage.css";
 import { useSelector, useDispatch } from "react-redux";
@@ -54,10 +19,8 @@ import { toast } from "react-toastify";
 
 const defaultAvatar = "https://bootdey.com/img/Content/avatar/avatar7.png";
 const REPORT_COOLDOWN_HOURS = 24;
-const BACKEND_URL =
-  process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 
-// ... (الدوال المساعدة: getRecentlyReportedUsers, markUserAsReported, checkIfRecentlyReported تبقى كما هي)
 const getRecentlyReportedUsers = () => { try { const reported = localStorage.getItem("recentlyReportedUsers"); return reported ? JSON.parse(reported) : {}; } catch (e) { return {}; } };
 const markUserAsReported = (reportedUserId) => { const reportedUsers = getRecentlyReportedUsers(); reportedUsers[reportedUserId] = Date.now(); try { localStorage.setItem("recentlyReportedUsers", JSON.stringify(reportedUsers)); } catch (e) { console.error(e); } };
 const checkIfRecentlyReported = (reportedUserId) => { const reportedUsers = getRecentlyReportedUsers(); const reportTimestamp = reportedUsers[reportedUserId]; if (!reportTimestamp) return false; return Date.now() - reportTimestamp < REPORT_COOLDOWN_HOURS * 60 * 60 * 1000; };
@@ -87,14 +50,11 @@ const ReputationBadgeDisplay = ({ numericLevel, t }) => {
   else if (numericLevel >= 5) badgeName = "Silver";
   else if (numericLevel >= 3) badgeName = "Bronze";
 
-  const { Icon, color } = badges[badgeName] || {
-    Icon: FaQuestionCircle,
-    color: "#6c757d",
-  };
+  const { Icon, color } = badges[badgeName] || { Icon: FaQuestionCircle, color: "#6c757d" };
 
   return (
-    <Badge pill bg="light" text="dark" className="d-inline-flex align-items-center reputation-badge">
-      <Icon className="me-1" style={{ color }} />
+    <Badge pill bg="light" text="dark" className="d-inline-flex align-items-center border px-3 py-2 shadow-sm" style={{fontSize: '0.85rem'}}>
+      <Icon className="me-2" style={{ color }} />
       <span>{t(`reputationLevels.${badgeName}`, badgeName)}</span>
     </Badge>
   );
@@ -104,7 +64,8 @@ const UserProfilePage = () => {
   const { t, i18n } = useTranslation();
   const { userId: viewedUserId } = useParams();
   const dispatch = useDispatch();
-  
+  const navigate = useNavigate();
+
   const { user: currentUser, loadingFollow } = useSelector((state) => state.userReducer);
   const socket = useContext(SocketContext);
 
@@ -113,37 +74,22 @@ const UserProfilePage = () => {
   const [error, setError] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isRecentlyReported, setIsRecentlyReported] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.dir = i18n.dir();
-  }, [i18n, i18n.language]);
+  useEffect(() => { document.documentElement.dir = i18n.dir(); }, [i18n, i18n.language]);
 
   const fetchProfile = useCallback(async () => {
     if (!viewedUserId || !/^[0-9a-fA-F]{24}$/.test(viewedUserId)) {
-      setError(t("userProfilePage.invalidId"));
-      setLoading(false);
-      return;
+      setError(t("userProfilePage.invalidId")); setLoading(false); return;
     }
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      const { data } = await axios.get(
-        `${BACKEND_URL}/user/profile/${viewedUserId}`
-      );
+      const { data } = await axios.get(`${BACKEND_URL}/user/profile/${viewedUserId}`);
       setProfileData(data);
-    } catch (err) {
-      setError(err.response?.data?.msg || t("userProfilePage.loadFail"));
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.response?.data?.msg || t("userProfilePage.loadFail")); } finally { setLoading(false); }
   }, [viewedUserId, t]);
 
-  useEffect(() => {
-    fetchProfile();
-    if (viewedUserId) {
-      setIsRecentlyReported(checkIfRecentlyReported(viewedUserId));
-    }
-  }, [fetchProfile, viewedUserId]);
+  useEffect(() => { fetchProfile(); if (viewedUserId) setIsRecentlyReported(checkIfRecentlyReported(viewedUserId)); }, [fetchProfile, viewedUserId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -152,225 +98,214 @@ const UserProfilePage = () => {
         setProfileData((prevData) => ({
           ...prevData,
           ...updatedUserData,
-          user: {
-            ...(prevData?.user || {}),
-            ...(updatedUserData.user || updatedUserData),
-          },
+          user: { ...(prevData?.user || {}), ...(updatedUserData.user || updatedUserData) },
         }));
       }
     };
     socket.on("user_profile_updated", handleProfileUpdate);
-    return () => {
-      socket.off("user_profile_updated", handleProfileUpdate);
-    };
+    return () => { socket.off("user_profile_updated", handleProfileUpdate); };
   }, [socket, viewedUserId]);
 
   const userDetails = profileData?.user;
 
-  // 1. التحقق من حالة المتابعة الحالية بناءً على Redux
   const isFollowing = useMemo(() => {
     if (!currentUser || !currentUser.following) return false;
     return currentUser.following.some(id => id.toString() === viewedUserId.toString());
   }, [currentUser, viewedUserId]);
 
-  // [!!!] 2. دالة المتابعة المحسنة (الحل لمشكلة العداد) [!!!]
   const handleFollowClick = () => {
-    if (!currentUser) {
-      toast.info(t("auth.loginRequired"));
-      return;
-    }
-
-    // A. التحديث الفوري للرقم محلياً (Visual Update Only)
-    // إذا كنت أتابع حالياً (isFollowing = true)، فالضغط يعني إلغاء المتابعة (-1)
-    // إذا لم أكن أتابع (isFollowing = false)، فالضغط يعني المتابعة (+1)
+    if (!currentUser) { toast.info(t("auth.loginRequired")); return; }
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 400);
     const countChange = isFollowing ? -1 : 1;
-    
     setProfileData(prev => {
-        if (!prev || !prev.user) return prev;
-        const newCount = Math.max(0, (prev.user.followersCount || 0) + countChange);
-        return {
-            ...prev,
-            user: {
-                ...prev.user,
-                followersCount: newCount
-            }
-        };
+      if (!prev || !prev.user) return prev;
+      return { ...prev, user: { ...prev.user, followersCount: Math.max(0, (prev.user.followersCount || 0) + countChange) } };
     });
-
-    // B. إرسال الطلب للسيرفر (Redux)
     dispatch(toggleFollow(viewedUserId));
   };
 
   const unlockedAchievements = useMemo(() => {
-    return (userDetails?.achievements || [])
-      .filter((a) => a.achievement)
-      .sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt))
-      .slice(0, 5);
+    return (userDetails?.achievements || []).filter((a) => a.achievement).sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt)).slice(0, 5);
   }, [userDetails?.achievements]);
 
   const canReportThisUser = currentUser && userDetails && currentUser._id !== userDetails._id;
   const reportButtonDisabled = isRecentlyReported;
 
-  const handleReportSuccess = () => {
-    markUserAsReported(viewedUserId);
-    setIsRecentlyReported(true);
-    setShowReportModal(false);
-  };
+  const handleReportSuccess = () => { markUserAsReported(viewedUserId); setIsRecentlyReported(true); setShowReportModal(false); };
 
   const getAvatarSrc = () => {
     const avatarUrl = userDetails?.avatarUrl;
-    if (avatarUrl) {
-      if (avatarUrl.startsWith("http")) return avatarUrl;
-      return `${BACKEND_URL}/${avatarUrl.replace(/\\/g, "/")}`;
-    }
+    if (avatarUrl) { if (avatarUrl.startsWith("http")) return avatarUrl; return `${BACKEND_URL}/${avatarUrl.replace(/\\/g, "/")}`; }
     return defaultAvatar;
   };
 
   if (loading) return <Container className="text-center py-5"><Spinner animation="border" variant="primary" /><p className="mt-2 text-muted">{t("userProfilePage.loading")}</p></Container>;
-  if (error) return <Container className="py-5"><Alert variant="danger" className="text-center"><Alert.Heading>{t("userProfilePage.errorTitle")}</Alert.Heading><p>{error}</p><Button as={Link} to="/" variant="outline-danger">{t("userProfilePage.goHome")}</Button></Alert></Container>;
+  if (error) return <Container className="py-5"><Alert variant="danger" className="text-center">{error} <Button as={Link} to="/" variant="outline-danger" size="sm" className="ms-2">{t("userProfilePage.goHome")}</Button></Alert></Container>;
   if (!userDetails) return <Container className="py-5"><Alert variant="warning" className="text-center">{t("userProfilePage.dataNotFound")}</Alert></Container>;
 
   const totalRatings = (userDetails?.positiveRatings ?? 0) + (userDetails?.negativeRatings ?? 0);
   const positivePercentage = totalRatings > 0 ? Math.round(((userDetails.positiveRatings ?? 0) / totalRatings) * 100) : 0;
 
-  const reportButtonTooltipText = isRecentlyReported
-    ? t("userProfilePage.reportTooltipCooldown", { name: userDetails?.fullName || "this user", hours: REPORT_COOLDOWN_HOURS })
-    : t("userProfilePage.reportTooltip", { name: userDetails?.fullName || "this user" });
+  const reportButtonTooltipText = isRecentlyReported ? t("userProfilePage.reportTooltipCooldown", { hours: REPORT_COOLDOWN_HOURS }) : t("userProfilePage.reportTooltip");
 
   return (
-    <Container className="user-profile-page py-4 py-md-5">
+    <Container className="user-profile-page animate-entry">
       <Row className="justify-content-center">
         <Col lg={10} xl={9}>
-          <Card className="shadow-sm profile-card-main overflow-hidden position-relative">
-            {canReportThisUser && (
-              <OverlayTrigger placement={i18n.dir() === "rtl" ? "right" : "left"} overlay={<Tooltip id={`tooltip-report-${userDetails._id}`}>{reportButtonTooltipText}</Tooltip>}>
-                <div className={`position-absolute top-0 m-3 ${i18n.dir() === "rtl" ? "start-0" : "end-0"}`} style={{ zIndex: 10, cursor: reportButtonDisabled ? "not-allowed" : "pointer" }}>
-                  <Button variant="link" onClick={() => !reportButtonDisabled && setShowReportModal(true)} className="p-0 report-user-icon-button" disabled={reportButtonDisabled} aria-label={reportButtonTooltipText}>
-                    <FaExclamationTriangle size={24} style={{ color: reportButtonDisabled ? "#adb5bd" : "#dc3545", opacity: reportButtonDisabled ? 0.6 : 1 }} />
-                  </Button>
+          <Card className="profile-card-main">
+            <div className="profile-cover">
+                <div className={`position-absolute top-0 m-2 ${i18n.dir() === "rtl" ? "end-0" : "start-0"}`} style={{ zIndex: 20 }}>
+                    <Button variant="light" className="profile-back-btn" onClick={() => navigate(-1)} aria-label={t("common.back", "Back")}>
+                        {i18n.dir() === 'rtl' ? <FaArrowRight size={14} /> : <FaArrowLeft size={14} />}
+                    </Button>
                 </div>
-              </OverlayTrigger>
-            )}
-            <Card.Header className="profile-header bg-light p-4 text-md-start text-center border-0">
-              <Row className="align-items-center gy-3">
-                <Col xs={12} md="auto" className="text-center">
-                  <Image src={getAvatarSrc()} roundedCircle className="profile-avatar" alt={`${userDetails.fullName}'s avatar`} onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }} />
-                </Col>
-                <Col xs={12} md>
-                  <div className="d-flex flex-column flex-md-row align-items-center mb-2">
-                    <h2 className="profile-name mb-1 mb-md-0 me-md-3">{userDetails.fullName}</h2>
-                    <div className="d-flex align-items-center flex-wrap">
-                      <Badge pill bg="info" text="dark" className="profile-role me-2">{t(`common.roles.${userDetails.userRole}`, { defaultValue: userDetails.userRole })}</Badge>
-                      <ReputationBadgeDisplay numericLevel={userDetails.level || 1} t={t} />
-                      <Badge bg="primary" className="ms-2"><FaStar size={12} className="me-1" />{t("common.level", { level: userDetails.level || 1 })}</Badge>
-                      
-                      {/* زر المتابعة */}
-                      {currentUser && currentUser._id !== viewedUserId && (
+                {canReportThisUser && (
+                    <div className={`position-absolute top-0 m-2 ${i18n.dir() === "rtl" ? "start-0" : "end-0"}`} style={{ zIndex: 20 }}>
+                        <OverlayTrigger placement="bottom" overlay={<Tooltip id="report-tooltip">{reportButtonTooltipText}</Tooltip>}>
+                            <Button variant="light" onClick={() => !reportButtonDisabled && setShowReportModal(true)} className="profile-back-btn" disabled={reportButtonDisabled} style={{color: '#dc3545'}}>
+                                <FaExclamationTriangle size={16} />
+                            </Button>
+                        </OverlayTrigger>
+                    </div>
+                )}
+            </div>
+
+            <Card.Body className="text-center pt-0 pb-5">
+                <div className="profile-avatar-container">
+                    <Image src={getAvatarSrc()} roundedCircle className="profile-avatar" alt={userDetails.fullName} onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }} />
+                </div>
+
+                <h2 className="profile-name">{userDetails.fullName}</h2>
+                
+                <div className="profile-details-row mb-4">
+                    <Badge pill bg="light" text="dark" className="profile-role-badge border">
+                        {t(`common.roles.${userDetails.userRole}`, { defaultValue: userDetails.userRole })}
+                    </Badge>
+                    <span className="d-flex align-items-center">
+                        <FaMapMarkerAlt className="me-1 text-danger" /> {userDetails.address || t("common.noAddress")}
+                    </span>
+                    <span className="d-flex align-items-center">
+                        <FaCalendarAlt className="me-1 text-primary" /> {new Date(userDetails.registerDate || Date.now()).toLocaleDateString(i18n.language)}
+                    </span>
+                </div>
+
+                <div className="d-flex justify-content-center align-items-center gap-2 mb-4 flex-wrap">
+                    <ReputationBadgeDisplay numericLevel={userDetails.level || 1} t={t} />
+                    <Badge bg="warning" text="dark" className="px-3 py-2 rounded-pill shadow-sm">
+                        <FaStar className="me-1" /> {t("common.level", { level: userDetails.level || 1 })}
+                    </Badge>
+                    
+                    {currentUser && currentUser._id !== viewedUserId && (
                         <Button
-                          variant={isFollowing ? "outline-secondary" : "primary"}
-                          size="sm"
-                          className="ms-3 d-flex align-items-center"
-                          onClick={handleFollowClick}
-                          disabled={loadingFollow}
+                            variant="light"
+                            className={`btn-follow-magic ms-2 ${isFollowing ? 'following' : 'not-following'} ${isAnimating ? 'animate-pop' : ''}`}
+                            onClick={handleFollowClick}
+                            disabled={loadingFollow}
                         >
-                          {loadingFollow ? (
-                            <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-                          ) : (
-                            <>
-                              {isFollowing ? <FaUserCheck className="me-1" /> : <FaUserPlus className="me-1" />}
-                              {isFollowing ? t("profilePage.following") : t("profilePage.followBtn")}
-                            </>
-                          )}
+                            {loadingFollow ? <Spinner size="sm" /> : (
+                                <>
+                                    {isFollowing ? <FaUserCheck /> : <FaUserPlus />}
+                                    <span>{isFollowing ? t("profilePage.following") : t("profilePage.followBtn")}</span>
+                                </>
+                            )}
                         </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="d-flex align-items-center text-muted small mb-0">
-                    <span className="me-3">
-                      <FaCalendarAlt size={14} className="me-1 opacity-75" />
-                      {t("userProfilePage.memberSince")}: {new Date(userDetails.registerDate || Date.now()).toLocaleDateString(i18n.language)}
-                    </span>
-                    {/* عداد المتابعين */}
-                    <span>
-                      <FaUsers size={14} className="me-1 opacity-75" />
-                      {userDetails.followersCount || 0} {t("profilePage.followers")}
-                    </span>
-                  </div>
-                </Col>
-              </Row>
-            </Card.Header>
-            <Card.Body className="p-4">
-              <Row>
-                <Col md={6} className="mb-4 mb-md-0">
-                  <h5 className="mb-3 section-sub-title">{t("userProfilePage.userStats")}</h5>
-                  <ListGroup variant="flush" className="stats-list">
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                      <span><FaBoxOpen className="me-2 text-primary icon" />{t("userProfilePage.activeListings")}</span>
-                      <Badge bg="light" text="dark" className="stat-badge">{profileData?.activeListingsCount ?? 0}</Badge>
-                    </ListGroup.Item>
-                    <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                      <span><FaCheckCircle className="me-2 text-success icon" />{t("userProfilePage.productsSold")}</span>
-                      <Badge bg="light" text="dark" className="stat-badge">{profileData?.productsSoldCount ?? 0}</Badge>
-                    </ListGroup.Item>
-                    {userDetails.address && (
-                      <ListGroup.Item className="d-flex justify-content-between align-items-center px-0">
-                        <span><FaMapMarkerAlt className="me-2 text-secondary icon" />{t("userProfilePage.location")}</span>
-                        <span className="text-muted small">{userDetails.address}</span>
-                      </ListGroup.Item>
                     )}
-                  </ListGroup>
-                </Col>
-                <Col md={6}>
-                  <h5 className="mb-3 section-sub-title">{t("userProfilePage.userRating")}</h5>
-                  {totalRatings > 0 ? (
-                    <div className="rating-box text-center p-3 bg-light rounded border">
-                      <div className="rating-percentage display-4 fw-bold text-success">{positivePercentage}%</div>
-                      <div className="rating-text small text-muted mb-2">{t("userProfilePage.positiveRating")}</div>
-                      <div className="d-flex justify-content-center small">
-                        <span className="me-3 rating-count positive"><FaThumbsUp className="me-1" />{userDetails.positiveRatings ?? 0}</span>
-                        <span className="rating-count negative"><FaThumbsDown className="me-1" />{userDetails.negativeRatings ?? 0}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted p-3 bg-light rounded border"><small>{t("userProfilePage.noRatings")}</small></div>
-                  )}
-                </Col>
-              </Row>
+                </div>
+
+                <hr className="my-4 opacity-10" />
+
+                <Row className="g-4 text-start">
+                    <Col md={7}>
+                        <h5 className="section-sub-title mb-4">
+                            <FaBoxOpen className="me-2 text-info" /> {t("userProfilePage.userStats")}
+                        </h5>
+                        <div className="stats-grid-container">
+                            <div className="stat-card">
+                                <div className="stat-icon-wrapper bg-info-subtle text-info">
+                                    <FaBoxOpen />
+                                </div>
+                                <div className="stat-value">{profileData?.activeListingsCount ?? 0}</div>
+                                <div className="stat-label">{t("userProfilePage.activeListings")}</div>
+                            </div>
+                            
+                            <div className="stat-card">
+                                <div className="stat-icon-wrapper bg-success-subtle text-success">
+                                    <FaCheckCircle />
+                                </div>
+                                <div className="stat-value">{profileData?.productsSoldCount ?? 0}</div>
+                                <div className="stat-label">{t("userProfilePage.productsSold")}</div>
+                            </div>
+
+                            <div className="stat-card">
+                                <div className="stat-icon-wrapper bg-warning-subtle text-warning">
+                                    <FaUsers />
+                                </div>
+                                <div className="stat-value">{userDetails.followersCount || 0}</div>
+                                <div className="stat-label">{t("profilePage.followers")}</div>
+                            </div>
+                        </div>
+                    </Col>
+
+                    <Col md={5}>
+                        <h5 className="section-sub-title mb-4 text-center">
+                            <FaStar className="me-2 text-warning" /> {t("userProfilePage.userRating")}
+                        </h5>
+                        <div className="text-center">
+                            <div className="rating-circle-wrapper" style={{ '--rating-percent': `${positivePercentage}%`, '--rating-color': positivePercentage >= 80 ? '#48bb78' : positivePercentage >= 50 ? '#ecc94b' : '#f56565' }}>
+                                <div className="rating-circle-inner">
+                                    <span className="rating-score">{positivePercentage}%</span>
+                                    <span className="rating-label">{t("userProfilePage.positiveRating")}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="d-flex justify-content-center gap-4 mt-3">
+                                <div className="text-success fw-bold">
+                                    <FaThumbsUp className="me-1" /> {userDetails.positiveRatings ?? 0}
+                                </div>
+                                <div className="text-danger fw-bold">
+                                    <FaThumbsDown className="me-1" /> {userDetails.negativeRatings ?? 0}
+                                </div>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
+
             </Card.Body>
           </Card>
 
-          <Card className="shadow-sm border-0 mt-4">
-            <Card.Header className="bg-white p-3 border-0">
-              <h5 className="mb-0 section-title-modern"><FaTrophy className="me-2 text-primary" /> {t("profilePage.achievementsSectionTitle")}</h5>
-            </Card.Header>
-            <Card.Body className="p-4">
-              {unlockedAchievements.length > 0 ? (
-                <Row className="g-3">
+          <Card className="achievements-card mt-4 p-4">
+            <h5 className="section-sub-title mb-4">
+                <FaTrophy className="me-2 text-primary" style={{color: '#9b59b6'}} /> {t("profilePage.achievementsSectionTitle")}
+            </h5>
+            {unlockedAchievements.length > 0 ? (
+                <div className="d-flex flex-wrap gap-3 justify-content-center justify-content-md-start">
                   {unlockedAchievements.map((userAchievement) => (
-                    <Col key={userAchievement.achievement._id} xs="auto">
-                      <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-public-${userAchievement.achievement._id}`}>
+                    <OverlayTrigger key={userAchievement.achievement._id} placement="top" overlay={<Tooltip id={`tooltip-${userAchievement.achievement._id}`}>
                         <strong>{userAchievement.achievement.title[i18n.language] || userAchievement.achievement.title.ar}</strong><br />
                         <small>{userAchievement.achievement.description[i18n.language] || userAchievement.achievement.description.ar}</small>
                       </Tooltip>}>
-                        <div className="achievement-icon-display"><i className={`${userAchievement.achievement.icon} fa-2x`}></i></div>
-                      </OverlayTrigger>
-                    </Col>
+                        <div className="achievement-item">
+                            <i className={`${userAchievement.achievement.icon} fa-2x`}></i>
+                        </div>
+                    </OverlayTrigger>
                   ))}
                   {(userDetails.achievements?.length || 0) > 5 && (
-                    <Col xs={12} className="mt-3">
                       <LinkContainer to="/dashboard/achievements">
-                        <Button variant="link" size="sm" className="p-0">{t("profilePage.viewAllAchievements", { count: userDetails.achievements.length })}</Button>
+                        <Button variant="light" size="sm" className="rounded-pill px-3 align-self-center border">
+                          + {userDetails.achievements.length - 5}
+                        </Button>
                       </LinkContainer>
-                    </Col>
                   )}
-                </Row>
+                </div>
               ) : (
-                <p className="text-muted text-center mb-0">{t("profilePage.noAchievements")}</p>
+                <p className="text-muted text-center py-3 bg-light rounded">{t("profilePage.noAchievements")}</p>
               )}
-            </Card.Body>
           </Card>
+
         </Col>
       </Row>
+      
       {userDetails && canReportThisUser && (
         <ReportUserModal
           show={showReportModal && !isRecentlyReported}

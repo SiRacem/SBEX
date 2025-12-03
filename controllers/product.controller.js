@@ -122,15 +122,16 @@ exports.addProduct = async (req, res) => {
 
         const savedProduct = await newProduct.save();
         
-        await triggerQuestEvent(req.user._id, 'ADD_PRODUCT', req.io, req.onlineUsers);
-        await checkAndAwardAchievements({ userId, event: 'PRODUCT_PUBLISHED', req });
-        
-        const populatedProduct = await Product.findById(savedProduct._id).populate('user', 'fullName email').lean();
-
-        // [!!!] استدعاء الدالة عند النشر المباشر
+        // [!!!] التعديل هنا: نحتسب المهمة فقط إذا تم نشر المنتج فوراً (مثل الأدمن) [!!!]
         if (savedProduct.status === 'approved') {
+            await triggerQuestEvent(req.user._id, 'ADD_PRODUCT', req.io, req.onlineUsers);
+            await checkAndAwardAchievements({ userId, event: 'PRODUCT_PUBLISHED', req });
+            
+            // إشعار المتابعين
             notifyFollowersOfNewProduct(userId, savedProduct, req);
         }
+
+        const populatedProduct = await Product.findById(savedProduct._id).populate('user', 'fullName email').lean();
 
         if (savedProduct.status === 'pending' && userRole === 'Vendor') {
             const admins = await User.find({ userRole: 'Admin' }).select('_id').lean();
@@ -551,7 +552,17 @@ exports.approveProduct = async (req, res) => {
         await approvalNotification.save({ session: session });
         await session.commitTransaction();
 
+        // [!!!] التعديل هنا: نحتسب المهمة والإنجاز عند الموافقة [!!!]
+        // 1. المهمة (Quest)
+        await triggerQuestEvent(seller._id, 'ADD_PRODUCT', req.io, req.onlineUsers);
+        
+        // 2. الإنجاز (Achievement)
+        // ملاحظة: نستخدم PRODUCT_APPROVED هنا للإنجازات التي تعتمد على الموافقة
         await checkAndAwardAchievements({ userId: seller._id, event: 'PRODUCT_APPROVED', req });
+        
+        // 3. الإنجاز (نشر منتج) - لضمان احتساب إنجاز "نشر أول منتج" إذا كان يعتمد على هذا الحدث
+        await checkAndAwardAchievements({ userId: seller._id, event: 'PRODUCT_PUBLISHED', req });
+
 
         if (req.io) {
             const populatedProduct = await Product.findById(product._id).populate('user', 'fullName email').lean();
@@ -564,7 +575,7 @@ exports.approveProduct = async (req, res) => {
             }
         }
 
-        // [!!!] استدعاء الدالة عند الموافقة
+        // إشعار المتابعين
         notifyFollowersOfNewProduct(seller._id, product, req);
 
         res.status(200).json(product);

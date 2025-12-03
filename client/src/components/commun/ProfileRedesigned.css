@@ -1,33 +1,81 @@
 /* src/components/commun/ProfileRedesigned.css */
+
+/* --- 1. الأساسيات والخلفية --- */
+.profile-page-professional {
+    background-color: #f0f2f5;
+    min-height: calc(100vh - 56px);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding-bottom: 4rem;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 2. البطاقة الرئيسية --- */
+.profile-widget {
+    border: none;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+/* --- 3. الغلاف --- */
+.profile-cover-private {
+    height: 140px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    width: 100%;
+}
+
+.profile-cover-private::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- 4. الأفاتار --- */
 .profile-avatar-container {
     position: relative;
+    margin-top: -70px;
     display: inline-block;
-    border-radius: 50%;
-    overflow: hidden;
     cursor: pointer;
 }
 
 .profile-avatar-lg {
-    display: block;
-    width: 120px;
-    height: 120px;
+    width: 130px;
+    height: 130px;
+    border: 5px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
     object-fit: cover;
-    border: 4px solid #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    transition: all 0.3s ease;
+}
+
+.profile-avatar-container:hover .profile-avatar-lg {
+    filter: brightness(0.8);
 }
 
 .profile-avatar-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 50%;
+    background-color: rgba(0,0,0,0.4);
     display: flex;
     justify-content: center;
     align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .profile-avatar-container:hover .profile-avatar-overlay {
@@ -48,541 +96,280 @@
     pointer-events: none;
 }
 
-.profile-page-professional {
-    background-color: #f8f9fa;
-}
-
-.profile-widget .card-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
+/* --- 5. المعلومات الشخصية --- */
 .profile-name-lg {
+    font-weight: 800;
+    color: #2d3748;
+    font-size: 1.8rem;
+    margin-top: 10px;
+}
+
+.status-badge-lg {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: 50px;
     font-weight: 600;
-    color: #212529;
-    margin-top: 0.5rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.status-badge-lg,
-.role-badge-lg,
-.level-badge-lg,
-.mediator-badge-lg {
-    font-size: 0.8rem;
-    padding: 0.35em 0.9em;
-    vertical-align: middle;
-    margin-bottom: 0.25rem;
-}
-
+/* --- 6. ودجت المستوى الملون --- */
 .level-section-widget-v2 {
-    border-radius: 0.5rem;
-    padding: 1rem;
-    border: 1px solid #e0e9f5;
-    margin-top: 1.5rem;
-    text-align: left;
+    border-radius: 15px;
+    padding: 15px;
+    border: 1px solid #e2e8f0;
+    margin-top: 20px;
     width: 100%;
-    transition: background-color 0.5s ease, background-image 0.5s ease, border-color 0.5s ease;
-    color: #333;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    transition: all 0.3s ease;
 }
 
-.level-bg-default {
-    background: linear-gradient(135deg, #eef2f7 0%, #e9ecef 100%);
-    border-color: #d1d9e6;
-}
-
-.level-bg-default .reputation-points,
-.level-bg-default .progress-labels span {
-    color: #5a6a7a;
-}
-
-.level-bg-default .level-badge-main {
-    background-color: #0dcaf0 !important;
-    color: white !important;
-    border: none;
-}
-
-.level-bg-default .level-progress-bar-v2 .progress-bar {
-    background: linear-gradient(to right, #17a2b8, #0d6efd);
-}
-
-.level-bg-beginner {
-    background: linear-gradient(135deg, #e6fff2 0%, #d0f8e0 100%);
-    border-color: #b8e9c9;
-}
-
-.level-bg-beginner .reputation-points,
-.level-bg-beginner .progress-labels span {
-    color: #1f502f;
-}
-
-.level-bg-beginner .level-badge-main {
-    background-color: #198754 !important;
-    color: white !important;
-}
-
-.level-bg-beginner .level-progress-bar-v2 .progress-bar {
-    background: linear-gradient(to right, #20c997, #198754);
-}
-
-.level-bg-intermediate {
-    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-    border-color: #ffe082;
-}
-
-.level-bg-intermediate .reputation-points,
-.level-bg-intermediate .progress-labels span {
-    color: #6d4c41;
-}
-
-.level-bg-intermediate .level-badge-main {
-    background-color: #ffc107 !important;
-    color: #333 !important;
-}
-
-.level-bg-intermediate .level-progress-bar-v2 .progress-bar {
-    background: linear-gradient(to right, #fd7e14, #ffc107);
-}
-
-.level-bg-advanced {
-    background: linear-gradient(135deg, #fff0f5 0%, #ffd9e2 100%);
-    border-color: #ffc1c9;
-}
-
-.level-bg-advanced .reputation-points,
-.level-bg-advanced .progress-labels span {
-    color: #7f0000;
-}
-
-.level-bg-advanced .level-badge-main {
-    background-color: #dc3545 !important;
-    color: white !important;
-}
-
-.level-bg-advanced .level-progress-bar-v2 .progress-bar {
-    background: linear-gradient(to right, #fd1d1d, #dc3545);
-}
-
-.level-bg-high {
-    background: linear-gradient(135deg, #ede7f6 0%, #d1c4e9 100%);
-    border-color: #b39ddb;
-}
-
-.level-bg-high .reputation-points,
-.level-bg-high .progress-labels span {
-    color: #311b92;
-}
-
-.level-bg-high .level-badge-main {
-    background-color: #6f42c1 !important;
-    color: white !important;
-}
-
-.level-bg-high .level-progress-bar-v2 .progress-bar {
-    background: linear-gradient(to right, #6610f2, #6f42c1);
-}
-
-.level-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-}
-
-.level-badge-main {
-    font-size: 0.85rem;
-    padding: 0.4em 0.8em;
-    font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    border-radius: 0.25rem;
-}
-
-.level-badge-main .fa-star {
-    vertical-align: -1px;
-}
-
-.reputation-points {
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: default;
-}
+.level-bg-default { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); border-color: #e2e8f0; }
+.level-bg-beginner { background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%); border-color: #96e6a1; }
+.level-bg-beginner .reputation-points { color: #2d5a37; }
+.level-bg-intermediate { background: linear-gradient(135deg, #ffe259 0%, #ffa751 100%); border-color: #ffa751; }
+.level-bg-intermediate .reputation-points { color: #754c00; }
+.level-bg-advanced { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); border-color: #ff9a9e; }
+.level-bg-advanced .reputation-points { color: #7a1d21; }
+.level-bg-high { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-color: #764ba2; color: white; }
+.level-bg-high .reputation-points, .level-bg-high .fw-bold, .level-bg-high .text-muted, .level-bg-high span { color: rgba(255,255,255,0.95) !important; }
 
 .level-progress-bar-v2 {
-    height: 12px !important;
-    background-color: rgba(0, 0, 0, 0.07);
-    border-radius: 6px;
+    height: 10px !important;
+    background-color: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(2px);
+    border-radius: 10px;
     overflow: hidden;
+    margin: 10px 0;
 }
 
 .level-progress-bar-v2 .progress-bar {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #fff;
-    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.2);
-    line-height: 12px;
+    background-color: rgba(255, 255, 255, 0.9); 
+}
+
+.reputation-points {
+    font-weight: 700;
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+/* --- 7. قسم الأرصدة --- */
+.balance-card-header {
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 1.5rem;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    transition: width 0.6s ease;
-}
-
-.progress-labels {
-    margin-top: 0.35rem;
-    font-size: 0.75rem;
-}
-
-.next-reward {
-    font-weight: 500;
-    cursor: default;
-    display: inline-flex;
-    align-items: center;
-}
-
-.next-reward .fa-gift {
-    vertical-align: -2px;
-    font-size: 0.9em;
-}
-
-.profile-widget .card-footer {
-    border-top: 1px solid #e9ecef !important;
-    background-color: #f8f9fa;
-}
-
-.rating-progress-bar {
-    height: 12px;
-    background-color: #e9ecef;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.rating-progress-bar .progress-bar {
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.rating-progress-bar .bg-success {
-    background-color: #198754 !important;
-}
-
-.rating-progress-bar .bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.section-title-modern {
-    font-weight: 500;
-    color: #495057;
-    display: inline-flex;
-    align-items: center;
-    margin-bottom: 0;
-}
-
-.section-title-modern svg {
-    margin-right: 0.65rem;
-    opacity: 0.7;
-    color: var(--bs-primary);
 }
 
 .balance-widget {
-    background-color: #ffffff;
-    border-radius: 0.5rem;
-    padding: 1.25rem 1rem;
-    border: 1px solid #e9ecef;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 20px;
     text-align: center;
+    transition: all 0.3s ease;
     height: 100%;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
 }
 
 .balance-widget:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    border-color: #cbd5e0;
+}
+
+.balance-widget::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 80px; height: 80px;
+    background: currentColor;
+    opacity: 0.05;
+    border-radius: 50%;
 }
 
 .balance-widget .icon {
-    font-size: 1.75rem;
-    margin-bottom: 0.75rem;
-    opacity: 0.8;
-}
-
-.balance-widget .label {
-    font-size: 0.8rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    margin-bottom: 0.25rem;
-    font-weight: 500;
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: inline-block;
 }
 
 .balance-widget .value {
-    font-size: 1.5rem;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #2d3748;
+    display: block;
+    margin: 5px 0;
+}
+
+.balance-widget .label {
+    font-size: 0.85rem;
+    color: #718096;
     font-weight: 600;
-    color: #343a40;
-    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .balance-widget .approx {
-    font-size: 0.75rem;
-    color: #adb5bd;
-    margin-top: 3px;
+    font-size: 0.8rem;
+    color: #a0aec0;
 }
 
-.statistic-entry-col {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    margin-bottom: 1rem;
-}
+/* --- 8. إحصائيات المستخدم --- */
 
 .statistic-entry {
     background-color: #ffffff;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    border: 1px solid #e9ecef;
+    border-radius: 12px; /* زوايا دائرية ناعمة */
+    padding: 1.25rem;
+    border: 1px solid #e9ecef; /* حدود خفيفة */
     display: flex;
     align-items: center;
-    height: 100%;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
 
 .statistic-entry:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.07);
+    transform: translateY(-3px); /* حركة خفيفة للأعلى */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border-color: #dee2e6;
 }
 
+/* الأيقونة داخل البطاقة */
 .statistic-entry svg {
     flex-shrink: 0;
-    margin-right: 0.75rem;
-    opacity: 0.8;
+    /* نضمن أن الأيقونة لا تنكمش */
 }
 
-.statistic-entry div {
-    line-height: 1.3;
+/* خلفيات الأيقونات (لتكون ملونة وجميلة) */
+.bg-info-subtle {
+    background-color: #cff4fc !important;
 }
 
+.bg-success-subtle {
+    background-color: #d1e7dd !important;
+}
+
+/* النصوص */
 .statistic-entry .stat-value {
-    display: block;
-    font-size: 1.4rem;
-    font-weight: 600;
+    font-size: 1.5rem;
+    font-weight: 700;
     color: #343a40;
+    line-height: 1.1;
 }
 
 .statistic-entry .stat-label {
-    display: block;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #6c757d;
-    text-transform: uppercase;
+    margin-top: 2px;
+    display: block;
 }
 
-.card.border-0 {
-    border: none !important;
+/* --- 9. قسم التقييم --- */
+.rating-section {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
 }
 
-.card-header.border-0 {
-    border-bottom: none !important;
+.rating-progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background-color: #e2e8f0;
 }
 
-/* --- تنسيق أيقونات الإنجازات في البروفيل --- */
-
+/* --- 10. أيقونات الإنجازات الملونة (تغطية شاملة) --- */
 .achievement-icon-display {
-    display: inline-block;
-    margin: 0 5px;
-    transition: transform 0.3s ease;
+    width: 50px;
+    height: 50px;
+    background: #f7fafc;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border: 1px solid #edf2f7;
 }
 
 .achievement-icon-display:hover {
-    transform: scale(1.2) rotate(5deg);
+    transform: scale(1.1) rotate(5deg);
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* إزالة الألوان الافتراضية */
 .achievement-icon-display i {
-    color: #6c757d; /* لون رمادي افتراضي */
+    font-size: 1.5rem;
+    color: inherit; /* ضروري لعمل التلوين */
 }
 
-/* === تخصيص الألوان لكل أيقونة (بناءً على قاعدة بياناتك) === */
+/* === ألوان الإنجازات (قائمة شاملة) === */
 
 /* 1. المبيعات (برتقالي/ذهبي) */
-.achievement-icon-display .fa-cloud-arrow-up,   /* أول خطوة */
-.achievement-icon-display .fa-box-open,
-.achievement-icon-display .fa-handshake,        /* أول عملية بيع */
-.achievement-icon-display .fa-cash-register {   /* تاجر جاد */
-    color: #f39c12 !important; 
+.achievement-icon-display .fa-cloud-arrow-up,   /* أول رفع */
+.achievement-icon-display .fa-box-open,         /* المنتجات */
+.achievement-icon-display .fa-handshake,        /* أول بيع */
+.achievement-icon-display .fa-cash-register {   /* تاجر نشط */
+    color: #f39c12; 
 }
 
 /* 2. المشتريات (أزرق سماوي) */
-.achievement-icon-display .fa-cart-shopping,    /* بداية الرحلة */
+.achievement-icon-display .fa-cart-shopping,
 .achievement-icon-display .fa-bag-shopping,
 .achievement-icon-display .fa-basket-shopping,
-.achievement-icon-display .fa-tags {            /* صائد الصفقات */
-    color: #3498db !important; 
+.achievement-icon-display .fa-tags {
+    color: #3498db; 
 }
 
 /* 3. الحظ والتميز (أخضر/تركواز) */
 .achievement-icon-display .fa-clover,           /* المحظوظ */
-.achievement-icon-display .fa-check-double,     /* تمت الموافقة */
-.achievement-icon-display .fa-user-pen {        /* مكتمل */
-    color: #2ecc71 !important; 
+.achievement-icon-display .fa-check-double,     /* تم التحقق */
+.achievement-icon-display .fa-user-pen,
+.achievement-icon-display .fa-check-circle {
+    color: #2ecc71; 
 }
 
-/* 4. المستويات والرتب (ألوان فخمة) */
-.achievement-icon-display .fa-star {            /* مخضرم */
-    color: #9b59b6 !important; /* بنفسجي */
-}
-.achievement-icon-display .fa-medal {           /* عضو فضي */
-    color: #95a5a6 !important; /* فضي */
-}
-.achievement-icon-display .fa-award {           /* عضو ذهبي / الوصول للقمة */
-    color: #f1c40f !important; /* ذهبي لامع */
-}
-.achievement-icon-display .fa-crown {           /* أسطورة */
-    color: #e74c3c !important; /* أحمر ملكي */
-}
-.achievement-icon-display .fa-gem {             /* عضو ألماسي */
-    color: #00d2d3 !important; /* سماوي لامع (Cyan) */
+/* 4. المستويات والرتب (بنفسجي/ذهبي/فضي) */
+.achievement-icon-display .fa-star,             /* مخضرم */
+.achievement-icon-display .fa-medal,            /* فضي */
+.achievement-icon-display .fa-award,            /* ذهبي */
+.achievement-icon-display .fa-crown,            /* أسطورة */
+.achievement-icon-display .fa-gem,              /* ألماسي */
+.achievement-icon-display .fa-trophy {
+    color: #9b59b6; 
 }
 
-/* 5. المجتمع والوساطة (ألوان داكنة ورسمية) */
-.achievement-icon-display .fa-gavel,            /* قاضي محنك */
-.achievement-icon-display .fa-scale-balanced,   /* صانع السلام */
-.achievement-icon-display .fa-shield-halved,    /* حارس الثقة */
-.achievement-icon-display .fa-user-shield {
-    color: #34495e !important; /* كحلي */
-}
-
-/* 6. التقييمات (وردي/أحمر) */
-.achievement-icon-display .fa-heart,            /* سمعة طيبة */
-.achievement-icon-display .fa-comment-dots,     /* صوتك مسموع */
+/* 5. المجتمع والتفاعل (وردي/أحمر) */
+.achievement-icon-display .fa-heart,            /* محبوب */
+.achievement-icon-display .fa-users,            /* اجتماعي */
+.achievement-icon-display .fa-user-plus,        /* متابع */
+.achievement-icon-display .fa-comment-dots,     /* معلق */
 .achievement-icon-display .fa-comments {
-    color: #e84393 !important; 
+    color: #e84393; 
 }
 
-/* تأثير اللمعان عند التحويم */
-.achievement-icon-display:hover i {
-    filter: drop-shadow(0 0 8px rgba(0,0,0,0.2));
+/* 6. الوساطة والأمان (كحلي/رمادي) */
+.achievement-icon-display .fa-gavel,            /* وسيط */
+.achievement-icon-display .fa-scale-balanced,
+.achievement-icon-display .fa-shield-halved,
+.achievement-icon-display .fa-user-shield {
+    color: #34495e; 
 }
 
-/* .card-footer.border-0 { border-top: none !important; } /* أبقيت على هذا معلقًا لأن Card.Footer في Profile.jsx يستخدم border-top */
-/* --- Reputation Badge Styles (General and Specific) --- */
-.reputation-badge {
-    font-size: 0.8rem;
-    font-weight: 500;
-    border-radius: 16px;
-    transition: all 0.2s ease-out;
-    text-transform: capitalize;
-    letter-spacing: 0.2px;
-    line-height: 1.2;
-    border: 1px solid transparent;
-}
-
-.reputation-badge:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12) !important;
-}
-
-.reputation-badge .badge-text {
-    line-height: 1;
-}
-
-.reputation-badge svg {
-    margin-right: 0.3rem;
-    font-size: 0.9em;
-    vertical-align: -1px;
-}
-
-.profile-badge-info {
-    background: linear-gradient(135deg, #5bc0de 0%, #31b0d5 100%);
-    color: white;
-    border-color: #2aabd2;
-}
-
-.profile-badge-novice {
-    background: linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%);
-    color: #263238;
-    border-color: #78909c;
-}
-
-/* لون رمادي للـ Novice */
-.profile-badge-bronze {
-    background: linear-gradient(135deg, #cd7f32 0%, #b0712d 100%);
-    color: white;
-    border-color: #a06529;
-}
-
-.profile-badge-silver {
-    background: linear-gradient(135deg, #d3d3d3 0%, #b0b0b0 100%);
-    color: #383838;
-    border-color: #a7a7a7;
-}
-
-.profile-badge-gold {
-    background: linear-gradient(135deg, #ffdf7e 0%, #ffd700 100%);
-    color: #6c5300;
-    border-color: #f2c600;
-}
-
-.profile-badge-platinum {
-    background: linear-gradient(135deg, #e5e4e2 0%, #c8c8c8 100%);
-    color: #4a5a63;
-    border-color: #b0b8bf;
-}
-
-.profile-badge-diamond {
-    background: linear-gradient(135deg, #afeeee 0%, #7fffd4 100%);
-    color: #18676b;
-    border-color: #6fded0;
-}
-
-.profile-badge-master {
-    background: linear-gradient(135deg, #da70d6 0%, #ba55d3 100%);
-    color: white;
-    border-color: #a848bf;
-}
-
-.profile-badge-grandmaster {
-    background: linear-gradient(135deg, #ff6347 0%, #ff4500 100%);
-    color: white;
-    border-color: #e03e00;
-}
-
-.profile-badge-legend {
-    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-    color: #4d2c00;
-    border-color: #e67e00;
-}
-
-.profile-badge-mythic {
-    background: linear-gradient(135deg, #7b2f9c 0%, #4b0082 100%);
-    color: white;
-    border-color: #40006f;
-}
-
-.profile-badge-default {
-    background-color: #6c757d;
-    color: white;
-    border-color: #5a6268;
-}
-
+/* Media Queries */
 @media (max-width: 768px) {
-    .profile-page-professional {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
+    .profile-avatar-lg { width: 110px; height: 110px; margin-top: -55px; }
+    .profile-cover-private { height: 120px; }
+    .balance-widget .value { font-size: 1.4rem; }
+}
 
-    .profile-avatar-lg {
-        width: 100px;
-        height: 100px;
-        margin-bottom: 1rem;
-    }
-
-    .balance-widget .value,
-    .statistic-entry .stat-value {
-        font-size: 1.2rem;
-    }
-
-    .statistic-entry-col {
-        padding-left: 0;
-        padding-right: 0;
-    }
-
-    .statistic-entry-col:not(:last-child) {
-        margin-bottom: 1rem;
-    }
+/* RTL Support */
+[dir="rtl"] .statistic-entry:hover {
+    border-left: 1px solid #e2e8f0;
+    border-right: 5px solid #4fd1c5;
+    transform: translateX(-5px);
 }

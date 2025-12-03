@@ -1,3 +1,4 @@
+// server/services/questService.js
 const Quest = require('../models/Quest');
 const UserQuest = require('../models/UserQuest');
 const Notification = require('../models/Notification');
@@ -8,10 +9,13 @@ const triggerQuestEvent = async (userId, eventTrigger, io, onlineUsers, incremen
         const activeQuests = await Quest.find({ eventTrigger, isActive: true });
         if (!activeQuests.length) return;
 
+        let hasUpdates = false; // [!!!] متغير لتتبع ما إذا حدث أي تحديث
+
         for (const quest of activeQuests) {
             let userQuest = await UserQuest.findOne({ user: userId, quest: quest._id });
 
             const now = new Date();
+            // إعادة تعيين المهام اليومية
             if (quest.type === 'Daily') {
                 const todayStart = new Date(now.setHours(0, 0, 0, 0));
                 if (!userQuest || userQuest.lastUpdated < todayStart) {
@@ -37,6 +41,7 @@ const triggerQuestEvent = async (userId, eventTrigger, io, onlineUsers, incremen
 
             userQuest.progress += incrementBy;
             userQuest.lastUpdated = new Date();
+            hasUpdates = true; // [!!!] سجلنا أن هناك تقدماً حدث
 
             let justCompleted = false;
             if (userQuest.progress >= quest.targetCount) {
@@ -48,6 +53,7 @@ const triggerQuestEvent = async (userId, eventTrigger, io, onlineUsers, incremen
             await userQuest.save();
 
             if (justCompleted) {
+                // إشعار اكتمال المهمة
                 const questTitleString = quest.title.en || quest.title.ar || "Quest";
 
                 await Notification.create({
@@ -62,15 +68,24 @@ const triggerQuestEvent = async (userId, eventTrigger, io, onlineUsers, incremen
                 if (io && onlineUsers && onlineUsers[userId.toString()]) {
                     const socketId = onlineUsers[userId.toString()];
 
+                    // إرسال توست الاكتمال
                     io.to(socketId).emit('quest_completed_toast', {
                         questTitle: quest.title,
                         reward: quest.reward
                     });
-
-                    io.to(socketId).emit('refresh_quests_list');
                 }
             }
         }
+
+        // [!!!] التعديل النهائي والمهم جداً للديناميكية [!!!]
+        // إذا حدث أي تحديث في التقدم (سواء اكتملت المهمة أم لا)، نرسل إشارة للتحديث
+        if (hasUpdates && io && onlineUsers && onlineUsers[userId.toString()]) {
+            const socketId = onlineUsers[userId.toString()];
+            // نرسل الحدث الذي يستمع له App.js لتحديث القائمة
+            io.to(socketId).emit('quests_updated');
+            console.log(`[QuestService] Emitted 'quests_updated' to user ${userId}`);
+        }
+
     } catch (error) {
         console.error(`[QuestService] Error triggering event ${eventTrigger} for user ${userId}:`, error);
     }

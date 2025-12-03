@@ -604,6 +604,7 @@
     "processing": "Processing...",
     "confirmBid": "Confirm Bid",
     "level": "Level {{level}}",
+    "noAddress": "No Address",
     "statuses": {
       "active": "Active",
       "blocked": "Blocked",
@@ -1183,7 +1184,8 @@
     "reportTooltip": "Report {{name}}",
     "reportTooltipCooldown": "You have recently reported {{name}}. You can report again after {{hours}} hours.",
     "invalidId": "Invalid User ID provided.",
-    "loadFail": "Failed to load user profile."
+    "loadFail": "Failed to load user profile.",
+    "negativeRating": "Negative Rating"
   },
   "reputationLevels": {
     "Novice": "Novice",
@@ -1196,6 +1198,12 @@
     "Grandmaster": "Grandmaster",
     "Legend": "Legend",
     "Mythic": "Mythic"
+  },
+  "errorBoundary": {
+    "title": "Oops! Something went wrong",
+    "message": "We encountered an unexpected error. Don't worry, try refreshing the page.",
+    "refreshBtn": "Refresh Page",
+    "homeBtn": "Back to Home"
   },
   "apiErrors": {
     "tooManyLoginAttempts": "Too many login attempts, please try again after {{minutes}} minutes.",
@@ -2589,7 +2597,7 @@
   },
   "luckyWheel": {
     "labels": {
-        "freeSpins": "Free Spins"
+      "freeSpins": "Free Spins"
     },
     "spinFree": "SPIN FREE!",
     "hasFreeSpins": "You have {{count}} free spins!",
@@ -2602,12 +2610,12 @@
     "noCredits": "Insufficient credits for spin!",
     "balanceLabel": "Credits Balance",
     "prizes": {
-        "credits": "Credits",
-        "xp": "XP",
-        "balance": "Balance",
-        "free_spin": "Free Spin",
-        "empty": "Hard Luck",
-        "currency": "TND"
+      "credits": "Credits",
+      "xp": "XP",
+      "balance": "Balance",
+      "free_spin": "Free Spin",
+      "empty": "Hard Luck",
+      "currency": "TND"
     },
     "history": {
       "title": "Spin History",
@@ -2619,11 +2627,11 @@
   },
   "quests": {
     "header": {
-        "credits": "{{count}} Credits",
-        "freeSpins": "{{count}} Spins"
+      "credits": "{{count}} Credits",
+      "freeSpins": "{{count}} Spins"
     },
     "rewards": {
-        "spin": "Spin"
+      "spin": "Spin"
     },
     "pageTitle": "Quests Board",
     "subtitle": "Complete tasks to earn credits and XP!",

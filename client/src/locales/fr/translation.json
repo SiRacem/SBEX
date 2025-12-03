@@ -603,6 +603,7 @@
     "edit": "Modifier",
     "delete": "Supprimer",
     "confirmTransfer": "Confirmer le transfert",
+    "noAddress": "Aucune adresse",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -617,19 +618,19 @@
   },
   "admin": {
     "wheelSettings": {
-        "title": "Configuration Roue de la Fortune",
-        "saveSuccess": "Roue mise à jour avec succès ! 🎉",
-        "saveError": "Échec de l'enregistrement ❌",
-        "segment": "Segment",
-        "type": "Type",
-        "empty": "Vide (Pas de chance)",
-        "amount": "Montant",
-        "chance": "Chance (Poids)",
-        "chanceHelp": "Nombre plus élevé = probabilité plus élevée",
-        "color": "Couleur",
-        "textLabel": "Texte affiché (Optionnel)",
-        "textPlaceholder": "ex: 50 Crédits",
-        "addSegment": "Ajouter un segment"
+      "title": "Configuration Roue de la Fortune",
+      "saveSuccess": "Roue mise à jour avec succès ! 🎉",
+      "saveError": "Échec de l'enregistrement ❌",
+      "segment": "Segment",
+      "type": "Type",
+      "empty": "Vide (Pas de chance)",
+      "amount": "Montant",
+      "chance": "Chance (Poids)",
+      "chanceHelp": "Nombre plus élevé = probabilité plus élevée",
+      "color": "Couleur",
+      "textLabel": "Texte affiché (Optionnel)",
+      "textPlaceholder": "ex: 50 Crédits",
+      "addSegment": "Ajouter un segment"
     },
     "checkInSettings": {
       "title": "Configuration des Récompenses Quotidiennes",
@@ -1182,7 +1183,8 @@
     "reportTooltip": "Signaler {{name}}",
     "reportTooltipCooldown": "Vous avez récemment signalé {{name}}. Vous pourrez signaler à nouveau dans {{hours}} heures.",
     "invalidId": "ID utilisateur invalide.",
-    "loadFail": "Échec du chargement du profil utilisateur."
+    "loadFail": "Échec du chargement du profil utilisateur.",
+    "negativeRating": "Évaluation négative"
   },
   "reputationLevels": {
     "Novice": "Novice",
@@ -1195,6 +1197,12 @@
     "Grandmaster": "Grand Maître",
     "Legend": "Légende",
     "Mythic": "Mythique"
+  },
+  "errorBoundary": {
+    "title": "Oups ! Une erreur est survenue",
+    "message": "Nous avons rencontré un problème inattendu. Ne vous inquiétez pas, essayez de rafraîchir la page.",
+    "refreshBtn": "Rafraîchir la page",
+    "homeBtn": "Retour à l'accueil"
   },
   "apiErrors": {
     "tooManyLoginAttempts": "Trop de tentatives de connexion, veuillez réessayer dans {{minutes}} minutes.",
@@ -2585,7 +2593,7 @@
   },
   "luckyWheel": {
     "labels": {
-        "freeSpins": "Tours Gratuits"
+      "freeSpins": "Tours Gratuits"
     },
     "spinFree": "TOURNEZ GRATUIT !",
     "hasFreeSpins": "Vous avez {{count}} tours gratuits !",
@@ -2598,28 +2606,28 @@
     "noCredits": "Crédits insuffisants pour jouer !",
     "balanceLabel": "Solde Crédits",
     "prizes": {
-        "credits": "Crédits",
-        "xp": "XP",
-        "balance": "Solde",
-        "free_spin": "Tournee gratuite",
-        "empty": "Pas de chance",
-        "currency": "TND"
+      "credits": "Crédits",
+      "xp": "XP",
+      "balance": "Solde",
+      "free_spin": "Tournee gratuite",
+      "empty": "Pas de chance",
+      "currency": "TND"
     },
     "history": {
-        "title": "Historique des Spins",
-        "date": "Date",
-        "cost": "Coût",
-        "prize": "Prix",
-        "empty": "Aucun spin pour le moment. Tentez votre chance !"
+      "title": "Historique des Spins",
+      "date": "Date",
+      "cost": "Coût",
+      "prize": "Prix",
+      "empty": "Aucun spin pour le moment. Tentez votre chance !"
     }
   },
   "quests": {
     "header": {
-        "credits": "{{count}} Crédits",
-        "freeSpins": "{{count}} Tours"
+      "credits": "{{count}} Crédits",
+      "freeSpins": "{{count}} Tours"
     },
     "rewards": {
-        "spin": "Tour"
+      "spin": "Tour"
     },
     "pageTitle": "Tableau des Quêtes",
     "subtitle": "Terminez des tâches pour gagner des crédits et de l'XP !",
