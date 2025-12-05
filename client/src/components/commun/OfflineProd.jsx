@@ -8,6 +8,7 @@ import OfflineProdCard from "./OfflineProdCard";
 import { getProducts } from "../../redux/actions/productAction";
 import "./OfflineProd.css";
 import { useTranslation } from "react-i18next";
+import { FaFilter, FaSortAmountDown, FaSearch } from "react-icons/fa";
 
 const TND_TO_USD_RATE = 3.0;
 
@@ -19,7 +20,6 @@ const OfflineProd = () => {
   const [selectedSort, setSelectedSort] = useState("newest");
   const productsFetched = useRef(false);
 
-  // [!!!] START: إضافة خريطة الترجمة هنا
   const linkTypeMap = useMemo(
     () => ({
       "k&m": t("comptes.linkTypes.k&m", "Konami ID ✅ Gmail ❌ Mail ✅"),
@@ -31,27 +31,28 @@ const OfflineProd = () => {
     }),
     [t]
   );
-  // [!!!] END: نهاية الإضافة
 
-  const Products = useSelector((state) => state.productReducer?.Products ?? []);
-  const loading = useSelector(
-    (state) => state.productReducer?.loading ?? false
-  );
-  const errors = useSelector((state) => state.productReducer?.errors ?? null);
+  // [!!!] التأكد من وجود Products دائماً كمصفوفة [!!!]
+  const productState = useSelector((state) => state.productReducer);
+  const Products = productState?.Products || []; 
+  const loading = productState?.loading || false;
+  const errors = productState?.errors || null;
 
   useEffect(() => {
-    if (!productsFetched.current) {
+    // جلب المنتجات دائماً عند تحميل الصفحة لضمان التحديث
+    if (!productsFetched.current || Products.length === 0) {
       dispatch(getProducts());
       productsFetched.current = true;
     }
-  }, [dispatch]);
+  }, [dispatch, Products.length]);
 
   const handleSearch = (term) => setSearchTerm(term);
 
   const availableLinkTypes = useMemo(() => {
     if (!Array.isArray(Products)) return [];
+    // [!!!] تصحيح: التحقق من الحالة بمرونة (Case Insensitive) [!!!]
     const types = Products.filter(
-      (p) => p?.status === "approved" && p.linkType
+      (p) => p && p.linkType && (p.status?.toLowerCase() === "approved")
     ).map((p) => p.linkType);
     return [...new Set(types)].sort();
   }, [Products]);
@@ -60,22 +61,26 @@ const OfflineProd = () => {
     if (!Array.isArray(Products)) return [];
     const upperSearchTerm = searchTerm?.toUpperCase().trim() || "";
 
-    let filtered = Products.filter(
-      (product) =>
-        product &&
-        product._id &&
-        product.title &&
-        product.price != null &&
-        product.user?._id &&
-        product.currency
-    ).filter((product) => product.status === "approved");
+    // [!!!] التصفية الأساسية [!!!]
+    let filtered = Products.filter((product) => {
+        // 1. التأكد من وجود المنتج وبياناته الأساسية
+        if (!product || !product._id) return false;
+        
+        // 2. [هام] التحقق من الحالة بمرونة (تقبل approved أو Approved)
+        const isApproved = product.status?.toLowerCase() === "approved";
+        if (!isApproved) return false;
 
+        return true;
+    });
+
+    // فلترة البحث
     if (upperSearchTerm) {
       filtered = filtered.filter((product) =>
         product.title?.toUpperCase().includes(upperSearchTerm)
       );
     }
 
+    // فلترة النوع
     if (selectedFilter) {
       filtered = filtered.filter(
         (product) => product.linkType === selectedFilter
@@ -83,7 +88,8 @@ const OfflineProd = () => {
     }
 
     const getPriceInTND = (product) => {
-      if (!product || product.price == null || !product.currency) return 0;
+      if (!product || product.price == null) return 0;
+      // التحقق من العملة بحذر
       if (product.currency === "USD") {
         return product.price * TND_TO_USD_RATE;
       }
@@ -111,20 +117,17 @@ const OfflineProd = () => {
   }, [Products, searchTerm, selectedFilter, selectedSort]);
 
   let content;
-  if (loading && !productsFetched.current) {
+  if (loading && Products.length === 0) { // عرض التحميل فقط إذا لم تكن هناك منتجات سابقة
     content = (
       <Col xs={12} className="text-center mt-5 pt-5 loading-placeholder">
-        <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">{t("home.loading")}</p>
+        <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
+        <p className="mt-3 text-muted fw-bold fs-5">{t("home.loading")}</p>
       </Col>
     );
   } else if (errors) {
     content = (
       <Col xs={12}>
-        <Alert
-          variant="danger"
-          className="w-75 mt-4 mx-auto text-center shadow-sm"
-        >
+        <Alert variant="danger" className="w-75 mt-4 mx-auto text-center shadow-sm rounded-3">
           <h4>{t("home.errorTitle")}</h4>
           <p>{t(errors.key, errors.params)}</p>
         </Alert>
@@ -141,34 +144,33 @@ const OfflineProd = () => {
         xl={4}
         className="mb-4 d-flex align-items-stretch product-grid-item"
       >
-        <OfflineProdCard el={product} />
+        <OfflineProdCard product={product} /> {/* [!!!] تأكدنا من تمرير product كـ prop اسمه product */}
       </Col>
     ));
-  } else if (productsFetched.current && !loading) {
+  } else {
     content = (
       <Col xs={12}>
-        <Alert
-          variant="secondary"
-          className="mt-4 text-center no-results-alert"
-        >
-          {searchTerm || selectedFilter
-            ? t("home.noProductsMatch", {
-                criteria: searchTerm || selectedFilter,
-              })
-            : t("home.noProducts")}
-        </Alert>
+        <div className="text-center py-5 no-results-alert">
+          <FaSearch size={50} className="text-muted mb-3" opacity={0.3} />
+          <h5 className="text-dark">
+            {searchTerm || selectedFilter
+              ? t("home.noProductsMatch", { criteria: searchTerm || selectedFilter })
+              : t("home.noProducts")}
+          </h5>
+          <p className="text-muted">{t("home.tryDifferentSearch", "Try adjusting your search or filters")}</p>
+        </div>
       </Col>
     );
-  } else {
-    content = null;
   }
 
   return (
     <div className="offline-page">
       <OfflineHeader onSearch={handleSearch} />
-      <section className="hero-section text-center text-white py-5">
+      
+      {/* Hero Section */}
+      <section className="hero-section text-center">
         <Container>
-          <h1 className="display-4 fw-bold mb-3 hero-title">
+          <h1 className="display-4 mb-3 hero-title">
             {t("home.heroTitle")}
           </h1>
           <p className="lead col-lg-8 mx-auto mb-4 hero-subtitle">
@@ -176,58 +178,60 @@ const OfflineProd = () => {
           </p>
         </Container>
       </section>
-      <Container fluid="xl" className="py-4 py-md-5 products-section">
-        <Row className="mb-4 align-items-center filter-sort-row">
-          <Col md={6} lg={4} className="mb-3 mb-md-0">
-            <Form.Group controlId="filterLinkType">
-              <Form.Label className="visually-hidden">
-                {t("home.filterByType")}
-              </Form.Label>
-              <Form.Select
-                aria-label={t("home.filterByType")}
-                value={selectedFilter}
-                onChange={(e) => setSelectedFilter(e.target.value)}
-                size="sm"
-                className="filter-select"
-              >
-                <option value="">{t("home.allLinkTypes")}</option>
-                {/* [!!!] START: التعديل هنا لعرض النص الكامل */}
-                {availableLinkTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {linkTypeMap[type] || type}
-                  </option>
-                ))}
-                {/* [!!!] END: نهاية التعديل */}
-              </Form.Select>
-            </Form.Group>
-          </Col>
-          <Col
-            md={6}
-            lg={{ span: 4, offset: 4 }}
-            className="d-flex justify-content-md-end"
-          >
-            <Form.Group
-              controlId="sortProducts"
-              className="d-flex align-items-center"
-            >
-              <Form.Label className="me-2 mb-0 text-muted small text-nowrap">
-                {t("home.sortBy")}:
-              </Form.Label>
-              <Form.Select
-                aria-label={t("home.sortByAria")}
-                value={selectedSort}
-                onChange={(e) => setSelectedSort(e.target.value)}
-                size="sm"
-                className="sort-select"
-              >
-                <option value="newest">{t("home.sort.newest")}</option>
-                <option value="price_asc">{t("home.sort.priceAsc")}</option>
-                <option value="price_desc">{t("home.sort.priceDesc")}</option>
-              </Form.Select>
-            </Form.Group>
+
+      {/* Main Content with Floating Filter Bar */}
+      <Container fluid="xl" className="filter-sort-container">
+        <Row className="justify-content-center">
+          <Col xs={12} lg={10}>
+            <div className="filter-sort-row d-flex flex-wrap align-items-center justify-content-between">
+              
+              {/* Filter */}
+              <div className="d-flex align-items-center mb-3 mb-md-0 flex-grow-1">
+                <FaFilter className="text-primary me-3" size={20} />
+                <div className="flex-grow-1">
+                    <Form.Select
+                    aria-label={t("home.filterByType")}
+                    value={selectedFilter}
+                    onChange={(e) => setSelectedFilter(e.target.value)}
+                    className="filter-select w-100"
+                    >
+                    <option value="">{t("home.allLinkTypes")}</option>
+                    {availableLinkTypes.map((type) => (
+                        <option key={type} value={type}>
+                        {linkTypeMap[type] || type}
+                        </option>
+                    ))}
+                    </Form.Select>
+                </div>
+              </div>
+
+              {/* Sort */}
+              <div className="d-flex align-items-center ms-md-4">
+                <FaSortAmountDown className="text-primary me-3" size={20} />
+                <div className="flex-grow-1">
+                    <Form.Select
+                    aria-label={t("home.sortByAria")}
+                    value={selectedSort}
+                    onChange={(e) => setSelectedSort(e.target.value)}
+                    className="sort-select"
+                    >
+                    <option value="newest">{t("home.sort.newest")}</option>
+                    <option value="price_asc">{t("home.sort.priceAsc")}</option>
+                    <option value="price_desc">{t("home.sort.priceDesc")}</option>
+                    </Form.Select>
+                </div>
+              </div>
+
+            </div>
           </Col>
         </Row>
-        <Row className="g-4">{content}</Row>
+      </Container>
+
+      {/* Products Grid */}
+      <Container fluid="xl" className="products-section">
+        <Row className="g-4 justify-content-center">
+          {content}
+        </Row>
       </Container>
     </div>
   );

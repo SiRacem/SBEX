@@ -2,52 +2,55 @@
 
 .main-header {
     background-color: #ffffff !important;
-    /* تأكيد الخلفية البيضاء */
     z-index: 1030;
-    border-radius: 15px;
-    /* تأكد أنه فوق المحتوى */
+    border-bottom: 1px solid #f1f5f9;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    border-radius: 0 !important;
 }
 
 .header-brand {
-    font-weight: 700;
-    font-size: 1.4rem;
-    color: #333 !important;
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: #0f172a !important; /* نفس لون الـ Hero */
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.brand-text {
-    margin-left: 5px;
+.header-brand img {
+    height: 40px;
+    width: auto;
 }
 
 .main-header .nav-link {
-    color: #555 !important;
-    font-weight: 500;
+    color: #475569 !important;
+    font-weight: 600;
     transition: color 0.2s ease;
+    margin: 0 8px;
+    font-size: 0.95rem;
 }
 
 .main-header .nav-link:hover {
-    color: #0d6efd !important;
-    /* لون Bootstrap الأساسي */
+    color: #3b82f6 !important; /* اللون الأزرق */
 }
 
-.main-header .btn {
-    font-weight: 500;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    border-radius: 15px;
-    padding: 8px;
+/* Login/Register Button */
+.main-header .btn-primary {
+    background-color: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+}
+
+.main-header .btn-primary:hover {
+    background-color: #2563eb !important;
+    transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {
     .main-header {
-        padding: 10px;
-        /* تقليل الحشو في الشاشات الصغيرة */
+        padding: 10px 15px;
     }
-    .header-brand {
-        font-size: 1.2rem;
-        /* تقليل حجم الخط في الشاشات الصغيرة */
-    }
-    .main-header .nav-link {
-        font-size: 0.9rem;
-        /* تقليل حجم الخط في الشاشات الصغيرة */
-    }
-    
 }

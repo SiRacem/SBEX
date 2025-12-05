@@ -82,7 +82,8 @@
     "quests": "Quests & Rewards",
     "manageQuests": "Manage Quests & Rewards",
     "checkInSettings": "Check-in Settings",
-    "wheelSettings": "Wheel Settings"
+    "wheelSettings": "Wheel Settings",
+    "globalChat": "Global Chat"
   },
   "dashboard": {
     "balances": {
@@ -531,6 +532,7 @@
     }
   },
   "home": {
+    "tryDifferentSearch": "Try a different search",
     "addToWishlist": "Add to Wishlist",
     "removeFromWishlist": "Remove from Wishlist",
     "pleaseLoginToWishlist": "Please login to manage your wishlist",
@@ -541,6 +543,10 @@
     "allLinkTypes": "All Link Types",
     "sortBy": "Sort by",
     "sortByAria": "Sort products",
+    "myWishlist": "My Wishlist",
+    "emptyWishlist": "Your wishlist is empty",
+    "emptyWishlistDesc": "Start adding products you like!",
+    "bidder": "Bidders",
     "sort": {
       "newest": "Newest First",
       "priceAsc": "Price: Low to High",
@@ -1253,7 +1259,9 @@
     "reportFieldsRequired": "Reported user, reason, and details are required.",
     "loginFailed": "Login failed. Please check your credentials.",
     "serverError": "Server error. Please try again later.",
-    "Account_blocked": "Your account is blocked. Please contact support."
+    "Account_blocked": "Your account is blocked. Please contact support.",
+    "userMuted": "You are muted. Try again in {{minutes}} minutes.",
+    "spamCooldown": "Please wait a moment before sending another message."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -1649,6 +1657,16 @@
       "rejected": "No rejected products."
     },
     "productCard": {
+      "outOfStock": "Out of Stock",
+      "soldBy": "Sold by",
+      "highestBidTooltip": "Current highest bid",
+      "placeBid": "Place a bid",
+      "bidBtn": "Bid",
+      "addToCart": "Add to cart",
+      "noBidsYet": "No bids yet",
+      "bidsCount": "bids",
+      "latestBidsLabel": "Latest Bids",
+      "bidders": "bidders",
       "listPrice": "List Price:",
       "agreedPrice": "Agreed:",
       "countdownTooltip": "Time remaining for the mediator to respond",
@@ -2656,5 +2674,11 @@
       "comeBackTomorrow": "Come back tomorrow for more!",
       "toastSuccess": "📅 Check In Success! Streak: {{streak}} days. (+{{reward}} Credits)"
     }
+  },
+  "globalChat": {
+    "title": "Global Chat",
+    "placeholder": "Type a message...",
+    "clearChat": "Clear Chat",
+    "adminAction": "Admin Action"
   }
 }

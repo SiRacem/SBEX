@@ -28,6 +28,7 @@ import {
   FaHeart,
   FaDice,
   FaCalendarCheck,
+  FaComments,
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -165,6 +166,14 @@ const Sidebar = ({ onSearchChange }) => {
         >
           <FaMedal className="icon" />
           <span className="link-text">{t("sidebar.leaderboard")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/global-chat"
+          title={t("sidebar.globalChat")}
+        >
+          <FaComments className="icon" /> 
+          <span className="link-text">{t("sidebar.globalChat")}</span>
         </NavLink>
         <NavLink
           className="sidebar-link"

@@ -71,6 +71,7 @@ import { getUserQuests, adminGetAllQuests, getCheckInConfig } from './redux/acti
 import AdminCheckInSettings from './components/admin/AdminCheckInSettings';
 import AdminWheelSettings from './components/admin/AdminWheelSettings';
 import ErrorBoundary from './components/commun/ErrorBoundary';
+import GlobalChatPage from './pages/GlobalChatPage';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -587,6 +588,7 @@ function App() {
             <Route path="/register" element={!isAuth || !user ? <Register /> : <Navigate to="/dashboard" replace />} />
             <Route path="/" element={<OfflineProd />} />
             <Route path="/dashboard" element={<ProtectedRoute><MainDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/global-chat" element={<ProtectedRoute><GlobalChatPage /></ProtectedRoute>} />
             <Route path="/dashboard/news" element={<ProtectedRoute><NewsPage /></ProtectedRoute>} />
             <Route path="/dashboard/admin/news" element={<ProtectedRoute requiredRole="Admin"><AdminNewsManagement /></ProtectedRoute>} />
             <Route path="/dashboard/admin/achievements" element={<ProtectedRoute requiredRole="Admin"><AdminAchievementsManagement /></ProtectedRoute>} />

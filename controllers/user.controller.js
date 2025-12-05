@@ -1259,18 +1259,43 @@ const toggleFollowUser = async (req, res) => {
 // --- Get My Wishlist (Populated) ---
 const getMyWishlist = async (req, res) => {
     const userId = req.user._id;
-    try {
-        const user = await User.findById(userId).populate({
-            path: 'wishlist',
-            match: { status: 'approved' }, // جلب المنتجات المتاحة فقط
-            populate: { path: 'user', select: 'fullName avatarUrl' } // جلب بيانات البائع
-        });
+    console.log(`--- Controller: getMyWishlist for User: ${userId} ---`);
 
-        if (!user) {
-            return res.status(404).json({ msg: "User not found" });
+    try {
+        // 1. أولاً: نجلب المستخدم ونرى مصفوفة الـ IDs فقط (بدون populate)
+        const userRaw = await User.findById(userId).select('wishlist');
+        if (!userRaw) return res.status(404).json({ msg: "User not found." });
+        
+        console.log(`[Debug] Raw Wishlist IDs count: ${userRaw.wishlist ? userRaw.wishlist.length : 0}`);
+
+        if (!userRaw.wishlist || userRaw.wishlist.length === 0) {
+            return res.status(200).json([]);
         }
 
-        res.status(200).json({ wishlist: user.wishlist });
+        // 2. ثانياً: نقوم بعمل populate آمن
+        const userPopulated = await User.findById(userId).populate({
+            path: 'wishlist',
+            // نستخدم model صراحة لضمان الربط الصحيح
+            model: 'Product', 
+            populate: [
+                { path: 'user', select: 'fullName email avatarUrl' }, // صاحب المنتج
+                // نستخدم populate مرن للمزايدين
+                { 
+                    path: 'bids.user', 
+                    select: 'fullName avatarUrl',
+                    model: 'User'
+                }
+            ]
+        });
+
+        // تصفية المنتجات الفارغة (التي قد تكون حذفت من قاعدة البيانات)
+        // أي منتج يكون null بعد الـ populate يعني أنه غير موجود في جدول المنتجات
+        const validWishlistProducts = (userPopulated.wishlist || []).filter(product => product !== null);
+
+        console.log(`[Debug] Valid populated products count: ${validWishlistProducts.length}`);
+        
+        res.status(200).json(validWishlistProducts);
+
     } catch (error) {
         console.error("Error fetching wishlist:", error);
         res.status(500).json({ msg: "Server error fetching wishlist." });

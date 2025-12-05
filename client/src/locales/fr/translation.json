@@ -82,7 +82,8 @@
     "quests": "Quêtes et Récompenses",
     "manageQuests": "Gérer les Quêtes",
     "checkInSettings": "Gérer Connexion Quotidienne",
-    "wheelSettings": "Gérer Roulette"
+    "wheelSettings": "Gérer Roulette",
+    "globalChat": "Chat Global"
   },
   "dashboard": {
     "balances": {
@@ -530,6 +531,7 @@
     }
   },
   "home": {
+    "tryDifferentSearch": "Essayez une recherche différente",
     "addToWishlist": "Ajouter aux favoris",
     "removeFromWishlist": "Retirer des favoris",
     "pleaseLoginToWishlist": "Veuillez vous connecter pour gérer votre liste",
@@ -539,7 +541,10 @@
     "filterByType": "Filtrer par type de lien",
     "allLinkTypes": "Tous les types",
     "sortBy": "Trier par",
-    "sortByAria": "Trier les produits",
+    "myWishlist": "Ma Liste de Souhaits",
+    "emptyWishlist": "Votre liste est vide",
+    "emptyWishlistDesc": "Commencez à ajouter des produits que vous aimez !",
+    "bidder": "Bidder",
     "sort": {
       "newest": "Le plus récent",
       "priceAsc": "Prix : Croissant",
@@ -1252,7 +1257,9 @@
     "reportFieldsRequired": "Tous les champs de signalement sont obligatoires.",
     "loginFailed": "Échec de la connexion. Veuillez vérifier vos identifiants.",
     "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
-    "Account_blocked": "Votre compte est bloqué. Veuillez contacter le support."
+    "Account_blocked": "Votre compte est bloqué. Veuillez contacter le support.",
+    "userMuted": "Vous êtes mis en sourdine. Réessayez dans {{minutes}} minutes.",
+    "spamCooldown": "Veuillez patienter un moment avant d'envoyer un autre message."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -1648,6 +1655,16 @@
       "rejected": "Aucun produit rejeté."
     },
     "productCard": {
+      "outOfStock": "Rupture de stock",
+      "soldBy": "Vendu par",
+      "highestBidTooltip": "Meilleure offre actuelle",
+      "placeBid": "Placer une offre",
+      "bidBtn": "Enchérir",
+      "addToCart": "Ajouter au panier",
+      "noBidsYet": "Aucune offre",
+      "bidsCount": "offres",
+      "latestBidsLabel": "Dernières offres",
+      "bidders": "enchérisseurs",
       "listPrice": "Prix affiché :",
       "agreedPrice": "Prix convenu :",
       "status": {
@@ -2652,5 +2669,11 @@
       "comeBackTomorrow": "Revenez demain pour plus de récompenses !",
       "toastSuccess": "📅 Présence validée ! Série : {{streak}} jours. (+{{reward}} Crédits)"
     }
+  },
+  "globalChat": {
+    "title": "Chat Global",
+    "placeholder": "Écrivez un message...",
+    "clearChat": "Effacer le chat",
+    "adminAction": "Action Admin"
   }
 }

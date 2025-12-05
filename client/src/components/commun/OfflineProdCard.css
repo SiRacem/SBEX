@@ -1,363 +1,255 @@
 /* src/components/commun/OfflineProdCard.css */
 
-/* --- Card Base --- */
+/* --- هيكل البطاقة --- */
 .product-card-v3 {
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  cursor: default;
-  background-color: #fff;
-  border: 1px solid #e9ecef;
+  background: #ffffff;
+  border: none !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .product-card-v3:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.08) !important;
-  border-color: #dee2e6;
+  transform: translateY(-5px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
-/* --- Image Wrapper & Carousel --- */
+/* --- قسم الصورة --- */
 .product-img-wrapper {
-  height: 200px;
-  background-color: #f8f9fa;
+  height: 240px;
+  background-color: #f1f5f9;
   position: relative;
   overflow: hidden;
 }
 
-.product-img-wrapper .carousel,
-.product-img-wrapper .carousel-inner,
-.product-img-wrapper .carousel-item.product-carousel-item {
-  height: 100%;
-}
-
-.product-img-wrapper .carousel-item img.product-img {
+.product-card-v3 .product-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease, filter 0.3s ease;
+  transition: transform 0.7s ease;
 }
 
 .product-card-v3:hover .product-img {
-  transform: scale(1.04);
+  transform: scale(1.08);
 }
 
-/* View Gallery Button Overlay */
+/* تدرج لوني خفيف أسفل الصورة */
+.product-img-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+  pointer-events: none;
+}
+
+/* زر عرض المعرض */
 .view-gallery-btn {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 4;
-  opacity: 0;
-  transition: all 0.3s ease;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  color: white !important;
-  border: none;
-  border-radius: 20px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-  pointer-events: none;
-  display: inline-flex;
-  align-items: center;
-}
-
-.view-gallery-btn svg {
-  margin-inline-end: 6px;
-  /* RTL/LTR safe spacing */
-}
-
-.product-card-v3:hover .view-gallery-btn {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.product-card-v3:hover .product-img {
-  filter: brightness(0.8);
+  bottom: 12px;
+  right: 12px; /* أو left حسب التوجيه */
+  background: rgba(255, 255, 255, 0.25) !important;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  color: #fff !important;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: 8px;
+  z-index: 5;
+  transition: background 0.3s;
+  text-decoration: none;
 }
 
 .view-gallery-btn:hover {
-  background-color: rgba(0, 0, 0, 0.8) !important;
-  transform: translate(-50%, -50%) scale(1.05);
+  background: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Stock Badge */
+/* شارة المخزون */
 .stock-badge {
   position: absolute;
-  top: 8px;
-  inset-inline-start: 8px;
-  font-size: 0.65rem;
-  padding: 0.25em 0.5em;
-  background-color: rgba(33, 37, 41, 0.85) !important;
+  top: 12px;
+  left: 12px;
+  background-color: #ef4444 !important;
+  color: white;
+  padding: 4px 8px;
+  font-weight: 700;
+  font-size: 0.7rem;
+  border-radius: 6px;
   z-index: 5;
-  border-radius: 4px;
 }
 
-/* --- Card Body --- */
+/* --- جسم البطاقة --- */
 .product-card-v3 .card-body {
-  padding: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
 .product-title {
-  font-weight: 600;
-  color: #212529;
-  line-height: 1.3;
-  font-size: 1rem;
-  margin-bottom: 0.2rem !important;
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  margin-bottom: 0.5rem !important;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 2.6em;
+  height: 3em; /* ارتفاع ثابت للعنوان */
 }
 
 .product-seller {
-  font-size: 0.75rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem !important;
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem !important;
 }
 
 .product-seller a {
-  color: #495057;
-  text-decoration: none !important;
-  transition: color 0.2s ease;
-  margin-inline-start: 4px;
-  /* RTL/LTR safe spacing */
+  color: #3b82f6;
+  font-weight: 600;
+  margin-left: 5px;
+  text-decoration: none;
 }
 
-.product-seller a:hover {
-  color: #0d6efd;
-}
-
-/* Price Section */
+/* قسم السعر */
 .product-price-section {
-  line-height: 1.2;
+  margin-top: auto;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
 .price-current {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.highest-bid-info svg {
-  margin-inline-end: 2px;
+.highest-bid-info {
+  font-size: 0.8rem;
+  color: #10b981;
+  font-weight: 600;
+  background: #ecfdf5;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
-/* --- [!!!] CORRECTED ACTIONS ROW SECTION [!!!] --- */
+/* --- أزرار الإجراءات --- */
 .actions-row {
-  padding-top: 0.75rem;
-  border-top: 1px solid #f1f1f1;
-  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .action-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  gap: 0.35rem;
-  /* Modern way to add space between icon and text */
-  transition: all 0.2s ease;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  color: #94a3b8;
+  cursor: pointer;
 }
 
-.action-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
+.action-btn:hover {
+  background-color: #f1f5f9;
+  color: #3b82f6;
 }
 
-/* Like & Bidders Count */
-.like-btn,
-.text-muted.ms-2 {
-  padding: 0.2rem 0.4rem !important;
-  box-shadow: none !important;
-}
+.like-btn.liked { color: #ef4444; }
+.wishlist-btn.active { color: #f59e0b; }
 
-.like-btn.liked {
-  color: #e44d64;
-}
-
-.like-btn:not(:disabled):hover {
-  transform: scale(1.1);
-}
-
-.action-count {
-  font-size: 0.75rem;
-  color: #6c757d;
-  font-weight: 500;
-  line-height: 1;
-  /* Ensure vertical alignment */
-}
-
-/* Bid Button */
 .bid-btn {
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 0.35rem 0.7rem;
+  background-color: #0f172a !important;
+  color: #fff !important;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(15, 23, 42, 0.15);
+  font-size: 0.9rem;
+  flex-grow: 1;
 }
 
-/* The gap property handles spacing, so no specific margin needed for the icon */
-.bid-btn svg {
-  vertical-align: -2px;
+.bid-btn:hover:not(:disabled) {
+  background-color: #1e293b !important;
+  transform: translateY(-2px);
 }
 
-
-/* Cart Button */
-.cart-btn svg {
-  margin-inline-end: 0 !important;
-  /* Cart icon has no text, so no gap needed */
+.cart-btn {
+  background-color: #3b82f6 !important;
+  color: #fff !important;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.15);
 }
 
-/* --- [!!!] CORRECTED BIDS FOOTER SECTION [!!!] --- */
+.cart-btn:hover:not(:disabled) {
+  background-color: #2563eb !important;
+  transform: translateY(-2px);
+}
+
+/* --- الفوتر: صور المزايدين (التعديل الهام) --- */
 .bids-footer {
-  font-size: 0.75rem;
-  background-color: #f8f9fa !important;
-  border-top: 1px solid #eee;
+    background-color: #f8f9fa;
+    border-top: 1px solid #eaeaea;
+    padding: 0.5rem 1rem;
 }
 
 .bids-list-horizontal {
-  display: flex;
-  flex-wrap: nowrap;
+    display: flex;
+    align-items: center;
 }
 
 .bid-item {
-  transition: transform 0.15s ease-in-out;
-  list-style: none;
-}
-
-.bid-item:not(:first-child) {
-  margin-inline-start: -10px;
-  /* Overlap avatars */
+    margin-left: -8px; /* تداخل الصور */
+    transition: transform 0.2s ease;
+    z-index: 1;
 }
 
 .bid-item:hover {
-  transform: translateY(-2px);
-  z-index: 2;
+    transform: scale(1.1);
+    z-index: 10;
 }
 
 .bidder-avatar {
-  width: 26px;
-  height: 26px;
-  font-size: 0.7rem;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #0d6efd;
-  color: white;
-  font-weight: bold;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%; /* يجعلها دائرية */
+    border: 2px solid white; /* حدود بيضاء للفصل */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: #e9ecef;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.bidder-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.unknown-bidder {
+    font-weight: bold;
+    color: #6c757d;
+    font-size: 0.8rem;
 }
 
 .more-bids {
-  font-size: 0.7rem;
-  align-self: center;
-  margin-inline-start: 4px !important;
-  color: #6c757d;
-}
-
-/* --- Lightbox Modal Styles --- */
-.lightbox-modal .modal-dialog {
-  max-width: 90vw;
-  max-height: 90vh;
-  margin: auto;
-}
-
-.lightbox-modal .modal-content {
-  background-color: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.lightbox-modal .modal-body {
-  background-color: rgba(10, 10, 10, 0.9);
-  padding: 5px;
-  border-radius: 5px;
-}
-
-.lightbox-image {
-  max-height: calc(90vh - 40px);
-  width: auto;
-  max-width: 100%;
-  object-fit: contain;
-  display: block;
-  margin: auto;
-}
-
-.close-lightbox-btn {
-  border-radius: 50% !important;
-  width: 35px;
-  height: 35px;
-  line-height: 1;
-  font-size: 1.6rem;
-  padding: 0;
-  opacity: 0.7;
-  z-index: 1060;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  transition: all 0.2s ease;
-}
-
-.close-lightbox-btn:hover {
-  opacity: 1;
-  background-color: rgba(255, 255, 255, 0.2);
-  transform: rotate(90deg);
-}
-
-/* نستهدف التطبيق عندما يكون له السمة dir="rtl" */
-[dir="rtl"] .modal-body .input-group {
-  /* نعكس ترتيب العناصر داخل مجموعة الإدخال */
-  flex-direction: row-reverse;
-}
-
-[dir="rtl"] .modal-body .input-group .form-control {
-  /* نضمن أن زوايا حقل الإدخال صحيحة */
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  border-top-right-radius: 0.25rem;
-  border-bottom-right-radius: 0.25rem;
-}
-
-[dir="rtl"] .modal-body .input-group .input-group-text {
-  /* نضمن أن زوايا نص العملة صحيحة */
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-top-left-radius: 0.25rem;
-  border-bottom-left-radius: 0.25rem;
-}
-
-/* إصلاح مكان علامة التعجب عند وجود خطأ */
-[dir="rtl"] .form-control.is-invalid {
-  background-position: left calc(0.375em + 0.1875rem) center;
-}
-
-/* [!!!] أنماط جديدة لإصلاح مودال المزايدة */
-.bid-input-control {
-  /* يضمن أن حقل الإدخال له حدود مدورة على جميع الجوانب بشكل افتراضي */
-  border-radius: var(--bs-border-radius) !important;
-}
-
-.currency-indicator {
-  position: absolute;
-  top: 50%;
-  inset-inline-end: 1rem;
-  /* يضمن العمل في LTR و RTL */
-  transform: translateY(-50%);
-  color: #6c757d;
-  font-size: 0.9rem;
-  pointer-events: none;
-  /* للسماح بالنقر عبره */
-  z-index: 5;
-}
-
-/* تعديل الحشو في حقل الإدخال لتجنب تداخل النص مع مؤشر العملة */
-.bid-input-control {
-  padding-inline-end: 4rem !important;
-  /* مساحة كافية للعملة */
-}
-
-/* [!!!] نمط جديد لصورة الأفاتار داخل الدائرة */
-.bidder-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* يضمن أن الصورة تملأ الدائرة بشكل صحيح */
-  border-radius: 50%; /* للتأكيد على أنها دائرية */
+    margin-left: 5px;
+    font-size: 0.75rem;
+    color: #6c757d;
 }

@@ -1,0 +1,108 @@
+.global-chat-page {
+    height: calc(100vh - 60px); /* Adjust based on your Navbar height */
+    display: flex;
+    flex-direction: column;
+    background-color: #e5ddd5; /* Whatsapp-like background */
+    background-image: url("https://www.transparenttextures.com/patterns/subtle-dark-vertical.png");
+}
+
+.chat-header {
+    background-color: #2c3e50;
+    color: white;
+    z-index: 10;
+}
+
+.pinned-msg {
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-left: 3px solid #ffc107;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-wrapper {
+    display: flex;
+    align-items: flex-start;
+    max-width: 80%;
+    position: relative;
+}
+
+.my-message {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.msg-avatar {
+    width: 35px;
+    height: 35px;
+    margin: 0 10px;
+    border: 2px solid white;
+}
+
+.message-content-box {
+    background: white;
+    padding: 8px 12px;
+    border-radius: 0 15px 15px 15px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.my-message .message-content-box {
+    background: #dcf8c6;
+    border-radius: 15px 0 15px 15px;
+}
+
+.msg-sender-name {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #e67e22; /* Default color for names */
+}
+
+.msg-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.msg-time {
+    font-size: 0.65rem;
+    opacity: 0.6;
+}
+
+.reply-context {
+    background: rgba(0,0,0,0.05);
+    border-left: 3px solid #3498db;
+    font-size: 0.8rem;
+}
+
+/* Actions Menu */
+.msg-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin: 0 5px;
+    align-self: center;
+}
+
+.message-wrapper:hover .msg-actions {
+    opacity: 1;
+}
+
+.no-arrow::after {
+    display: none;
+}
+
+/* Input Area */
+.chat-input-area {
+    border-top: 1px solid #ddd;
+}
+
+.reply-preview {
+    background: #f0f0f0;
+    border-left: 3px solid #2ecc71;
+}

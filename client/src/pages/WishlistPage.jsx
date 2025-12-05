@@ -30,7 +30,7 @@ const WishlistPage = () => {
         <Row className="g-4">
           {myWishlist.map((product) => (
             <Col key={product._id} xs={12} sm={6} md={4} lg={3}>
-              <OfflineProdCard el={product} />
+              <OfflineProdCard product={product} />
             </Col>
           ))}
         </Row>

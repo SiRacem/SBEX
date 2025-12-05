@@ -285,6 +285,7 @@ export const toggleWishlist = (productId) => async (dispatch) => {
     const config = getTokenConfig();
     try {
         const { data } = await axios.put("/user/wishlist/toggle", { productId }, config);
+        
         dispatch({ 
             type: TOGGLE_WISHLIST_SUCCESS, 
             payload: { 
@@ -292,7 +293,11 @@ export const toggleWishlist = (productId) => async (dispatch) => {
                 successMessage: data.action === 'added' ? 'profilePage.wishlist.added' : 'profilePage.wishlist.removed'
             } 
         });
-        // تحديث رسالة نجاح صغيرة (اختياري)
+
+        // [!!!] الحل السحري: قم بتحديث قائمة "رغباتي" فوراً بعد التغيير [!!!]
+        // هذا سيجعل المنتج يختفي من الصفحة فوراً إذا قمت بإزالته
+        dispatch(getMyWishlist()); 
+
     } catch (error) {
         const { key, fallback } = handleError(error, 'apiErrors.wishlistUpdateFail');
         dispatch({ type: TOGGLE_WISHLIST_FAIL, payload: { errorMessage: { key, fallback } } });
@@ -321,13 +326,19 @@ export const toggleFollow = (targetUserId) => async (dispatch) => {
 };
 
 export const getMyWishlist = () => async (dispatch) => {
-    dispatch({ type: 'GET_WISHLIST_REQUEST' }); // تأكد من إضافة هذا النوع في actionTypes أو استخدم string مؤقتاً
+    // 1. تصحيح الاسم ليطابق الريديوسر
+    dispatch({ type: 'GET_MY_WISHLIST_REQUEST' }); 
+    
     const config = getTokenConfig();
     try {
         const { data } = await axios.get("/user/my-wishlist", config);
-        dispatch({ type: 'GET_WISHLIST_SUCCESS', payload: data.wishlist });
+        
+        // 2. تصحيح البيانات: السيرفر يرسل المصفوفة مباشرة في data
+        // لذا نرسل data كما هي، وليس data.wishlist
+        dispatch({ type: 'GET_MY_WISHLIST_SUCCESS', payload: data }); 
+        
     } catch (error) {
         const errorMessage = handleError(error, 'apiErrors.general');
-        dispatch({ type: 'GET_WISHLIST_FAIL', payload: errorMessage });
+        dispatch({ type: 'GET_MY_WISHLIST_FAIL', payload: errorMessage });
     }
 };

@@ -45,6 +45,7 @@ const achievementRouter = require('./router/achievement.router');
 const leaderboardRouter = require('./router/leaderboard.router');
 const referralRouter = require('./router/referral.router');
 const questRouter = require('./router/quest.router');
+const globalChatRouter = require('./router/globalChat.router');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -539,6 +540,59 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 1. الانضمام للشات (اختياري، لكن مفيد لمعرفة عدد المتواجدين)
+    socket.on('join_global_chat', () => {
+        socket.join('global_chat_room');
+    });
+
+    // 2. إرسال رسالة جديدة
+    socket.on('send_global_message', async ({ content, replyToId }) => {
+        const userId = socket.userIdForChat;
+        if (!userId) return socket.emit('global_chat_error', 'Unauthorized');
+
+        try {
+            // أ) التحقق (هنا يتم رمي الخطأ المترجم)
+            const { validateMessage } = require('./controllers/globalChat.controller');
+            await validateMessage(userId, content);
+
+            // ب) حفظ الرسالة
+            const GlobalMessage = require('./models/GlobalMessage');
+            const newMessage = new GlobalMessage({
+                sender: userId,
+                content: content,
+                replyTo: replyToId || null
+            });
+            await newMessage.save();
+
+            // ج) تعبئة البيانات وإرسالها
+            const populatedMessage = await GlobalMessage.findById(newMessage._id)
+                .populate('sender', 'fullName avatarUrl userRole level reputationLevel')
+                .populate('replyTo', 'content sender')
+                .lean();
+
+            io.emit('new_global_message', populatedMessage);
+
+        } catch (error) {
+            if (error.translationKey) {
+                socket.emit('global_chat_error', {
+                    key: error.translationKey,
+                    params: error.translationParams
+                });
+            } else {
+                // في حالة وجود خطأ عادي غير مترجم
+                socket.emit('global_chat_error', error.message);
+            }
+        }
+    });
+
+    // 3. الكتابة (Typing...) - ميزة جمالية
+    socket.on('global_typing', () => {
+        socket.broadcast.emit('user_typing_global', {
+            userId: socket.userIdForChat,
+            name: socket.userFullNameForChat
+        });
+    });
+
     socket.on('disconnect', (reason) => {
         if (socket.userIdForChat) {
             const userIdStr = socket.userIdForChat.toString();
@@ -694,6 +748,7 @@ app.use('/achievements', achievementRouter);
 app.use('/leaderboards', leaderboardRouter);
 app.use('/referral', referralRouter);
 app.use('/quests', questRouter);
+app.use('/chat', globalChatRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 

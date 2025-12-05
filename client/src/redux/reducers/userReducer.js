@@ -368,12 +368,27 @@ const userReducer = (state = initialState, action) => {
     case TOGGLE_FOLLOW_FAIL:
       return { ...state, loadingFollow: false, errorMessage: payload.errorMessage };
 
-    case 'GET_WISHLIST_REQUEST':
-      return { ...state, loadingWishlistPage: true };
-    case 'GET_WISHLIST_SUCCESS':
-      return { ...state, loadingWishlistPage: false, myWishlist: payload };
-    case 'GET_WISHLIST_FAIL':
-      return { ...state, loadingWishlistPage: false, error: payload }; // أو تعامل مع الخطأ
+    case "GET_MY_WISHLIST_REQUEST": // أو الاسم الذي تستخدمه في actionTypes
+      return {
+        ...state,
+        loadingWishlistPage: true,
+        errorWishlist: null
+      };
+
+    case "GET_MY_WISHLIST_SUCCESS": // أو الاسم الذي تستخدمه
+      return {
+        ...state,
+        loadingWishlistPage: false,
+        myWishlist: payload, // <--- هنا يجب تخزين البيانات القادمة من السيرفر
+        errorWishlist: null
+      };
+
+    case "GET_MY_WISHLIST_FAIL": // أو الاسم الذي تستخدمه
+      return {
+        ...state,
+        loadingWishlistPage: false,
+        errorWishlist: payload
+      };
 
     default:
       return state;

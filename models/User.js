@@ -87,6 +87,7 @@ const UserSchema = new Schema({
         streak: { type: Number, default: 0 },
         claimedToday: { type: Boolean, default: false }
     },
+    chatMutedUntil: { type: Date, default: null },
 
 }, { timestamps: true });
 
