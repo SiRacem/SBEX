@@ -52,6 +52,8 @@
     "used": "Used"
   },
   "sidebar": {
+    "tournaments": "Tournaments",
+    "createTournament": "Create Tournament",
     "searchPlaceholder": "Search...",
     "main": "Main",
     "wallet": "Wallet",
@@ -83,7 +85,8 @@
     "manageQuests": "Manage Quests & Rewards",
     "checkInSettings": "Check-in Settings",
     "wheelSettings": "Wheel Settings",
-    "globalChat": "Global Chat"
+    "globalChat": "Global Chat",
+    "manageLeagues": "Manage Leagues"
   },
   "dashboard": {
     "balances": {
@@ -233,7 +236,10 @@
     "REFERRAL_BALANCE_TRANSFER": "Referral Balance Transfer",
     "REFERRAL_COMMISSION_EARNED": "Referral Commission Earned",
     "LUCKY_WHEEL_REWARD": "Lucky Wheel Reward",
-    "LEVEL_UP_REWARD": "Level Up Reward"
+    "LEVEL_UP_REWARD": "Level Up Reward",
+    "TOURNAMENT_ENTRY": "Tournament Entry Fee",
+    "TOURNAMENT_PRIZE": "Tournament Prize",
+    "TOURNAMENT_REFUND": "Tournament Refund"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfer of {{amount}} to main balance",
@@ -252,7 +258,10 @@
     "referralBalanceTransfer": "Transfer from Referral Balance. Fee: {{fee}} TND ({{percent}}%)",
     "referralCommissionEarned": "Commission from referral: {{userName}}",
     "luckyWheelReward": "Won {{amount}} TND from Lucky Wheel",
-    "levelUpReward": "Reward for reaching Level {{level}}"
+    "levelUpReward": "Reward for reaching Level {{level}}",
+    "tournament_entry": "Entry fee for tournament: {{tournamentTitle}}",
+    "tournament_prize": "Prize for Rank {{rank}} in {{tournamentTitle}}",
+    "tournament_refund": "Refund for cancelled tournament: {{tournamentTitle}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "View On Hold & Available Funds Details",
@@ -380,7 +389,12 @@
     "REFERRAL_BONUS": "🎉 New Referral Bonus!",
     "NEW_FOLLOWER": "New Follower!",
     "QUEST_COMPLETED": "Quest Completed! 🏆",
-    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 New Item from Seller You Follow!"
+    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 New Item from Seller You Follow!",
+    "TOURNAMENT_JOIN_SUCCESS": "Tournament Registration",
+    "TOURNAMENT_STARTED": "Tournament Started!",
+    "TOURNAMENT_WIN": "Tournament Victory!",
+    "TOURNAMENT_REFUND": "Tournament Cancelled",
+    "TOURNAMENT_MATCH_READY": "Match Ready"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -481,7 +495,12 @@
     "REFERRAL_BONUS": "Congratulations! You received a referral bonus: \"{{achievementName}}\".",
     "NEW_FOLLOWER": "Congratulations! You have a new follower: \"{{followerName}}\".",
     "QUEST_COMPLETED": "You have completed the quest: {{questTitle}}. Go to Quests Board to claim your reward.",
-    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} posted a new product: \"{{productName}}\". Check it out now!"
+    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} posted a new product: \"{{productName}}\". Check it out now!",
+    "TOURNAMENT_JOIN_SUCCESS": "You have successfully joined the tournament: {{title}}.",
+    "TOURNAMENT_STARTED": "The tournament {{title}} has started! Check the bracket now.",
+    "TOURNAMENT_WIN": "Congratulations! You won {{amount}} TND for taking rank {{rank}} in {{tournamentTitle}}.",
+    "TOURNAMENT_REFUND": "The tournament {{title}} was cancelled. {{amount}} TND has been refunded to your wallet.",
+    "TOURNAMENT_MATCH_READY": "Your match in {{title}} is ready. Join the room now."
   },
   "auth": {
     "welcomeBack": "Welcome Back!",
@@ -611,6 +630,10 @@
     "confirmBid": "Confirm Bid",
     "level": "Level {{level}}",
     "noAddress": "No Address",
+    "back": "Back",
+    "next": "Next",
+    "at": "at",
+    "currency": "TND",
     "statuses": {
       "active": "Active",
       "blocked": "Blocked",
@@ -624,6 +647,40 @@
     }
   },
   "admin": {
+    "leagues": {
+      "title": "Leagues & Teams Management",
+      "addLeague": "Add New League",
+      "noLeagues": "No leagues found.",
+      "createFirst": "Create your first league to get started.",
+      "leagueName": "League Name",
+      "logoUrl": "Logo URL",
+      "type": "Type",
+      "region": "Region (Optional)",
+      "manageTeams": "Manage Teams",
+      "addTeam": "Add New Team",
+      "teamName": "Team Name",
+      "noTeams": "No teams added yet.",
+      "leagueUpdated": "League updated!",
+      "leagueCreated": "League created!",
+      "operationFailed": "Operation failed",
+      "deleteLeagueConfirm": "Are you sure? This will delete all teams in this league!",
+      "leagueDeleted": "League deleted",
+      "leagueActivated": "League Activated",
+      "leagueDeactivated": "League Deactivated",
+      "teamAdded": "Team added!",
+      "deleteTeamConfirm": "Delete this team?",
+      "teamDeleted": "Team deleted",
+      "toggleActive": "Toggle Active Status",
+      "editLeague": "Edit League",
+      "clubOption": "Club",
+      "nationalOption": "National",
+      "saveLeague": "Save League",
+      "add": "Add",
+      "namePlaceholder": "e.g. Premier League",
+      "logoPlaceholder": "https://...",
+      "regionPlaceholder": "e.g. Europe",
+      "teams": "Teams"
+    },
     "wheelSettings": {
       "title": "Lucky Wheel Config",
       "saveSuccess": "Wheel updated successfully! 🎉",
@@ -2680,5 +2737,114 @@
     "placeholder": "Type a message...",
     "clearChat": "Clear Chat",
     "adminAction": "Admin Action"
+  },
+  "tournaments": {
+    "pageTitle": "eFootball Arena",
+    "pageSubtitle": "Compete with the best, climb the ranks, and win real cash prizes.",
+    "entry": "Entry Fee",
+    "prize": "Prize Pool",
+    "joinNow": "Join Now",
+    "viewDetails": "View Details",
+    "noTournaments": "No tournaments found in this category.",
+    "checkBack": "Check back later for new competitions!"
+  },
+  "status": {
+    "open": "Registration Open",
+    "checkIn": "Check-in Open",
+    "live": "Live Now",
+    "completed": "Completed",
+    "active": "Active",
+    "cancelled": "Cancelled"
+  },
+  "createTournament": {
+    "steps": {
+      "basics": "Basics",
+      "prizes": "Prizes",
+      "rules": "Rules",
+      "review": "Review"
+    },
+    "basicsTitle": "Tournament Basics",
+    "prizesTitle": "Fees & Prizes",
+    "distributionTitle": "Prize Distribution",
+    "rulesTitle": "Rules & Settings",
+    "reviewTitle": "Review & Launch",
+    "fields": {
+      "title": "Tournament Title",
+      "description": "Description",
+      "startDate": "Start Date",
+      "startTime": "Start Time",
+      "entryFee": "Entry Fee (TND)",
+      "prizePool": "Total Prize Pool (TND)",
+      "firstPlace": "1st Place Prize",
+      "secondPlace": "2nd Place Prize",
+      "participants": "Max Participants",
+      "teams": "Team Category",
+      "incompleteAction": "If incomplete?"
+    },
+    "players": "Players",
+    "clubs": "Clubs",
+    "nations": "National Teams",
+    "cancelAction": "Cancel Tournament",
+    "playByesAction": "Play with 'Byes'",
+    "submitBtn": "Create Tournament",
+    "successMessage": "Tournament Created Successfully!"
+  },
+  "tournamentDetails": {
+    "tabs": {
+      "overview": "Overview",
+      "participants": "Participants",
+      "bracket": "Bracket"
+    },
+    "headers": {
+      "description": "DESCRIPTION",
+      "rules": "RULES",
+      "prizes": "PRIZES"
+    },
+    "rules": {
+      "teamType": "Team Type",
+      "matchTime": "Match Time",
+      "duration": "Duration",
+      "mins": "mins/match"
+    },
+    "prizes": {
+      "first": "1st Place",
+      "second": "2nd Place"
+    },
+    "sidebar": {
+      "yourStatus": "Your Status",
+      "entryFee": "Entry Fee",
+      "joinBtn": "JOIN TOURNAMENT",
+      "playingAs": "Playing as:",
+      "checkInBtn": "CHECK IN NOW",
+      "adminControls": "Admin Controls",
+      "startBtn": "Start Tournament"
+    },
+    "status": {
+      "registered": "You are Registered",
+      "checkedIn": "Checked In",
+      "checkedInMsg": "You are checked in!"
+    },
+    "bracket": {
+      "placeholder": "Bracket will be generated once tournament starts",
+      "viewFull": "View Full Bracket"
+    },
+    "modal": {
+      "title": "Join Tournament",
+      "selectTeamLabel": "Select your Team",
+      "teamPlaceholder": "e.g. Real Madrid, Brazil...",
+      "teamHint": "Make sure this team matches your eFootball team.",
+      "walletBalance": "Wallet Balance",
+      "insufficientBalance": "Insufficient balance. Please deposit funds.",
+      "payAndJoin": "Pay & Join"
+    },
+    "errors": {
+      "enterTeamName": "Please enter a team name"
+    },
+    "toasts": {
+      "joinSuccess": "Joined Successfully!",
+      "checkInSuccess": "Checked in successfully!",
+      "startSuccess": "Tournament Started!"
+    },
+    "noDescription": "No description provided."
   }
 }

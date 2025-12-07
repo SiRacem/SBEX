@@ -20,6 +20,8 @@ import leaderboardReducer from './leaderboardReducer';
 import referralReducer from './referralReducer';
 import questReducer from './questReducer';
 import chatReducer from './chatReducer';
+import tournamentReducer from './tournamentReducer';
+import leagueReducer from './leagueReducer';
 // import orderReducer from "./orderReducer";
 // import cartReducer from "./cartReducer";
 
@@ -45,6 +47,8 @@ const rootReducer = combineReducers({
     referralReducer,
     questReducer,
     chatReducer,
+    tournamentReducer,
+    leagueReducer,
     // orderReducer,
     // cartReducer,
 });

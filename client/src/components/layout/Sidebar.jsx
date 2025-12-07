@@ -29,6 +29,8 @@ import {
   FaDice,
   FaCalendarCheck,
   FaComments,
+  FaPlusCircle,
+  FaGlobe
 } from "react-icons/fa";
 import { HiMiniPaintBrush } from "react-icons/hi2";
 import { TbReport } from "react-icons/tb";
@@ -126,6 +128,14 @@ const Sidebar = ({ onSearchChange }) => {
         >
           <FaUserCircle className="icon" />
           <span className="link-text">{t("sidebar.profile")}</span>
+        </NavLink>
+        <NavLink
+          className="sidebar-link"
+          to="/dashboard/tournaments"
+          title={t("sidebar.tournaments")} // تأكد من إضافة هذا المفتاح في ملفات الترجمة
+        >
+          <FaTrophy className="icon" /> {/* استورد FaTrophy من react-icons/fa */}
+          <span className="link-text">{t("sidebar.tournaments")}</span>
         </NavLink>
         <NavLink
           className="sidebar-link"
@@ -233,6 +243,22 @@ const Sidebar = ({ onSearchChange }) => {
             >
               <FaUsers className="icon" />
               <span className="link-text">{t("sidebar.users")}</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/create-tournament"
+              title={t("sidebar.createTournament")}
+            >
+              <FaPlusCircle className="icon" /> {/* استورد FaPlusCircle */}
+              <span className="link-text">{t("sidebar.createTournament")}</span>
+            </NavLink>
+            <NavLink
+              className="sidebar-link"
+              to="/dashboard/admin/leagues"
+              title={t("sidebar.manageLeagues")} // أضف مفتاح الترجمة هذا
+            >
+              <FaGlobe className="icon" /> {/* استورد FaGlobe */}
+              <span className="link-text">{t("sidebar.manageLeagues")}</span>
             </NavLink>
             <NavLink
               className="sidebar-link"

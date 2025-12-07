@@ -7,7 +7,7 @@ const asyncHandler = require('express-async-handler');
 const getTopUsers = async (criteria, limit) => {
     return await User.find({ blocked: false, [criteria]: { $gt: 0 } })
         .sort({ [criteria]: -1, level: -1 })
-        .select('fullName avatarUrl level reputationLevel previousRanks ' + criteria) 
+        .select('fullName avatarUrl level reputationLevel previousRanks ' + criteria)
         .limit(limit)
         .lean();
 };
@@ -15,17 +15,17 @@ const getTopUsers = async (criteria, limit) => {
 // دالة مساعدة لمعرفة ترتيب المستخدم الحالي
 const getUserRank = async (userId, criteria) => {
     if (!userId) return null;
-    
+
     const user = await User.findById(userId).select(criteria).lean();
     if (!user || !user[criteria]) return null;
 
     const score = user[criteria];
     // احسب عدد الأشخاص الذين لديهم نقاط أكثر منه
-    const rank = await User.countDocuments({ 
-        blocked: false, 
-        [criteria]: { $gt: score } 
+    const rank = await User.countDocuments({
+        blocked: false,
+        [criteria]: { $gt: score }
     });
-    
+
     return {
         rank: rank + 1, // الترتيب (1-based)
         score: score
@@ -60,7 +60,7 @@ exports.getLeaderboards = asyncHandler(async (req, res) => {
             getUserRank(currentUserId, 'bidsPlacedCount'),
             getUserRank(currentUserId, 'referralsCount')
         ]);
-        
+
         myRanks = {
             topReputation: rankReputation,
             topSellers: rankSeller,

@@ -72,6 +72,11 @@ import AdminCheckInSettings from './components/admin/AdminCheckInSettings';
 import AdminWheelSettings from './components/admin/AdminWheelSettings';
 import ErrorBoundary from './components/commun/ErrorBoundary';
 import GlobalChatPage from './pages/GlobalChatPage';
+import TournamentsListPage from './pages/TournamentsListPage'; // سننشئه لاحقاً
+import TournamentDetailsPage from './pages/TournamentDetailsPage'; // سننشئه لاحقاً
+import CreateTournamentPage from './pages/CreateTournamentPage'; // سننشئه لاحقاً
+import MatchRoomPage from './pages/MatchRoomPage'; // سننشئه لاحقاً
+import AdminLeaguesPage from './components/admin/AdminLeaguesPage';
 
 export const SocketContext = createContext(null);
 const SOCKET_SERVER_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
@@ -599,6 +604,11 @@ function App() {
             <Route path="/dashboard/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
             <Route path="/dashboard/comptes" element={<ProtectedRoute requiredRole="Vendor"><Comptes /></ProtectedRoute>} />
             <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/dashboard/tournaments" element={<ProtectedRoute><TournamentsListPage /></ProtectedRoute>} />
+            <Route path="/dashboard/tournaments/:id" element={<ProtectedRoute><TournamentDetailsPage /></ProtectedRoute>} />
+            <Route path="/dashboard/match/:id" element={<ProtectedRoute><MatchRoomPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/create-tournament" element={<ProtectedRoute requiredRole="Admin"><CreateTournamentPage /></ProtectedRoute>} />
+            <Route path="/dashboard/admin/leagues" element={<ProtectedRoute requiredRole="Admin"><AdminLeaguesPage /></ProtectedRoute>} />
             <Route path="/dashboard/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
             <Route path="/dashboard/lucky-wheel" element={<ProtectedRoute><LuckyWheelPage /></ProtectedRoute>} />
             <Route path="/dashboard/quests" element={<ProtectedRoute><QuestsPage /></ProtectedRoute>} />

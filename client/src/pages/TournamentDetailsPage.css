@@ -1,0 +1,186 @@
+/* src/pages/TournamentDetailsPage.css */
+
+.tournament-details-container {
+    background-color: #0f172a;
+    min-height: 100vh;
+    color: #fff;
+    padding-bottom: 3rem;
+}
+
+.loading-screen {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #0f172a;
+}
+
+/* Header */
+.details-headers {
+    background: linear-gradient(to bottom, #1e293b, #0f172a);
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid #334155;
+    text-align: center;
+}
+
+.tournament-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+.meta-badge {
+    margin: 0 5px;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+}
+
+/* Panels */
+.glass-panel {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.sections-title {
+    font-size: 1.2rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.text-gray {
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+/* Prizes */
+.prizes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.prize-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.prize-card.gold { border: 1px solid #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
+.prize-card.silver { border: 1px solid #94a3b8; }
+
+.prize-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.gold .prize-icon { color: #fbbf24; }
+.silver .prize-icon { color: #cbd5e1; }
+
+.prize-amount { font-size: 1.2rem; font-weight: 700; }
+
+/* Participants */
+.participants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.participant-card {
+    background: #1e293b;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #334155;
+}
+
+.participant-card.me {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.p-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.p-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.p-name { font-weight: 600; font-size: 0.9rem; }
+.p-team { font-size: 0.75rem; color: #94a3b8; }
+
+/* Right Panel */
+.panel-title {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+.entry-fee-display {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.entry-fee-display h3 {
+    color: #3b82f6;
+    margin: 0;
+}
+
+.action-btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    padding: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.action-btn-primary:hover {
+    box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
+}
+
+/* Modal Dark Theme */
+.dark-modal .modal-content {
+    background-color: #1e293b;
+    color: #fff;
+    border: 1px solid #334155;
+}
+
+.dark-modal .modal-header { border-bottom-color: #334155; }
+.dark-modal .modal-footer { border-top-color: #334155; }
+.dark-modal .btn-close { filter: invert(1); }
+
+.fee-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    font-weight: 600;
+    border-top: 1px solid #334155;
+    padding-top: 0.5rem;
+}
+
+/* Tabs Override */
+.custom-tabs .nav-link {
+    color: #94a3b8;
+}
+.custom-tabs .nav-link.active {
+    background-color: transparent !important;
+    color: #fff !important;
+    border-bottom: 2px solid #3b82f6 !important;
+}

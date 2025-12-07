@@ -6,10 +6,10 @@ const TransactionSchema = new Schema({
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // المستخدم الرئيسي للمعاملة (البائع في حالات البيع، الوسيط لرسومه، إلخ)
     sender: { type: Schema.Types.ObjectId, ref: 'User', index: true }, // المرسل (في التحويلات بين المستخدمين)
     recipient: { type: Schema.Types.ObjectId, ref: 'User', index: true }, // المستلم (في التحويلات بين المستخدمين)
-    
+
     amount: { type: Number, required: true }, // المبلغ الأساسي للمعاملة
     currency: { type: String, required: true }, // عملة المبلغ الأساسي (مثل TND, USD)
-    
+
     // (اختياري) لتخزين المبلغ المحول إلى العملة الأساسية للمنصة إذا كانت مختلفة
     // amountInPlatformCurrency: { type: Number }, 
     // platformCurrency: { type: String },
@@ -49,7 +49,10 @@ const TransactionSchema = new Schema({
             "REFERRAL_COMMISSION_EARNED", // عمولة الإحالة
             "REFERRAL_BALANCE_TRANSFER", // تحويل رصيد الإحالة إلى رصيد الأساسي
             "LUCKY_WHEEL_REWARD", // جائزة عجلة الزهر
-            "LEVEL_UP_REWARD" // مكافأة ترقية مستوى
+            "LEVEL_UP_REWARD", // مكافأة ترقية مستوى
+            "TOURNAMENT_ENTRY",   // خصم رسوم المشاركة
+            "TOURNAMENT_PRIZE",   // استلام الجائزة
+            "TOURNAMENT_REFUND",  // استرجاع الأموال عند إلغاء البطولة
         ],
         index: true
     },
@@ -70,7 +73,7 @@ const TransactionSchema = new Schema({
     relatedMediationRequest: { type: Schema.Types.ObjectId, ref: 'MediationRequest', index: true },
     relatedPendingFund: { type: Schema.Types.ObjectId, ref: 'PendingFund', index: true }, // ربط بسجل الأموال المعلقة
     relatedTransaction: { type: Schema.Types.ObjectId, ref: 'Transaction' }, // لربط معاملات ببعضها (مثل استرداد مرتبط ببيع)
-    
+
     // (اختياري) بيانات إضافية خاصة بنوع المعاملة، مثل تفاصيل وسيلة الدفع، معرف خارجي، إلخ.
     metadata: { type: Schema.Types.Mixed },
 

@@ -52,6 +52,8 @@
     "used": "Utilisé"
   },
   "sidebar": {
+    "tournaments": "Tournois",
+    "createTournament": "Créer un tournoi",
     "searchPlaceholder": "Rechercher...",
     "main": "Principal",
     "wallet": "Portefeuille",
@@ -83,7 +85,8 @@
     "manageQuests": "Gérer les Quêtes",
     "checkInSettings": "Gérer Connexion Quotidienne",
     "wheelSettings": "Gérer Roulette",
-    "globalChat": "Chat Global"
+    "globalChat": "Chat Global",
+    "manageLeagues": "Gérer les ligues"
   },
   "dashboard": {
     "balances": {
@@ -233,7 +236,10 @@
     "REFERRAL_BALANCE_TRANSFER": "Transfert du solde d'invitation",
     "REFERRAL_COMMISSION_EARNED": "Commission d'invitation gagnée",
     "LUCKY_WHEEL_REWARD": "Récompense Roue de la Fortune",
-    "LEVEL_UP_REWARD": "Récompense de niveau"
+    "LEVEL_UP_REWARD": "Récompense de niveau",
+    "TOURNAMENT_ENTRY": "Frais d'entrée Tournoi",
+    "TOURNAMENT_PRIZE": "Prix du Tournoi",
+    "TOURNAMENT_REFUND": "Remboursement Tournoi"
   },
   "transactionDescriptions": {
     "sellerBalanceTransfer": "Transfert de {{amount}} vers le solde principal",
@@ -252,7 +258,10 @@
     "referralBalanceTransfer": "Transfert du solde de parrainage. Frais : {{fee}} TND ({{percent}}%)",
     "referralCommissionEarned": "Commission de parrainage : {{userName}}",
     "luckyWheelReward": "Vous avez gagné {{amount}} TND à la Roue de la Fortune",
-    "levelUpReward": "Récompense pour avoir atteint le niveau {{level}}"
+    "levelUpReward": "Récompense pour avoir atteint le niveau {{level}}",
+    "tournament_entry": "Frais d'entrée pour : {{tournamentTitle}}",
+    "tournament_prize": "Prix pour le rang {{rank}} dans {{tournamentTitle}}",
+    "tournament_refund": "Remboursement pour tournoi annulé : {{tournamentTitle}}"
   },
   "pendingFunds": {
     "viewDetailsTooltip": "Voir les détails des fonds en attente et disponibles",
@@ -379,7 +388,12 @@
     "REFERRAL_BONUS": "🎉 Nouveau Bonus !",
     "NEW_FOLLOWER": "Nouveau follower !",
     "QUEST_COMPLETED": "Quête Terminée ! 🏆",
-    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 Nouvel article d'un vendeur suivi !"
+    "NEW_PRODUCT_FROM_FOLLOWED": "🛒 Nouvel article d'un vendeur suivi !",
+    "TOURNAMENT_JOIN_SUCCESS": "Inscription au Tournoi",
+    "TOURNAMENT_STARTED": "Le Tournoi a Commencé !",
+    "TOURNAMENT_WIN": "Victoire en Tournoi !",
+    "TOURNAMENT_REFUND": "Tournoi Annulé",
+    "TOURNAMENT_MATCH_READY": "Match Prêt"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -480,7 +494,12 @@
     "REFERRAL_BONUS": "Félicitations ! Vous avez reçu un bonus de réference : \"{{achievementName}}\".",
     "NEW_FOLLOWER": "{{followerName}} a commencé à vous suivre.",
     "QUEST_COMPLETED": "Vous avez terminé la quête : {{questTitle}}. Allez au tableau des quêtes pour réclamer votre récompense.",
-    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} a publié un nouveau produit : \"{{productName}}\". Jetez un œil !"
+    "NEW_PRODUCT_FROM_FOLLOWED": "{{sellerName}} a publié un nouveau produit : \"{{productName}}\". Jetez un œil !",
+    "TOURNAMENT_JOIN_SUCCESS": "Vous avez rejoint avec succès le tournoi : {{title}}.",
+    "TOURNAMENT_STARTED": "Le tournoi {{title}} a commencé ! Consultez le tableau maintenant.",
+    "TOURNAMENT_WIN": "Félicitations ! Vous avez gagné {{amount}} TND pour le rang {{rank}} dans {{tournamentTitle}}.",
+    "TOURNAMENT_REFUND": "Le tournoi {{title}} a été annulé. {{amount}} TND ont été remboursés sur votre portefeuille.",
+    "TOURNAMENT_MATCH_READY": "Votre match dans {{title}} est prêt. Rejoignez la salle maintenant."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -609,6 +628,10 @@
     "delete": "Supprimer",
     "confirmTransfer": "Confirmer le transfert",
     "noAddress": "Aucune adresse",
+    "back": "Retour",
+    "next": "Suivant",
+    "at": "à",
+    "currency": "TND",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -622,6 +645,40 @@
     }
   },
   "admin": {
+    "leagues": {
+      "title": "Gestion des ligues et équipes",
+      "addLeague": "Ajouter une ligue",
+      "noLeagues": "Aucune ligue trouvée.",
+      "createFirst": "Créez votre première ligue pour commencer.",
+      "leagueName": "Nom de la ligue",
+      "logoUrl": "URL du logo",
+      "type": "Type",
+      "region": "Région (Optionnel)",
+      "manageTeams": "Gérer les équipes",
+      "addTeam": "Ajouter une équipe",
+      "teamName": "Nom de l'équipe",
+      "noTeams": "Aucune équipe ajoutée.",
+      "leagueUpdated": "Ligue mise à jour !",
+      "leagueCreated": "Ligue créée !",
+      "operationFailed": "Échec de l'opération",
+      "deleteLeagueConfirm": "Êtes-vous sûr ? Cela supprimera toutes les équipes de cette ligue !",
+      "leagueDeleted": "Ligue supprimée",
+      "leagueActivated": "Ligue activée",
+      "leagueDeactivated": "Ligue désactivée",
+      "teamAdded": "Équipe ajoutée !",
+      "deleteTeamConfirm": "Supprimer cette équipe ?",
+      "teamDeleted": "Équipe supprimée",
+      "toggleActive": "Basculer le statut actif",
+      "editLeague": "Modifier la ligue",
+      "clubOption": "Club",
+      "nationalOption": "National",
+      "saveLeague": "Enregistrer la ligue",
+      "add": "Ajouter",
+      "namePlaceholder": "ex: Premier League",
+      "logoPlaceholder": "https://...",
+      "regionPlaceholder": "ex: Europe",
+      "teams": "Équipes"
+    },
     "wheelSettings": {
       "title": "Configuration Roue de la Fortune",
       "saveSuccess": "Roue mise à jour avec succès ! 🎉",
@@ -2675,5 +2732,114 @@
     "placeholder": "Écrivez un message...",
     "clearChat": "Effacer le chat",
     "adminAction": "Action Admin"
+  },
+  "tournaments": {
+    "pageTitle": "Arène eFootball",
+    "pageSubtitle": "Affrontez les meilleurs, grimpez les échelons et gagnez de vrais prix en espèces.",
+    "entry": "Frais d'entrée",
+    "prize": "Cagnotte",
+    "joinNow": "Rejoindre",
+    "viewDetails": "Voir Détails",
+    "noTournaments": "Aucun tournoi trouvé dans cette catégorie.",
+    "checkBack": "Revenez plus tard pour de nouvelles compétitions !"
+  },
+  "status": {
+    "open": "Inscriptions Ouvertes",
+    "checkIn": "Enregistrement",
+    "live": "En Direct",
+    "completed": "Terminé",
+    "active": "Actif",
+    "cancelled": "Annulé"
+  },
+  "createTournament": {
+    "steps": {
+      "basics": "Infos",
+      "prizes": "Prix",
+      "rules": "Règles",
+      "review": "Aperçu"
+    },
+    "basicsTitle": "Informations de base",
+    "prizesTitle": "Frais & Prix",
+    "distributionTitle": "Distribution des prix",
+    "rulesTitle": "Règles & Paramètres",
+    "reviewTitle": "Vérification & Lancement",
+    "fields": {
+      "title": "Titre du tournoi",
+      "description": "Description",
+      "startDate": "Date de début",
+      "startTime": "Heure de début",
+      "entryFee": "Frais d'entrée (TND)",
+      "prizePool": "Cagnotte totale (TND)",
+      "firstPlace": "Prix 1ère place",
+      "secondPlace": "Prix 2ème place",
+      "participants": "Participants max",
+      "teams": "Catégorie d'équipe",
+      "incompleteAction": "Si incomplet ?"
+    },
+    "players": "Joueurs",
+    "clubs": "Clubs",
+    "nations": "Équipes nationales",
+    "cancelAction": "Annuler le tournoi",
+    "playByesAction": "Jouer avec 'Byes'",
+    "submitBtn": "Créer le tournoi",
+    "successMessage": "Tournoi créé avec succès !"
+  },
+  "tournamentDetails": {
+    "tabs": {
+      "overview": "Aperçu",
+      "participants": "Participants",
+      "bracket": "Tableau"
+    },
+    "headers": {
+      "description": "DESCRIPTION",
+      "rules": "RÈGLES",
+      "prizes": "PRIX"
+    },
+    "rules": {
+      "teamType": "Type d'équipe",
+      "matchTime": "Temps de match",
+      "duration": "Durée",
+      "mins": "min/match"
+    },
+    "prizes": {
+      "first": "1ère Place",
+      "second": "2ème Place"
+    },
+    "sidebar": {
+      "yourStatus": "Votre Statut",
+      "entryFee": "Frais d'entrée",
+      "joinBtn": "REJOINDRE LE TOURNOI",
+      "playingAs": "Jouant avec :",
+      "checkInBtn": "S'ENREGISTRER MAINTENANT",
+      "adminControls": "Contrôles Admin",
+      "startBtn": "Démarrer le tournoi"
+    },
+    "status": {
+      "registered": "Vous êtes inscrit",
+      "checkedIn": "Présent",
+      "checkedInMsg": "Vous êtes enregistré !"
+    },
+    "bracket": {
+      "placeholder": "Le tableau sera généré au début du tournoi",
+      "viewFull": "Voir le tableau complet"
+    },
+    "modal": {
+      "title": "Rejoindre le tournoi",
+      "selectTeamLabel": "Sélectionnez votre équipe",
+      "teamPlaceholder": "ex: Real Madrid, Brésil...",
+      "teamHint": "Assurez-vous que cette équipe correspond à votre équipe eFootball.",
+      "walletBalance": "Solde du portefeuille",
+      "insufficientBalance": "Solde insuffisant. Veuillez déposer des fonds.",
+      "payAndJoin": "Payer & Rejoindre"
+    },
+    "errors": {
+      "enterTeamName": "Veuillez entrer un nom d'équipe"
+    },
+    "toasts": {
+      "joinSuccess": "Rejoint avec succès !",
+      "checkInSuccess": "Enregistrement réussi !",
+      "startSuccess": "Le tournoi a commencé !"
+    },
+    "noDescription": "Aucune description fournie."
   }
 }

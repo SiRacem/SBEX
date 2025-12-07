@@ -13,6 +13,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { handleExpiredMediationAssignments } = require('./controllers/mediation.controller');
 const { updateLeaderboardSnapshots } = require('./services/leaderboardService');
+const { runAutoConfirmJob } = require('./services/tournamentEngine'); // استيراد خدمة الأتمتة
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -46,6 +47,9 @@ const leaderboardRouter = require('./router/leaderboard.router');
 const referralRouter = require('./router/referral.router');
 const questRouter = require('./router/quest.router');
 const globalChatRouter = require('./router/globalChat.router');
+const tournamentRouter = require('./router/tournament.router');
+const matchRouter = require('./router/match.router');
+const leaguesRouter = require('./router/leagues.router');
 
 // --- Model Imports ---
 const Notification = require('./models/Notification');
@@ -636,6 +640,16 @@ cron.schedule('0 0,6,12,18 * * *', async () => {
 });
 // [!!!] END: نهاية الإضافة [!!!]
 
+// [!!!] START: مهمة أتمتة البطولات (كل دقيقة) [!!!]
+cron.schedule('* * * * *', async () => {
+    // نمرر io لكي نرسل تحديثات لحظية للمباريات التي انتهت تلقائياً
+    const confirmedCount = await runAutoConfirmJob(io); 
+    if (confirmedCount > 0) {
+        console.log(`[CRON TOURNAMENT] Auto-confirmed ${confirmedCount} matches.`);
+    }
+});
+// [!!!] END: نهاية مهمة البطولات [!!!]
+
 // --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 // 1. تطبيق ترويسات الأمان الأساسية
 app.use(helmet());
@@ -749,6 +763,9 @@ app.use('/leaderboards', leaderboardRouter);
 app.use('/referral', referralRouter);
 app.use('/quests', questRouter);
 app.use('/chat', globalChatRouter);
+app.use('/tournaments', tournamentRouter);
+app.use('/matches', matchRouter);
+app.use('/leagues', leaguesRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Welcome to Yalla bi3!' }));
 

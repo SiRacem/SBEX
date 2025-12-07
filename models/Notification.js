@@ -15,7 +15,7 @@ const NotificationSchema = new Schema({
             'ORDER_STATUS_UPDATE', 'FUNDS_SENT', 'FUNDS_RECEIVED',
 
             // Bidding related
-            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER', 
+            'NEW_BID', 'BID_REJECTED', 'BID_ACCEPTED_SELLER',
             'BID_ACCEPTED_BUYER', 'BID_REJECTED_BY_YOU', 'BID_UPDATED',
 
             // Deposit related
@@ -95,7 +95,16 @@ const NotificationSchema = new Schema({
             'BADGE_UPDATED',
             'ACHIEVEMENT_UNLOCKED',
             'NEW_FOLLOWER',
-            'QUEST_COMPLETED'
+            'QUEST_COMPLETED',
+            'NEW_PRODUCT_FROM_FOLLOWED',
+
+            // Tournament related
+            'TOURNAMENT_JOIN_SUCCESS', // تم التسجيل بنجاح
+            'TOURNAMENT_STARTED',      // بدأت البطولة
+            'TOURNAMENT_MATCH_READY',  // مباراتك جاهزة
+            'TOURNAMENT_WIN',          // الفوز بجائزة
+            'TOURNAMENT_REFUND',       // استرجاع الأموال
+            'TOURNAMENT_ELIMINATED'    // تم إقصاؤك
         ],
         required: true
     },
@@ -104,14 +113,14 @@ const NotificationSchema = new Schema({
     messageParams: { type: Schema.Types.Mixed, default: {} },
     relatedEntity: {
         id: { type: Schema.Types.ObjectId },
-        modelName: { 
-            type: String, 
+        modelName: {
+            type: String,
             enum: [
-                'Product', 'Order', 'Message', 'User', 'Bid', 
-                'Transaction', 'DepositRequest', 'WithdrawalRequest', 
+                'Product', 'Order', 'Message', 'User', 'Bid',
+                'Transaction', 'DepositRequest', 'WithdrawalRequest',
                 'MediationRequest', 'Report', 'Ticket',
                 'UserQuest'
-            ] 
+            ]
         }
     },
     secondaryRelatedEntity: {
