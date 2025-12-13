@@ -388,6 +388,9 @@ exports.getDashboardTransactionsController = async (req, res) => {
         queryConditions.push({ user: userId, type: 'REFERRAL_COMMISSION_EARNED' });
         queryConditions.push({ user: userId, type: 'LUCKY_WHEEL_REWARD' });
         queryConditions.push({ user: userId, type: 'LEVEL_UP_REWARD' });
+        queryConditions.push({ user: userId, type: 'TOURNAMENT_ENTRY' });
+        queryConditions.push({ user: userId, type: 'TOURNAMENT_REFUND' });
+        queryConditions.push({ user: userId, type: 'TOURNAMENT_PRIZE' });
 
         // يمكنك إضافة شروط أخرى هنا إذا احتجت
         // ...

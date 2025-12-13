@@ -86,12 +86,12 @@
     "checkInSettings": "إعدادات التسجيل اليومي",
     "wheelSettings": "ريقل العجلة",
     "globalChat": "الشات العام",
-    "manageLeagues": "جيستيون البطولات"
+    "manageLeagues": "إدارة الدوريات والفرق"
   },
   "dashboard": {
     "balances": {
       "principal": "الرصيد الأساسي",
-      "sellerAvailable": "رصيد البايع الموجود",
+      "sellerAvailable": "رصيد البايع موجود",
       "onHold": "الرصيد المجمّد"
     },
     "currencies": {
@@ -634,6 +634,7 @@
     "at": "في",
     "currency": "دينار",
     "processing": "لحظة...",
+    "taken": "مختارها شكون",
     "statuses": {
       "active": "يخدم",
       "blocked": "مبلوكي",
@@ -2778,8 +2779,10 @@
       "secondPlace": "جائزة الثاني",
       "participants": "عدد اللاعبين",
       "teams": "نوع الفرق",
-      "incompleteAction": "كان ما كملش العدد؟"
+      "incompleteAction": "كان ما كملش العدد؟",
+      "specificLeague": "بطولة محددة (موش لازم)"
     },
+    "allLeagues": "-- البطولات الكل --",
     "players": "جوارات",
     "clubs": "جمعيات",
     "nations": "منتخبات",
@@ -2845,5 +2848,61 @@
       "startSuccess": "التورنوا بدات!"
     },
     "noDescription": "ما فماش وصف."
+  },
+  "bracket": {
+    "round": "دور الـ",
+    "quarterFinal": "الربع نهائي",
+    "semiFinal": "النص نهائي",
+    "final": "الفينال"
+  },
+  "matchRoom": {
+    "loading": "قاعدين نحملو في الماتش...",
+    "accessDenied": "ما تنجمش تدخل. مانكش مشارك.",
+    "you": "إنت",
+    "opponent": "الخصم",
+    "tbd": "مازال",
+    "waiting": "نستناو...",
+    "vs": "ضد",
+    "chat": {
+      "title": "شات الماتش",
+      "welcome": "مرحبا! ابعث الـ ID وابداو اللعب.",
+      "placeholder": "اكتب ميساج..."
+    },
+    "actions": {
+      "reportResult": "حط النتيجة",
+      "uploadProof": "حط كابتير (Screenshot)",
+      "submitBtn": "ابعث النتيجة",
+      "waitingOpponent": "نستناو في الخصم...",
+      "confirmResult": "أكد النتيجة",
+      "opponentSubmittedMsg": "الخصم حط النتيجة. يرحم والديك ثبت.",
+      "dispute": "فما مشكلة (Reclamation)",
+      "reportProblem": "بلّغ على مشكلة"
+    },
+    "status": {
+      "completed": "الماتش كمل",
+      "winner": "الرابح",
+      "scheduled": "مبرمج",
+      "ongoing": "مباشر",
+      "review": "مراجعة"
+    },
+    "errors": {
+      "uploadProof": "يرحم والديك حط التصويرة.",
+      "uploadFailed": "فما مشكلة في التحميل.",
+      "refreshRedirect": "يرحم والديك ادخل من صفحة التورنوا."
+    },
+    "toasts": {
+      "resultSubmitted": "النتيجة تبعثت! نستناو في التأكيد.",
+      "matchCompleted": "تأكدت! الماتش كمل."
+    }
+  },
+  "joinModal": {
+    "selectLeague": "اختار البطولة",
+    "selectTeam": "اختار جمعيتك",
+    "confirmRegistration": "أكد التسجيل",
+    "backToLeagues": "ارجع للبطولات",
+    "entryFee": "حق الدخول",
+    "yourBalance": "رصيدك",
+    "confirmPay": "خلّص وأكد",
+    "changeTeam": "بدّل الجمعية"
   }
 }

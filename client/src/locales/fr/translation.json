@@ -86,7 +86,7 @@
     "checkInSettings": "Gérer Connexion Quotidienne",
     "wheelSettings": "Gérer Roulette",
     "globalChat": "Chat Global",
-    "manageLeagues": "Gérer les ligues"
+    "manageLeagues": "Gérer les Ligues et les Equipes"
   },
   "dashboard": {
     "balances": {
@@ -632,6 +632,7 @@
     "next": "Suivant",
     "at": "à",
     "currency": "TND",
+    "taken": "Réservé",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -2774,8 +2775,10 @@
       "secondPlace": "Prix 2ème place",
       "participants": "Participants max",
       "teams": "Catégorie d'équipe",
-      "incompleteAction": "Si incomplet ?"
+      "incompleteAction": "Si incomplet ?",
+      "specificLeague": "Ligue spécifique (Optionnel)"
     },
+    "allLeagues": "-- Toutes les ligues --",
     "players": "Joueurs",
     "clubs": "Clubs",
     "nations": "Équipes nationales",
@@ -2841,5 +2844,61 @@
       "startSuccess": "Le tournoi a commencé !"
     },
     "noDescription": "Aucune description fournie."
+  },
+  "bracket": {
+    "round": "16ème de finale",
+    "quarterFinal": "Quarts de finale",
+    "semiFinal": "Demi-finales",
+    "final": "Grande Finale"
+  },
+  "matchRoom": {
+    "loading": "Chargement des données du match...",
+    "accessDenied": "Accès refusé. Vous n'êtes pas un participant.",
+    "you": "Vous",
+    "opponent": "Adversaire",
+    "tbd": "À déterminer",
+    "waiting": "En attente...",
+    "vs": "VS",
+    "chat": {
+      "title": "Chat du match",
+      "welcome": "Bienvenue ! Partagez votre ID et commencez le jeu.",
+      "placeholder": "Tapez un message..."
+    },
+    "actions": {
+      "reportResult": "Signaler le résultat",
+      "uploadProof": "Télécharger une preuve",
+      "submitBtn": "Soumettre le résultat",
+      "waitingOpponent": "En attente de l'adversaire...",
+      "confirmResult": "Confirmer le résultat",
+      "opponentSubmittedMsg": "L'adversaire a soumis un résultat. Veuillez vérifier.",
+      "dispute": "Litige (Problème)",
+      "reportProblem": "Signaler un problème"
+    },
+    "status": {
+      "completed": "Match Terminé",
+      "winner": "Vainqueur",
+      "scheduled": "Prévu",
+      "ongoing": "En Direct",
+      "review": "En Revue"
+    },
+    "errors": {
+      "uploadProof": "Veuillez télécharger une capture d'écran.",
+      "uploadFailed": "Échec du téléchargement.",
+      "refreshRedirect": "Veuillez sélectionner le tournoi pour voir le match."
+    },
+    "toasts": {
+      "resultSubmitted": "Résultat soumis ! En attente de confirmation.",
+      "matchCompleted": "Confirmé ! Match terminé."
+    }
+  },
+  "joinModal": {
+    "selectLeague": "Sélectionner une ligue",
+    "selectTeam": "Sélectionner votre équipe",
+    "confirmRegistration": "Confirmer l'inscription",
+    "backToLeagues": "Retour aux ligues",
+    "entryFee": "Frais d'entrée",
+    "yourBalance": "Votre solde",
+    "confirmPay": "Confirmer & Payer",
+    "changeTeam": "Changer d'équipe"
   }
 }

@@ -1,14 +1,16 @@
-// src/pages/TournamentDetailsPage.jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getTournamentDetails, joinTournament, checkInTournament, startTournament } from '../redux/actions/tournamentAction';
+import { getProfile } from '../redux/actions/userAction'; // [!] استيراد مهم لتحديث الرصيد
 import { useTranslation } from 'react-i18next';
-import { Container, Row, Col, Badge, Button, Modal, Form, Spinner, Tab, Tabs } from 'react-bootstrap';
+import { Container, Row, Col, Badge, Button, Spinner, Tab, Tabs } from 'react-bootstrap';
 import { motion } from 'framer-motion';
 import { FaTrophy, FaClock, FaGamepad, FaCheckCircle, FaPlay } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import JoinTournamentModal from '../components/tournaments/JoinTournamentModal';
 import './TournamentDetailsPage.css';
+import TournamentBracket from '../components/tournaments/TournamentBracket';
 
 const TournamentDetailsPage = () => {
     const { id } = useParams();
@@ -16,35 +18,41 @@ const TournamentDetailsPage = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    const { currentTournament, loadingDetails, loadingJoin, loadingStart, loadingCheckIn } = useSelector(state => state.tournamentReducer);
+    // Redux State
+    const { currentTournament, loadingDetails, loadingStart, loadingCheckIn, loadingJoin } = useSelector(state => state.tournamentReducer);
     const { user } = useSelector(state => state.userReducer);
 
+    // Local State
     const [showJoinModal, setShowJoinModal] = useState(false);
-    const [teamData, setTeamData] = useState({ selectedTeam: '', selectedTeamLogo: '' });
     const [key, setKey] = useState('overview');
 
+    // Fetch details on mount
     useEffect(() => {
         dispatch(getTournamentDetails(id));
-    }, [dispatch, id]);
+    }, [dispatch, id, currentTournament?.status]);
 
     if (loadingDetails || !currentTournament) {
         return <div className="loading-screen"><Spinner animation="border" variant="primary" /></div>;
     }
 
+    // Check user status
     const isParticipant = currentTournament.participants.some(p => p.user?._id === user?._id);
     const myParticipantData = currentTournament.participants.find(p => p.user?._id === user?._id);
     const isCheckedIn = myParticipantData?.isCheckedIn;
 
-    const handleJoinSubmit = async () => {
-        if (!teamData.selectedTeam) return toast.error(t('tournamentDetails.errors.enterTeamName', 'Please enter a team name'));
-        
-        const result = await dispatch(joinTournament(id, teamData));
-        if (result.success) {
-            toast.success(t('tournamentDetails.toasts.joinSuccess'));
-            setShowJoinModal(false);
-        } else {
-            toast.error(result.message);
-        }
+    // --- Handlers ---
+
+    // [!] هذه هي الدالة التي كانت مفقودة، وتم تصحيحها لتحديث الرصيد
+    // ملاحظة: JoinTournamentModal يستدعي joinTournament داخلياً، لكننا نمرر له الدالة للتحكم بالإغلاق والتحديث
+    // ولكن، المكون JoinTournamentModal الذي بنيناه يتعامل مع الـ dispatch داخله
+    // لذا، نحن لا نحتاج هذه الدالة هنا إلا إذا كنا نستخدم زر انضمام بسيط.
+    // وبما أننا نستخدم Modal متطور، فإن التحديث يجب أن يحدث عند إغلاق الـ Modal بنجاح.
+
+    // الحل الأذكى: نمرر دالة callback للـ Modal ليخبرنا بالنجاح
+    const handleJoinSuccess = () => {
+        setShowJoinModal(false);
+        dispatch(getProfile()); // تحديث الرصيد
+        dispatch(getTournamentDetails(id)); // تحديث القائمة
     };
 
     const handleCheckIn = async () => {
@@ -59,13 +67,25 @@ const TournamentDetailsPage = () => {
         else toast.error(result.message);
     };
 
+    const getTeamCategoryLabel = (cat) => {
+        if (cat === 'National Teams') return t('createTournament.nations');
+        if (cat === 'Clubs') return t('createTournament.clubs');
+        return cat;
+    };
+
+    const getAvatarUrl = (url) => {
+        if (!url) return "https://bootdey.com/img/Content/avatar/avatar7.png";
+        if (url.startsWith('http')) return url;
+        return `${process.env.REACT_APP_API_URL}/${url}`;
+    };
+
     return (
         <div className="tournament-details-container">
             {/* --- Header Banner --- */}
             <div className="details-headers">
                 <div className="header-content">
-                    <motion.h1 
-                        initial={{ y: -20, opacity: 0 }} 
+                    <motion.h1
+                        initial={{ y: -20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         className="tournament-title"
                     >
@@ -92,15 +112,16 @@ const TournamentDetailsPage = () => {
                                 onSelect={(k) => setKey(k)}
                                 className="mb-4 custom-tabs"
                             >
+                                {/* Tab 1: Overview */}
                                 <Tab eventKey="overview" title={t('tournamentDetails.tabs.overview')}>
                                     <div className="tab-content-wrapper">
                                         <h4 className="section-title">{t('tournamentDetails.headers.description')}</h4>
                                         <p className="text-gray">{currentTournament.description || t('tournamentDetails.noDescription')}</p>
-                                        
+
                                         <h4 className="section-title mt-4">{t('tournamentDetails.headers.rules')}</h4>
                                         <ul className="rules-list">
-                                            <li><strong>{t('tournamentDetails.rules.teamType')}:</strong> {currentTournament.rules.teamCategory}</li>
-                                            <li><strong>{t('tournamentDetails.rules.matchTime')}:</strong> {currentTournament.rules.eFootballMatchTime}</li>
+                                            <li><strong>{t('tournamentDetails.rules.teamType')}:</strong> {getTeamCategoryLabel(currentTournament.rules.teamCategory)}</li>
+                                            <li><strong>{t('tournamentDetails.rules.matchTime')}:</strong> {currentTournament.rules.eFootballMatchTime.replace('mins', t('tournamentDetails.rules.mins'))}</li>
                                             <li><strong>{t('tournamentDetails.rules.duration')}:</strong> {currentTournament.rules.matchDurationMinutes} {t('tournamentDetails.rules.mins')}</li>
                                         </ul>
 
@@ -119,42 +140,52 @@ const TournamentDetailsPage = () => {
                                         </div>
                                     </div>
                                 </Tab>
-                                
+
+                                {/* Tab 2: Participants */}
                                 <Tab eventKey="participants" title={`${t('tournamentDetails.tabs.participants')} (${currentTournament.participants.length}/${currentTournament.maxParticipants})`}>
                                     <div className="participants-grid">
                                         {currentTournament.participants.map((p, idx) => (
-                                            <motion.div 
-                                                key={idx} 
+                                            <motion.div
+                                                key={idx}
                                                 className={`participant-card ${p.user?._id === user?._id ? 'me' : ''}`}
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                             >
-                                                <img src={p.user?.avatarUrl || "https://via.placeholder.com/40"} alt="avatar" className="p-avatar" />
+                                                <img
+                                                    src={getAvatarUrl(p.avatar || p.user?.avatarUrl)}
+                                                    alt="avatar"
+                                                    className="p-avatar"
+                                                    onError={(e) => e.target.src = "https://bootdey.com/img/Content/avatar/avatar7.png"}
+                                                />
                                                 <div className="p-info">
                                                     <span className="p-name">{p.username}</span>
                                                     <span className="p-team">{p.selectedTeam}</span>
                                                 </div>
+                                                {p.selectedTeamLogo && (
+                                                    <img src={p.selectedTeamLogo} alt={p.selectedTeam} className="team-logo-mini ms-2" style={{ width: 30 }} />
+                                                )}
+
                                                 {p.isCheckedIn && <FaCheckCircle className="text-success ms-auto" title={t('tournamentDetails.status.checkedIn')} />}
                                             </motion.div>
                                         ))}
                                     </div>
                                 </Tab>
 
+                                {/* Tab 3: Bracket */}
                                 <Tab eventKey="bracket" title={t('tournamentDetails.tabs.bracket')}>
-                                    <div className="bracket-placeholder">
-                                        {currentTournament.status === 'open' || currentTournament.status === 'check-in' ? (
+                                    {currentTournament.status === 'open' || currentTournament.status === 'check-in' ? (
+                                        <div className="bracket-placeholder">
                                             <div className="text-center py-5">
                                                 <FaClock size={40} className="text-muted mb-3" />
                                                 <h5>{t('tournamentDetails.bracket.placeholder')}</h5>
                                             </div>
-                                        ) : (
-                                            <div className="text-center">
-                                                <Button variant="outline-primary" onClick={() => navigate(`/dashboard/matches/${currentTournament._id}`)}>
-                                                    {t('tournamentDetails.bracket.viewFull')}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    ) : (
+                                        <TournamentBracket
+                                            tournamentId={currentTournament._id}
+                                            maxParticipants={currentTournament.maxParticipants}
+                                        />
+                                    )}
                                 </Tab>
                             </Tabs>
                         </div>
@@ -164,37 +195,41 @@ const TournamentDetailsPage = () => {
                     <Col lg={4}>
                         <div className="glass-panel action-panel">
                             <h4 className="panel-title">{t('tournamentDetails.sidebar.yourStatus')}</h4>
-                            
+
                             {!isParticipant ? (
                                 <>
                                     <div className="entry-fee-display">
                                         <span>{t('tournamentDetails.sidebar.entryFee')}</span>
                                         <h3>{currentTournament.entryFee} {t('common.currency', 'TND')}</h3>
                                     </div>
-                                    <Button 
-                                        className="w-100 action-btn-primary" 
+                                    <Button
+                                        className="w-100 action-btn-primary"
                                         onClick={() => setShowJoinModal(true)}
-                                        disabled={loadingJoin || currentTournament.status !== 'open'}
+                                        disabled={currentTournament.status !== 'open'}
                                     >
-                                        {loadingJoin ? <Spinner size="sm"/> : t('tournamentDetails.sidebar.joinBtn')}
+                                        {t('tournamentDetails.sidebar.joinBtn')}
                                     </Button>
                                 </>
                             ) : (
                                 <div className="participant-status">
                                     <AlertBadge variant="success">{t('tournamentDetails.status.registered')}</AlertBadge>
-                                    <div className="team-display mt-3">
+                                    <div className="team-display mt-3 text-center">
                                         <small>{t('tournamentDetails.sidebar.playingAs')}</small>
-                                        <h5>{myParticipantData.selectedTeam}</h5>
+                                        <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
+                                            {myParticipantData.selectedTeamLogo && (
+                                                <img src={myParticipantData.selectedTeamLogo} alt="Team" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                                            )}
+                                            <h5>{myParticipantData.selectedTeam}</h5>
+                                        </div>
                                     </div>
 
-                                    {/* Check-in Button */}
                                     {currentTournament.status === 'check-in' && !isCheckedIn && (
-                                        <Button 
+                                        <Button
                                             className="w-100 mt-3 btn-warning fw-bold"
                                             onClick={handleCheckIn}
                                             disabled={loadingCheckIn}
                                         >
-                                            {loadingCheckIn ? <Spinner size="sm"/> : t('tournamentDetails.sidebar.checkInBtn')}
+                                            {loadingCheckIn ? <Spinner size="sm" /> : t('tournamentDetails.sidebar.checkInBtn')}
                                         </Button>
                                     )}
 
@@ -206,17 +241,16 @@ const TournamentDetailsPage = () => {
                                 </div>
                             )}
 
-                            {/* Admin Controls */}
                             {user.userRole === 'Admin' && (
                                 <div className="admin-controls mt-4 pt-3 border-top border-secondary">
                                     <h6>{t('tournamentDetails.sidebar.adminControls')}</h6>
-                                    <Button 
-                                        variant="danger" 
+                                    <Button
+                                        variant="danger"
                                         className="w-100"
                                         onClick={handleStart}
                                         disabled={loadingStart || currentTournament.status === 'active'}
                                     >
-                                        {loadingStart ? <Spinner size="sm"/> : <><FaPlay /> {t('tournamentDetails.sidebar.startBtn')}</>}
+                                        {loadingStart ? <Spinner size="sm" /> : <><FaPlay /> {t('tournamentDetails.sidebar.startBtn')}</>}
                                     </Button>
                                 </div>
                             )}
@@ -225,47 +259,15 @@ const TournamentDetailsPage = () => {
                 </Row>
             </Container>
 
-            {/* --- Join Modal --- */}
-            <Modal show={showJoinModal} onHide={() => setShowJoinModal(false)} centered className="dark-modal">
-                <Modal.Header closeButton>
-                    <Modal.Title>{t('tournamentDetails.modal.title')}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Form>
-                        <Form.Group className="mb-3">
-                            <Form.Label>{t('tournamentDetails.modal.selectTeamLabel')} ({currentTournament.rules.teamCategory})</Form.Label>
-                            <Form.Control 
-                                type="text" 
-                                placeholder={t('tournamentDetails.modal.teamPlaceholder')} 
-                                value={teamData.selectedTeam}
-                                onChange={(e) => setTeamData({...teamData, selectedTeam: e.target.value})}
-                            />
-                            <Form.Text className="text-muted">
-                                {t('tournamentDetails.modal.teamHint')}
-                            </Form.Text>
-                        </Form.Group>
-                        <div className="fee-summary">
-                            <span>{t('tournamentDetails.modal.walletBalance')}:</span>
-                            <span className={user.balance < currentTournament.entryFee ? "text-danger" : "text-success"}>
-                                {user.balance} {t('common.currency', 'TND')}
-                            </span>
-                        </div>
-                        {user.balance < currentTournament.entryFee && (
-                            <div className="text-danger mt-2 small">{t('tournamentDetails.modal.insufficientBalance')}</div>
-                        )}
-                    </Form>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowJoinModal(false)}>{t('common.cancel')}</Button>
-                    <Button 
-                        variant="primary" 
-                        onClick={handleJoinSubmit}
-                        disabled={user.balance < currentTournament.entryFee || loadingJoin}
-                    >
-                        {loadingJoin ? t('common.processing') : `${t('tournamentDetails.modal.payAndJoin')} ${currentTournament.entryFee} TND`}
-                    </Button>
-                </Modal.Footer>
-            </Modal>
+            {/* --- The New Intelligent Join Modal --- */}
+            {currentTournament && (
+                <JoinTournamentModal
+                    show={showJoinModal}
+                    onHide={() => setShowJoinModal(false)}
+                    tournament={currentTournament}
+                    onSuccess={handleJoinSuccess} // [!] تمرير دالة النجاح للـ Modal
+                />
+            )}
         </div>
     );
 };

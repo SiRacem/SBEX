@@ -1,0 +1,211 @@
+/* src/components/tournaments/TournamentBracket.css */
+
+.bracket-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    overflow-x: auto;
+    padding: 1rem;
+    background-color: #0b1120;
+    min-height: 400px;
+    gap: 2rem;
+}
+
+.bracket-container::-webkit-scrollbar { height: 6px; }
+.bracket-container::-webkit-scrollbar-track { background: #1e293b; }
+.bracket-container::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+
+.round-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    min-width: 210px;
+    position: relative;
+    height: 100%;
+}
+
+.round-title {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 8px;
+}
+
+/* Match Card Compact */
+.match-card {
+    background: #151e32;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    width: 200px;
+    height: 130px;
+    position: relative;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0.8rem 0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.match-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.2);
+}
+
+/* Status Bar */
+.match-status-bar {
+    height: 3px;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.status-scheduled { background: #64748b; }
+.status-ongoing { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.status-completed { background: #10b981; }
+.status-cancelled { background: #ef4444; }
+
+/* Player Row */
+.match-player {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px; /* حشو داخلي أقل */
+    transition: background 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.match-player.winner {
+    background: rgba(16, 185, 129, 0.1);
+    border-left-color: #10b981;
+}
+
+.player-info-enhanced {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* مسافة أقل */
+    flex-grow: 1;
+    min-width: 0;
+}
+
+/* شعار الفريق (الكبير) */
+.player-avatar-main {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: contain;
+    background: rgba(255,255,255,0.05);
+    padding: 2px;
+    border: 1px solid #475569;
+    flex-shrink: 0;
+}
+
+/* النصوص */
+.text-content {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+    justify-content: center;
+}
+
+.team-name-bold {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-username {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* النتيجة */
+.score-badge {
+    background: #0f172a;
+    color: #fff;
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #334155;
+    min-width: 24px;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+/* Divider & Footer */
+.match-divider {
+    height: 1px;
+    background: #334155;
+    margin: 2px 10px;
+    opacity: 0.3;
+}
+
+.match-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 10px;
+    font-size: 0.6rem;
+    color: #64748b;
+    background: rgba(0,0,0,0.2);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Placeholders */
+.match-card.placeholder {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed #334155;
+    cursor: default;
+    box-shadow: none;
+}
+
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.75rem;
+    gap: 4px;
+}
+
+.vs-placeholder {
+    font-size: 0.65rem;
+    opacity: 0.5;
+    font-weight: 400;
+}
+
+/* Connectors */
+.round-column:not(:last-child) .match-card::after {
+    content: '';
+    position: absolute;
+    right: -15px; /* نصف المسافة الجديدة */
+    top: 50%;
+    width: 15px;
+    height: 2px;
+    background: #334155;
+    z-index: -1;
+}

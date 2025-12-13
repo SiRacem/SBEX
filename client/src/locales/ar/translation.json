@@ -86,7 +86,7 @@
     "checkInSettings": "إعدادات التسجيل اليومي",
     "wheelSettings": "إعدادات العجلة الحظ",
     "globalChat": "الدردشة العامة",
-    "manageLeagues": "إدارة الدوريات"
+    "manageLeagues": "إدارة الدوريات والفرق"
   },
   "dashboard": {
     "balances": {
@@ -638,6 +638,7 @@
     "next": "التالي",
     "at": "في",
     "currency": "دينار",
+    "taken": "مأخوذ",
     "statuses": {
       "active": "نشط",
       "blocked": "محظور",
@@ -2784,8 +2785,10 @@
       "secondPlace": "جائزة المركز الثاني",
       "participants": "عدد المشاركين",
       "teams": "فئة الفرق",
-      "incompleteAction": "إذا لم يكتمل العدد؟"
+      "incompleteAction": "إذا لم يكتمل العدد؟",
+      "specificLeague": "دوري محدد (اختياري)"
     },
+    "allLeagues": "-- كل الدوريات --",
     "players": "لاعبين",
     "clubs": "أندية",
     "nations": "منتخبات",
@@ -2851,5 +2854,61 @@
       "startSuccess": "بدأت البطولة!"
     },
     "noDescription": "لم يتم تقديم وصف."
+  },
+  "bracket": {
+    "round": "دور الـ",
+    "quarterFinal": "ربع النهائي",
+    "semiFinal": "نصف النهائي",
+    "final": "المباراة النهائية"
+  },
+  "matchRoom": {
+    "loading": "جاري تحميل بيانات المباراة...",
+    "accessDenied": "تم رفض الوصول. أنت لست مشاركاً.",
+    "you": "أنت",
+    "opponent": "الخصم",
+    "tbd": "غير محدد",
+    "waiting": "في الانتظار...",
+    "vs": "ضد",
+    "chat": {
+      "title": "دردشة المباراة",
+      "welcome": "مرحباً! يرجى مشاركة المعرف والبدء.",
+      "placeholder": "اكتب رسالة..."
+    },
+    "actions": {
+      "reportResult": "الإبلاغ عن النتيجة",
+      "uploadProof": "رفع لقطة شاشة",
+      "submitBtn": "إرسال النتيجة",
+      "waitingOpponent": "بانتظار الخصم...",
+      "confirmResult": "تأكيد النتيجة",
+      "opponentSubmittedMsg": "قام الخصم بإرسال نتيجة. يرجى التحقق.",
+      "dispute": "نزاع (مشكلة)",
+      "reportProblem": "الإبلاغ عن مشكلة"
+    },
+    "status": {
+      "completed": "انتهت المباراة",
+      "winner": "الفائز",
+      "scheduled": "مجدولة",
+      "ongoing": "جارية الآن",
+      "review": "قيد المراجعة"
+    },
+    "errors": {
+      "uploadProof": "يرجى رفع لقطة الشاشة.",
+      "uploadFailed": "فشل الرفع.",
+      "refreshRedirect": "يرجى اختيار البطولة لعرض المباراة."
+    },
+    "toasts": {
+      "resultSubmitted": "تم إرسال النتيجة! بانتظار التأكيد.",
+      "matchCompleted": "تم التأكيد! انتهت المباراة."
+    }
+  },
+  "joinModal": {
+    "selectLeague": "اختر الدوري",
+    "selectTeam": "اختر فريقك",
+    "confirmRegistration": "تأكيد التسجيل",
+    "backToLeagues": "العودة للدوريات",
+    "entryFee": "رسوم الاشتراك",
+    "yourBalance": "رصيدك الحالي",
+    "confirmPay": "تأكيد ودفع",
+    "changeTeam": "تغيير الفريق"
   }
 }

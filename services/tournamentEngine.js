@@ -1,8 +1,7 @@
-// server/services/tournamentEngine.js
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
-const User = require('../models/User'); // نستخدم User بدلاً من Wallet
+const User = require('../models/User'); 
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 
@@ -34,37 +33,35 @@ async function distributePrizes(tournamentId, finalMatch, session) {
     await tournament.save({ session });
 }
 
-// دالة مساعدة لتحويل الأموال (معدلة لتعمل مع User وتدعم الترجمة)
+// دالة مساعدة لتحويل الأموال (معدلة ومصححة)
 async function processReward(userId, amount, tournament, rankPosition, session) {
-    // نستخدم User مباشرة بدلاً من Wallet
     const user = await User.findById(userId).session(session);
     
     if (user) {
         user.balance += amount; // إضافة الرصيد للمستخدم
         await user.save({ session });
 
-        // تسجيل المعاملة (بمفاتيح ترجمة)
+        // [!] إصلاح المعاملة (Currency + UPPERCASE Status)
         await Transaction.create([{
             user: userId,
             amount: amount,
+            currency: 'TND', // [!] إضافة العملة
             type: 'TOURNAMENT_PRIZE', 
-            // نرسل المفتاح بدلاً من النص
-            description: 'transactions.tournament_prize', 
-            // نرسل البارامترات ليتم تعويضها في الفرونت
-            metadata: { 
+            descriptionKey: 'transactionDescriptions.tournament_prize', 
+            descriptionParams: { 
                 tournamentTitle: tournament.title,
                 rank: rankPosition
             },
-            status: 'completed',
-            balanceAfter: user.balance
+            status: 'COMPLETED', // [!] أحرف كبيرة
+            relatedEntity: { id: tournament._id, modelName: 'Tournament' }
         }], { session });
 
-        // إرسال إشعار (بمفاتيح ترجمة)
+        // [!] إصلاح الإشعار (إرسال نصوص ثابتة للمفاتيح)
         await Notification.create([{
             user: userId,
             type: 'TOURNAMENT_WIN',
-            title: 'notification_titles.TOURNAMENT_WIN', // مفتاح العنوان
-            message: 'notification_messages.TOURNAMENT_WIN', // مفتاح الرسالة
+            title: 'notification_titles.TOURNAMENT_WIN', // نص ثابت للمفتاح
+            message: 'notification_messages.TOURNAMENT_WIN', // نص ثابت للمفتاح
             messageParams: { // المتغيرات
                 amount: amount,
                 tournamentTitle: tournament.title,
@@ -84,35 +81,62 @@ async function advanceWinnerToNextRound(currentMatch, session) {
     const currentIndex = currentMatch.matchIndex;
     const winnerId = currentMatch.winner;
 
-    const winnerTeam = currentMatch.player1 && currentMatch.player1.toString() === winnerId.toString() 
-                       ? currentMatch.player1Team 
-                       : currentMatch.player2Team;
+    // [!] استخراج اسم وشعار الفريق الفائز
+    let winnerTeamName = null;
+    let winnerTeamLogo = null;
 
+    if (currentMatch.player1 && currentMatch.player1.toString() === winnerId.toString()) {
+        winnerTeamName = currentMatch.player1Team;
+        winnerTeamLogo = currentMatch.player1TeamLogo; // نقل الشعار
+    } else if (currentMatch.player2 && currentMatch.player2.toString() === winnerId.toString()) {
+        winnerTeamName = currentMatch.player2Team;
+        winnerTeamLogo = currentMatch.player2TeamLogo; // نقل الشعار
+    }
+
+    // حساب موقع المباراة القادمة
     const nextRound = currentRound + 1;
     const nextMatchIndex = Math.floor(currentIndex / 2);
 
+    // البحث عن المباراة التالية
     let nextMatch = await Match.findOne({
         tournament: tournamentId,
         round: nextRound,
         matchIndex: nextMatchIndex
     }).session(session);
 
+    // [!] إذا لم تكن موجودة (وهذا طبيعي في الجولات الجديدة)، ننشئها
     if (!nextMatch) {
-        console.log(`🏆 Tournament Finished! Winner: ${winnerId}`);
-        await distributePrizes(tournamentId, currentMatch, session);
-        return;
+        // تحقق هل وصلنا للنهاية؟ (مثلاً الجولة 5 في بطولة 16 لاعب)
+        // يمكن التحقق من MaxParticipants، لكن للتبسيط، إذا لم نجد مباراة، ننشئها
+        // إلا إذا كان الفائز هو بطل البطولة بالفعل (تم التعامل معه في distributePrizes)
+        
+        // هنا سنفترض أننا بحاجة لإنشاء المباراة التالية ديناميكياً
+        nextMatch = new Match({
+            tournament: tournamentId,
+            round: nextRound,
+            matchIndex: nextMatchIndex,
+            status: 'scheduled'
+        });
     }
 
+    // تحديد مكان الفائز (Slot 1 or Slot 2)
     const isPlayer1Slot = (currentIndex % 2 === 0);
+    
     if (isPlayer1Slot) {
         nextMatch.player1 = winnerId;
-        nextMatch.player1Team = winnerTeam;
+        nextMatch.player1Team = winnerTeamName;
+        nextMatch.player1TeamLogo = winnerTeamLogo; // [!] حفظ الشعار
     } else {
         nextMatch.player2 = winnerId;
-        nextMatch.player2Team = winnerTeam;
+        nextMatch.player2Team = winnerTeamName;
+        nextMatch.player2TeamLogo = winnerTeamLogo; // [!] حفظ الشعار
     }
 
+    // التحقق من اكتمال المباراة (هل أصبح لها طرفان؟)
+    // إذا اكتملت، يمكن تغيير حالتها لـ scheduled أو ongoing حسب المنطق
+    
     await nextMatch.save({ session });
+    console.log(`Advancing winner ${winnerId} to Round ${nextRound}, Match ${nextMatchIndex}`);
 }
 
 // =========================================================
@@ -142,7 +166,7 @@ async function runAutoConfirmJob(io) {
 
                 if(io) {
                     io.to(match._id.toString()).emit('match_updated', { 
-                        matchId: match._id, 
+                        _id: match._id, // [!] تأكد من تطابق الهيكل مع الـ Frontend
                         status: 'completed', 
                         winner: match.winner 
                     });

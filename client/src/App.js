@@ -315,11 +315,17 @@ function App() {
         }
       });
 
+      newSocket.on('tournament_updated', (data) => {
+        console.log('[Socket] Tournament Updated:', data);
+        dispatch({ type: 'UPDATE_TOURNAMENT_SOCKET', payload: data });
+      });
+      
       newSocket.on('dashboard_transactions_updated', () => {
         dispatch(getTransactionsForDashboard());
         dispatch(getTransactions());
         dispatch(getUserWithdrawalRequests());
         dispatch(getUserDepositRequests());
+        dispatch(getProfile());
       });
 
       newSocket.on('user_profile_updated', (data) => {
@@ -519,6 +525,15 @@ function App() {
       newSocket.on('quest_progress_updated', (data) => {
         console.log('[App.js] Quest progress updated:', data);
         dispatch(getUserQuests());
+      });
+
+      newSocket.on('tournament_participant_joined', (data) => {
+        console.log('[Socket] Tournament participant joined:', data);
+        dispatch({ type: 'UPDATE_TOURNAMENT_PARTICIPANTS_SOCKET', payload: data });
+      });
+
+      newSocket.on('tournament_created', (data) => {
+        dispatch({ type: 'ADD_TOURNAMENT_SOCKET', payload: data });
       });
     }
 

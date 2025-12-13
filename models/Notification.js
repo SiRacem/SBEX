@@ -119,7 +119,7 @@ const NotificationSchema = new Schema({
                 'Product', 'Order', 'Message', 'User', 'Bid',
                 'Transaction', 'DepositRequest', 'WithdrawalRequest',
                 'MediationRequest', 'Report', 'Ticket',
-                'UserQuest'
+                'UserQuest', 'Tournament', 'Match'
             ]
         }
     },

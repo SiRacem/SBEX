@@ -1,49 +1,53 @@
-// server/models/Match.js
 const mongoose = require('mongoose');
 
 const MatchSchema = new mongoose.Schema({
   tournament: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', required: true },
   
-  // الموقع في الشجرة
-  round: { type: Number, required: true }, // 1, 2, 3...
-  matchIndex: { type: Number, required: true }, // 0, 1, 2...
+  round: { type: Number, required: true }, 
+  matchIndex: { type: Number, required: true }, 
   
-  // أطراف المباراة
   player1: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   player2: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
-  // هل هذه المباراة محسومة تلقائياً (Bye)؟
+  player1Team: { type: String },
+  player1TeamLogo: { type: String }, // [جديد]
+  player2Team: { type: String },
+  player2TeamLogo: { type: String }, // [جديد]
+
   isBye: { type: Boolean, default: false },
 
-  // حالة المباراة
   status: {
     type: String,
     enum: ['scheduled', 'ongoing', 'review', 'completed', 'dispute', 'cancelled'],
     default: 'scheduled'
   },
 
-  // النتائج
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  loser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // نحتاجه للإقصاء
+  loser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, 
   
-  // تفاصيل الروم والنتيجة
-  roomID: { type: String }, // يرسله اللاعبون في الشات
+  roomID: { type: String }, 
   scorePlayer1: { type: Number, default: 0 },
   scorePlayer2: { type: Number, default: 0 },
 
-  // الأدلة
   proofScreenshot: { type: String },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
-  // النزاعات (الاحتراز)
   dispute: {
     isOpen: { type: Boolean, default: false },
     openedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    reason: { type: String }, // e.g. "Wrong Team Selected"
+    reason: { type: String }, 
     proofImage: { type: String },
     adminDecision: { type: String },
     resolvedAt: { type: Date }
-  }
+  },
+  
+  // شات المباراة (مهم لحفظ التاريخ)
+  chatMessages: [{
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    senderName: String,
+    text: String,
+    timestamp: { type: Date, default: Date.now }
+  }]
 
 }, { timestamps: true });
 

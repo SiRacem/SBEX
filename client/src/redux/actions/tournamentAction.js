@@ -10,7 +10,7 @@ import {
     GET_MATCHES_REQUEST, GET_MATCHES_SUCCESS, GET_MATCHES_FAIL,
     SUBMIT_MATCH_RESULT_REQUEST, SUBMIT_MATCH_RESULT_SUCCESS, SUBMIT_MATCH_RESULT_FAIL,
     CONFIRM_MATCH_RESULT_REQUEST, CONFIRM_MATCH_RESULT_SUCCESS, CONFIRM_MATCH_RESULT_FAIL,
-    CHANGE_TEAM_REQUEST, CHANGE_TEAM_SUCCESS, CHANGE_TEAM_FAIL, CLEAR_TOURNAMENT_ERRORS
+    CHANGE_TEAM_REQUEST, CHANGE_TEAM_SUCCESS, CHANGE_TEAM_FAIL, CLEAR_TOURNAMENT_ERRORS, GET_TAKEN_TEAMS_SUCCESS
 } from '../actionTypes/tournamentActionTypes';
 
 // Helper to get token (if not using an interceptor)
@@ -181,4 +181,14 @@ export const confirmMatchResult = (matchId) => async (dispatch) => {
 // 10. Clear Errors
 export const clearTournamentErrors = () => {
     return { type: CLEAR_TOURNAMENT_ERRORS };
+};
+
+// 11. Get Taken Teams
+export const getTakenTeams = (tournamentId) => async (dispatch) => {
+    try {
+        const { data } = await axios.get(`${API_URL}/tournaments/${tournamentId}/taken-teams`, getConfig());
+        dispatch({ type: GET_TAKEN_TEAMS_SUCCESS, payload: data });
+    } catch (error) {
+        console.error("Failed to fetch taken teams", error);
+    }
 };

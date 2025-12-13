@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const { handleExpiredMediationAssignments } = require('./controllers/mediation.controller');
 const { updateLeaderboardSnapshots } = require('./services/leaderboardService');
 const { runAutoConfirmJob } = require('./services/tournamentEngine'); // استيراد خدمة الأتمتة
+const tournamentController = require('./controllers/tournament.controller');
 
 // --- Configuration Reading ---
 const PORT = config.get('PORT') || 8000;
@@ -597,6 +598,25 @@ io.on('connection', (socket) => {
         });
     });
 
+    // --- Match Chat ---
+    socket.on('join_match_room', (matchId) => {
+        socket.join(`match_${matchId}`);
+        console.log(`User ${socket.id} joined match room: match_${matchId}`);
+    });
+
+    socket.on('send_match_message', async (data) => {
+        // 1. إرسال فوري (للـ Real-time)
+        io.to(`match_${data.matchId}`).emit('new_match_message', data);
+
+        // 2. حفظ في القاعدة (للتاريخ)
+        try {
+            const Match = require('./models/Match');
+            await Match.findByIdAndUpdate(data.matchId, {
+                $push: { chatMessages: data }
+            });
+        } catch (e) { console.error("Chat save error", e); }
+    });
+
     socket.on('disconnect', (reason) => {
         if (socket.userIdForChat) {
             const userIdStr = socket.userIdForChat.toString();
@@ -643,12 +663,23 @@ cron.schedule('0 0,6,12,18 * * *', async () => {
 // [!!!] START: مهمة أتمتة البطولات (كل دقيقة) [!!!]
 cron.schedule('* * * * *', async () => {
     // نمرر io لكي نرسل تحديثات لحظية للمباريات التي انتهت تلقائياً
-    const confirmedCount = await runAutoConfirmJob(io); 
+    const confirmedCount = await runAutoConfirmJob(io);
     if (confirmedCount > 0) {
         console.log(`[CRON TOURNAMENT] Auto-confirmed ${confirmedCount} matches.`);
     }
 });
 // [!!!] END: نهاية مهمة البطولات [!!!]
+
+cron.schedule('* * * * *', async () => {
+    try {
+        console.log('[CRON] Checking for tournaments to start/cancel...');
+        // نحتاج لدالة جديدة في الكونترولر تسمى checkAndStartScheduledTournaments
+        // سأعطيك إياها لتضيفها في tournament.controller.js
+        await tournamentController.checkAndStartScheduledTournaments(io);
+    } catch (error) {
+        console.error('[CRON TOURNAMENT START] Error:', error);
+    }
+});
 
 // --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 // 1. تطبيق ترويسات الأمان الأساسية

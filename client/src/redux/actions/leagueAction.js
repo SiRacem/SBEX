@@ -84,8 +84,10 @@ export const getTeamsByLeague = (leagueId) => async (dispatch) => {
     try {
         const { data } = await axios.get(`${API_URL}/leagues/${leagueId}/teams`, getConfig());
         dispatch({ type: GET_TEAMS_SUCCESS, payload: { leagueId, teams: data } });
+        return data; // <--- أضف هذا السطر
     } catch (error) {
         dispatch({ type: GET_TEAMS_FAIL, payload: error.response?.data?.message });
+        return []; // <--- أضف هذا السطر
     }
 };
 
@@ -130,3 +132,15 @@ export const deleteTeam = (id) => async (dispatch) => {
 };
 
 export const clearLeagueErrors = () => ({ type: CLEAR_LEAGUE_ERRORS });
+
+// 9. Get Active Leagues
+export const getActiveLeagues = (type) => async (dispatch) => {
+    try {
+        // type = 'Club' or 'National'
+        const { data } = await axios.get(`${API_URL}/leagues/active?type=${type}`, getConfig());
+        return data; // نرجع البيانات مباشرة لاستخدامها في الـ Component
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};

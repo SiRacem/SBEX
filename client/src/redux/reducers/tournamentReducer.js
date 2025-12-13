@@ -9,7 +9,8 @@ import {
     GET_MATCHES_REQUEST, GET_MATCHES_SUCCESS, GET_MATCHES_FAIL,
     SUBMIT_MATCH_RESULT_REQUEST, SUBMIT_MATCH_RESULT_SUCCESS, SUBMIT_MATCH_RESULT_FAIL,
     CONFIRM_MATCH_RESULT_REQUEST, CONFIRM_MATCH_RESULT_SUCCESS, CONFIRM_MATCH_RESULT_FAIL,
-    UPDATE_TOURNAMENT_SOCKET, UPDATE_MATCH_SOCKET, CLEAR_TOURNAMENT_ERRORS
+    UPDATE_TOURNAMENT_SOCKET, UPDATE_MATCH_SOCKET, CLEAR_TOURNAMENT_ERRORS, GET_TAKEN_TEAMS_SUCCESS,
+    UPDATE_TOURNAMENT_PARTICIPANTS_SOCKET, ADD_TOURNAMENT_SOCKET
 } from '../actionTypes/tournamentActionTypes';
 
 const initialState = {
@@ -25,6 +26,7 @@ const initialState = {
     loadingMatches: false,  // Fetching bracket
     loadingMatchAction: false, // Submitting/Confirming result
     errors: null,
+    takenTeams: [],
 };
 
 const tournamentReducer = (state = initialState, { type, payload }) => {
@@ -49,11 +51,11 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
         case CREATE_TOURNAMENT_REQUEST:
             return { ...state, loadingCreate: true, errors: null };
         case CREATE_TOURNAMENT_SUCCESS:
-            return { 
-                ...state, 
-                loadingCreate: false, 
+            return {
+                ...state,
+                loadingCreate: false,
                 tournaments: [payload, ...state.tournaments], // Add to list
-                errors: null 
+                errors: null
             };
         case CREATE_TOURNAMENT_FAIL:
             return { ...state, loadingCreate: false, errors: payload };
@@ -79,12 +81,12 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
         case START_TOURNAMENT_REQUEST:
             return { ...state, loadingStart: true, errors: null };
         case START_TOURNAMENT_SUCCESS:
-            return { 
-                ...state, 
-                loadingStart: false, 
+            return {
+                ...state,
+                loadingStart: false,
                 // Update local status if matches current
-                currentTournament: state.currentTournament 
-                    ? { ...state.currentTournament, status: 'active' } 
+                currentTournament: state.currentTournament
+                    ? { ...state.currentTournament, status: 'active' }
                     : null
             };
         case START_TOURNAMENT_FAIL:
@@ -109,23 +111,6 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
         case CONFIRM_MATCH_RESULT_FAIL:
             return { ...state, loadingMatchAction: false, errors: payload };
 
-        // --- Socket Updates ---
-        case UPDATE_TOURNAMENT_SOCKET:
-            // Update in list
-            const updatedList = state.tournaments.map(t => 
-                t._id === payload._id ? payload : t
-            );
-            // Update current if open
-            const updatedCurrent = (state.currentTournament && state.currentTournament._id === payload._id)
-                ? payload
-                : state.currentTournament;
-            
-            return {
-                ...state,
-                tournaments: updatedList,
-                currentTournament: updatedCurrent
-            };
-
         case UPDATE_MATCH_SOCKET:
             // payload is the updated match object
             return {
@@ -135,6 +120,59 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
 
         case CLEAR_TOURNAMENT_ERRORS:
             return { ...state, errors: null };
+
+        case GET_TAKEN_TEAMS_SUCCESS:
+            return { ...state, takenTeams: payload };
+
+        // 1. إضافة بطولة جديدة (Socket)
+        case ADD_TOURNAMENT_SOCKET:
+            // منع التكرار
+            if (state.tournaments.some(t => t._id === payload._id)) return state;
+            return {
+                ...state,
+                tournaments: [payload, ...state.tournaments]
+            };
+
+        // 2. تحديث حالة بطولة موجودة (Socket - للإلغاء أو البدء)
+        case UPDATE_TOURNAMENT_SOCKET:
+            // 1. تحديث القائمة الرئيسية
+            const updatedList = state.tournaments.map(t =>
+                t._id === payload._id ? { ...t, ...payload } : t
+            );
+
+            // 2. تحديث البطولة الحالية (إذا كانت مفتوحة)
+            let updatedCurrent = state.currentTournament;
+            if (state.currentTournament && state.currentTournament._id === payload._id) {
+                updatedCurrent = { 
+                    ...state.currentTournament, 
+                    ...payload,
+                    participants: payload.participants || state.currentTournament.participants 
+                };
+            }
+
+            return {
+                ...state,
+                tournaments: updatedList,
+                currentTournament: updatedCurrent
+            };
+
+        case UPDATE_TOURNAMENT_PARTICIPANTS_SOCKET:
+            if (state.currentTournament && state.currentTournament._id === payload.tournamentId) {
+                // تحديث المشاركين
+                const updatedParticipants = [...state.currentTournament.participants, payload.participant];
+                // تحديث الفرق المحجوزة
+                const updatedTakenTeams = [...state.takenTeams, payload.takenTeam];
+
+                return {
+                    ...state,
+                    currentTournament: {
+                        ...state.currentTournament,
+                        participants: updatedParticipants
+                    },
+                    takenTeams: updatedTakenTeams
+                };
+            }
+            return state;
 
         default:
             return state;

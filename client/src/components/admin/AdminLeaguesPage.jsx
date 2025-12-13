@@ -267,7 +267,7 @@ const AdminLeaguesPage = () => {
                             teams.map(team => (
                                 <div key={team._id} className="team-item">
                                     <div className="team-info">
-                                        <img src={team.logo} alt={team.name} className="team-logo-sm" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                                        <img src={team.logo} alt={team.name} className="team-logo-sm" onError={(e) => e.target.src = 'https://bootdey.com/img/Content/avatar/avatar7.png'} />
                                         <span className="fw-bold">{team.name}</span>
                                     </div>
                                     <Button variant="outline-danger" size="sm" onClick={() => handleDeleteTeam(team._id)}>

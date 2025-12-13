@@ -40,4 +40,6 @@ router.get('/:id/matches', tournamentController.getTournamentMatches);
 // بدء البطولة (Admin Only)
 router.post('/:id/start', verifyAuth, isAdmin, tournamentController.startTournament);
 
+router.get('/:id/taken-teams', verifyAuth, tournamentController.getTakenTeams);
+
 module.exports = router;

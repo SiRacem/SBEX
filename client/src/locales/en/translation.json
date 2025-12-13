@@ -86,7 +86,7 @@
     "checkInSettings": "Check-in Settings",
     "wheelSettings": "Wheel Settings",
     "globalChat": "Global Chat",
-    "manageLeagues": "Manage Leagues"
+    "manageLeagues": "Manage Leagues and Teams"
   },
   "dashboard": {
     "balances": {
@@ -634,6 +634,7 @@
     "next": "Next",
     "at": "at",
     "currency": "TND",
+    "taken": "Taken",
     "statuses": {
       "active": "Active",
       "blocked": "Blocked",
@@ -2779,8 +2780,10 @@
       "secondPlace": "2nd Place Prize",
       "participants": "Max Participants",
       "teams": "Team Category",
-      "incompleteAction": "If incomplete?"
+      "incompleteAction": "If incomplete?",
+      "specificLeague": "Specific League (Optional)"
     },
+    "allLeagues": "-- All Leagues --",
     "players": "Players",
     "clubs": "Clubs",
     "nations": "National Teams",
@@ -2846,5 +2849,61 @@
       "startSuccess": "Tournament Started!"
     },
     "noDescription": "No description provided."
+  },
+  "bracket": {
+    "round": "Round of",
+    "quarterFinal": "Quarter-Finals",
+    "semiFinal": "Semi-Finals",
+    "final": "Grand Final"
+  },
+  "matchRoom": {
+    "loading": "Loading Match Data...",
+    "accessDenied": "Access Denied. You are not a participant.",
+    "you": "You",
+    "opponent": "Opponent",
+    "tbd": "TBD",
+    "waiting": "Waiting...",
+    "vs": "VS",
+    "chat": {
+      "title": "Match Chat",
+      "welcome": "Welcome to the match room! Share your ID and start the game.",
+      "placeholder": "Type a message..."
+    },
+    "actions": {
+      "reportResult": "Report Result",
+      "uploadProof": "Upload Proof Screenshot",
+      "submitBtn": "Submit Result",
+      "waitingOpponent": "Waiting for Opponent...",
+      "confirmResult": "Confirm Result",
+      "opponentSubmittedMsg": "Opponent submitted a result. Please verify.",
+      "dispute": "Dispute (Problem)",
+      "reportProblem": "Report Problem"
+    },
+    "status": {
+      "completed": "Match Completed",
+      "winner": "Winner",
+      "scheduled": "Scheduled",
+      "ongoing": "Live Now",
+      "review": "Under Review"
+    },
+    "errors": {
+      "uploadProof": "Please upload a proof screenshot.",
+      "uploadFailed": "Upload failed.",
+      "refreshRedirect": "Please select the tournament to view the match."
+    },
+    "toasts": {
+      "resultSubmitted": "Result Submitted! Waiting for confirmation.",
+      "matchCompleted": "Confirmed! Match Completed."
+    }
+  },
+  "joinModal": {
+    "selectLeague": "Select League",
+    "selectTeam": "Select Your Team",
+    "confirmRegistration": "Confirm Registration",
+    "backToLeagues": "Back to Leagues",
+    "entryFee": "Entry Fee",
+    "yourBalance": "Your Balance",
+    "confirmPay": "Confirm & Pay",
+    "changeTeam": "Change Team"
   }
 }

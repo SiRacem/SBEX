@@ -26,7 +26,9 @@ import {
   FaExternalLinkAlt,
   FaExchangeAlt,
   FaDice,
-  FaCalendarCheck
+  FaCalendarCheck,
+  FaGamepad,
+  FaTrophy,
 } from "react-icons/fa";
 import { BsClockHistory, BsXCircle, BsGearFill } from "react-icons/bs";
 import {
@@ -98,13 +100,20 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
   let iconColorClass = "text-secondary";
 
   let title;
+  
+  // 1. إذا كان لدينا مفتاح مخصص (الهيكلية الجديدة)
   if (transaction.descriptionKey) {
-    // إذا أرسل الخادم مفتاحًا، استخدمه
     title = t(transaction.descriptionKey, transaction.descriptionParams);
-  } else {
-    // كحل احتياطي للبيانات القديمة، استخدم الوصف الثابت أو نوع المعاملة
-    title =
-      transaction.description ||
+  }
+  // 2. [جديد] إذا كان الوصف نفسه عبارة عن مفتاح ترجمة (مثل transactions.tournament_refund)
+  else if (transaction.description && transaction.description.startsWith('transactions.')) {
+     // نمرر الـ descriptionParams إذا وجدت، أو metadata كخيار بديل
+     const params = transaction.descriptionParams || transaction.metadata || {};
+     title = t(transaction.description, params);
+  }
+  // 3. الحالة القديمة (نص عادي أو نوع المعاملة)
+  else {
+    title = transaction.description ||
       t(`transactionTypes.${transaction.type}`, {
         defaultValue: transaction.type.replace(/_/g, " "),
       });
@@ -158,6 +167,18 @@ const TransactionItem = ({ transaction, onShowDetails }) => {
     case "LUCKY_WHEEL_REWARD":
       IconComponent = FaDice;
       iconColorClass = "text-warning";
+      break;
+    case "TOURNAMENT_ENTRY":
+      IconComponent = FaGamepad; // استوردها من react-icons/fa
+      iconColorClass = "text-warning"; // لون مميز للخصم
+      break;
+    case "TOURNAMENT_REFUND":
+      IconComponent = FaCheckCircle; 
+      iconColorClass = "text-success"; // لون الاسترجاع
+      break;
+    case "TOURNAMENT_PRIZE":
+      IconComponent = FaTrophy; // استوردها
+      iconColorClass = "text-warning"; // ذهبي للفوز
       break;
     default:
       if (transaction.amount > 0) iconColorClass = "text-success";

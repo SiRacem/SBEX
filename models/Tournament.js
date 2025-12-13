@@ -50,6 +50,7 @@ const TournamentSchema = new mongoose.Schema({
       enum: ['Clubs', 'National Teams'], // أندية أو منتخبات
       required: true 
     },
+    specificLeague: { type: mongoose.Schema.Types.ObjectId, ref: 'League', default: null },
     matchDurationMinutes: { type: Number, default: 15 }, 
     eFootballMatchTime: { type: String, default: '6 mins' },
     extraTime: { type: Boolean, default: true },

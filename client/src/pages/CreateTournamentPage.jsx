@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+// src/pages/CreateTournamentPage.jsx
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createTournament } from '../redux/actions/tournamentAction';
+import { getActiveLeagues } from '../redux/actions/leagueAction'; // [!] تأكد من وجود هذا الأكشن
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Form, Row, Col, Spinner } from 'react-bootstrap';
@@ -23,6 +25,8 @@ const CreateTournamentPage = () => {
     ];
 
     const [currentStep, setCurrentStep] = useState(1);
+    const [leaguesList, setLeaguesList] = useState([]); // قائمة الدوريات
+    
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -38,7 +42,27 @@ const CreateTournamentPage = () => {
         matchDurationMinutes: 15,
         eFootballMatchTime: '6 mins',
         allowedTeamsType: 'All', 
+        specificLeague: '' // [جديد] لتخزين ID الدوري المختار
     });
+
+    // جلب الدوريات عند تغيير النوع
+    useEffect(() => {
+        const fetchLeagues = async () => {
+            // 'Clubs' -> 'Club', 'National Teams' -> 'National'
+            const type = formData.teamCategory === 'Clubs' ? 'Club' : 'National';
+            
+            // [!] ملاحظة: تأكد أن getActiveLeagues يرجع البيانات (array) وليس dispatch action object فقط
+            // في leagueAction.js يجب أن يكون: return data;
+            const data = await dispatch(getActiveLeagues(type));
+            
+            if (Array.isArray(data)) {
+                setLeaguesList(data);
+            } else {
+                setLeaguesList([]);
+            }
+        };
+        fetchLeagues();
+    }, [formData.teamCategory, dispatch]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -55,6 +79,7 @@ const CreateTournamentPage = () => {
 
     const handleSubmit = async () => {
         const fullStartDate = new Date(`${formData.startDate}T${formData.startTime}`);
+        
         const payload = {
             title: formData.title,
             description: formData.description,
@@ -71,7 +96,9 @@ const CreateTournamentPage = () => {
             rules: {
                 teamCategory: formData.teamCategory,
                 matchDurationMinutes: Number(formData.matchDurationMinutes),
-                eFootballMatchTime: formData.eFootballMatchTime
+                eFootballMatchTime: formData.eFootballMatchTime,
+                // [جديد] إرسال الدوري المحدد (أو null إذا كان فارغاً)
+                specificLeague: formData.specificLeague || null
             }
         };
 
@@ -264,6 +291,25 @@ const CreateTournamentPage = () => {
                                         </Form.Group>
                                     </Col>
                                 </Row>
+
+                                {/* [جديد] اختيار دوري محدد */}
+                                <Form.Group className="mb-3">
+                                    <Form.Label className="custom-label">{t('createTournament.fields.specificLeague')}</Form.Label>
+                                    <Form.Select 
+                                        name="specificLeague" 
+                                        className="custom-input" 
+                                        value={formData.specificLeague} 
+                                        onChange={handleChange}
+                                    >
+                                        <option value="">{t('createTournament.allLeagues')}</option>
+                                        {leaguesList.map(league => (
+                                            <option key={league._id} value={league._id}>
+                                                {league.name}
+                                            </option>
+                                        ))}
+                                    </Form.Select>
+                                </Form.Group>
+
                                 <Form.Group className="mb-3">
                                     <Form.Label className="custom-label">{t('createTournament.fields.incompleteAction')}</Form.Label>
                                     <Form.Select 
@@ -307,6 +353,12 @@ const CreateTournamentPage = () => {
                                         <div className="review-label">{t('createTournament.fields.teams')}</div>
                                         <div className="review-value">{formData.teamCategory}</div>
                                     </div>
+                                    {formData.specificLeague && (
+                                        <div className="review-items">
+                                            <div className="review-label">League</div>
+                                            <div className="review-value">Specific League Selected</div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

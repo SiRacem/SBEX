@@ -57,11 +57,22 @@ exports.submitResult = async (req, res) => {
 
         await match.save();
 
+        // [جديد] إعلام الجميع في الغرفة بأن المباراة تحدثت
+        if (req.io) {
+            // نرسل المباراة المحدثة بالكامل
+            const updatedMatch = await Match.findById(matchId)
+                .populate('player1', 'fullName avatarUrl')
+                .populate('player2', 'fullName avatarUrl')
+                .populate('winner', 'fullName');
+                
+            req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
+        }
+
         // إشعار الخصم لتأكيد النتيجة (ToDo: Socket.io)
         
         res.status(200).json({ 
             success: true, 
-            message: "Result submitted. Waiting for opponent confirmation.",
+            message: "matchRoom.toasts.resultSubmitted", // [!] مفتاح ترجمة بدلاً من النص
             match 
         });
 

@@ -21,16 +21,31 @@ const TournamentsListPage = () => {
     const [filter, setFilter] = useState('all'); // all, open, active, completed
 
     useEffect(() => {
+        // [!] جلب البيانات دائماً عند الدخول للصفحة للتأكد من التحديث
         dispatch(getAllTournaments());
     }, [dispatch]);
 
-    // تصفية البطولات حسب الحالة
+    // [!] تأكد أن filteredTournaments لا يعتمد على state محلي قديم
     const filteredTournaments = tournaments.filter(tournament => {
-        if (filter === 'all') return true;
-        if (filter === 'open') return tournament.status === 'open' || tournament.status === 'check-in';
-        if (filter === 'active') return tournament.status === 'active';
-        if (filter === 'completed') return tournament.status === 'completed';
-        return true;
+        if (!tournament) return false;
+        
+        // طباعة الحالة في الكونسول للتأكد (Debugging)
+        console.log(`Tournament: ${tournament.title}, Status: ${tournament.status}`);
+
+        switch (filter) {
+            case 'all': 
+                return true;
+            case 'open': 
+                return tournament.status === 'open' || tournament.status === 'check-in';
+            case 'active': 
+                return tournament.status === 'active';
+            case 'completed': 
+                return tournament.status === 'completed';
+            case 'cancelled': 
+                return tournament.status === 'cancelled';
+            default:
+                return true;
+        }
     });
 
     // إعدادات الحركة (Animation Variants)
@@ -92,6 +107,12 @@ const TournamentsListPage = () => {
                         onClick={() => setFilter('active')}
                     >
                         <FaRunning /> {t('status.active', 'Live Now')}
+                    </button>
+                    <button 
+                        className={`filter-btn ${filter === 'cancelled' ? 'active' : ''}`}
+                        onClick={() => setFilter('cancelled')}
+                    >
+                        <FaTimesCircle /> {t('status.cancelled', 'Cancelled')}
                     </button>
                     <button 
                         className={`filter-btn ${filter === 'completed' ? 'active' : ''}`}
@@ -157,7 +178,7 @@ const TournamentCard = ({ tournament, variants, navigate, t }) => {
             case 'check-in': return { label: t('status.checkIn', 'Check-in'), class: 'status-active', icon: <FaCheckCircle /> };
             case 'active': return { label: t('status.live', 'Live'), class: 'status-active', icon: <FaRunning /> };
             case 'completed': return { label: t('status.completed', 'Finished'), class: 'status-completed', icon: <FaTrophy /> };
-            default: return { label: status, class: 'status-cancelled', icon: <FaTimesCircle /> };
+            default: return { label: t('status.cancelled', 'cancelled'), class: 'status-cancelled', icon: <FaTimesCircle /> };
         }
     };
 
