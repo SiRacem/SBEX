@@ -535,6 +535,16 @@ function App() {
       newSocket.on('tournament_created', (data) => {
         dispatch({ type: 'ADD_TOURNAMENT_SOCKET', payload: data });
       });
+
+      // [جديد] تحديث الجدول عند انتهاء أي مباراة
+      newSocket.on('match_updated', (updatedMatch) => {
+          console.log('[Socket] Match Updated:', updatedMatch);
+          // تحديث المباراة في الستور العام
+          dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: updatedMatch });
+          
+          // [اختياري] إعادة جلب المباريات بالكامل لضمان سلامة الهيكل
+          // dispatch(getTournamentMatches(updatedMatch.tournament)); 
+      });
     }
 
     // --- دالة التنظيف ---

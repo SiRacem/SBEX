@@ -6,12 +6,134 @@ const Match = require('../models/Match');
 const Notification = require('../models/Notification');
 const { runAutoConfirmJob, advanceWinnerToNextRound } = require('../services/tournamentEngine');
 
-// دالة مساعدة لتوليد ترتيب التوزيع (Seeding Order)
+// دالة مساعدة لتوليد ترتيب التوزيع (Seeding Order) لتباعد الأقوياء
 const getSeedingOrder = (numMatches) => {
     if (numMatches <= 1) return [0];
     const half = getSeedingOrder(numMatches / 2);
     // لكل عنصر x في النصف الأول، العنصر المقابل هو (عدد المباريات - 1 - x)
     return half.flatMap(x => [x, numMatches - 1 - x]);
+};
+
+// --- Helper: المنطق الأساسي لتوليد الجدول كاملاً (Smart Bracket Generation) ---
+const generateFullBracketAndStart = async (tournament, activeParticipants, session, io) => {
+    const maxParticipants = tournament.maxParticipants;
+    const totalRounds = Math.log2(maxParticipants);
+    
+    // 1. خلط المشاركين عشوائياً (Shuffle)
+    for (let i = activeParticipants.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
+    }
+
+    // 2. تحضير أزواج الجولة الأولى باستخدام التوزيع (Seeding)
+    const round1MatchesCount = maxParticipants / 2;
+    let round1Pairs = Array.from({ length: round1MatchesCount }, () => [null, null]);
+    
+    const seedingOrder = getSeedingOrder(round1MatchesCount);
+    let currentParticipantIdx = 0;
+
+    // ملء الخانة الأولى
+    for (let i = 0; i < seedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
+        const matchIndex = seedingOrder[i];
+        round1Pairs[matchIndex][0] = activeParticipants[currentParticipantIdx++];
+    }
+    // ملء الخانة الثانية (عكسياً)
+    const reverseSeedingOrder = [...seedingOrder].reverse();
+    for (let i = 0; i < reverseSeedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
+        const matchIndex = reverseSeedingOrder[i];
+        round1Pairs[matchIndex][1] = activeParticipants[currentParticipantIdx++];
+    }
+
+    const allMatchesToCreate = [];
+    
+    // خريطة لتتبع حالة المباريات: 'round-index' -> status
+    // نستخدمها لمعرفة ما إذا كانت الجولات القادمة ستكون ملغاة تلقائياً
+    const matchesStatusMap = {};
+
+    // 3. إنشاء الجولات بالتسلسل (من 1 إلى النهائي)
+    for (let r = 1; r <= totalRounds; r++) {
+        const matchesInRound = maxParticipants / Math.pow(2, r);
+        
+        for (let i = 0; i < matchesInRound; i++) {
+            let matchData = {
+                _id: new mongoose.Types.ObjectId(),
+                tournament: tournament._id,
+                round: r,
+                matchIndex: i,
+                status: 'scheduled',
+                isBye: false,
+                player1: null, player2: null,
+                player1Team: null, player2Team: null,
+                player1TeamLogo: null, player2TeamLogo: null,
+                winner: null
+            };
+
+            if (r === 1) {
+                // --- منطق الجولة الأولى ---
+                const p1 = round1Pairs[i][0];
+                const p2 = round1Pairs[i][1];
+
+                matchData.player1 = p1 ? p1.user : null;
+                matchData.player1Team = p1 ? p1.selectedTeam : null;
+                matchData.player1TeamLogo = p1 ? p1.selectedTeamLogo : null;
+
+                matchData.player2 = p2 ? p2.user : null;
+                matchData.player2Team = p2 ? p2.selectedTeam : null;
+                matchData.player2TeamLogo = p2 ? p2.selectedTeamLogo : null;
+
+                if (p1 && p2) {
+                    matchData.status = 'scheduled';
+                } else if (p1 && !p2) {
+                    // Bye للاعب 1
+                    matchData.isBye = true;
+                    matchData.status = 'completed';
+                    matchData.winner = p1.user;
+                    matchData.scorePlayer1 = 3; 
+                } else if (!p1 && p2) {
+                    // Bye للاعب 2
+                    matchData.isBye = true;
+                    matchData.status = 'completed';
+                    matchData.winner = p2.user;
+                    matchData.scorePlayer2 = 3;
+                } else {
+                    // لا يوجد لاعبين = مباراة ملغاة (مسار ميت)
+                    matchData.status = 'cancelled'; 
+                }
+
+            } else {
+                // --- منطق الجولات اللاحقة (2, 3, 4...) ---
+                // نتحقق من مصادر هذه المباراة (المباريات في الجولة السابقة)
+                // في النظام الشجري الثنائي: الوالدين هما i*2 و i*2+1 من الجولة السابقة
+                const parent1Index = i * 2;
+                const parent2Index = i * 2 + 1;
+                const prevRound = r - 1;
+
+                const parent1Status = matchesStatusMap[`${prevRound}-${parent1Index}`];
+                const parent2Status = matchesStatusMap[`${prevRound}-${parent2Index}`];
+
+                // إذا كان كلا الوالدين "ملغيين" (Cancelled)، فهذا يعني لن يأتي أحد لهذه المباراة أبداً
+                if (parent1Status === 'cancelled' && parent2Status === 'cancelled') {
+                    matchData.status = 'cancelled';
+                } 
+                // عدا ذلك تبقى 'scheduled' بانتظار الفائزين
+            }
+
+            // تسجيل الحالة لاستخدامها في حساب الجولة التالية
+            matchesStatusMap[`${r}-${i}`] = matchData.status;
+            allMatchesToCreate.push(matchData);
+        }
+    }
+
+    await Match.insertMany(allMatchesToCreate, { session });
+
+    tournament.status = 'active';
+    tournament.startDate = new Date();
+    await tournament.save({ session });
+
+    // إرجاع المباريات التي تحتاج لتصعيد فوري (Byes من الجولة الأولى)
+    const matchesToAdvance = allMatchesToCreate.filter(m => m.round === 1 && m.isBye && m.status === 'completed');
+    
+    return matchesToAdvance;
 };
 
 // ==========================================
@@ -32,6 +154,7 @@ exports.createTournament = async (req, res) => {
         const tournamentRules = {
             teamCategory: rules.teamCategory,
             matchDurationMinutes: rules.matchDurationMinutes,
+            breakDurationMinutes: rules.breakDurationMinutes || 10,
             eFootballMatchTime: rules.eFootballMatchTime,
             specificLeague: rules.specificLeague || null
         };
@@ -150,14 +273,22 @@ exports.joinTournament = async (req, res) => {
     } catch (error) {
         await session.abortTransaction();
         console.error("Join Tournament Error:", error);
-        res.status(400).json({ success: false, message: error.message || "Server error" });
+        
+        if (error.message.includes('Write conflict') || error.codeName === 'WriteConflict') {
+            return res.status(409).json({ success: false, message: "apiErrors.writeConflict" });
+        }
+        
+        res.status(400).json({ 
+            success: false, 
+            message: error.message.includes(' ') ? "apiErrors.serverError" : error.message 
+        });
     } finally {
         session.endSession();
     }
 };
 
 // ==========================================
-// 3. بدء البطولة (يدوياً)
+// 3. بدء البطولة (يدوياً) - تم تحديثها
 // ==========================================
 exports.startTournament = async (req, res) => {
     const session = await mongoose.startSession();
@@ -169,110 +300,34 @@ exports.startTournament = async (req, res) => {
 
         if (!tournament) throw new Error("Tournament not found");
         
-        if (tournament.status !== 'open' && tournament.status !== 'check-in') {
-             // throw new Error("Tournament status prevents starting");
-        }
-
         let activeParticipants = tournament.participants.filter(p => p.isCheckedIn);
-        
         if (activeParticipants.length === 0 && tournament.participants.length > 0) {
              activeParticipants = tournament.participants;
         }
 
-        const maxPlayers = tournament.maxParticipants;
-        
-        // Shuffle
-        for (let i = activeParticipants.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
-        }
-
-        // Smart Seeding Logic
-        const round1MatchesCount = maxPlayers / 2;
-        let round1Pairs = Array.from({ length: round1MatchesCount }, () => [null, null]);
-        
-        const seedingOrder = getSeedingOrder(round1MatchesCount);
-        let currentParticipantIdx = 0;
-        
-        // Fill Slot 1
-        for (let i = 0; i < seedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
-            const matchIndex = seedingOrder[i];
-            round1Pairs[matchIndex][0] = activeParticipants[currentParticipantIdx++];
-        }
-        
-        // Fill Slot 2 (Reverse)
-        const reverseSeedingOrder = [...seedingOrder].reverse();
-        for (let i = 0; i < reverseSeedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
-            const matchIndex = reverseSeedingOrder[i];
-            round1Pairs[matchIndex][1] = activeParticipants[currentParticipantIdx++];
-        }
-
-        const matchesToCreate = [];
-
-        for (let i = 0; i < round1MatchesCount; i++) {
-            const p1 = round1Pairs[i][0];
-            const p2 = round1Pairs[i][1];
-
-            let matchData = {
-                tournament: tournament._id,
-                round: 1,
-                matchIndex: i,
-                player1: p1 ? p1.user : null,
-                player2: p2 ? p2.user : null,
-                
-                // [!] حفظ الشعارات
-                player1Team: p1 ? p1.selectedTeam : null,
-                player1TeamLogo: p1 ? p1.selectedTeamLogo : null,
-                player2Team: p2 ? p2.selectedTeam : null,
-                player2TeamLogo: p2 ? p2.selectedTeamLogo : null,
-
-                status: 'scheduled',
-                isBye: false
-            };
-
-            if (p1 && !p2) {
-                matchData.isBye = true;
-                matchData.status = 'completed';
-                matchData.winner = p1.user;
-                matchData.scorePlayer1 = 3;
-            } else if (!p1 && p2) {
-                matchData.isBye = true;
-                matchData.status = 'completed';
-                matchData.winner = p2.user;
-                matchData.scorePlayer2 = 3;
-            } else if (!p1 && !p2) {
-                matchData.status = 'cancelled';
-            }
-
-            matchesToCreate.push(matchData);
-        }
-
-        await Match.insertMany(matchesToCreate, { session });
-
-        tournament.status = 'active';
-        tournament.startDate = new Date();
-        await tournament.save({ session });
+        // استخدام دالة التوليد الكاملة
+        const byeMatches = await generateFullBracketAndStart(tournament, activeParticipants, session, req.io);
 
         await session.commitTransaction();
         
-        // [!] تصعيد الفائزين بالـ Bye فوراً
-        const createdMatches = await Match.find({ 
-            tournament: tournament._id, 
-            round: 1, 
-            isBye: true, 
-            status: 'completed' 
-        });
-
-        for (const m of createdMatches) {
-            await advanceWinnerToNextRound(m, null);
+        // معالجة الصعود التلقائي (Byes) بعد الـ commit لضمان عمل التكرار (Recursion)
+        console.log(`[StartTournament] Processing ${byeMatches.length} Byes...`);
+        for (const m of byeMatches) {
+            try {
+                // جلب النسخة المحدثة من القاعدة
+                const matchDoc = await Match.findById(m._id); 
+                // نمرر null كـ session ليقوم المحرك بإدارة الترانزكشن الخاصة به
+                await advanceWinnerToNextRound(matchDoc, null);
+            } catch (err) {
+                console.error(`Failed to advance match ${m._id}:`, err);
+            }
         }
 
         if (req.io) req.io.emit('tournament_updated', { _id: tournament._id, status: 'active' });
 
         res.status(200).json({
             success: true,
-            message: "Tournament started successfully",
-            matchesCount: matchesToCreate.length
+            message: "Tournament started successfully with full bracket."
         });
 
     } catch (error) {
@@ -285,7 +340,7 @@ exports.startTournament = async (req, res) => {
 };
 
 // ==========================================
-// 8. CRON JOB (التلقائي)
+// 8. CRON JOB (التلقائي) - تم تحديثها
 // ==========================================
 exports.checkAndStartScheduledTournaments = async (io) => {
     const session = await mongoose.startSession();
@@ -302,6 +357,7 @@ exports.checkAndStartScheduledTournaments = async (io) => {
         console.log(`[Tournament Cron] Found ${tournamentsToStart.length} tournaments.`);
 
         for (const tournament of tournamentsToStart) {
+            // نبدأ معاملة جديدة لكل بطولة لتجنب تعطل الكل بسبب واحدة
             session.startTransaction();
             try {
                 const t = await Tournament.findById(tournament._id).session(session);
@@ -312,15 +368,15 @@ exports.checkAndStartScheduledTournaments = async (io) => {
                 }
 
                 const maxPlayers = t.maxParticipants;
-                const minPlayersToStart = 2;
-
-                if (activeParticipants.length < minPlayersToStart || 
+                // يجب توفر لاعبين اثنين على الأقل
+                if (activeParticipants.length < 2 || 
                    (activeParticipants.length < maxPlayers && t.incompleteAction === 'cancel')) {
                     
                     console.log(`[Tournament Cron] Cancelling tournament ${t.title}`);
                     t.status = 'cancelled';
                     await t.save({ session });
 
+                    // إعادة الأموال
                     for (const p of t.participants) {
                         const user = await User.findById(p.user).session(session);
                         if (user) {
@@ -348,100 +404,34 @@ exports.checkAndStartScheduledTournaments = async (io) => {
                             }], { session });
 
                             if (io) {
-                                io.to(user._id.toString()).emit('user_balances_updated', { 
-                                    _id: user._id, 
-                                    balance: user.balance 
-                                });
-                                io.to(user._id.toString()).emit('dashboard_transactions_updated');
+                                io.to(user._id.toString()).emit('user_balances_updated', { _id: user._id, balance: user.balance });
                             }
                         }
                     }
-                    
                     if (io) io.emit('tournament_updated', { _id: t._id, status: 'cancelled' });
 
                 } else {
-                    // Start (Smart Seeding + Logo Saving)
+                    // بدء البطولة وتوليد الجدول الكامل
                     console.log(`[Tournament Cron] Starting tournament ${t.title}`);
+                    const byeMatches = await generateFullBracketAndStart(t, activeParticipants, session, io);
                     
-                    for (let i = activeParticipants.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
-                    }
+                    await session.commitTransaction();
 
-                    const round1MatchesCount = maxPlayers / 2;
-                    let round1Pairs = Array.from({ length: round1MatchesCount }, () => [null, null]);
+                    // معالجة الـ Byes بعد الـ Commit
+                    for (const m of byeMatches) {
+                        const matchDoc = await Match.findById(m._id);
+                        await advanceWinnerToNextRound(matchDoc, null);
+                    }
+                    if (io) io.emit('tournament_updated', { _id: t._id, status: 'active' });
                     
-                    const seedingOrder = getSeedingOrder(round1MatchesCount);
-                    let currentParticipantIdx = 0;
-                    
-                    for (let i = 0; i < seedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
-                        const matchIndex = seedingOrder[i];
-                        round1Pairs[matchIndex][0] = activeParticipants[currentParticipantIdx++];
-                    }
-                    const reverseSeedingOrder = [...seedingOrder].reverse();
-                    for (let i = 0; i < reverseSeedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
-                        const matchIndex = reverseSeedingOrder[i];
-                        round1Pairs[matchIndex][1] = activeParticipants[currentParticipantIdx++];
-                    }
-
-                    const matchesToCreate = [];
-                    for (let i = 0; i < round1MatchesCount; i++) {
-                        const p1 = round1Pairs[i][0];
-                        const p2 = round1Pairs[i][1];
-                        let matchData = {
-                            tournament: t._id,
-                            round: 1,
-                            matchIndex: i,
-                            player1: p1 ? p1.user : null,
-                            player2: p2 ? p2.user : null,
-                            
-                            // [!] حفظ الشعارات
-                            player1Team: p1 ? p1.selectedTeam : null,
-                            player1TeamLogo: p1 ? p1.selectedTeamLogo : null,
-                            player2Team: p2 ? p2.selectedTeam : null,
-                            player2TeamLogo: p2 ? p2.selectedTeamLogo : null,
-
-                            status: 'scheduled',
-                            isBye: false
-                        };
-                        if (p1 && !p2) {
-                            matchData.isBye = true;
-                            matchData.status = 'completed';
-                            matchData.winner = p1.user;
-                            matchData.scorePlayer1 = 3;
-                        } else if (!p1 && p2) {
-                            matchData.isBye = true;
-                            matchData.status = 'completed';
-                            matchData.winner = p2.user;
-                            matchData.scorePlayer2 = 3;
-                        } else if (!p1 && !p2) {
-                            matchData.status = 'cancelled';
-                        }
-                        matchesToCreate.push(matchData);
-                    }
-
-                    await Match.insertMany(matchesToCreate, { session });
-                    t.status = 'active';
-                    t.startDate = now;
-                    await t.save({ session });
-
-                    if (io) {
-                        io.emit('tournament_updated', { _id: t._id, status: 'active' });
-                    }
+                    // ننتقل للدورة التالية فوراً
+                    continue; 
                 }
 
                 await session.commitTransaction();
 
-                // [!] التصعيد التلقائي بعد الكوميت (للـ Cron)
-                if (t.status === 'active') {
-                    const createdMatches = await Match.find({ tournament: t._id, round: 1, isBye: true, status: 'completed' });
-                    for (const m of createdMatches) {
-                        await advanceWinnerToNextRound(m, null);
-                    }
-                }
-
             } catch (err) {
-                await session.abortTransaction();
+                if (session.inTransaction()) await session.abortTransaction();
                 console.error(`[Tournament Cron] Error processing tournament ${tournament._id}:`, err);
             }
         }

@@ -51,7 +51,8 @@ const TournamentSchema = new mongoose.Schema({
       required: true 
     },
     specificLeague: { type: mongoose.Schema.Types.ObjectId, ref: 'League', default: null },
-    matchDurationMinutes: { type: Number, default: 15 }, 
+    matchDurationMinutes: { type: Number, default: 15 },
+    breakDurationMinutes: { type: Number, default: 10 },
     eFootballMatchTime: { type: String, default: '6 mins' },
     extraTime: { type: Boolean, default: true },
     penalties: { type: Boolean, default: true }

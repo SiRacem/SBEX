@@ -1317,7 +1317,8 @@
     "serverError": "Erreur serveur. Veuillez réessayer plus tard.",
     "Account_blocked": "Votre compte est bloqué. Veuillez contacter le support.",
     "userMuted": "Vous êtes mis en sourdine. Réessayez dans {{minutes}} minutes.",
-    "spamCooldown": "Veuillez patienter un moment avant d'envoyer un autre message."
+    "spamCooldown": "Veuillez patienter un moment avant d'envoyer un autre message.",
+    "writeConflict": "Un conflit de données est survenu. Veuillez réessayer."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",

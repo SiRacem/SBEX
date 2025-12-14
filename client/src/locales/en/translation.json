@@ -1319,7 +1319,8 @@
     "serverError": "Server error. Please try again later.",
     "Account_blocked": "Your account is blocked. Please contact support.",
     "userMuted": "You are muted. Try again in {{minutes}} minutes.",
-    "spamCooldown": "Please wait a moment before sending another message."
+    "spamCooldown": "Please wait a moment before sending another message.",
+    "writeConflict": "Data conflict occurred. Please try again."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
