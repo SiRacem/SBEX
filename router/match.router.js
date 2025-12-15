@@ -19,6 +19,7 @@ router.post('/:matchId/confirm', verifyAuth, matchController.confirmResult);
 // 2. النزاعات (Disputes)
 // ==========================================
 router.post('/:matchId/dispute', verifyAuth, matchController.reportDispute);
+router.post('/:matchId/resolve', verifyAuth, matchController.resolveDispute);
 
 // ==========================================
 // 3. الأتمتة والإدارة (Admin Only)

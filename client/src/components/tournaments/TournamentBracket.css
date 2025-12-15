@@ -80,8 +80,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px; /* حشو داخلي أقل */
-    transition: background 0.2s;
     border-left: 3px solid transparent;
+    transition: background 0.5s ease, border-left-color 0.5s ease;
 }
 
 .match-player.winner {
@@ -147,6 +147,7 @@
     min-width: 24px;
     text-align: center;
     font-size: 0.8rem;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* Divider & Footer */
@@ -208,4 +209,82 @@
     height: 2px;
     background: #334155;
     z-index: -1;
+}
+
+/* --- New Animations --- */
+
+/* 1. تأثير ظهور اللاعب في الخانة (Slide In) */
+@keyframes slideInFromRight {
+    0% {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.player-info-enhanced.animate-entry {
+    animation: slideInFromRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 2. تأثير وميض البطاقة عند التحديث (Pulse) */
+@keyframes cardUpdatePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        border-color: #3b82f6;
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+        border-color: #3b82f6;
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        border-color: #334155;
+    }
+}
+
+.match-card.just-updated {
+    animation: cardUpdatePulse 1s ease-out;
+}
+
+.match-card:hover .score-badge {
+    transform: scale(1.1);
+}
+
+/* Dispute Style */
+.match-card.dispute-card {
+    border-color: #ef4444 !important; /* أحمر */
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.match-card.dispute-card .match-status-bar {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+.match-card.dispute-card .status-text {
+    color: #fca5a5 !important; /* لون نص أحمر فاتح */
+    font-weight: bold;
+}
+
+/* شارة قرار الأدمن */
+.admin-resolution-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #f59e0b; /* برتقالي */
+    color: #000;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 10;
+    border: 2px solid #1e293b;
 }

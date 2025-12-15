@@ -214,16 +214,28 @@ async function runAutoConfirmJob(io) {
         }
         await session.commitTransaction();
 
-        // معالجة التصعيد خارج الترانزكشن لتجنب المشاكل مع التكرار
+        // معالجة التصعيد والإشعارات
         for (const match of pendingMatches) {
+            // 1. تصعيد الفائز
             await advanceWinnerToNextRound(match, null);
             processedCount++;
+
+            // 2. إرسال إشعار السوكيت (التصحيح هنا)
             if (io) {
-                io.to(match._id.toString()).emit('match_updated', {
+                // [تصحيح هام] يجب إضافة 'match_' لاسم الغرفة لتطابق الفرونت إند
+                const roomName = `match_${match._id.toString()}`;
+                
+                io.to(roomName).emit('match_updated', {
                     _id: match._id,
                     status: 'completed',
-                    winner: match.winner
+                    winner: match.winner,
+                    scorePlayer1: match.scorePlayer1,
+                    scorePlayer2: match.scorePlayer2,
+                    tournament: match.tournament // مهم لتحديث الجدول
                 });
+
+                // إرسال تحديث للبطولة أيضاً لتحديث الجدول عند المتفرجين
+                io.emit('tournament_updated', { _id: match.tournament });
             }
         }
     } catch (error) {

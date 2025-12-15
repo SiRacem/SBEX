@@ -10,9 +10,9 @@ const MatchSchema = new mongoose.Schema({
   player2: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
   player1Team: { type: String },
-  player1TeamLogo: { type: String }, // [جديد]
+  player1TeamLogo: { type: String }, 
   player2Team: { type: String },
-  player2TeamLogo: { type: String }, // [جديد]
+  player2TeamLogo: { type: String }, 
 
   isBye: { type: Boolean, default: false },
 
@@ -26,8 +26,14 @@ const MatchSchema = new mongoose.Schema({
   loser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, 
   
   roomID: { type: String }, 
+  
+  // النتيجة الأساسية
   scorePlayer1: { type: Number, default: 0 },
   scorePlayer2: { type: Number, default: 0 },
+
+  // [جديد] ركلات الترجيح (تستخدم فقط عند التعادل)
+  penaltiesPlayer1: { type: Number, default: 0 },
+  penaltiesPlayer2: { type: Number, default: 0 },
 
   proofScreenshot: { type: String },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -41,7 +47,6 @@ const MatchSchema = new mongoose.Schema({
     resolvedAt: { type: Date }
   },
   
-  // شات المباراة (مهم لحفظ التاريخ)
   chatMessages: [{
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     senderName: String,

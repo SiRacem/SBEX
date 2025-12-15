@@ -646,6 +646,11 @@
     }
   },
   "admin": {
+    "resolutionTitle": "Résolution Admin",
+    "resolutionDesc": "Le match est en litige. Veuillez examiner la preuve et déclarer le vainqueur manuellement. Cela annulera le litige et fera avancer le joueur sélectionné.",
+    "viewProof": "Voir la preuve",
+    "winBtn": "Victoire {{team}}",
+    "confirmResolve": "Êtes-vous sûr ? Cette action est définitive et fera avancer le gagnant sélectionné.",
     "leagues": {
       "title": "Gestion des ligues et équipes",
       "addLeague": "Ajouter une ligue",
@@ -2860,6 +2865,10 @@
     "tbd": "À déterminer",
     "waiting": "En attente...",
     "vs": "VS",
+    "fillAllFields": "Veuillez remplir tous les champs (Score et Preuve).",
+    "drawDetected": "Match nul détecté ! Veuillez saisir le score des tirs au but.",
+    "noDrawInPenalties": "Les tirs au but ne peuvent pas finir par un match nul !",
+    "enterPenaltiesInfo": "Entrez le résultat des tirs au but.",
     "chat": {
       "title": "Chat du match",
       "welcome": "Bienvenue ! Partagez votre ID et commencez le jeu.",
@@ -2889,7 +2898,8 @@
     },
     "toasts": {
       "resultSubmitted": "Résultat soumis ! En attente de confirmation.",
-      "matchCompleted": "Confirmé ! Match terminé."
+      "matchCompleted": "Confirmé ! Match terminé.",
+      "disputeOpened": "Résultat rejeté, litige ouvert."
     }
   },
   "joinModal": {

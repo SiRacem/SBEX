@@ -2,9 +2,8 @@
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
-const User = require('../models/User'); // قد نحتاجه للإشعارات
+const User = require('../models/User'); 
 const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
-// const notificationService = require('../services/notificationService'); // لاحقاً
 
 // ==========================================
 // 1. رفع النتيجة (Submit Score / Proof)
@@ -12,7 +11,7 @@ const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
 exports.submitResult = async (req, res) => {
     try {
         const { matchId } = req.params;
-        const { scoreMy, scoreOpponent, proofScreenshot } = req.body;
+        const { scoreMy, scoreOpponent, penaltiesMy, penaltiesOpponent, proofScreenshot } = req.body;
         const userId = req.user.id;
 
         const match = await Match.findById(matchId);
@@ -30,49 +29,77 @@ exports.submitResult = async (req, res) => {
             return res.status(400).json({ message: "Match is not active or already completed" });
         }
 
+        // [جديد] التحقق من التعادل وركلات الترجيح
+        if (parseInt(scoreMy) === parseInt(scoreOpponent)) {
+            if (penaltiesMy === undefined || penaltiesOpponent === undefined || penaltiesMy === '' || penaltiesOpponent === '') {
+                return res.status(400).json({ message: "Draw score requires penalties result." });
+            }
+            if (parseInt(penaltiesMy) === parseInt(penaltiesOpponent)) {
+                return res.status(400).json({ message: "Penalties cannot end in a draw." });
+            }
+        }
+
         // تحديث حالة المباراة للمراجعة
         match.status = 'review';
         match.submittedBy = userId;
-        match.proofScreenshot = proofScreenshot; // رابط الصورة من Cloudinary/Multer
+        match.proofScreenshot = proofScreenshot;
         
-        // حفظ النتيجة المقترحة (مؤقتاً)
+        // حفظ النتيجة المقترحة
         if (isPlayer1) {
             match.scorePlayer1 = scoreMy;
             match.scorePlayer2 = scoreOpponent;
+            // حفظ ركلات الترجيح إن وجدت
+            if (penaltiesMy !== undefined) match.penaltiesPlayer1 = penaltiesMy;
+            if (penaltiesOpponent !== undefined) match.penaltiesPlayer2 = penaltiesOpponent;
         } else {
             match.scorePlayer2 = scoreMy;
             match.scorePlayer1 = scoreOpponent;
+            // حفظ ركلات الترجيح إن وجدت
+            if (penaltiesMy !== undefined) match.penaltiesPlayer2 = penaltiesMy;
+            if (penaltiesOpponent !== undefined) match.penaltiesPlayer1 = penaltiesOpponent;
         }
 
-        // تحديد الفائز المبدئي بناءً على الأرقام المدخلة
-        // (ملاحظة: هذا مجرد اقتراح، الاعتماد النهائي يتطلب تأكيد الخصم أو الأدمن)
-        if (scoreMy > scoreOpponent) {
-            match.winner = userId; 
-            match.loser = isPlayer1 ? match.player2 : match.player1;
+        // تحديد الفائز المبدئي (Tentative Winner)
+        let tentativeWinnerId = null;
+        let tentativeLoserId = null;
+
+        if (parseInt(scoreMy) > parseInt(scoreOpponent)) {
+            tentativeWinnerId = userId;
+            tentativeLoserId = isPlayer1 ? match.player2 : match.player1;
+        } else if (parseInt(scoreOpponent) > parseInt(scoreMy)) {
+            tentativeWinnerId = isPlayer1 ? match.player2 : match.player1;
+            tentativeLoserId = userId;
         } else {
-             // منطق غريب أن يرفع شخص أنه خسر ومعه صورة، لكن ندعمها
-            match.loser = userId;
-            match.winner = isPlayer1 ? match.player2 : match.player1;
+            // حالة التعادل: الاحتكام لركلات الترجيح
+            if (parseInt(penaltiesMy) > parseInt(penaltiesOpponent)) {
+                tentativeWinnerId = userId;
+                tentativeLoserId = isPlayer1 ? match.player2 : match.player1;
+            } else {
+                tentativeWinnerId = isPlayer1 ? match.player2 : match.player1;
+                tentativeLoserId = userId;
+            }
         }
+
+        match.winner = tentativeWinnerId;
+        match.loser = tentativeLoserId;
 
         await match.save();
 
-        // [جديد] إعلام الجميع في الغرفة بأن المباراة تحدثت
+        // إعلام الجميع في الغرفة بأن المباراة تحدثت
         if (req.io) {
-            // نرسل المباراة المحدثة بالكامل
             const updatedMatch = await Match.findById(matchId)
                 .populate('player1', 'fullName avatarUrl')
                 .populate('player2', 'fullName avatarUrl')
                 .populate('winner', 'fullName');
                 
             req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
+            // إرسال تحديث للجدول العام أيضاً
+            req.io.emit('match_updated', updatedMatch);
         }
-
-        // إشعار الخصم لتأكيد النتيجة (ToDo: Socket.io)
         
         res.status(200).json({ 
             success: true, 
-            message: "matchRoom.toasts.resultSubmitted", // [!] مفتاح ترجمة بدلاً من النص
+            message: "matchRoom.toasts.resultSubmitted",
             match 
         });
 
@@ -91,87 +118,132 @@ exports.confirmResult = async (req, res) => {
 
     try {
         const { matchId } = req.params;
-        const userId = req.user.id; // المستخدم الذي يضغط "Confirm"
+        const { action } = req.body; // 'confirm' or 'reject'
+        const userId = req.user.id;
 
-        // 1. جلب المباراة ضمن جلسة المعاملة (Transaction Session)
         const match = await Match.findById(matchId).session(session);
         
-        if (!match) {
-            throw new Error("Match not found");
-        }
+        if (!match) throw new Error("Match not found");
 
-        // 2. التحقق من الحالة
         if (match.status !== 'review') {
             throw new Error("No result submitted to confirm, or match is not in review state.");
         }
 
-        // 3. التحقق من أن المُؤكِّد ليس هو نفس الشخص الذي رفع النتيجة
-        if (match.submittedBy && match.submittedBy.toString() === userId) {
-            throw new Error("You cannot confirm your own submission. Wait for the opponent or auto-confirmation.");
+        // منطق الرفض (Reject) -> فتح نزاع
+        if (action === 'reject') {
+            match.status = 'dispute';
+            match.dispute = {
+                isOpen: true,
+                openedBy: userId,
+                reason: "Result rejected by opponent",
+                resolvedAt: null
+            };
+            await match.save({ session });
+            await session.commitTransaction();
+
+            if (req.io) {
+                const updatedMatch = await Match.findById(matchId)
+                    .populate('player1', 'fullName avatarUrl')
+                    .populate('player2', 'fullName avatarUrl');
+                req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
+                req.io.emit('match_updated', updatedMatch);
+            }
+            return res.status(200).json({ success: true, message: "Dispute opened successfully" });
         }
 
-        // 4. اعتماد النتيجة نهائياً
+        // منطق التأكيد (Confirm)
+        if (match.submittedBy && match.submittedBy.toString() === userId) {
+            throw new Error("You cannot confirm your own submission.");
+        }
+
+        // التأكد من الفائز النهائي (إعادة حساب للأمان)
+        let finalWinnerId, finalLoserId;
+
+        if (match.scorePlayer1 > match.scorePlayer2) {
+            finalWinnerId = match.player1;
+            finalLoserId = match.player2;
+        } else if (match.scorePlayer2 > match.scorePlayer1) {
+            finalWinnerId = match.player2;
+            finalLoserId = match.player1;
+        } else {
+            // حالة التعادل -> ركلات الترجيح
+            if (match.penaltiesPlayer1 > match.penaltiesPlayer2) {
+                finalWinnerId = match.player1;
+                finalLoserId = match.player2;
+            } else {
+                finalWinnerId = match.player2;
+                finalLoserId = match.player1;
+            }
+        }
+
+        match.winner = finalWinnerId;
+        match.loser = finalLoserId;
         match.status = 'completed';
         
-        // حفظ التغييرات
         await match.save({ session });
 
-        // 5. [الخطوة الحاسمة] تصعيد الفائز للدور التالي أو إنهاء البطولة
-        // نمرر الـ match والـ session لضمان تكامل البيانات
+        // تصعيد الفائز
         await advanceWinnerToNextRound(match, session);
 
-        // 6. اعتماد المعاملة (Commit)
         await session.commitTransaction();
+
+        if (req.io) {
+            const updatedMatch = await Match.findById(matchId)
+                .populate('player1', 'fullName avatarUrl')
+                .populate('player2', 'fullName avatarUrl')
+                .populate('winner', 'fullName');
+            req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
+            req.io.emit('match_updated', updatedMatch);
+        }
         
-        // إرسال رد النجاح
         res.status(200).json({ 
             success: true, 
-            message: "Result confirmed successfully. Winner has been advanced." 
+            message: "Result confirmed successfully." 
         });
 
     } catch (error) {
-        // التراجع عن التغييرات في حال حدوث أي خطأ
         await session.abortTransaction();
         console.error("Confirm Result Error:", error);
-        
         res.status(400).json({ 
             success: false, 
             message: error.message || "Server error during confirmation" 
         });
     } finally {
-        // إنهاء الجلسة
         session.endSession();
     }
 };
 
 // ==========================================
-// 3. النزاعات (Dispute) - للأدمن أو المستخدم
+// 3. النزاعات (Dispute)
 // ==========================================
 exports.reportDispute = async (req, res) => {
-    // سنضيف منطق النزاع لاحقاً (بسيط نسبياً: تغيير الحالة لـ dispute وحفظ السبب)
-    // ...
-};
+    try {
+        const { matchId } = req.params;
+        const { reason, proofImage } = req.body;
+        const userId = req.user.id;
 
+        const match = await Match.findById(matchId);
+        if (!match) return res.status(404).json({ message: "Match not found" });
 
-// ==========================================
-// دالة مساعدة: إعلان الفائز بالبطولة
-// ==========================================
-async function declareTournamentWinner(tournamentId, winnerId, session) {
-    const tournament = await Tournament.findById(tournamentId).session(session);
-    tournament.status = 'completed';
-    
-    // تحديث حالة الفائز في قائمة المشاركين
-    const winnerParticipant = tournament.participants.find(p => p.user.toString() === winnerId.toString());
-    if (winnerParticipant) {
-        winnerParticipant.status = 'winner';
+        match.status = 'dispute';
+        match.dispute = {
+            isOpen: true,
+            openedBy: userId,
+            reason,
+            proofImage
+        };
+        await match.save();
+
+        if (req.io) {
+            req.io.to(`match_${matchId}`).emit('match_updated', match);
+            req.io.emit('match_updated', match);
+        }
+
+        res.status(200).json({ success: true, message: "Dispute submitted" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error" });
     }
-
-    await tournament.save({ session });
-
-    // هنا يتم استدعاء دالة تحويل الأموال للفائز (سنكتبها في ملف walletController لاحقاً)
-    // await distributePrizes(tournament, winnerId, session); 
-    console.log(`Tournament ${tournament.title} Finished. Winner: ${winnerId}`);
-}
+};
 
 // ==========================================
 // 4. الاعتماد التلقائي للنتائج (Auto Confirm)
@@ -181,13 +253,8 @@ exports.autoConfirmMatches = async (req, res) => {
     session.startTransaction();
 
     try {
-        // نحدد الوقت: قبل 5 دقائق من الآن
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-        // نبحث عن المباريات التي:
-        // 1. حالتها 'review' (تم رفع نتيجة)
-        // 2. آخر تحديث لها كان قبل أكثر من 5 دقائق
-        // 3. ليست في حالة نزاع (dispute)
         const pendingMatches = await Match.find({
             status: 'review',
             updatedAt: { $lte: fiveMinutesAgo },
@@ -203,29 +270,29 @@ exports.autoConfirmMatches = async (req, res) => {
         const confirmedMatchesIds = [];
 
         for (const match of pendingMatches) {
-            // نعتمد النتيجة تلقائياً
             match.status = 'completed';
-            
-            // إضافة ملاحظة في الـ Logs (اختياري)
-            console.log(`Auto-confirming match ${match._id}`);
-
+            // الفائز محدد مسبقاً في submitResult، لذا نعتمد عليه
             await match.save({ session });
-            
-            // تصعيد الفائز
-            // ملاحظة: دالة advanceWinnerToNextRound يجب أن تكون متاحة هنا
-            // تأكد من تمرير الـ session للحفاظ على التزامن
             await advanceWinnerToNextRound(match, session);
-
             confirmedMatchesIds.push(match._id);
         }
 
         await session.commitTransaction();
+        
+        // إشعار بالسوكيت
+        if (req.io && confirmedMatchesIds.length > 0) {
+            confirmedMatchesIds.forEach(async (id) => {
+                const m = await Match.findById(id).populate('winner', 'fullName');
+                req.io.to(`match_${id}`).emit('match_updated', m);
+                req.io.emit('match_updated', m);
+            });
+        }
+
         session.endSession();
 
         res.status(200).json({
             success: true,
             count: confirmedMatchesIds.length,
-            confirmedMatches: confirmedMatchesIds,
             message: `Successfully auto-confirmed ${confirmedMatchesIds.length} matches.`
         });
 
@@ -234,5 +301,73 @@ exports.autoConfirmMatches = async (req, res) => {
         session.endSession();
         console.error("Auto Confirm Error:", error);
         res.status(500).json({ message: "Server error during auto-confirm" });
+    }
+};
+
+// ==========================================
+// 5. حل النزاع (Admin Only)
+// ==========================================
+exports.resolveDispute = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { matchId } = req.params;
+        const { winnerId } = req.body; // الأدمن يرسل ID الفائز المختار
+        
+        // تحقق أن المستخدم أدمن (يمكنك إضافتها في Middleware أيضاً)
+        if (req.user.userRole !== 'Admin') {
+            throw new Error("Unauthorized: Admins only.");
+        }
+
+        const match = await Match.findById(matchId).session(session);
+        if (!match) throw new Error("Match not found");
+
+        // تحديد الفائز والخاسر بناءً على قرار الأدمن
+        if (winnerId === match.player1.toString()) {
+            match.winner = match.player1;
+            match.loser = match.player2;
+            // يمكن للأدمن تعديل النتيجة يدوياً هنا لو أردنا، لكن سنبقيها كما هي
+        } else if (winnerId === match.player2.toString()) {
+            match.winner = match.player2;
+            match.loser = match.player1;
+        } else {
+            throw new Error("Selected winner is not a participant.");
+        }
+
+        match.status = 'completed';
+        match.dispute.isOpen = false;
+        match.dispute.adminDecision = "Resolved by Admin";
+        match.dispute.resolvedAt = new Date();
+
+        await match.save({ session });
+
+        // تصعيد الفائز
+        const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
+        await advanceWinnerToNextRound(match, session);
+
+        await session.commitTransaction();
+
+        // إشعار الجميع
+        if (req.io) {
+            const updatedMatch = await Match.findById(matchId)
+                .populate('player1', 'fullName avatarUrl')
+                .populate('player2', 'fullName avatarUrl')
+                .populate('winner', 'fullName');
+            
+            const roomName = `match_${matchId}`;
+            req.io.to(roomName).emit('match_updated', updatedMatch);
+            req.io.emit('tournament_updated', { _id: match.tournament });
+            req.io.emit('match_updated', updatedMatch); // للجدول
+        }
+
+        res.status(200).json({ success: true, message: "Dispute resolved, winner advanced." });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error("Resolve Dispute Error:", error);
+        res.status(500).json({ message: error.message });
+    } finally {
+        session.endSession();
     }
 };

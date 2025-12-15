@@ -648,6 +648,11 @@
     }
   },
   "admin": {
+    "resolutionTitle": "Admin Resolution",
+    "resolutionDesc": "The match is in dispute. Please review the proof and declare the winner manually. This will override the dispute and advance the selected player.",
+    "viewProof": "View Proof Image",
+    "winBtn": "Win {{team}}",
+    "confirmResolve": "Are you sure? This action is final and will advance the selected winner.",
     "leagues": {
       "title": "Leagues & Teams Management",
       "addLeague": "Add New League",
@@ -2865,6 +2870,10 @@
     "tbd": "TBD",
     "waiting": "Waiting...",
     "vs": "VS",
+    "fillAllFields": "Please fill in all fields (Score & Proof).", 
+    "drawDetected": "Draw Detected! Please enter penalties score.",
+    "noDrawInPenalties": "Penalties cannot end in a draw!",
+    "enterPenaltiesInfo": "Enter the penalty shootout result.",
     "chat": {
       "title": "Match Chat",
       "welcome": "Welcome to the match room! Share your ID and start the game.",
@@ -2894,7 +2903,8 @@
     },
     "toasts": {
       "resultSubmitted": "Result Submitted! Waiting for confirmation.",
-      "matchCompleted": "Confirmed! Match Completed."
+      "matchCompleted": "Confirmed! Match Completed.",
+      "disputeOpened": "Result rejected, dispute opened."
     }
   },
   "joinModal": {

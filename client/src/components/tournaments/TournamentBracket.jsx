@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getTournamentMatches } from '../../redux/actions/tournamentAction';
 import { useNavigate } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
+import { SocketContext } from '../../App';
+import { FaGavel } from 'react-icons/fa'; // [جديد]
 import './TournamentBracket.css';
 import { WAITING_IMG, DEAD_IMG } from './TournamentImages';
 
@@ -11,6 +13,8 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const socket = useContext(SocketContext);
+    
     const { matches, loadingMatches } = useSelector(state => state.tournamentReducer);
 
     useEffect(() => {
@@ -19,12 +23,25 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
         }
     }, [dispatch, tournamentId]);
 
+    useEffect(() => {
+        if (socket) {
+            socket.on('match_updated', (updatedMatch) => {
+                if (updatedMatch.tournament === tournamentId) {
+                    dispatch(getTournamentMatches(tournamentId));
+                }
+            });
+            socket.on('tournament_updated', (data) => {
+                if (data._id === tournamentId) {
+                    dispatch(getTournamentMatches(tournamentId));
+                }
+            });
+        }
+    }, [socket, tournamentId, dispatch]);
+
     if (loadingMatches) return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
 
-    // حساب عدد الجولات
     const totalRounds = Math.log2(maxParticipants || 16);
 
-    // تجميع المباريات حسب الجولة
     const matchesByRound = matches.reduce((acc, match) => {
         acc[match.round] = acc[match.round] || [];
         acc[match.round].push(match);
@@ -34,7 +51,6 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
     const bracketStructure = [];
 
     for (let r = 1; r <= totalRounds; r++) {
-        // ترتيب المباريات حسب index لضمان الرسم الصحيح
         const roundMatches = (matchesByRound[r] || []).sort((a, b) => a.matchIndex - b.matchIndex);
         bracketStructure.push({ round: r, matches: roundMatches });
     }
@@ -60,7 +76,6 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
                             key={match._id}
                             match={match}
                             onClick={() => {
-                                // السماح بالضغط فقط إذا كانت المباراة حقيقية
                                 if (match.status !== 'cancelled' && (match.player1 || match.player2)) {
                                     navigate(`/dashboard/match/${match._id}`);
                                 }
@@ -74,9 +89,15 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
     );
 };
 
-// --- Sub-Component: Match Card ---
 const MatchCard = ({ match, onClick, t }) => {
-    // Helper للصورة
+    const [animateClass, setAnimateClass] = useState('');
+
+    useEffect(() => {
+        setAnimateClass('just-updated');
+        const timer = setTimeout(() => setAnimateClass(''), 1000);
+        return () => clearTimeout(timer);
+    }, [match.status, match.winner, match.player1]); 
+
     const getImg = (url) => {
         if (!url) return WAITING_IMG;
         if (url.startsWith('data:') || url.startsWith('http')) return url;
@@ -84,7 +105,6 @@ const MatchCard = ({ match, onClick, t }) => {
         return `${baseUrl}/${url}`;
     };
 
-    // 1. حالة الإلغاء (المسارات الميتة)
     if (match.status === 'cancelled') {
         return (
             <div className="match-card placeholder cancelled-slot">
@@ -96,7 +116,6 @@ const MatchCard = ({ match, onClick, t }) => {
         );
     }
 
-    // 2. حالة الانتظار (لم يتحدد أي طرف بعد)
     if (!match.player1 && !match.player2 && match.status === 'scheduled') {
         return (
             <div className="match-card placeholder">
@@ -109,26 +128,32 @@ const MatchCard = ({ match, onClick, t }) => {
         );
     }
 
-    // 3. المباراة النشطة أو المكتملة
     const isP1Winner = match.winner && match.player1 && match.winner === match.player1._id;
     const isP2Winner = match.winner && match.player2 && match.winner === match.player2._id;
 
     const statusClass = `status-${match.status}`;
+    const disputeClass = match.status === 'dispute' ? 'dispute-card' : '';
+    
+    // [جديد] التحقق من قرار الأدمن (لإظهار المطرقة)
+    const isAdminResolved = match.dispute && match.dispute.adminDecision;
 
-    const renderPlayer = (player, teamName, teamLogo, isWinner, score) => {
+    const hasPenalties = (match.penaltiesPlayer1 !== undefined && match.penaltiesPlayer1 !== null) || 
+                         (match.penaltiesPlayer2 !== undefined && match.penaltiesPlayer2 !== null);
+
+    const renderPlayer = (player, teamName, teamLogo, isWinner, score, penaltyScore) => {
         let displayImg = WAITING_IMG;
-        
         if (teamLogo) displayImg = getImg(teamLogo);
         else if (player && player.avatarUrl) displayImg = getImg(player.avatarUrl);
 
-        // إذا كانت Bye ولا يوجد لاعب، اعرض صورة X
         if (match.isBye && !player) {
             displayImg = DEAD_IMG;
         }
 
+        const animationKey = player ? player._id : (match.isBye ? 'bye' : 'empty');
+
         return (
             <div className={`match-player ${isWinner ? 'winner' : ''}`}>
-                <div className="player-info-enhanced">
+                <div key={animationKey} className="player-info-enhanced animate-entry">
                     <img
                         src={displayImg}
                         className="player-avatar-main"
@@ -146,20 +171,34 @@ const MatchCard = ({ match, onClick, t }) => {
                     </div>
                 </div>
 
-                <span className="score-badge">
-                    {match.status === 'scheduled' ? '-' : score}
-                </span>
+                <div className="d-flex flex-column align-items-center">
+                    <span className="score-badge">
+                        {match.status === 'scheduled' ? '-' : score}
+                    </span>
+                    {hasPenalties && (
+                        <span style={{fontSize: '0.65rem', color: '#f59e0b', marginTop: '-2px', fontWeight: 'bold'}}>
+                            ({penaltyScore})
+                        </span>
+                    )}
+                </div>
             </div>
         );
     };
 
     return (
-        <div className="match-card" onClick={onClick}>
+        <div className={`match-card ${animateClass} ${disputeClass}`} onClick={onClick}>
             <div className={`match-status-bar ${statusClass}`}></div>
+            
+            {/* [جديد] شارة الأدمن */}
+            {isAdminResolved && (
+                <div className="admin-resolution-badge" title="Resolved by Admin">
+                    <FaGavel size={12} />
+                </div>
+            )}
 
-            {renderPlayer(match.player1, match.player1Team, match.player1TeamLogo, isP1Winner, match.scorePlayer1)}
+            {renderPlayer(match.player1, match.player1Team, match.player1TeamLogo, isP1Winner, match.scorePlayer1, match.penaltiesPlayer1)}
             <div className="match-divider"></div>
-            {renderPlayer(match.player2, match.player2Team, match.player2TeamLogo, isP2Winner, match.scorePlayer2)}
+            {renderPlayer(match.player2, match.player2Team, match.player2TeamLogo, isP2Winner, match.scorePlayer2, match.penaltiesPlayer2)}
 
             <div className="match-footer">
                 <span className="match-id">#{match.matchIndex + 1}</span>

@@ -67,7 +67,7 @@ import WishlistPage from './pages/WishlistPage';
 import LuckyWheelPage from './pages/LuckyWheelPage';
 import QuestsPage from './pages/QuestsPage';
 import AdminQuestManagement from './components/admin/AdminQuestManagement';
-import { getUserQuests, adminGetAllQuests, getCheckInConfig } from './redux/actions/questAction';
+import { getUserQuests, adminGetAllQuests } from './redux/actions/questAction';
 import AdminCheckInSettings from './components/admin/AdminCheckInSettings';
 import AdminWheelSettings from './components/admin/AdminWheelSettings';
 import ErrorBoundary from './components/commun/ErrorBoundary';
@@ -319,7 +319,7 @@ function App() {
         console.log('[Socket] Tournament Updated:', data);
         dispatch({ type: 'UPDATE_TOURNAMENT_SOCKET', payload: data });
       });
-      
+
       newSocket.on('dashboard_transactions_updated', () => {
         dispatch(getTransactionsForDashboard());
         dispatch(getTransactions());
@@ -538,12 +538,9 @@ function App() {
 
       // [جديد] تحديث الجدول عند انتهاء أي مباراة
       newSocket.on('match_updated', (updatedMatch) => {
-          console.log('[Socket] Match Updated:', updatedMatch);
-          // تحديث المباراة في الستور العام
+          console.log('[Socket App.js] Match Updated:', updatedMatch);
+          // dispatch action to update redux matches list directly
           dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: updatedMatch });
-          
-          // [اختياري] إعادة جلب المباريات بالكامل لضمان سلامة الهيكل
-          // dispatch(getTournamentMatches(updatedMatch.tournament)); 
       });
     }
 

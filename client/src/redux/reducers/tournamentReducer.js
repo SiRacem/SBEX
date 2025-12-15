@@ -111,13 +111,6 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
         case CONFIRM_MATCH_RESULT_FAIL:
             return { ...state, loadingMatchAction: false, errors: payload };
 
-        case UPDATE_MATCH_SOCKET:
-            // payload is the updated match object
-            return {
-                ...state,
-                matches: state.matches.map(m => m._id === payload._id ? payload : m)
-            };
-
         case CLEAR_TOURNAMENT_ERRORS:
             return { ...state, errors: null };
 
@@ -143,10 +136,10 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
             // 2. تحديث البطولة الحالية (إذا كانت مفتوحة)
             let updatedCurrent = state.currentTournament;
             if (state.currentTournament && state.currentTournament._id === payload._id) {
-                updatedCurrent = { 
-                    ...state.currentTournament, 
+                updatedCurrent = {
+                    ...state.currentTournament,
                     ...payload,
-                    participants: payload.participants || state.currentTournament.participants 
+                    participants: payload.participants || state.currentTournament.participants
                 };
             }
 
@@ -173,6 +166,16 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
                 };
             }
             return state;
+
+        case UPDATE_MATCH_SOCKET:
+            return {
+                ...state,
+                matches: state.matches.map(match =>
+                    match._id === payload._id ? payload : match
+                ),
+                // إذا كان المستخدم داخل صفحة مباراة، نحدثها أيضاً
+                match: state.match && state.match._id === payload._id ? payload : state.match
+            };
 
         default:
             return state;

@@ -2,11 +2,11 @@ import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { Container, Row, Col, Spinner, Form, Button } from 'react-bootstrap';
+import { Container, Row, Col, Spinner, Form, Button, Card, Badge, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { FaPaperPlane, FaUpload, FaExclamationTriangle, FaCheckCircle, FaClock, FaTrophy } from 'react-icons/fa';
+import { FaPaperPlane, FaUpload, FaTrophy, FaCheckCircle, FaClock, FaExclamationTriangle, FaGavel } from 'react-icons/fa';
 import axios from 'axios';
-import { getTournamentMatches, submitMatchResult, confirmMatchResult } from '../redux/actions/tournamentAction';
+import { submitMatchResult, confirmMatchResult } from '../redux/actions/tournamentAction';
 import { SocketContext } from '../App';
 import './MatchRoomPage.css';
 
@@ -22,10 +22,19 @@ const MatchRoomPage = () => {
     const { user } = useSelector(state => state.userReducer);
 
     const [match, setMatch] = useState(null);
-    const [myScore, setMyScore] = useState(0);
-    const [opponentScore, setOpponentScore] = useState(0);
+    const [loading, setLoading] = useState(true);
+    
+    // Score States
+    const [myScore, setMyScore] = useState('');
+    const [opponentScore, setOpponentScore] = useState('');
+    
+    // Penalty States
+    const [myPenalties, setMyPenalties] = useState('');
+    const [opponentPenalties, setOpponentPenalties] = useState('');
+
     const [proofFile, setProofFile] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [resolving, setResolving] = useState(false);
     
     // Chat State
     const [messages, setMessages] = useState([]);
@@ -39,25 +48,33 @@ const MatchRoomPage = () => {
         scrollToBottom();
     }, [messages]);
 
-    // 1. Get Match Data
+    // 1. Fetch Match Data
     useEffect(() => {
-        if (!matches || matches.length === 0) {
-            // توجيه في حالة التحديث
-            const timer = setTimeout(() => {
-                toast.info(t('matchRoom.errors.refreshRedirect', "Please select the tournament to view the match."));
-                navigate('/dashboard/tournaments');
-            }, 1000);
-            return () => clearTimeout(timer);
-        } else {
-            const foundMatch = matches.find(m => m._id === id);
-            if (foundMatch) {
-                setMatch(foundMatch);
-                if (foundMatch.chatMessages) setMessages(foundMatch.chatMessages);
-            } else {
-                navigate('/dashboard/tournaments');
+        const fetchMatchData = async () => {
+            if (matches && matches.length > 0) {
+                const foundMatch = matches.find(m => m._id === id);
+                if (foundMatch) {
+                    setMatch(foundMatch);
+                    if (foundMatch.chatMessages) setMessages(foundMatch.chatMessages);
+                    setLoading(false);
+                    return;
+                }
             }
-        }
-    }, [matches, id, navigate, t]);
+
+            try {
+                const res = await axios.get(`${process.env.REACT_APP_API_URL}/matches/${id}`);
+                setMatch(res.data);
+                if (res.data.chatMessages) setMessages(res.data.chatMessages);
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching match:", error);
+                toast.error(t('matchRoom.errors.refreshRedirect', "Match not found"));
+                setLoading(false);
+            }
+        };
+
+        fetchMatchData();
+    }, [matches, id, t]);
 
     // 2. Socket Logic
     useEffect(() => {
@@ -69,8 +86,9 @@ const MatchRoomPage = () => {
             });
 
             socket.on('match_updated', (updatedMatch) => {
-                console.log("Match Updated via Socket:", updatedMatch);
-                setMatch(updatedMatch);
+                if (updatedMatch._id === id) {
+                    setMatch(updatedMatch);
+                }
             });
 
             return () => {
@@ -99,11 +117,23 @@ const MatchRoomPage = () => {
 
     const handleSubmitResult = async (e) => {
         e.preventDefault();
+        
+        if (myScore === '' || opponentScore === '') return toast.error(t('matchRoom.fillAllFields'));
         if (!proofFile) return toast.error(t('matchRoom.errors.uploadProof'));
+
+        const isDraw = parseInt(myScore) === parseInt(opponentScore);
+        if (isDraw) {
+            if (myPenalties === '' || opponentPenalties === '') {
+                return toast.error(t('matchRoom.enterPenaltiesInfo', "Please enter penalties score."));
+            }
+            if (parseInt(myPenalties) === parseInt(opponentPenalties)) {
+                return toast.error(t('matchRoom.noDrawInPenalties', "Penalties cannot end in a draw."));
+            }
+        }
 
         setUploading(true);
         const formData = new FormData();
-        formData.append('proofImage', proofFile); // اسم الحقل المصحح
+        formData.append('proofImage', proofFile);
         
         try {
             const token = localStorage.getItem('token');
@@ -113,11 +143,13 @@ const MatchRoomPage = () => {
                     'Authorization': token 
                 }
             });
-            const proofUrl = uploadRes.data.filePath; // تأكد من المسار (filePath أو url حسب رد السيرفر)
+            const proofUrl = uploadRes.data.filePath;
 
             const resultData = {
-                scoreMy: myScore,
-                scoreOpponent: opponentScore,
+                scoreMy: parseInt(myScore),
+                scoreOpponent: parseInt(opponentScore),
+                penaltiesMy: isDraw ? parseInt(myPenalties) : undefined,
+                penaltiesOpponent: isDraw ? parseInt(opponentPenalties) : undefined,
                 proofScreenshot: proofUrl
             };
 
@@ -136,12 +168,39 @@ const MatchRoomPage = () => {
         }
     };
 
-    const handleConfirm = async () => {
-        const result = await dispatch(confirmMatchResult(id));
-        if (result.success) {
-            toast.success(t('matchRoom.toasts.matchCompleted'));
-        } else {
-            toast.error(result.message);
+    const handleConfirm = async (action) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`${process.env.REACT_APP_API_URL}/matches/${id}/confirm`, { action }, {
+                 headers: { 'Authorization': token }
+            });
+
+            if (res.data.success) {
+                if (action === 'confirm') toast.success(t('matchRoom.toasts.matchCompleted'));
+                else toast.info(t('matchRoom.toasts.disputeOpened', "Dispute Opened")); 
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Error");
+        }
+    };
+
+    // Admin Action
+    const handleAdminResolve = async (winnerId) => {
+        if (!window.confirm(t('matchRoom.admin.confirmResolve', "Are you sure? This action is final."))) return;
+        
+        setResolving(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${process.env.REACT_APP_API_URL}/matches/${id}/resolve`, 
+                { winnerId }, 
+                { headers: { 'Authorization': token } }
+            );
+            toast.success("Dispute resolved successfully!");
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Error resolving dispute.");
+        } finally {
+            setResolving(false);
         }
     };
 
@@ -151,18 +210,20 @@ const MatchRoomPage = () => {
         return `${process.env.REACT_APP_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 
-    // --- Render ---
-    if (!match) {
+    if (loading) {
         return <div className="d-flex justify-content-center align-items-center vh-100 bg-dark text-white">
             <Spinner animation="border" variant="primary" />
             <span className="ms-3">{t('matchRoom.loading')}</span>
         </div>;
     }
 
+    if (!match) return <div className="text-center py-5 text-white">{t('matchRoom.errors.refreshRedirect')}</div>;
+
     const isPlayer1 = match.player1?._id === user?._id;
     const isPlayer2 = match.player2?._id === user?._id;
+    const isAdmin = user?.userRole === 'Admin';
     
-    if (!isPlayer1 && !isPlayer2 && user?.userRole !== 'Admin') {
+    if (!isPlayer1 && !isPlayer2 && !isAdmin) {
         return <div className="text-center py-5 text-danger">{t('matchRoom.accessDenied')}</div>;
     }
 
@@ -170,91 +231,149 @@ const MatchRoomPage = () => {
     const myTeam = isPlayer1 ? match.player1Team : match.player2Team;
     const opponentTeam = isPlayer1 ? match.player2Team : match.player1Team;
     
-    // الشعارات (إذا كانت متوفرة، أو نستخدم placeholder)
-    // يمكن تحسين الموديل لاحقاً لتخزين الشعارات في المباراة نفسها
-    // حالياً سنعرض الاسم
-    
     const iSubmitted = match.submittedBy === user?._id;
     const opponentSubmitted = match.status === 'review' && !iSubmitted;
+    
+    const isDispute = match.status === 'dispute';
+    const isDrawInput = myScore !== '' && opponentScore !== '' && parseInt(myScore) === parseInt(opponentScore);
+
+    const renderScoreDisplay = (mainScore, penaltyScore) => {
+        return (
+            <div>
+                <div className="score-display display-4">{mainScore}</div>
+                {(penaltyScore !== undefined && penaltyScore !== null) && (
+                    <div className="text-warning small fw-bold">Pen: {penaltyScore}</div>
+                )}
+            </div>
+        );
+    };
+
+    const mySavedScore = isPlayer1 ? match.scorePlayer1 : match.scorePlayer2;
+    const oppSavedScore = isPlayer1 ? match.scorePlayer2 : match.scorePlayer1;
+    const mySavedPen = isPlayer1 ? match.penaltiesPlayer1 : match.penaltiesPlayer2;
+    const oppSavedPen = isPlayer1 ? match.penaltiesPlayer2 : match.penaltiesPlayer1;
 
     return (
         <div className="match-room-container">
-            {/* Header (The Stage) */}
-            <div className="match-header">
+            <div className={`match-header ${isDispute ? 'dispute-header' : ''}`}>
                 <div className="status-badge-container">
-                    <span className={`match-status-badge ${match.status === 'ongoing' ? 'ongoing' : ''}`}>
+                    <span className={`match-status-badge ${match.status === 'ongoing' ? 'ongoing' : ''} ${isDispute ? 'bg-danger' : ''}`}>
                         {t(`matchRoom.status.${match.status}`, match.status)}
                     </span>
                 </div>
                 
                 <Container>
                     <div className="vs-display">
-                        {/* Me */}
-                        <div className={`player-card-lg ${match.winner === user?._id ? 'winner' : ''}`}>
+                        <div className={`player-card-lg ${match.winner === (isPlayer1 ? user?._id : match.player1?._id) ? 'winner' : ''}`}>
                             <div className="avatar-team-wrapper">
-                                <img src={getAvatarUrl(user?.avatarUrl)} alt="Me" className="player-avatar-lg" />
+                                <img src={getAvatarUrl(isPlayer1 ? user?.avatarUrl : match.player1?.avatarUrl)} alt="P1" className="player-avatar-lg" />
                             </div>
-                            <h4 className="player-name-lg">{user?.fullName}</h4>
-                            <span className="player-label me">{t('matchRoom.you')}</span>
-                            <div className="player-team-lg mt-2">{myTeam}</div>
-                            {match.winner === user?._id && <div className="winner-badge mt-2 text-success fw-bold"><FaTrophy/> {t('matchRoom.status.winner')}</div>}
+                            <h4 className="player-name-lg">{isPlayer1 ? user?.fullName : match.player1?.fullName}</h4>
+                            <span className="player-label me">{isPlayer1 ? t('matchRoom.you') : "Player 1"}</span>
+                            <div className="player-team-lg mt-2">{isPlayer1 ? myTeam : match.player1Team}</div>
+                            {renderScoreDisplay(
+                                isPlayer1 ? mySavedScore : match.scorePlayer1, 
+                                isPlayer1 ? mySavedPen : match.penaltiesPlayer1
+                            )}
+                            {match.winner === (isPlayer1 ? user?._id : match.player1?._id) && <div className="winner-badge mt-2 text-success fw-bold"><FaTrophy/> {t('matchRoom.status.winner')}</div>}
                         </div>
 
                         <div className="vs-badge">{t('matchRoom.vs')}</div>
 
-                        {/* Opponent */}
-                        <div className={`player-card-lg ${match.winner === opponentData?._id ? 'winner' : ''}`}>
+                        <div className={`player-card-lg ${match.winner === (isPlayer1 ? opponentData?._id : match.player2?._id) ? 'winner' : ''}`}>
                             <div className="avatar-team-wrapper">
-                                <img 
-                                    src={getAvatarUrl(opponentData?.avatarUrl)} 
-                                    alt="Opponent" 
-                                    className="player-avatar-lg"
-                                />
+                                <img src={getAvatarUrl(isPlayer1 ? opponentData?.avatarUrl : match.player2?.avatarUrl)} alt="P2" className="player-avatar-lg" />
                             </div>
-                            <h4 className="player-name-lg">{opponentData?.fullName || t('matchRoom.tbd')}</h4>
-                            <span className="player-label opp">{t('matchRoom.opponent')}</span>
-                            <div className="player-team-lg mt-2">{opponentTeam || t('matchRoom.waiting')}</div>
-                            {match.winner === opponentData?._id && <div className="winner-badge mt-2 text-success fw-bold"><FaTrophy/> {t('matchRoom.status.winner')}</div>}
+                            <h4 className="player-name-lg">{isPlayer1 ? opponentData?.fullName : match.player2?.fullName || t('matchRoom.tbd')}</h4>
+                            <span className="player-label opp">{isPlayer1 ? t('matchRoom.opponent') : "Player 2"}</span>
+                            <div className="player-team-lg mt-2">{isPlayer1 ? opponentTeam : match.player2Team || t('matchRoom.waiting')}</div>
+                            {renderScoreDisplay(
+                                isPlayer1 ? oppSavedScore : match.scorePlayer2,
+                                isPlayer1 ? oppSavedPen : match.penaltiesPlayer2
+                            )}
+                            {match.winner === (isPlayer1 ? opponentData?._id : match.player2?._id) && <div className="winner-badge mt-2 text-success fw-bold"><FaTrophy/> {t('matchRoom.status.winner')}</div>}
                         </div>
                     </div>
                 </Container>
             </div>
 
-            {/* Main Content Grid */}
             <div className="content-grid">
-                
-                {/* Left: Actions (Score & Upload) */}
                 <div className="actions-panel">
                     <h4 className="action-title">{t('matchRoom.actions.reportResult')}</h4>
                     
-                    {match.status === 'completed' ? (
+                    {isDispute && isAdmin && (
+                        <Card className="mb-4 border-warning bg-dark shadow-sm">
+                            <Card.Header className="bg-warning text-dark fw-bold d-flex align-items-center">
+                                <FaGavel className="me-2" /> {t('matchRoom.admin.resolutionTitle')}
+                            </Card.Header>
+                            <Card.Body>
+                                <p className="text-white small mb-3">
+                                    {t('matchRoom.admin.resolutionDesc')}
+                                </p>
+                                
+                                {match.proofScreenshot && (
+                                    <div className="mb-3 text-center">
+                                        <a href={getAvatarUrl(match.proofScreenshot)} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-light">
+                                            {t('matchRoom.admin.viewProof')}
+                                        </a>
+                                    </div>
+                                )}
+
+                                <div className="d-flex gap-2 justify-content-center">
+                                    <Button 
+                                        variant="outline-success" 
+                                        onClick={() => handleAdminResolve(match.player1._id)}
+                                        disabled={resolving}
+                                    >
+                                        {t('matchRoom.admin.winBtn', { team: match.player1Team })}
+                                    </Button>
+                                    <Button 
+                                        variant="outline-success" 
+                                        onClick={() => handleAdminResolve(match.player2._id)}
+                                        disabled={resolving}
+                                    >
+                                        {t('matchRoom.admin.winBtn', { team: match.player2Team })}
+                                    </Button>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    )}
+
+                    {isDispute ? (
+                        <div className="text-center py-4">
+                            <Alert variant="danger" className="d-inline-block w-100">
+                                <FaExclamationTriangle size={40} className="mb-3 d-block mx-auto" />
+                                <h5 className="alert-heading">{t('matchRoom.disputeActive')}</h5>
+                                <p className="mb-0 small">{t('matchRoom.disputeInfo')}</p>
+                            </Alert>
+                        </div>
+                    ) : match.status === 'completed' ? (
                         <div className="text-center py-4">
                             <FaCheckCircle size={60} className="text-success mb-3" />
                             <h4>{t('matchRoom.status.completed')}</h4>
-                            <div className="final-score-display mt-3">
-                                <span className="score-num fs-2 fw-bold">{match.scorePlayer1}</span>
-                                <span className="score-sep mx-3 fs-2">-</span>
-                                <span className="score-num fs-2 fw-bold">{match.scorePlayer2}</span>
-                            </div>
-                            <p className="text-muted mt-2">{t('matchRoom.status.winner')}: <span className="text-white fw-bold">{match.winner === user?._id ? t('matchRoom.you') : opponentData?.fullName}</span></p>
+                            <p className="text-muted mt-2">{t('matchRoom.status.winner')}: <span className="text-white fw-bold">{match.winner === user?._id ? t('matchRoom.you') : (isPlayer1 ? opponentData?.fullName : match.winner?.fullName || "TBD")}</span></p>
                         </div>
-                    ) : opponentSubmitted ? (
+                    ) : (opponentSubmitted && !isAdmin) ? (
                         <div className="text-center">
                             <div className="alert alert-warning mb-3">
                                 {t('matchRoom.actions.opponentSubmittedMsg')}
                             </div>
                             
-                            {/* [!] عرض النتيجة التي اقترحها الخصم */}
                             <div className="proposed-score mb-3 p-2 bg-dark rounded border border-secondary">
                                 <h6>Result:</h6>
                                 <div className="d-flex justify-content-center align-items-center gap-2">
                                     <span>{opponentData?.fullName}: <strong>{isPlayer1 ? match.scorePlayer2 : match.scorePlayer1}</strong></span>
+                                    {(isPlayer1 ? match.penaltiesPlayer2 : match.penaltiesPlayer1) !== undefined && 
+                                        <span className="text-warning">({isPlayer1 ? match.penaltiesPlayer2 : match.penaltiesPlayer1})</span>
+                                    }
                                     <span>-</span>
                                     <span>{t('matchRoom.you')}: <strong>{isPlayer1 ? match.scorePlayer1 : match.scorePlayer2}</strong></span>
+                                    {(isPlayer1 ? match.penaltiesPlayer1 : match.penaltiesPlayer2) !== undefined && 
+                                        <span className="text-warning">({isPlayer1 ? match.penaltiesPlayer1 : match.penaltiesPlayer2})</span>
+                                    }
                                 </div>
                             </div>
 
-                            {/* [!] عرض صورة الإثبات بشكل صحيح */}
                             <div className="proof-preview mb-3">
                                 <p className="text-muted small">Proof Screenshot:</p>
                                 <a href={getAvatarUrl(match.proofScreenshot)} target="_blank" rel="noopener noreferrer">
@@ -270,16 +389,20 @@ const MatchRoomPage = () => {
                             <Button 
                                 variant="success" 
                                 className="w-100 mb-2 py-2 fw-bold"
-                                onClick={handleConfirm}
+                                onClick={() => handleConfirm('confirm')}
                                 disabled={loadingMatchAction}
                             >
                                 {loadingMatchAction ? <Spinner size="sm"/> : t('matchRoom.actions.confirmResult')}
                             </Button>
-                            <Button variant="outline-danger" className="w-100">
+                            <Button 
+                                variant="outline-danger" 
+                                className="w-100"
+                                onClick={() => handleConfirm('reject')}
+                            >
                                 {t('matchRoom.actions.dispute')}
                             </Button>
                         </div>
-                    ) : (
+                    ) : (isPlayer1 || isPlayer2) ? (
                         <Form onSubmit={handleSubmitResult}>
                             <div className="score-inputs-container">
                                 <div className="score-box">
@@ -305,7 +428,40 @@ const MatchRoomPage = () => {
                                 </div>
                             </div>
 
-                            <label className="file-upload-label">
+                            {isDrawInput && (
+                                <div className="penalties-section mt-3 p-2 border border-warning rounded">
+                                    <div className="text-center text-warning mb-2 small fw-bold">
+                                        {t('matchRoom.drawDetected', "Draw Detected! Enter Penalties:")}
+                                    </div>
+                                    <div className="d-flex justify-content-center gap-3 align-items-center">
+                                         <div className="text-center">
+                                            <label className="small text-muted mb-1">My Pen</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-control form-control-sm text-center" 
+                                                style={{width: '60px'}}
+                                                value={myPenalties}
+                                                onChange={(e) => setMyPenalties(e.target.value)}
+                                                min="0"
+                                            />
+                                         </div>
+                                         <span>-</span>
+                                         <div className="text-center">
+                                            <label className="small text-muted mb-1">Opp Pen</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-control form-control-sm text-center" 
+                                                style={{width: '60px'}}
+                                                value={opponentPenalties}
+                                                onChange={(e) => setOpponentPenalties(e.target.value)}
+                                                min="0"
+                                            />
+                                         </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <label className="file-upload-label mt-3">
                                 <input type="file" hidden onChange={handleFileChange} accept="image/*" />
                                 {proofFile ? (
                                     <div className="text-success fw-bold">{proofFile.name}</div>
@@ -325,10 +481,13 @@ const MatchRoomPage = () => {
                                 {uploading ? t('common.processing') : iSubmitted ? t('matchRoom.actions.waitingOpponent') : t('matchRoom.actions.submitBtn')}
                             </Button>
                         </Form>
+                    ) : (
+                        <div className="text-center py-4 text-muted">
+                            {isAdmin ? "Admin View" : "Spectator View"}
+                        </div>
                     )}
                 </div>
 
-                {/* Right: Chat */}
                 <div className="chat-panel">
                     <div className="chat-header">
                         <FaClock className="me-2 text-warning" /> 
@@ -349,18 +508,21 @@ const MatchRoomPage = () => {
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
-                    <div className="chat-input-area">
-                        <Form.Control 
-                            placeholder={t('matchRoom.chat.placeholder')} 
-                            className="custom-chat-input"
-                            value={msgText}
-                            onChange={(e) => setMsgText(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                        />
-                        <Button variant="primary" className="btn-send" onClick={sendMessage}>
-                            <FaPaperPlane />
-                        </Button>
-                    </div>
+                    
+                    {(isPlayer1 || isPlayer2 || isAdmin) && (
+                        <div className="chat-input-area">
+                            <Form.Control 
+                                placeholder={t('matchRoom.chat.placeholder')} 
+                                className="custom-chat-input"
+                                value={msgText}
+                                onChange={(e) => setMsgText(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                            />
+                            <Button variant="primary" className="btn-send" onClick={sendMessage}>
+                                <FaPaperPlane />
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
             </div>
