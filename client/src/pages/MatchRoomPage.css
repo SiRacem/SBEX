@@ -46,7 +46,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 4rem; /* مسافة أوسع */
+    gap: 4rem;
+    /* مسافة أوسع */
 }
 
 .player-card-lg {
@@ -79,7 +80,7 @@
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid #1e293b;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .team-logo-overlay {
@@ -113,8 +114,15 @@
     display: inline-block;
 }
 
-.player-label.me { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-.player-label.opp { color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
+.player-label.me {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.player-label.opp {
+    color: #f43f5e;
+    background: rgba(244, 63, 94, 0.1);
+}
 
 .vs-badge {
     font-size: 3rem;
@@ -126,12 +134,14 @@
 /* Chat & Actions Layout */
 .content-grid {
     display: grid;
-    grid-template-columns: 350px 1fr; /* Sidebar for actions, Main for chat */
+    grid-template-columns: 350px 1fr;
+    /* Sidebar for actions, Main for chat */
     gap: 1.5rem;
     max-width: 1200px;
     margin: 2rem auto;
     padding: 0 1rem;
-    height: 600px; /* Fixed height for dashboard feel */
+    height: 600px;
+    /* Fixed height for dashboard feel */
 }
 
 /* Score/Actions Sidebar */
@@ -158,16 +168,30 @@
 .score-box {
     text-align: center;
     width: 45%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.score-team-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .team-name-score {
     font-size: 0.8rem;
     color: #94a3b8;
-    margin-bottom: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
+    max-width: 100%;
 }
 
 .score-input {
@@ -296,9 +320,193 @@
     color: white;
     border-radius: 50px;
 }
+
 .custom-chat-input:focus {
     background: #0f172a;
     color: white;
     border-color: #3b82f6;
     box-shadow: none;
+}
+
+/* ================================================
+   RESPONSIVE STYLES FOR MATCH ROOM PAGE
+   ================================================ */
+
+/* Tablet and below */
+@media (max-width: 992px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+        gap: 1rem;
+    }
+
+    .actions-panel {
+        order: 1;
+    }
+
+    .chat-panel {
+        order: 2;
+        min-height: 400px;
+    }
+
+    .vs-display {
+        gap: 2rem;
+    }
+
+    .player-card-lg {
+        width: 180px;
+        padding: 1.5rem 1rem;
+    }
+
+    .avatar-team-wrapper {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1rem;
+    }
+
+    .team-logo-overlay {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .match-header {
+        padding: 1rem 0.5rem;
+        text-align: center;
+    }
+
+    /* Hide badge on mobile */
+    .status-badge-container {
+        display: none;
+    }
+
+    .vs-display {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+        width: 100%;
+        padding: 0;
+    }
+
+    .player-card-lg {
+        width: 100%;
+        max-width: none;
+        padding: 1rem;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    .vs-badge {
+        font-size: 1rem;
+        transform: none;
+        padding: 0.5rem 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        text-align: center;
+        align-self: center;
+    }
+
+    .content-grid {
+        padding: 0 0.75rem;
+        margin: 1rem auto;
+    }
+
+    .actions-panel {
+        padding: 1rem;
+    }
+
+    .score-inputs-container {
+        flex-direction: row;
+        gap: 0.5rem;
+        padding: 1rem;
+        justify-content: center;
+    }
+
+    .score-box {
+        width: auto;
+        min-width: 100px;
+    }
+
+    .score-team-logo {
+        width: 40px;
+        height: 40px;
+    }
+
+    .vs-sep {
+        transform: none;
+        padding: 0;
+        font-size: 1.2rem;
+        align-self: center;
+    }
+
+    .score-input {
+        font-size: 1.5rem;
+        width: 80px;
+    }
+
+    .file-upload-label {
+        height: 100px;
+    }
+
+    .chat-panel {
+        min-height: 350px;
+    }
+
+    .chat-messages {
+        padding: 1rem;
+    }
+
+    .message-bubble {
+        max-width: 85%;
+        font-size: 0.85rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    .match-header {
+        padding: 1rem 0;
+    }
+
+    .avatar-team-wrapper {
+        width: 60px;
+        height: 60px;
+    }
+
+    .team-logo-overlay {
+        width: 28px;
+        height: 28px;
+    }
+
+    .player-name-lg {
+        font-size: 0.95rem;
+    }
+
+    .player-label {
+        font-size: 0.65rem;
+    }
+
+    .content-grid {
+        padding: 0 0.5rem;
+    }
+
+    .actions-panel,
+    .chat-panel {
+        border-radius: 12px;
+    }
+
+    .score-input {
+        font-size: 1.25rem;
+    }
+
+    .btn-submit-result {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .chat-input-area {
+        padding: 0.75rem;
+    }
 }

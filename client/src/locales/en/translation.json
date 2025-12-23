@@ -635,6 +635,7 @@
     "at": "at",
     "currency": "TND",
     "taken": "Taken",
+    "all": "All",
     "statuses": {
       "active": "Active",
       "blocked": "Blocked",
@@ -1325,7 +1326,8 @@
     "Account_blocked": "Your account is blocked. Please contact support.",
     "userMuted": "You are muted. Try again in {{minutes}} minutes.",
     "spamCooldown": "Please wait a moment before sending another message.",
-    "writeConflict": "Data conflict occurred. Please try again."
+    "writeConflict": "Data conflict occurred. Please try again.",
+    "registrationClosed": "Registration is closed."
   },
   "confirmLogout": "Are you sure you want to logout?",
   "forSellersOnly": "For sellers only.",
@@ -2761,7 +2763,9 @@
     "live": "Live Now",
     "completed": "Completed",
     "active": "Active",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "registered": "Registered",
+    "checkedIn": "Checked In"
   },
   "createTournament": {
     "steps": {
@@ -2780,14 +2784,20 @@
       "description": "Description",
       "startDate": "Start Date",
       "startTime": "Start Time",
-      "entryFee": "Entry Fee (TND)",
-      "prizePool": "Total Prize Pool (TND)",
+      "entryFee": "Entry Fee",
+      "prizePool": "Total Prize Pool",
       "firstPlace": "1st Place Prize",
       "secondPlace": "2nd Place Prize",
       "participants": "Max Participants",
       "teams": "Team Category",
       "incompleteAction": "If incomplete?",
-      "specificLeague": "Specific League (Optional)"
+      "specificLeague": "Specific League (Optional)",
+      "format": "Tournament Format",
+      "knockout": "Knockout (Cup)",
+      "league": "Regular League (All vs All)",
+      "hybrid": "Hybrid (Groups + Knockout)",
+      "numGroups": "Number of Groups",
+      "qualifiers": "Qualifiers per Group"
     },
     "allLeagues": "-- All Leagues --",
     "players": "Players",
@@ -2796,28 +2806,62 @@
     "cancelAction": "Cancel Tournament",
     "playByesAction": "Play with 'Byes'",
     "submitBtn": "Create Tournament",
-    "successMessage": "Tournament Created Successfully!"
+    "successMessage": "Tournament Created Successfully!",
+    "pageTitle": "Create New Tournament",
+    "placeholders": {
+      "title": "e.g. Champions League Night"
+    },
+    "hints": {
+      "league": "Leave empty to allow teams from all leagues."
+    },
+    "groups": "Groups",
+    "winnerOnly": "Winner only",
+    "winnerRunner": "Winner & Runner-up",
+    "errors": {
+      "fillRequired": "Please fill all required fields."
+    }
   },
   "tournamentDetails": {
+    "notFound": "Tournament not found or deleted.",
+    "startConfirm": "Are you sure you want to start the tournament now?",
     "tabs": {
       "overview": "Overview",
       "participants": "Participants",
-      "bracket": "Bracket"
+      "bracket": "Bracket",
+      "stats": "Statistics"
     },
     "headers": {
       "description": "DESCRIPTION",
       "rules": "RULES",
-      "prizes": "PRIZES"
+      "prizes": "PRIZES",
+      "formatDetails": "FORMAT DETAILS"
     },
     "rules": {
       "teamType": "Team Type",
       "matchTime": "Match Time",
       "duration": "Duration",
-      "mins": "mins/match"
+      "mins": "mins",
+      "minsShort": "min"
+    },
+    "format": {
+      "type": "Format Type",
+      "leagueOnly": "Regular League (All vs All)",
+      "hybrid": "Hybrid (Groups + Knockout)",
+      "numGroups": "Number of Groups",
+      "groups": "groups",
+      "qualifiersPerGroup": "Qualifiers per Group",
+      "oneQualifier": "First only",
+      "twoQualifiers": "1st & 2nd",
+      "pointsSystem": "Points System",
+      "pointsDisplay": "Win: {{win}} | Draw: {{draw}} | Loss: {{loss}}",
+      "matchSystem": "Match System",
+      "roundRobin": "Round Robin (All vs All)"
     },
     "prizes": {
       "first": "1st Place",
-      "second": "2nd Place"
+      "second": "2nd Place",
+      "bestAttack": "Best Attack",
+      "bestDefense": "Best Defense"
     },
     "sidebar": {
       "yourStatus": "Your Status",
@@ -2826,7 +2870,8 @@
       "playingAs": "Playing as:",
       "checkInBtn": "CHECK IN NOW",
       "adminControls": "Admin Controls",
-      "startBtn": "Start Tournament"
+      "startBtn": "Start Tournament",
+      "manageBtn": "Manage Tournament Settings"
     },
     "status": {
       "registered": "You are Registered",
@@ -2860,7 +2905,9 @@
     "round": "Round of",
     "quarterFinal": "Quarter-Finals",
     "semiFinal": "Semi-Finals",
-    "final": "Grand Final"
+    "final": "Grand Final",
+    "secondPlace": "2nd Place",
+    "champion": "CHAMPION"
   },
   "matchRoom": {
     "loading": "Loading Match Data...",
@@ -2870,7 +2917,7 @@
     "tbd": "TBD",
     "waiting": "Waiting...",
     "vs": "VS",
-    "fillAllFields": "Please fill in all fields (Score & Proof).", 
+    "fillAllFields": "Please fill in all fields (Score & Proof).",
     "drawDetected": "Draw Detected! Please enter penalties score.",
     "noDrawInPenalties": "Penalties cannot end in a draw!",
     "enterPenaltiesInfo": "Enter the penalty shootout result.",
@@ -2894,7 +2941,9 @@
       "winner": "Winner",
       "scheduled": "Scheduled",
       "ongoing": "Live Now",
-      "review": "Under Review"
+      "review": "Under Review",
+      "dispute": "Disputed",
+      "cancelled": "Cancelled"
     },
     "errors": {
       "uploadProof": "Please upload a proof screenshot.",
@@ -2916,5 +2965,59 @@
     "yourBalance": "Your Balance",
     "confirmPay": "Confirm & Pay",
     "changeTeam": "Change Team"
+  },
+  "groupStage": {
+    "groupTitle": "Group {{letter}}",
+    "table": {
+      "team": "Team",
+      "mp": "MP",
+      "w": "W",
+      "d": "D",
+      "l": "L",
+      "gf": "GF",
+      "ga": "GA",
+      "gd": "GD",
+      "pts": "PTS"
+    },
+    "matches": "Group Matches",
+    "matchNumber": "Match #{{num}}"
+  },
+  "tournament": {
+    "stats": {
+      "title": "Tournament Statistics",
+      "topScorers": "Top 5 Scorers",
+      "topDefense": "Top 5 Defenses",
+      "fixtures": "Per-Player Fixture Schedule",
+      "bestAttack": "Best Attack",
+      "bestDefense": "Best Defense",
+      "leader": "Leader"
+    },
+    "standings": {
+      "title": "League Standings",
+      "team": "Team",
+      "played": "P",
+      "won": "W",
+      "drawn": "D",
+      "lost": "L",
+      "gf": "GF",
+      "ga": "GA",
+      "gd": "GD",
+      "points": "PTS"
+    },
+    "noMatches": "No matches yet",
+    "teamTypes": {
+      "National Teams": "National Teams",
+      "Clubs": "Clubs"
+    }
+  },
+  "match": {
+    "status": {
+      "scheduled": "Scheduled",
+      "ongoing": "Ongoing",
+      "review": "Under Review",
+      "completed": "Completed",
+      "dispute": "Disputed",
+      "cancelled": "Cancelled"
+    }
   }
 }

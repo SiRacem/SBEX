@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "nodemon server.js",
     "dev": "concurrently \"npm start\" \"cd client && npm start\""
   },
@@ -33,5 +33,8 @@
     "socket.io": "^4.8.1",
     "uuid": "^11.1.0"
   },
-  "proxy": "http://localhost:8000"
+  "proxy": "http://localhost:8000",
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
 }

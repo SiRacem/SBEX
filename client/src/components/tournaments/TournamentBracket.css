@@ -1,20 +1,197 @@
 /* src/components/tournaments/TournamentBracket.css */
 
+.tournament-view-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
 .bracket-container {
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
     align-items: center;
     overflow-x: auto;
-    padding: 1rem;
-    background-color: #0b1120;
-    min-height: 400px;
-    gap: 2rem;
+    padding: 0.75rem;
+    background-color: rgba(11, 17, 32, 0.5);
+    min-height: 300px;
+    gap: 1.5rem;
+    border-radius: 8px;
 }
 
-.bracket-container::-webkit-scrollbar { height: 6px; }
-.bracket-container::-webkit-scrollbar-track { background: #1e293b; }
-.bracket-container::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+.bracket-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.bracket-container::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.bracket-container::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 4px;
+}
+
+/* --- Champions Podium Styles --- */
+.champions-podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 2rem;
+    padding: 2rem;
+    background: linear-gradient(to bottom, #0f172a, #1e293b);
+    border-radius: 12px;
+    border: 1px solid #334155;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.podium-card {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.3s ease;
+}
+
+.podium-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Gold (Winner) */
+.podium-card.gold {
+    border: 2px solid #f59e0b;
+    background: linear-gradient(145deg, #1e293b, #322a18);
+    width: 240px;
+    order: 2;
+    /* Center visually */
+    z-index: 2;
+}
+
+.podium-card.gold .podium-avatar {
+    border: 3px solid #f59e0b;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+.trophy-icon {
+    font-size: 3rem;
+    color: #f59e0b;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+    animation: floatTrophy 3s ease-in-out infinite;
+}
+
+/* Silver (Runner Up) */
+.podium-card.silver {
+    border: 2px solid #94a3b8;
+    background: linear-gradient(145deg, #1e293b, #252b36);
+    width: 200px;
+    order: 1;
+    opacity: 0.9;
+}
+
+.podium-card.silver .podium-avatar {
+    border: 3px solid #94a3b8;
+}
+
+.medal-icon {
+    font-size: 2rem;
+    color: #94a3b8;
+    margin-bottom: 10px;
+}
+
+/* Common Podium Elements */
+.podium-avatar-wrapper {
+    margin-bottom: 1rem;
+}
+
+.podium-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #0f172a;
+}
+
+.podium-rank {
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+}
+
+.podium-card.gold .podium-rank {
+    color: #f59e0b;
+    font-size: 1.5rem;
+}
+
+.podium-card.silver .podium-rank {
+    color: #94a3b8;
+    font-size: 1.2rem;
+}
+
+.podium-team {
+    color: #fff;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.podium-user {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+/* Animations */
+@keyframes floatTrophy {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes slideInFromRight {
+    0% {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.player-info-enhanced.animate-entry {
+    animation: slideInFromRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.fade-in-down {
+    animation: fadeInDown 0.8s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
 .round-column {
     display: flex;
@@ -37,7 +214,6 @@
     padding-bottom: 8px;
 }
 
-/* Match Card Compact */
 .match-card {
     background: #151e32;
     border: 1px solid #334155;
@@ -52,13 +228,30 @@
     flex-direction: column;
     justify-content: center;
     margin: 0.8rem 0;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .match-card:hover {
     border-color: #3b82f6;
     transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(59, 130, 246, 0.2);
+}
+
+/* Dispute Card Style */
+.match-card.dispute-card {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.match-card.dispute-card .match-status-bar {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+.match-card.dispute-card .status-text {
+    color: #fca5a5 !important;
+    font-weight: bold;
 }
 
 /* Status Bar */
@@ -69,19 +262,50 @@
     top: 0;
     left: 0;
 }
-.status-scheduled { background: #64748b; }
-.status-ongoing { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
-.status-completed { background: #10b981; }
-.status-cancelled { background: #ef4444; }
 
-/* Player Row */
+.status-scheduled {
+    background: #64748b;
+}
+
+.status-ongoing {
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+}
+
+.status-completed {
+    background: #10b981;
+}
+
+.status-cancelled {
+    background: #ef4444;
+}
+
+/* Admin Badge */
+.admin-resolution-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #f59e0b;
+    color: #000;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    border: 2px solid #1e293b;
+}
+
 .match-player {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px; /* حشو داخلي أقل */
-    border-left: 3px solid transparent;
+    padding: 6px 10px;
     transition: background 0.5s ease, border-left-color 0.5s ease;
+    border-left: 3px solid transparent;
 }
 
 .match-player.winner {
@@ -92,24 +316,22 @@
 .player-info-enhanced {
     display: flex;
     align-items: center;
-    gap: 8px; /* مسافة أقل */
+    gap: 8px;
     flex-grow: 1;
     min-width: 0;
 }
 
-/* شعار الفريق (الكبير) */
 .player-avatar-main {
     width: 28px;
     height: 28px;
     border-radius: 6px;
     object-fit: contain;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     padding: 2px;
     border: 1px solid #475569;
     flex-shrink: 0;
 }
 
-/* النصوص */
 .text-content {
     display: flex;
     flex-direction: column;
@@ -135,7 +357,6 @@
     text-overflow: ellipsis;
 }
 
-/* النتيجة */
 .score-badge {
     background: #0f172a;
     color: #fff;
@@ -150,7 +371,10 @@
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Divider & Footer */
+.match-card:hover .score-badge {
+    transform: scale(1.1);
+}
+
 .match-divider {
     height: 1px;
     background: #334155;
@@ -168,12 +392,11 @@
     padding: 3px 10px;
     font-size: 0.6rem;
     color: #64748b;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     font-weight: 600;
     text-transform: uppercase;
 }
 
-/* Placeholders */
 .match-card.placeholder {
     background: rgba(255, 255, 255, 0.02);
     border: 1px dashed #334155;
@@ -199,11 +422,10 @@
     font-weight: 400;
 }
 
-/* Connectors */
 .round-column:not(:last-child) .match-card::after {
     content: '';
     position: absolute;
-    right: -15px; /* نصف المسافة الجديدة */
+    right: -15px;
     top: 50%;
     width: 15px;
     height: 2px;
@@ -211,34 +433,17 @@
     z-index: -1;
 }
 
-/* --- New Animations --- */
-
-/* 1. تأثير ظهور اللاعب في الخانة (Slide In) */
-@keyframes slideInFromRight {
-    0% {
-        opacity: 0;
-        transform: translateX(-10px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.player-info-enhanced.animate-entry {
-    animation: slideInFromRight 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-/* 2. تأثير وميض البطاقة عند التحديث (Pulse) */
 @keyframes cardUpdatePulse {
     0% {
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
         border-color: #3b82f6;
     }
+
     70% {
         box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
         border-color: #3b82f6;
     }
+
     100% {
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
         border-color: #334155;
@@ -247,44 +452,4 @@
 
 .match-card.just-updated {
     animation: cardUpdatePulse 1s ease-out;
-}
-
-.match-card:hover .score-badge {
-    transform: scale(1.1);
-}
-
-/* Dispute Style */
-.match-card.dispute-card {
-    border-color: #ef4444 !important; /* أحمر */
-    background: rgba(239, 68, 68, 0.1);
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-}
-
-.match-card.dispute-card .match-status-bar {
-    background: #ef4444;
-    box-shadow: 0 0 8px #ef4444;
-}
-
-.match-card.dispute-card .status-text {
-    color: #fca5a5 !important; /* لون نص أحمر فاتح */
-    font-weight: bold;
-}
-
-/* شارة قرار الأدمن */
-.admin-resolution-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    background-color: #f59e0b; /* برتقالي */
-    color: #000;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 10;
-    border: 2px solid #1e293b;
 }

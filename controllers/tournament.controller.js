@@ -4,40 +4,77 @@ const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Match = require('../models/Match');
 const Notification = require('../models/Notification');
-const { runAutoConfirmJob, advanceWinnerToNextRound } = require('../services/tournamentEngine');
+const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
 
-// دالة مساعدة لتوليد ترتيب التوزيع (Seeding Order) لتباعد الأقوياء
+// ==========================================
+// Helper Functions (دوال مساعدة)
+// ==========================================
+
+// 1. توزيع اللاعبين (Seeding) لتباعد الأقوياء في الإقصائيات
 const getSeedingOrder = (numMatches) => {
     if (numMatches <= 1) return [0];
     const half = getSeedingOrder(numMatches / 2);
-    // لكل عنصر x في النصف الأول، العنصر المقابل هو (عدد المباريات - 1 - x)
     return half.flatMap(x => [x, numMatches - 1 - x]);
 };
 
-// --- Helper: المنطق الأساسي لتوليد الجدول كاملاً (Smart Bracket Generation) ---
-const generateFullBracketAndStart = async (tournament, activeParticipants, session, io) => {
+// 2. خلط مصفوفة عشوائياً (Shuffle)
+const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+};
+
+// 3. توليد مباريات المجموعات (Round Robin)
+const generateGroupMatches = (participants, tournamentId, groupIndex) => {
+    const matches = [];
+    const n = participants.length;
+
+    // خوارزمية الكل ضد الكل (ذهاب فقط)
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            matches.push({
+                _id: new mongoose.Types.ObjectId(),
+                tournament: tournamentId,
+                stage: 'group',
+                groupIndex: groupIndex,
+                round: 1, // كل مباريات المجموعات تعتبر في الجولة الأولى (Group Stage)
+                matchIndex: matches.length,
+                status: 'scheduled',
+
+                player1: participants[i].user,
+                player1Team: participants[i].selectedTeam,
+                player1TeamLogo: participants[i].selectedTeamLogo,
+
+                player2: participants[j].user,
+                player2Team: participants[j].selectedTeam,
+                player2TeamLogo: participants[j].selectedTeamLogo,
+            });
+        }
+    }
+    return matches;
+};
+
+// 4. توليد شجرة خروج المغلوب (Knockout Bracket)
+const generateKnockoutBracket = async (tournament, activeParticipants, session) => {
     const maxParticipants = tournament.maxParticipants;
     const totalRounds = Math.log2(maxParticipants);
-    
-    // 1. خلط المشاركين عشوائياً (Shuffle)
-    for (let i = activeParticipants.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
-    }
 
-    // 2. تحضير أزواج الجولة الأولى باستخدام التوزيع (Seeding)
+    // خلط وتوزيع
+    shuffleArray(activeParticipants);
+
     const round1MatchesCount = maxParticipants / 2;
     let round1Pairs = Array.from({ length: round1MatchesCount }, () => [null, null]);
-    
+
     const seedingOrder = getSeedingOrder(round1MatchesCount);
     let currentParticipantIdx = 0;
 
-    // ملء الخانة الأولى
+    // ملء الخانات
     for (let i = 0; i < seedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
         const matchIndex = seedingOrder[i];
         round1Pairs[matchIndex][0] = activeParticipants[currentParticipantIdx++];
     }
-    // ملء الخانة الثانية (عكسياً)
     const reverseSeedingOrder = [...seedingOrder].reverse();
     for (let i = 0; i < reverseSeedingOrder.length && currentParticipantIdx < activeParticipants.length; i++) {
         const matchIndex = reverseSeedingOrder[i];
@@ -45,19 +82,16 @@ const generateFullBracketAndStart = async (tournament, activeParticipants, sessi
     }
 
     const allMatchesToCreate = [];
-    
-    // خريطة لتتبع حالة المباريات: 'round-index' -> status
-    // نستخدمها لمعرفة ما إذا كانت الجولات القادمة ستكون ملغاة تلقائياً
     const matchesStatusMap = {};
 
-    // 3. إنشاء الجولات بالتسلسل (من 1 إلى النهائي)
     for (let r = 1; r <= totalRounds; r++) {
         const matchesInRound = maxParticipants / Math.pow(2, r);
-        
+
         for (let i = 0; i < matchesInRound; i++) {
             let matchData = {
                 _id: new mongoose.Types.ObjectId(),
                 tournament: tournament._id,
+                stage: 'knockout',
                 round: r,
                 matchIndex: i,
                 status: 'scheduled',
@@ -69,7 +103,6 @@ const generateFullBracketAndStart = async (tournament, activeParticipants, sessi
             };
 
             if (r === 1) {
-                // --- منطق الجولة الأولى ---
                 const p1 = round1Pairs[i][0];
                 const p2 = round1Pairs[i][1];
 
@@ -81,44 +114,24 @@ const generateFullBracketAndStart = async (tournament, activeParticipants, sessi
                 matchData.player2Team = p2 ? p2.selectedTeam : null;
                 matchData.player2TeamLogo = p2 ? p2.selectedTeamLogo : null;
 
-                if (p1 && p2) {
-                    matchData.status = 'scheduled';
-                } else if (p1 && !p2) {
-                    // Bye للاعب 1
-                    matchData.isBye = true;
-                    matchData.status = 'completed';
-                    matchData.winner = p1.user;
-                    matchData.scorePlayer1 = 3; 
+                if (p1 && !p2) {
+                    matchData.isBye = true; matchData.status = 'completed'; matchData.winner = p1.user; matchData.scorePlayer1 = 3;
                 } else if (!p1 && p2) {
-                    // Bye للاعب 2
-                    matchData.isBye = true;
-                    matchData.status = 'completed';
-                    matchData.winner = p2.user;
-                    matchData.scorePlayer2 = 3;
-                } else {
-                    // لا يوجد لاعبين = مباراة ملغاة (مسار ميت)
-                    matchData.status = 'cancelled'; 
+                    matchData.isBye = true; matchData.status = 'completed'; matchData.winner = p2.user; matchData.scorePlayer2 = 3;
+                } else if (!p1 && !p2) {
+                    matchData.status = 'cancelled';
                 }
-
             } else {
-                // --- منطق الجولات اللاحقة (2, 3, 4...) ---
-                // نتحقق من مصادر هذه المباراة (المباريات في الجولة السابقة)
-                // في النظام الشجري الثنائي: الوالدين هما i*2 و i*2+1 من الجولة السابقة
                 const parent1Index = i * 2;
                 const parent2Index = i * 2 + 1;
                 const prevRound = r - 1;
-
                 const parent1Status = matchesStatusMap[`${prevRound}-${parent1Index}`];
                 const parent2Status = matchesStatusMap[`${prevRound}-${parent2Index}`];
 
-                // إذا كان كلا الوالدين "ملغيين" (Cancelled)، فهذا يعني لن يأتي أحد لهذه المباراة أبداً
                 if (parent1Status === 'cancelled' && parent2Status === 'cancelled') {
                     matchData.status = 'cancelled';
-                } 
-                // عدا ذلك تبقى 'scheduled' بانتظار الفائزين
+                }
             }
-
-            // تسجيل الحالة لاستخدامها في حساب الجولة التالية
             matchesStatusMap[`${r}-${i}`] = matchData.status;
             allMatchesToCreate.push(matchData);
         }
@@ -126,25 +139,23 @@ const generateFullBracketAndStart = async (tournament, activeParticipants, sessi
 
     await Match.insertMany(allMatchesToCreate, { session });
 
-    tournament.status = 'active';
-    tournament.startDate = new Date();
-    await tournament.save({ session });
-
-    // إرجاع المباريات التي تحتاج لتصعيد فوري (Byes من الجولة الأولى)
-    const matchesToAdvance = allMatchesToCreate.filter(m => m.round === 1 && m.isBye && m.status === 'completed');
-    
-    return matchesToAdvance;
+    // إرجاع المباريات التي تحتاج لتصعيد فوري (Byes)
+    return allMatchesToCreate.filter(m => m.round === 1 && m.isBye && m.status === 'completed');
 };
 
 // ==========================================
-// 1. إنشاء البطولة (Admin Only)
+// Controllers
 // ==========================================
+
+// 1. إنشاء البطولة (Admin Only)
 exports.createTournament = async (req, res) => {
     try {
         const {
             title, description, entryFee, prizePool, prizesDistribution,
-            maxParticipants, startDate, incompleteAction, 
-            rules 
+            maxParticipants, startDate, incompleteAction,
+            rules,
+            format, // knockout, league, hybrid
+            groupSettings
         } = req.body;
 
         if (new Date(startDate) <= new Date()) {
@@ -163,7 +174,11 @@ exports.createTournament = async (req, res) => {
             title, description, entryFee, prizePool, prizesDistribution,
             maxParticipants, startDate, incompleteAction,
             rules: tournamentRules,
-            createdBy: req.user._id
+            createdBy: req.user._id,
+            // الحقول الجديدة
+            format: format || 'knockout',
+            groupSettings: groupSettings || {},
+            currentStage: format === 'knockout' ? 'knockout_stage' : 'group_stage'
         });
 
         const savedTournament = await newTournament.save();
@@ -171,7 +186,7 @@ exports.createTournament = async (req, res) => {
         if (req.io) {
             req.io.emit('tournament_created', savedTournament);
         }
-        
+
         res.status(201).json({
             success: true,
             message: "Tournament created successfully",
@@ -184,9 +199,7 @@ exports.createTournament = async (req, res) => {
     }
 };
 
-// ==========================================
 // 2. الانضمام للبطولة
-// ==========================================
 exports.joinTournament = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -257,14 +270,14 @@ exports.joinTournament = async (req, res) => {
         }], { session });
 
         await session.commitTransaction();
-        
+
         if (req.io) {
             req.io.to(userId.toString()).emit('user_balances_updated', { _id: userId, balance: user.balance });
             req.io.to(userId.toString()).emit('dashboard_transactions_updated');
-            req.io.emit('tournament_participant_joined', { 
-                tournamentId: id, 
+            req.io.emit('tournament_participant_joined', {
+                tournamentId: id,
                 participant: newParticipant,
-                takenTeam: selectedTeam 
+                takenTeam: selectedTeam
             });
         }
 
@@ -273,23 +286,21 @@ exports.joinTournament = async (req, res) => {
     } catch (error) {
         await session.abortTransaction();
         console.error("Join Tournament Error:", error);
-        
+
         if (error.message.includes('Write conflict') || error.codeName === 'WriteConflict') {
             return res.status(409).json({ success: false, message: "apiErrors.writeConflict" });
         }
-        
-        res.status(400).json({ 
-            success: false, 
-            message: error.message.includes(' ') ? "apiErrors.serverError" : error.message 
+
+        res.status(400).json({
+            success: false,
+            message: error.message.includes(' ') ? "apiErrors.serverError" : error.message
         });
     } finally {
         session.endSession();
     }
 };
 
-// ==========================================
-// 3. بدء البطولة (يدوياً) - تم تحديثها
-// ==========================================
+// 3. بدء البطولة (يدوياً)
 exports.startTournament = async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -299,35 +310,145 @@ exports.startTournament = async (req, res) => {
         const tournament = await Tournament.findById(id).session(session);
 
         if (!tournament) throw new Error("Tournament not found");
-        
+
         let activeParticipants = tournament.participants.filter(p => p.isCheckedIn);
         if (activeParticipants.length === 0 && tournament.participants.length > 0) {
-             activeParticipants = tournament.participants;
+            activeParticipants = tournament.participants;
         }
 
-        // استخدام دالة التوليد الكاملة
-        const byeMatches = await generateFullBracketAndStart(tournament, activeParticipants, session, req.io);
+        // --- التفرع حسب نوع البطولة ---
+        if (tournament.format === 'knockout') {
+            // [A] نظام الكأس
+            console.log("Starting Knockout Tournament...");
+            const byeMatches = await generateKnockoutBracket(tournament, activeParticipants, session);
+            tournament.status = 'active';
+            tournament.startDate = new Date();
+            await tournament.save({ session });
+            await session.commitTransaction();
 
-        await session.commitTransaction();
-        
-        // معالجة الصعود التلقائي (Byes) بعد الـ commit لضمان عمل التكرار (Recursion)
-        console.log(`[StartTournament] Processing ${byeMatches.length} Byes...`);
-        for (const m of byeMatches) {
-            try {
-                // جلب النسخة المحدثة من القاعدة
-                const matchDoc = await Match.findById(m._id); 
-                // نمرر null كـ session ليقوم المحرك بإدارة الترانزكشن الخاصة به
+            // معالجة الـ Byes
+            for (const m of byeMatches) {
+                const matchDoc = await Match.findById(m._id);
                 await advanceWinnerToNextRound(matchDoc, null);
-            } catch (err) {
-                console.error(`Failed to advance match ${m._id}:`, err);
             }
+
+        } else if (tournament.format === 'league') {
+            // [B] نظام الدوري العادي (Round Robin - الكل ضد الكل)
+            console.log("Starting Regular League Tournament (Round Robin)...");
+            console.log("[League] Active participants count:", activeParticipants.length);
+
+            shuffleArray(activeParticipants);
+
+            // كل اللاعبين في "مجموعة" واحدة (فعلياً بدون مجموعات)
+            activeParticipants.forEach((p, index) => {
+                p.groupStats = {
+                    groupId: 'LEAGUE', // تعريف خاص للدوري
+                    played: 0, won: 0, drawn: 0, lost: 0,
+                    goalsFor: 0, goalsAgainst: 0, points: 0, rank: 0
+                };
+            });
+
+            // توليد مباريات الكل ضد الكل (Round Robin)
+            const allLeagueMatches = generateGroupMatches(activeParticipants, tournament._id, 0);
+            console.log("[League] Generated matches count:", allLeagueMatches.length);
+            if (allLeagueMatches.length > 0) {
+                console.log("[League] First match sample:", JSON.stringify({
+                    player1: allLeagueMatches[0].player1,
+                    player2: allLeagueMatches[0].player2,
+                    tournament: allLeagueMatches[0].tournament
+                }));
+            }
+
+            // تحديث الـ stage للمباريات ليكون 'league' بدلاً من 'group'
+            allLeagueMatches.forEach(m => {
+                m.stage = 'league';
+                m.groupIndex = null;
+            });
+
+            const insertedMatches = await Match.insertMany(allLeagueMatches, { session });
+            console.log("[League] Inserted matches count:", insertedMatches.length);
+
+            tournament.status = 'active';
+            tournament.currentStage = 'group_stage'; // نستخدم نفس المرحلة للتوافق
+            tournament.startDate = new Date();
+            await tournament.save({ session });
+
+            await session.commitTransaction();
+            console.log("[League] Tournament started successfully!");
+
+        } else if (tournament.format === 'hybrid') {
+            // [C] نظام هجين (مجموعات + خروج المغلوب)
+            console.log("Starting Hybrid Tournament (Groups + Knockout)...");
+
+            // نحتاج على الأقل 2 لاعبين لكل مجموعة
+            let numGroups = tournament.groupSettings.numberOfGroups || 4;
+            const minPlayersPerGroup = 2;
+
+            const maxPossibleGroups = Math.floor(activeParticipants.length / minPlayersPerGroup);
+            if (maxPossibleGroups < numGroups) {
+                console.log(`[Group Stage] Reducing groups from ${numGroups} to ${maxPossibleGroups}`);
+                numGroups = Math.max(1, maxPossibleGroups);
+            }
+
+            shuffleArray(activeParticipants);
+
+            // تقسيم المشاركين على المجموعات (Snake Distribution)
+            const groups = Array.from({ length: numGroups }, () => []);
+            let direction = 1;
+            let groupIdx = 0;
+
+            activeParticipants.forEach((p, index) => {
+                groups[groupIdx].push(p);
+                p.groupStats = {
+                    groupId: String.fromCharCode(65 + groupIdx), // A, B, C...
+                    played: 0, won: 0, drawn: 0, lost: 0,
+                    goalsFor: 0, goalsAgainst: 0, points: 0, rank: 0
+                };
+
+                groupIdx += direction;
+                if (groupIdx >= numGroups) {
+                    groupIdx = numGroups - 1;
+                    direction = -1;
+                } else if (groupIdx < 0) {
+                    groupIdx = 0;
+                    direction = 1;
+                }
+            });
+
+            // توليد المباريات لكل مجموعة
+            let allGroupMatches = [];
+            groups.forEach((groupParticipants, index) => {
+                if (groupParticipants.length >= 2) {
+                    const groupMatches = generateGroupMatches(groupParticipants, tournament._id, index);
+                    allGroupMatches = [...allGroupMatches, ...groupMatches];
+                }
+            });
+
+            await Match.insertMany(allGroupMatches, { session });
+
+            tournament.status = 'active';
+            tournament.currentStage = 'group_stage';
+            tournament.startDate = new Date();
+            await tournament.save({ session });
+
+            await session.commitTransaction();
         }
 
-        if (req.io) req.io.emit('tournament_updated', { _id: tournament._id, status: 'active' });
+        // جلب البطولة كاملة مع المباريات والمشاركين لإرسالها عبر السوكت
+        const fullTournament = await Tournament.findById(id)
+            .populate('participants.user', 'fullName avatarUrl')
+            .lean();
+
+        const matches = await Match.find({ tournament: id }).lean();
+        fullTournament.matches = matches;
+
+        if (req.io) {
+            req.io.emit('tournament_updated', fullTournament);
+        }
 
         res.status(200).json({
             success: true,
-            message: "Tournament started successfully with full bracket."
+            message: `Tournament started successfully (${tournament.format})`
         });
 
     } catch (error) {
@@ -339,12 +460,10 @@ exports.startTournament = async (req, res) => {
     }
 };
 
-// ==========================================
-// 8. CRON JOB (التلقائي) - تم تحديثها
-// ==========================================
+// 4. CRON JOB (بدء البطولات المجدولة تلقائياً)
 exports.checkAndStartScheduledTournaments = async (io) => {
     const session = await mongoose.startSession();
-    
+
     try {
         const now = new Date();
         const tournamentsToStart = await Tournament.find({
@@ -357,11 +476,10 @@ exports.checkAndStartScheduledTournaments = async (io) => {
         console.log(`[Tournament Cron] Found ${tournamentsToStart.length} tournaments.`);
 
         for (const tournament of tournamentsToStart) {
-            // نبدأ معاملة جديدة لكل بطولة لتجنب تعطل الكل بسبب واحدة
             session.startTransaction();
             try {
                 const t = await Tournament.findById(tournament._id).session(session);
-                
+
                 let activeParticipants = t.participants;
                 if (t.status === 'check-in') {
                     activeParticipants = t.participants.filter(p => p.isCheckedIn);
@@ -369,9 +487,9 @@ exports.checkAndStartScheduledTournaments = async (io) => {
 
                 const maxPlayers = t.maxParticipants;
                 // يجب توفر لاعبين اثنين على الأقل
-                if (activeParticipants.length < 2 || 
-                   (activeParticipants.length < maxPlayers && t.incompleteAction === 'cancel')) {
-                    
+                if (activeParticipants.length < 2 ||
+                    (activeParticipants.length < maxPlayers && t.incompleteAction === 'cancel')) {
+
                     console.log(`[Tournament Cron] Cancelling tournament ${t.title}`);
                     t.status = 'cancelled';
                     await t.save({ session });
@@ -411,21 +529,92 @@ exports.checkAndStartScheduledTournaments = async (io) => {
                     if (io) io.emit('tournament_updated', { _id: t._id, status: 'cancelled' });
 
                 } else {
-                    // بدء البطولة وتوليد الجدول الكامل
-                    console.log(`[Tournament Cron] Starting tournament ${t.title}`);
-                    const byeMatches = await generateFullBracketAndStart(t, activeParticipants, session, io);
-                    
-                    await session.commitTransaction();
+                    // بدء البطولة (المنطق الكامل هنا)
+                    console.log(`[Tournament Cron] Starting tournament ${t.title} (${t.format})`);
 
-                    // معالجة الـ Byes بعد الـ Commit
-                    for (const m of byeMatches) {
-                        const matchDoc = await Match.findById(m._id);
-                        await advanceWinnerToNextRound(matchDoc, null);
+                    if (t.format === 'knockout') {
+                        // [A] Knockout
+                        const byeMatches = await generateKnockoutBracket(t, activeParticipants, session);
+                        t.status = 'active';
+                        t.startDate = now;
+                        await t.save({ session });
+                        await session.commitTransaction();
+
+                        for (const m of byeMatches) {
+                            const matchDoc = await Match.findById(m._id);
+                            await advanceWinnerToNextRound(matchDoc, null);
+                        }
+
+                    } else if (t.format === 'league') {
+                        // [B] نظام الدوري العادي (Round Robin - الكل ضد الكل)
+                        console.log("[CRON League] Starting league tournament...");
+                        console.log("[CRON League] Active participants:", activeParticipants.length);
+
+                        shuffleArray(activeParticipants);
+
+                        // كل اللاعبين في مجموعة واحدة
+                        activeParticipants.forEach((p, index) => {
+                            p.groupStats = {
+                                groupId: 'LEAGUE',
+                                played: 0, won: 0, drawn: 0, lost: 0,
+                                goalsFor: 0, goalsAgainst: 0, points: 0, rank: 0
+                            };
+                        });
+
+                        // توليد مباريات الكل ضد الكل
+                        const allLeagueMatches = generateGroupMatches(activeParticipants, t._id, 0);
+                        console.log("[CRON League] Generated matches:", allLeagueMatches.length);
+
+                        // تحديث الـ stage للمباريات
+                        allLeagueMatches.forEach(m => {
+                            m.stage = 'league';
+                            m.groupIndex = null;
+                        });
+
+                        const insertedMatches = await Match.insertMany(allLeagueMatches, { session });
+                        console.log("[CRON League] Inserted matches:", insertedMatches.length);
+
+                        t.status = 'active';
+                        t.currentStage = 'group_stage';
+                        t.startDate = now;
+                        await t.save({ session });
+                        await session.commitTransaction();
+                        console.log("[CRON League] Tournament started successfully!");
+
+                    } else if (t.format === 'hybrid') {
+                        // [C] نظام هجين (مجموعات + خروج المغلوب)
+                        const numGroups = t.groupSettings?.numberOfGroups || 4;
+                        shuffleArray(activeParticipants);
+
+                        const groups = Array.from({ length: numGroups }, () => []);
+                        activeParticipants.forEach((p, index) => {
+                            const groupIdx = index % numGroups;
+                            groups[groupIdx].push(p);
+                            p.groupStats = {
+                                groupId: String.fromCharCode(65 + groupIdx),
+                                played: 0, won: 0, drawn: 0, lost: 0,
+                                goalsFor: 0, goalsAgainst: 0, points: 0, rank: 0
+                            };
+                        });
+
+                        let allGroupMatches = [];
+                        groups.forEach((groupParticipants, index) => {
+                            const groupMatches = generateGroupMatches(groupParticipants, t._id, index);
+                            allGroupMatches = [...allGroupMatches, ...groupMatches];
+                        });
+
+                        await Match.insertMany(allGroupMatches, { session });
+                        t.status = 'active';
+                        t.currentStage = 'group_stage';
+                        t.startDate = now;
+                        await t.save({ session });
+                        await session.commitTransaction();
                     }
+
                     if (io) io.emit('tournament_updated', { _id: t._id, status: 'active' });
-                    
-                    // ننتقل للدورة التالية فوراً
-                    continue; 
+
+                    // متابعة الدورة
+                    continue;
                 }
 
                 await session.commitTransaction();
@@ -453,12 +642,12 @@ exports.checkInUser = async (req, res) => {
 
         const participant = tournament.participants.find(p => p.user.toString() === userId.toString());
         if (!participant) return res.status(403).json({ message: "Not a participant" });
-        
+
         if (participant.isCheckedIn) return res.status(400).json({ message: "Already checked in" });
 
         participant.isCheckedIn = true;
         if (tournament.status === 'open') tournament.status = 'check-in';
-        
+
         await tournament.save();
 
         res.status(200).json({ success: true, message: "Checked in successfully" });
@@ -518,20 +707,23 @@ exports.getTournamentDetails = async (req, res) => {
 
 exports.getTournamentMatches = async (req, res) => {
     try {
+        console.log('[getTournamentMatches] Fetching matches for tournament:', req.params.id);
         const matches = await Match.find({ tournament: req.params.id })
             .populate('player1', 'fullName avatarUrl')
             .populate('player2', 'fullName avatarUrl')
             .populate('winner', 'fullName')
             .sort({ round: 1, matchIndex: 1 });
+        console.log('[getTournamentMatches] Found matches:', matches.length);
         res.status(200).json(matches);
     } catch (error) {
+        console.error('[getTournamentMatches] Error:', error);
         res.status(500).json({ message: "Server error" });
     }
 };
 
 exports.getTakenTeams = async (req, res) => {
     try {
-        const { id } = req.params; 
+        const { id } = req.params;
         const tournament = await Tournament.findById(id).select('participants');
         if (!tournament) return res.status(404).json({ message: "Tournament not found" });
         const takenTeams = tournament.participants.map(p => p.selectedTeam);

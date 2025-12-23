@@ -1,281 +1,464 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { getTournamentDetails, joinTournament, checkInTournament, startTournament } from '../redux/actions/tournamentAction';
-import { getProfile } from '../redux/actions/userAction'; // [!] استيراد مهم لتحديث الرصيد
+import { Container, Row, Col, Card, Button, Spinner, Tabs, Tab, Badge, ListGroup, Alert } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { Container, Row, Col, Badge, Button, Spinner, Tab, Tabs } from 'react-bootstrap';
-import { motion } from 'framer-motion';
-import { FaTrophy, FaClock, FaGamepad, FaCheckCircle, FaPlay } from 'react-icons/fa';
+import { FaGavel, FaTrophy, FaCalendarAlt, FaUsers, FaGamepad, FaClock, FaCheckCircle, FaMoneyBillWave, FaArrowLeft, FaFutbol, FaShieldAlt, FaChartBar, FaInfoCircle, FaSitemap } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { getTournamentDetails, joinTournament, checkInTournament, getTakenTeams, startTournament, getTournamentMatches } from '../redux/actions/tournamentAction';
 import JoinTournamentModal from '../components/tournaments/JoinTournamentModal';
-import './TournamentDetailsPage.css';
 import TournamentBracket from '../components/tournaments/TournamentBracket';
+import GroupStageView from '../components/tournaments/GroupStageView';
+import LeagueStandingsView from '../components/tournaments/LeagueStandingsView';
+import './TournamentDetailsPage.css';
 
 const TournamentDetailsPage = () => {
     const { id } = useParams();
-    const { t } = useTranslation();
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
-    // Redux State
-    const { currentTournament, loadingDetails, loadingStart, loadingCheckIn, loadingJoin } = useSelector(state => state.tournamentReducer);
+    const { currentTournament: tournament, loadingDetails, takenTeams, errors, matches } = useSelector(state => state.tournamentReducer);
     const { user } = useSelector(state => state.userReducer);
+    console.log("Tournament Details Debug:", { id, tournament, loadingDetails, errors, user, matches });
 
-    // Local State
     const [showJoinModal, setShowJoinModal] = useState(false);
     const [key, setKey] = useState('overview');
 
-    // Fetch details on mount
     useEffect(() => {
         dispatch(getTournamentDetails(id));
-    }, [dispatch, id, currentTournament?.status]);
+    }, [dispatch, id]);
 
-    if (loadingDetails || !currentTournament) {
-        return <div className="loading-screen"><Spinner animation="border" variant="primary" /></div>;
-    }
+    // تم نقل socket listener لـ tournament_participant_joined إلى App.js للمركزية
+    // Fetch taken teams when modal opens
+    useEffect(() => {
+        if (showJoinModal) {
+            dispatch(getTakenTeams(id));
+        }
+    }, [showJoinModal, dispatch, id]);
 
-    // Check user status
-    const isParticipant = currentTournament.participants.some(p => p.user?._id === user?._id);
-    const myParticipantData = currentTournament.participants.find(p => p.user?._id === user?._id);
-    const isCheckedIn = myParticipantData?.isCheckedIn;
+    // Fetch matches when tournament is active (for Group Stage / Bracket)
+    useEffect(() => {
+        if (tournament && (tournament.status === 'active' || tournament.status === 'completed')) {
+            dispatch(getTournamentMatches(id));
+        }
+    }, [tournament?.status, dispatch, id]);
 
-    // --- Handlers ---
-
-    // [!] هذه هي الدالة التي كانت مفقودة، وتم تصحيحها لتحديث الرصيد
-    // ملاحظة: JoinTournamentModal يستدعي joinTournament داخلياً، لكننا نمرر له الدالة للتحكم بالإغلاق والتحديث
-    // ولكن، المكون JoinTournamentModal الذي بنيناه يتعامل مع الـ dispatch داخله
-    // لذا، نحن لا نحتاج هذه الدالة هنا إلا إذا كنا نستخدم زر انضمام بسيط.
-    // وبما أننا نستخدم Modal متطور، فإن التحديث يجب أن يحدث عند إغلاق الـ Modal بنجاح.
-
-    // الحل الأذكى: نمرر دالة callback للـ Modal ليخبرنا بالنجاح
-    const handleJoinSuccess = () => {
-        setShowJoinModal(false);
-        dispatch(getProfile()); // تحديث الرصيد
-        dispatch(getTournamentDetails(id)); // تحديث القائمة
+    const handleJoinClick = () => {
+        if (!user) {
+            toast.info(t('auth.loginRequired'));
+            navigate('/login');
+            return;
+        }
+        setShowJoinModal(true);
     };
 
     const handleCheckIn = async () => {
-        const result = await dispatch(checkInTournament(id));
-        if (result.success) toast.success(t('tournamentDetails.toasts.checkInSuccess'));
-        else toast.error(result.message);
+        const result = await dispatch(checkInTournament(id)); // [!] Fixed import name
+        if (result.success) {
+            toast.success(t('tournamentDetails.toasts.checkInSuccess'));
+            dispatch(getTournamentDetails(id));
+        } else {
+            toast.error(result.message);
+        }
     };
 
-    const handleStart = async () => {
-        const result = await dispatch(startTournament(id));
-        if (result.success) toast.success(t('tournamentDetails.toasts.startSuccess'));
-        else toast.error(result.message);
+    // [New] Handle Start Tournament (Admin Only)
+    const handleStartTournament = async () => {
+        if (window.confirm(t('tournamentDetails.startConfirm'))) {
+            const result = await dispatch(startTournament(id));
+            if (result.success) {
+                toast.success(t('tournamentDetails.toasts.startSuccess'));
+            } else {
+                toast.error(result.message);
+            }
+        }
     };
 
-    const getTeamCategoryLabel = (cat) => {
-        if (cat === 'National Teams') return t('createTournament.nations');
-        if (cat === 'Clubs') return t('createTournament.clubs');
-        return cat;
-    };
-
+    // Helper to get image URL with fallback
     const getAvatarUrl = (url) => {
-        if (!url) return "https://bootdey.com/img/Content/avatar/avatar7.png";
+        if (!url) return "https://bootdey.com/img/Content/avatar/avatar7.png"; // Default User Avatar
         if (url.startsWith('http')) return url;
-        return `${process.env.REACT_APP_API_URL}/${url}`;
+        return `${process.env.REACT_APP_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     };
+
+    if (loadingDetails) return <div className="text-center py-5 text-white"><Spinner animation="border" variant="primary" /></div>;
+    if (errors) return <div className="text-center py-5 text-danger">{t(errors, errors)}</div>;
+    if (!tournament) return <div className="text-center py-5 text-white">{t('tournamentDetails.notFound')}</div>;
+
+    const isParticipant = tournament.participants.some(p => p.user._id === user?._id);
+    const myParticipantData = tournament.participants.find(p => p.user._id === user?._id);
+    const isFull = tournament.participants.length >= tournament.maxParticipants;
+    const canCheckIn = tournament.status === 'check-in' && isParticipant && !myParticipantData.isCheckedIn;
+    const canJoin = tournament.status === 'open' && !isParticipant && !isFull;
+    const isAdmin = user?.userRole === 'Admin';
+
+    // Helper to format date
+    const formatDate = (date) => new Date(date).toLocaleString();
 
     return (
-        <div className="tournament-details-container">
-            {/* --- Header Banner --- */}
-            <div className="details-headers">
-                <div className="header-content">
-                    <motion.h1
-                        initial={{ y: -20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="tournament-title"
-                    >
-                        {currentTournament.title}
-                    </motion.h1>
-                    <div className="tournament-meta">
-                        <Badge bg="info" className="meta-badge"><FaGamepad /> eFootball</Badge>
-                        <Badge bg={currentTournament.status === 'open' ? 'success' : 'secondary'} className="meta-badge">
-                            {t(`status.${currentTournament.status}`)}
+        <Container className="tournament-details-page py-4">
+
+            {/* Header / Banner Area */}
+            <div className="tournament-header-wrapper mb-4">
+                <div className="header-overlay"></div>
+                <div className="header-content p-4 p-md-5">
+                    <div className="d-flex justify-content-between align-items-start mb-3">
+                        <Badge bg="warning" text="dark" className="fs-6 px-3 py-2 shadow-sm">
+                            {t(`tournament.teamTypes.${tournament.rules.teamCategory}`, tournament.rules.teamCategory)}
                         </Badge>
-                        <span className="text-light ms-3"><FaClock /> {new Date(currentTournament.startDate).toLocaleString()}</span>
+                        <Button variant="link" className="text-white p-0" onClick={() => navigate('/dashboard/tournaments')}>
+                            <FaArrowLeft /> {t('common.back')}
+                        </Button>
                     </div>
+
+                    <h1 className="display-5 fw-bold text-white mb-3 text-shadow">{tournament.title}</h1>
+
+                    <div className="tournament-meta d-flex flex-wrap gap-4 text-light">
+                        <span className="meta-item"><FaCalendarAlt className="me-2 text-info" /> {formatDate(tournament.startDate)}</span>
+                        <span className="meta-item"><FaUsers className="me-2 text-info" /> {tournament.participants.length} / {tournament.maxParticipants}</span>
+                        <span className="meta-item"><FaMoneyBillWave className="me-2 text-warning" /> {t('createTournament.fields.prizePool')} : {tournament.prizePool} {t('dashboard.currencies.TND')}</span>
+                        <span className="meta-item"><FaGamepad className="me-2 text-success" /> {t(`createTournament.fields.${tournament.format}`)}</span>
+                    </div>
+                </div>
+
+                <div className="header-actions p-4 d-flex justify-content-end align-items-center bg-dark-transparent">
+                    <div className="status-badge me-auto">
+                        <span className={`status-dot ${tournament.status}`}></span>
+                        <span className="text-uppercase fw-bold text-white">{t(`status.${tournament.status}`)}</span>
+                    </div>
+
+                    {canJoin && (
+                        <Button variant="primary" size="lg" onClick={handleJoinClick} className="px-5 fw-bold shadow-lg action-btn">
+                            {t('tournamentDetails.sidebar.joinBtn')}
+                        </Button>
+                    )}
+
+                    {canCheckIn && (
+                        <Button variant="success" size="lg" onClick={handleCheckIn} className="px-5 fw-bold shadow-lg action-btn animate-pulse">
+                            {t('tournamentDetails.sidebar.checkInBtn')}
+                        </Button>
+                    )}
+
+                    {isParticipant && myParticipantData.isCheckedIn && (
+                        <Badge bg="success" className="px-4 py-2 fs-6">
+                            <FaCheckCircle className="me-2" /> {t('tournamentDetails.status.checkedInMsg')}
+                        </Badge>
+                    )}
                 </div>
             </div>
 
-            <Container className="mt-4">
-                <Row>
-                    {/* --- Left Column: Info & Tabs --- */}
-                    <Col lg={8}>
-                        <div className="glass-panel main-panel">
-                            <Tabs
-                                id="tournament-tabs"
-                                activeKey={key}
-                                onSelect={(k) => setKey(k)}
-                                className="mb-4 custom-tabs"
-                            >
-                                {/* Tab 1: Overview */}
-                                <Tab eventKey="overview" title={t('tournamentDetails.tabs.overview')}>
-                                    <div className="tab-content-wrapper">
-                                        <h4 className="section-title">{t('tournamentDetails.headers.description')}</h4>
-                                        <p className="text-gray">{currentTournament.description || t('tournamentDetails.noDescription')}</p>
+            <Row>
+                {/* Main Content (Tabs) */}
+                <Col lg={8}>
+                    <Tabs
+                        id="tournament-tabs"
+                        activeKey={key}
+                        onSelect={(k) => setKey(k)}
+                        className="mb-4 custom-tabs"
+                    >
+                        <Tab eventKey="overview" title={<><FaInfoCircle className="me-1" />{t('tournamentDetails.tabs.overview')}</>}>
+                            <Card className="bg-dark text-white border-0 shadow-sm mb-4 card-content">
+                                <Card.Body>
+                                    <h5 className="text-primary mb-3"><FaTrophy className="me-2" /> {t('tournamentDetails.headers.description')}</h5>
+                                    <p className="text-gray-300 lead fs-6">{tournament.description || t('tournamentDetails.noDescription')}</p>
 
-                                        <h4 className="section-title mt-4">{t('tournamentDetails.headers.rules')}</h4>
-                                        <ul className="rules-list">
-                                            <li><strong>{t('tournamentDetails.rules.teamType')}:</strong> {getTeamCategoryLabel(currentTournament.rules.teamCategory)}</li>
-                                            <li><strong>{t('tournamentDetails.rules.matchTime')}:</strong> {currentTournament.rules.eFootballMatchTime.replace('mins', t('tournamentDetails.rules.mins'))}</li>
-                                            <li><strong>{t('tournamentDetails.rules.duration')}:</strong> {currentTournament.rules.matchDurationMinutes} {t('tournamentDetails.rules.mins')}</li>
-                                        </ul>
+                                    <hr className="border-secondary my-4" />
 
-                                        <h4 className="section-title mt-4">{t('tournamentDetails.headers.prizes')}</h4>
-                                        <div className="prizes-grid">
-                                            <div className="prize-card gold">
-                                                <FaTrophy className="prize-icon" />
-                                                <span className="prize-rank">{t('tournamentDetails.prizes.first')}</span>
-                                                <span className="prize-amount">{currentTournament.prizesDistribution.firstPlace} {t('common.currency', 'TND')}</span>
-                                            </div>
-                                            <div className="prize-card silver">
-                                                <FaTrophy className="prize-icon" />
-                                                <span className="prize-rank">{t('tournamentDetails.prizes.second')}</span>
-                                                <span className="prize-amount">{currentTournament.prizesDistribution.secondPlace} {t('common.currency', 'TND')}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Tab>
+                                    <h5 className="text-info mb-3"><FaGamepad className="me-2" /> {t('tournamentDetails.headers.rules')}</h5>
+                                    <ListGroup variant="flush" className="bg-transparent rules-list">
+                                        <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                            <span>{t('tournamentDetails.rules.teamType')}</span>
+                                            <strong>{t(`tournament.teamTypes.${tournament.rules.teamCategory}`, tournament.rules.teamCategory)}</strong>
+                                        </ListGroup.Item>
+                                        <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                            <span>{t('tournamentDetails.rules.matchTime')}</span>
+                                            <strong>{String(tournament.rules.eFootballMatchTime).replace(/[^0-9]/g, '')} {t('tournamentDetails.rules.mins')}</strong>
+                                        </ListGroup.Item>
+                                        <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                            <span>{t('tournamentDetails.rules.duration')}</span>
+                                            <strong>{tournament.rules.matchDurationMinutes} {t('tournamentDetails.rules.mins')}</strong>
+                                        </ListGroup.Item>
+                                    </ListGroup>
 
-                                {/* Tab 2: Participants */}
-                                <Tab eventKey="participants" title={`${t('tournamentDetails.tabs.participants')} (${currentTournament.participants.length}/${currentTournament.maxParticipants})`}>
-                                    <div className="participants-grid">
-                                        {currentTournament.participants.map((p, idx) => (
-                                            <motion.div
-                                                key={idx}
-                                                className={`participant-card ${p.user?._id === user?._id ? 'me' : ''}`}
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                            >
-                                                <img
-                                                    src={getAvatarUrl(p.avatar || p.user?.avatarUrl)}
-                                                    alt="avatar"
-                                                    className="p-avatar"
-                                                    onError={(e) => e.target.src = "https://bootdey.com/img/Content/avatar/avatar7.png"}
-                                                />
-                                                <div className="p-info">
-                                                    <span className="p-name">{p.username}</span>
-                                                    <span className="p-team">{p.selectedTeam}</span>
-                                                </div>
-                                                {p.selectedTeamLogo && (
-                                                    <img src={p.selectedTeamLogo} alt={p.selectedTeam} className="team-logo-mini ms-2" style={{ width: 30 }} />
-                                                )}
-
-                                                {p.isCheckedIn && <FaCheckCircle className="text-success ms-auto" title={t('tournamentDetails.status.checkedIn')} />}
-                                            </motion.div>
-                                        ))}
-                                    </div>
-                                </Tab>
-
-                                {/* Tab 3: Bracket */}
-                                <Tab eventKey="bracket" title={t('tournamentDetails.tabs.bracket')}>
-                                    {currentTournament.status === 'open' || currentTournament.status === 'check-in' ? (
-                                        <div className="bracket-placeholder">
-                                            <div className="text-center py-5">
-                                                <FaClock size={40} className="text-muted mb-3" />
-                                                <h5>{t('tournamentDetails.bracket.placeholder')}</h5>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <TournamentBracket
-                                            tournamentId={currentTournament._id}
-                                            maxParticipants={currentTournament.maxParticipants}
-                                        />
+                                    {/* Tournament Format Details */}
+                                    {tournament.format === 'hybrid' && tournament.groupSettings && (
+                                        <>
+                                            <hr className="border-secondary my-4" />
+                                            <h5 className="text-success mb-3"><FaUsers className="me-2" /> {t('tournamentDetails.headers.formatDetails')}</h5>
+                                            <ListGroup variant="flush" className="bg-transparent format-list">
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.type')}</span>
+                                                    <strong>{t('tournamentDetails.format.hybrid')}</strong>
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.numGroups')}</span>
+                                                    <strong>{tournament.groupSettings.numberOfGroups} {t('tournamentDetails.format.groups')}</strong>
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.qualifiersPerGroup')}</span>
+                                                    <strong>
+                                                        {tournament.groupSettings.qualifiersPerGroup === 1
+                                                            ? t('tournamentDetails.format.oneQualifier')
+                                                            : t('tournamentDetails.format.twoQualifiers')}
+                                                    </strong>
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.pointsSystem')}</span>
+                                                    <strong>
+                                                        {t('tournamentDetails.format.pointsDisplay', {
+                                                            win: tournament.groupSettings.pointsWin || 3,
+                                                            draw: tournament.groupSettings.pointsDraw || 1,
+                                                            loss: tournament.groupSettings.pointsLoss || 0
+                                                        })}
+                                                    </strong>
+                                                </ListGroup.Item>
+                                            </ListGroup>
+                                        </>
                                     )}
-                                </Tab>
-                            </Tabs>
-                        </div>
-                    </Col>
 
-                    {/* --- Right Column: Actions --- */}
-                    <Col lg={4}>
-                        <div className="glass-panel action-panel">
-                            <h4 className="panel-title">{t('tournamentDetails.sidebar.yourStatus')}</h4>
+                                    {tournament.format === 'league' && (
+                                        <>
+                                            <hr className="border-secondary my-4" />
+                                            <h5 className="text-success mb-3"><FaUsers className="me-2" /> {t('tournamentDetails.headers.formatDetails')}</h5>
+                                            <ListGroup variant="flush" className="bg-transparent format-list">
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.type')}</span>
+                                                    <strong>{t('tournamentDetails.format.leagueOnly')}</strong>
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.matchSystem')}</span>
+                                                    <strong>{t('tournamentDetails.format.roundRobin')}</strong>
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="bg-transparent text-white border-secondary d-flex justify-content-between">
+                                                    <span>{t('tournamentDetails.format.pointsSystem')}</span>
+                                                    <strong>
+                                                        {t('tournamentDetails.format.pointsDisplay', {
+                                                            win: 3,
+                                                            draw: 1,
+                                                            loss: 0
+                                                        })}
+                                                    </strong>
+                                                </ListGroup.Item>
+                                            </ListGroup>
+                                        </>
+                                    )}
 
-                            {!isParticipant ? (
-                                <>
-                                    <div className="entry-fee-display">
-                                        <span>{t('tournamentDetails.sidebar.entryFee')}</span>
-                                        <h3>{currentTournament.entryFee} {t('common.currency', 'TND')}</h3>
-                                    </div>
-                                    <Button
-                                        className="w-100 action-btn-primary"
-                                        onClick={() => setShowJoinModal(true)}
-                                        disabled={currentTournament.status !== 'open'}
-                                    >
-                                        {t('tournamentDetails.sidebar.joinBtn')}
-                                    </Button>
-                                </>
-                            ) : (
-                                <div className="participant-status">
-                                    <AlertBadge variant="success">{t('tournamentDetails.status.registered')}</AlertBadge>
-                                    <div className="team-display mt-3 text-center">
-                                        <small>{t('tournamentDetails.sidebar.playingAs')}</small>
-                                        <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
-                                            {myParticipantData.selectedTeamLogo && (
-                                                <img src={myParticipantData.selectedTeamLogo} alt="Team" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                                    <hr className="border-secondary my-4" />
+
+                                    <h5 className="text-warning mb-3"><FaMoneyBillWave className="me-2" /> {t('tournamentDetails.headers.prizes')}</h5>
+                                    {tournament.format === 'league' ? (
+                                        <Row className="g-3">
+                                            <Col xs={4}>
+                                                <div className="prize-card gold">
+                                                    <FaTrophy className="prize-icon mb-2" />
+                                                    <div className="small text-uppercase">{t('tournamentDetails.prizes.first')}</div>
+                                                    <div className="fs-5 fw-bold">{tournament.prizesDistribution.firstPlace} {t('dashboard.currencies.TND')}</div>
+                                                </div>
+                                            </Col>
+                                            <Col xs={4}>
+                                                <div className="prize-card attack">
+                                                    <FaFutbol className="prize-icon mb-2" />
+                                                    <div className="small text-uppercase">{t('tournamentDetails.prizes.bestAttack')}</div>
+                                                    <div className="fs-5 fw-bold">{tournament.prizesDistribution.bestAttack || 0} {t('dashboard.currencies.TND')}</div>
+                                                </div>
+                                            </Col>
+                                            <Col xs={4}>
+                                                <div className="prize-card defense">
+                                                    <FaShieldAlt className="prize-icon mb-2" />
+                                                    <div className="small text-uppercase">{t('tournamentDetails.prizes.bestDefense')}</div>
+                                                    <div className="fs-5 fw-bold">{tournament.prizesDistribution.bestDefense || 0} {t('dashboard.currencies.TND')}</div>
+                                                </div>
+                                            </Col>
+                                        </Row>
+                                    ) : (
+                                        <Row className="g-3">
+                                            <Col xs={6}>
+                                                <div className="prize-card gold">
+                                                    <FaTrophy className="prize-icon mb-2" />
+                                                    <div className="small text-uppercase">{t('tournamentDetails.prizes.first')}</div>
+                                                    <div className="fs-4 fw-bold">{tournament.prizesDistribution.firstPlace} {t('dashboard.currencies.TND')}</div>
+                                                </div>
+                                            </Col>
+                                            <Col xs={6}>
+                                                <div className="prize-card silver">
+                                                    <FaTrophy className="prize-icon mb-2" />
+                                                    <div className="small text-uppercase">{t('tournamentDetails.prizes.second')}</div>
+                                                    <div className="fs-4 fw-bold">{tournament.prizesDistribution.secondPlace} {t('dashboard.currencies.TND')}</div>
+                                                </div>
+                                            </Col>
+                                        </Row>
+                                    )}
+                                </Card.Body>
+                            </Card>
+                        </Tab>
+
+                        <Tab eventKey="participants" title={<><FaUsers className="me-1" />{t('tournamentDetails.tabs.participants')} ({tournament.participants.length})</>}>
+                            <Row xs={1} md={2} className="g-3">
+                                {tournament.participants.map((p) => (
+                                    <Col key={p._id}>
+                                        <div className={`participant-card-item old-design ${p.user._id === user?._id ? 'highlight' : ''}`}>
+                                            {/* Left: Team Logo (Order 1) */}
+                                            <div className="participant-logo">
+                                                <img src={p.selectedTeamLogo || "https://placehold.co/40"} alt="Team" className="team-logo-md" />
+                                            </div>
+
+                                            {/* Center: Info (Order 2) */}
+                                            <div className="participant-info">
+                                                <div className="user-name">{p.user.fullName}</div>
+                                                <div className="team-name">{p.selectedTeam}</div>
+                                            </div>
+
+                                            {/* Right: User Avatar (Order 3) */}
+                                            <div className="participant-user-img">
+                                                <img src={getAvatarUrl(p.user.avatarUrl)} alt="User" className="rounded-circle border border-secondary" width="45" height="45" />
+                                            </div>
+
+                                            {/* Check-in Badge */}
+                                            {p.isCheckedIn && (
+                                                <div className="checked-in-badge" title={t('status.checkedIn')}>
+                                                    <FaCheckCircle className="text-success" />
+                                                </div>
                                             )}
-                                            <h5>{myParticipantData.selectedTeam}</h5>
+                                        </div>
+                                    </Col>
+                                ))}
+                            </Row>
+                        </Tab>
+
+                        <Tab eventKey="bracket" title={<><FaSitemap className="me-1" />{t('tournamentDetails.tabs.bracket')}</>}>
+                            {tournament.status === 'open' || tournament.status === 'check-in' ? (
+                                <div className="bracket-placeholder text-center py-5">
+                                    <FaClock size={50} className="mb-3 text-secondary" />
+                                    <h5 className="text-muted">{t('tournamentDetails.bracket.placeholder')}</h5>
+                                </div>
+                            ) : tournament.format === 'league' ? (
+                                // Regular League (Round Robin - all vs all)
+                                <div className="league-wrapper bg-darker p-3 rounded">
+                                    <LeagueStandingsView
+                                        matches={matches || tournament.matches || []}
+                                        participants={tournament.participants}
+                                        hideStatsCards={true}
+                                    />
+                                </div>
+                            ) : tournament.format === 'hybrid' && (matches || tournament.matches)?.some(m => m.groupIndex !== undefined) ? (
+                                // Hybrid format with group matches
+                                <div className="hybrid-wrapper">
+                                    <GroupStageView
+                                        matches={(matches || tournament.matches)?.filter(m => m.groupIndex !== undefined) || []}
+                                        participants={tournament.participants}
+                                        qualifiersPerGroup={tournament.groupSettings?.qualifiersPerGroup || 2}
+                                    />
+                                    <hr className="my-4 border-secondary" />
+                                    <TournamentBracket
+                                        tournamentId={id}
+                                        maxParticipants={tournament.maxParticipants}
+                                        format={tournament.format}
+                                    />
+                                </div>
+                            ) : (
+                                // Knockout format
+                                <div className="bracket-wrapper bg-darker p-3 rounded">
+                                    <TournamentBracket
+                                        tournamentId={id}
+                                        maxParticipants={tournament.maxParticipants}
+                                        format={tournament.format}
+                                    />
+                                </div>
+                            )}
+                        </Tab>
+
+                        {/* Statistics Tab - Shows for league format when tournament started */}
+                        {tournament.format === 'league' && (tournament.status === 'active' || tournament.status === 'completed') && (
+                            <Tab eventKey="stats" title={<><FaChartBar className="me-1" />{t('tournamentDetails.tabs.stats')}</>}>
+                                <Card className="bg-dark text-white border-0 shadow-sm">
+                                    <Card.Body>
+                                        <h5 className="text-primary mb-4"><FaChartBar className="me-2" />{t('tournament.stats.title')}</h5>
+                                        <LeagueStandingsView
+                                            matches={matches || tournament.matches || []}
+                                            participants={tournament.participants}
+                                            showStatsOnly={true}
+                                        />
+                                    </Card.Body>
+                                </Card>
+                            </Tab>
+                        )}
+                    </Tabs>
+                </Col>
+
+                {/* Sidebar */}
+                <Col lg={4}>
+                    <Card className="bg-dark text-white border-0 shadow-sm mb-4 sidebar-card">
+                        <Card.Header className="bg-darker border-bottom border-secondary fw-bold py-3">
+                            {t('tournamentDetails.sidebar.yourStatus')}
+                        </Card.Header>
+                        <Card.Body>
+                            {isParticipant ? (
+                                <div>
+                                    <div className="d-flex align-items-center mb-3 p-2 bg-darker rounded">
+                                        <img src={myParticipantData.selectedTeamLogo} alt="Team" className="me-3 rounded" width="50" />
+                                        <div>
+                                            <div className="small text-muted">{t('tournamentDetails.sidebar.playingAs')}</div>
+                                            <div className="fw-bold text-white">{myParticipantData.selectedTeam}</div>
                                         </div>
                                     </div>
-
-                                    {currentTournament.status === 'check-in' && !isCheckedIn && (
-                                        <Button
-                                            className="w-100 mt-3 btn-warning fw-bold"
-                                            onClick={handleCheckIn}
-                                            disabled={loadingCheckIn}
-                                        >
-                                            {loadingCheckIn ? <Spinner size="sm" /> : t('tournamentDetails.sidebar.checkInBtn')}
+                                    <div className="d-grid">
+                                        <Badge bg={myParticipantData.isCheckedIn ? "success" : "warning"} className="p-3 fs-6 rounded-pill">
+                                            {myParticipantData.isCheckedIn ? t('status.checkedIn') : t('status.registered')}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-muted py-3">
+                                    <p>{t('matchRoom.accessDenied')}</p>
+                                    {!isFull && tournament.status === 'open' && (
+                                        <Button variant="outline-primary" size="sm" onClick={handleJoinClick}>
+                                            {t('tournamentDetails.sidebar.joinBtn')}
                                         </Button>
                                     )}
-
-                                    {isCheckedIn && (
-                                        <div className="mt-3 text-success text-center fw-bold">
-                                            <FaCheckCircle /> {t('tournamentDetails.status.checkedInMsg')}
-                                        </div>
-                                    )}
                                 </div>
                             )}
+                        </Card.Body>
+                    </Card>
 
-                            {user.userRole === 'Admin' && (
-                                <div className="admin-controls mt-4 pt-3 border-top border-secondary">
-                                    <h6>{t('tournamentDetails.sidebar.adminControls')}</h6>
-                                    <Button
-                                        variant="danger"
-                                        className="w-100"
-                                        onClick={handleStart}
-                                        disabled={loadingStart || currentTournament.status === 'active'}
-                                    >
-                                        {loadingStart ? <Spinner size="sm" /> : <><FaPlay /> {t('tournamentDetails.sidebar.startBtn')}</>}
+                    {/* Admin Controls */}
+                    {isAdmin && (
+                        <Card className="bg-dark border-danger shadow-sm">
+                            <Card.Header className="text-danger fw-bold border-danger py-3">
+                                <FaGavel className="me-2" /> {t('tournamentDetails.sidebar.adminControls')}
+                            </Card.Header>
+                            <Card.Body>
+                                <div className="d-grid gap-2">
+                                    {(tournament.status === 'open' || tournament.status === 'check-in') && (
+                                        <Button variant="danger" onClick={handleStartTournament}>
+                                            {t('tournamentDetails.sidebar.startBtn')}
+                                        </Button>
+                                    )}
+                                    <Button variant="outline-light" size="sm" onClick={() => navigate('/dashboard/admin/create-tournament')}>
+                                        {t('tournamentDetails.sidebar.manageBtn')}
                                     </Button>
                                 </div>
-                            )}
-                        </div>
-                    </Col>
-                </Row>
-            </Container>
+                            </Card.Body>
+                        </Card>
+                    )}
+                </Col>
+            </Row>
 
-            {/* --- The New Intelligent Join Modal --- */}
-            {currentTournament && (
-                <JoinTournamentModal
-                    show={showJoinModal}
-                    onHide={() => setShowJoinModal(false)}
-                    tournament={currentTournament}
-                    onSuccess={handleJoinSuccess} // [!] تمرير دالة النجاح للـ Modal
-                />
-            )}
-        </div>
+            {/* Join Modal */}
+            <JoinTournamentModal
+                show={showJoinModal}
+                onHide={() => setShowJoinModal(false)}
+                tournament={tournament}
+                takenTeams={takenTeams}
+                onSuccess={() => {
+                    setShowJoinModal(false);
+                    // Socket handles the participant update automatically
+                    // Only refresh takenTeams to update locked icons
+                    dispatch(getTakenTeams(id));
+                }}
+            />
+        </Container>
     );
 };
-
-const AlertBadge = ({ children, variant }) => (
-    <div className={`custom-alert alert-${variant}`}>
-        {children}
-    </div>
-);
 
 export default TournamentDetailsPage;

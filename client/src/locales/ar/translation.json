@@ -639,6 +639,10 @@
     "at": "في",
     "currency": "دينار",
     "taken": "مأخوذ",
+    "submit": "إرسال",
+    "yes": "نعم",
+    "no": "لا",
+    "all": "الكل",
     "statuses": {
       "active": "نشط",
       "blocked": "محظور",
@@ -1329,7 +1333,8 @@
     "Account_blocked": "تم حظر حسابك. يرجى الاتصال بالدعم.",
     "userMuted": "تم كتم صوتك مؤقتاً. حاول مرة أخرى بعد {{minutes}} دقائق.",
     "spamCooldown": "يرجى الانتظار لحظة قبل إرسال رسالة أخرى.",
-    "writeConflict": "حدث تضارب في البيانات، يرجى المحاولة مرة أخرى."
+    "writeConflict": "حدث تضارب في البيانات، يرجى المحاولة مرة أخرى.",
+    "registrationClosed": "تم إغلاق التسجيل."
   },
   "confirmLogout": "هل أنت متأكد من رغبتك في تسجيل الخروج؟",
   "forSellersOnly": "هذه الميزة للبائعين فقط.",
@@ -2766,9 +2771,12 @@
     "live": "مباشر الآن",
     "completed": "منتهية",
     "active": "نشطة",
-    "cancelled": "ملغاة"
+    "cancelled": "ملغاة",
+    "registered": "مسجل",
+    "checkedIn": "سجل الحضور"
   },
   "createTournament": {
+    "pageTitle": "إنشاء بطولة جديدة",
     "steps": {
       "basics": "الأساسيات",
       "prizes": "الجوائز",
@@ -2785,14 +2793,20 @@
       "description": "الوصف",
       "startDate": "تاريخ البدء",
       "startTime": "وقت البدء",
-      "entryFee": "رسوم الدخول (دينار)",
-      "prizePool": "مجموع الجوائز (دينار)",
+      "entryFee": "رسوم الدخول",
+      "prizePool": "مجموع الجوائز",
       "firstPlace": "جائزة المركز الأول",
       "secondPlace": "جائزة المركز الثاني",
       "participants": "عدد المشاركين",
       "teams": "فئة الفرق",
       "incompleteAction": "إذا لم يكتمل العدد؟",
-      "specificLeague": "دوري محدد (اختياري)"
+      "specificLeague": "دوري محدد (اختياري)",
+      "format": "نظام البطولة",
+      "knockout": "خروج المغلوب (كأس)",
+      "league": "دوري عادي (الكل ضد الكل)",
+      "hybrid": "هجين (مجموعات + كأس)",
+      "numGroups": "عدد المجموعات",
+      "qualifiers": "المتأهلون من كل مجموعة"
     },
     "allLeagues": "-- كل الدوريات --",
     "players": "لاعبين",
@@ -2801,28 +2815,61 @@
     "cancelAction": "إلغاء البطولة",
     "playByesAction": "اللعب بـ 'Byes'",
     "submitBtn": "إنشاء البطولة",
-    "successMessage": "تم إنشاء البطولة بنجاح!"
+    "successMessage": "تم إنشاء البطولة بنجاح!",
+    "hints": {
+      "league": "اتركه فارغاً للسماح لجميع الفرق."
+    },
+    "groups": "مجموعات",
+    "winnerOnly": "الفائز فقط",
+    "winnerRunner": "الأول والثاني",
+    "placeholders": {
+      "title": "مثال: دوري أبطال العرب"
+    },
+    "errors": {
+      "fillRequired": "يرجى ملء جميع الحقول المطلوبة."
+    }
   },
   "tournamentDetails": {
+    "notFound": "البطولة غير موجودة أو تم حذفها.",
+    "startConfirm": "هل أنت متأكد من أنك تريد بدء البطولة الآن؟",
     "tabs": {
       "overview": "نظرة عامة",
       "participants": "المشاركون",
-      "bracket": "الجدول"
+      "bracket": "الجدول",
+      "stats": "الإحصائيات"
     },
     "headers": {
       "description": "الوصف",
       "rules": "القوانين",
-      "prizes": "الجوائز"
+      "prizes": "الجوائز",
+      "formatDetails": "تفاصيل النظام"
     },
     "rules": {
       "teamType": "نوع الفريق",
       "matchTime": "وقت المباراة",
       "duration": "المدة",
-      "mins": "دقيقة/مباراة"
+      "mins": "دقائق",
+      "minsShort": "دقيقة"
+    },
+    "format": {
+      "type": "نوع النظام",
+      "leagueOnly": "دوري عادي (الكل ضد الكل)",
+      "hybrid": "هجين (مجموعات + كأس)",
+      "numGroups": "عدد المجموعات",
+      "groups": "مجموعات",
+      "qualifiersPerGroup": "المتأهلون من كل مجموعة",
+      "oneQualifier": "الأول فقط",
+      "twoQualifiers": "الأول والثاني",
+      "pointsSystem": "نظام النقاط",
+      "pointsDisplay": "فوز: {{win}} | تعادل: {{draw}} | خسارة: {{loss}}",
+      "matchSystem": "نظام المباريات",
+      "roundRobin": "الجميع ضد الجميع"
     },
     "prizes": {
       "first": "المركز الأول",
-      "second": "المركز الثاني"
+      "second": "المركز الثاني",
+      "bestAttack": "أفضل هجوم",
+      "bestDefense": "أفضل دفاع"
     },
     "sidebar": {
       "yourStatus": "حالتك",
@@ -2831,7 +2878,8 @@
       "playingAs": "تلعب بـ:",
       "checkInBtn": "سجل حضورك الآن",
       "adminControls": "تحكم المسؤول",
-      "startBtn": "ابدأ البطولة"
+      "startBtn": "ابدأ البطولة",
+      "manageBtn": "إدارة إعدادات البطولة"
     },
     "status": {
       "registered": "أنت مسجل",
@@ -2865,7 +2913,9 @@
     "round": "دور الـ",
     "quarterFinal": "ربع النهائي",
     "semiFinal": "نصف النهائي",
-    "final": "المباراة النهائية"
+    "final": "المباراة النهائية",
+    "secondPlace": "المرتبة 2",
+    "champion": "الفائز بالبطولة"
   },
   "matchRoom": {
     "loading": "جاري تحميل بيانات المباراة...",
@@ -2903,7 +2953,7 @@
     },
     "errors": {
       "uploadProof": "يرجى رفع لقطة الشاشة.",
-      "uploadFailed": "فشل الرفع.",
+      "uploadFailed": "فشل تحميل الصورة. يرجى المحاولة مرة أخرى.",
       "refreshRedirect": "يرجى اختيار البطولة لعرض المباراة."
     },
     "toasts": {
@@ -2921,5 +2971,59 @@
     "yourBalance": "رصيدك الحالي",
     "confirmPay": "تأكيد ودفع",
     "changeTeam": "تغيير الفريق"
+  },
+  "groupStage": {
+    "groupTitle": "المجموعة {{letter}}",
+    "table": {
+      "team": "الفريق",
+      "mp": "لعب",
+      "w": "فوز",
+      "d": "تعادل",
+      "l": "خسارة",
+      "gf": "له",
+      "ga": "عليه",
+      "gd": "فارق",
+      "pts": "نقاط"
+    },
+    "matches": "مباريات المجموعة",
+    "matchNumber": "مباراة #{{num}}"
+  },
+  "tournament": {
+    "stats": {
+      "title": "إحصائيات البطولة",
+      "topScorers": "أفضل 5 هدافين",
+      "topDefense": "أفضل 5 دفاعات",
+      "fixtures": "جدول مباريات كل لاعب",
+      "bestAttack": "أفضل هجوم",
+      "bestDefense": "أفضل دفاع",
+      "leader": "المتصدر"
+    },
+    "standings": {
+      "title": "جدول الترتيب",
+      "team": "الفريق",
+      "played": "لعب",
+      "won": "ف",
+      "drawn": "ت",
+      "lost": "خ",
+      "gf": "+",
+      "ga": "-",
+      "gd": "±",
+      "points": "نقاط"
+    },
+    "noMatches": "لا توجد مباريات بعد",
+    "teamTypes": {
+      "National Teams": "منتخبات",
+      "Clubs": "أندية"
+    }
+  },
+  "match": {
+    "status": {
+      "scheduled": "مجدولة",
+      "ongoing": "جارية",
+      "review": "قيد المراجعة",
+      "completed": "مكتملة",
+      "dispute": "متنازع عليها",
+      "cancelled": "ملغاة"
+    }
   }
 }

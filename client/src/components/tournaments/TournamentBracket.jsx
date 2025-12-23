@@ -5,16 +5,17 @@ import { useNavigate } from 'react-router-dom';
 import { Spinner } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { SocketContext } from '../../App';
-import { FaGavel } from 'react-icons/fa'; // [جديد]
+import { FaGavel, FaTrophy, FaMedal } from 'react-icons/fa';
+import GroupStageView from './GroupStageView'; // [جديد] استيراد عرض المجموعات
 import './TournamentBracket.css';
 import { WAITING_IMG, DEAD_IMG } from './TournamentImages';
 
-const TournamentBracket = ({ tournamentId, maxParticipants }) => {
+const TournamentBracket = ({ tournamentId, maxParticipants, format }) => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
     const socket = useContext(SocketContext);
-    
+
     const { matches, loadingMatches } = useSelector(state => state.tournamentReducer);
 
     useEffect(() => {
@@ -40,16 +41,30 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
 
     if (loadingMatches) return <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>;
 
+    // --- [Knockout Logic] ---
+    // لا نعرض GroupStageView هنا، TournamentDetailsPage يتولى ذلك
+    // نعرض فقط المباريات الإقصائية (knockout)
+    const knockoutMatches = matches.filter(m => m.stage !== 'group');
+
+    // إذا كل المباريات كانت group stage، لا نعرض شيء هنا
+    if (knockoutMatches.length === 0 && matches.length > 0) {
+        return null; // TournamentDetailsPage already shows GroupStageView
+    }
+
     const totalRounds = Math.log2(maxParticipants || 16);
 
-    const matchesByRound = matches.reduce((acc, match) => {
+    // التحقق من انتهاء البطولة (لإظهار المنصة)
+    const finalMatch = knockoutMatches.find(m => m.round === totalRounds);
+    const isTournamentFinished = finalMatch && finalMatch.status === 'completed' && finalMatch.winner;
+
+    // تجميع المباريات للشجرة (knockout فقط)
+    const matchesByRound = knockoutMatches.reduce((acc, match) => {
         acc[match.round] = acc[match.round] || [];
         acc[match.round].push(match);
         return acc;
     }, {});
 
     const bracketStructure = [];
-
     for (let r = 1; r <= totalRounds; r++) {
         const roundMatches = (matchesByRound[r] || []).sort((a, b) => a.matchIndex - b.matchIndex);
         bracketStructure.push({ round: r, matches: roundMatches });
@@ -64,31 +79,87 @@ const TournamentBracket = ({ tournamentId, maxParticipants }) => {
     };
 
     return (
-        <div className="bracket-container custom-scrollbar">
-            {bracketStructure.map((roundData) => (
-                <div key={roundData.round} className="round-column">
-                    <div className="round-title">
-                        {getRoundName(roundData.round)}
-                    </div>
+        <div className="tournament-view-wrapper">
+            {/* منصة التتويج (تظهر فقط في الإقصائيات المنتهية) */}
+            {isTournamentFinished && (
+                <ChampionsPodium finalMatch={finalMatch} t={t} />
+            )}
 
-                    {roundData.matches.map((match) => (
-                        <MatchCard
-                            key={match._id}
-                            match={match}
-                            onClick={() => {
-                                if (match.status !== 'cancelled' && (match.player1 || match.player2)) {
-                                    navigate(`/dashboard/match/${match._id}`);
-                                }
-                            }}
-                            t={t}
-                        />
-                    ))}
-                </div>
-            ))}
+            <div className="bracket-container custom-scrollbar">
+                {bracketStructure.map((roundData) => (
+                    <div key={roundData.round} className="round-column">
+                        <div className="round-title">
+                            {getRoundName(roundData.round)}
+                        </div>
+
+                        {roundData.matches.map((match) => (
+                            <MatchCard
+                                key={match._id}
+                                match={match}
+                                onClick={() => {
+                                    if (match.status !== 'cancelled' && (match.player1 || match.player2)) {
+                                        navigate(`/dashboard/match/${match._id}`);
+                                    }
+                                }}
+                                t={t}
+                            />
+                        ))}
+                    </div>
+                ))}
+            </div>
         </div>
     );
 };
 
+// --- Sub-Component: Champions Podium ---
+const ChampionsPodium = ({ finalMatch, t }) => {
+    const isP1Winner = finalMatch.winner === finalMatch.player1?._id;
+
+    const champion = isP1Winner ? finalMatch.player1 : finalMatch.player2;
+    const championTeam = isP1Winner ? finalMatch.player1Team : finalMatch.player2Team;
+    const championLogo = isP1Winner ? finalMatch.player1TeamLogo : finalMatch.player2TeamLogo;
+
+    const runnerUp = isP1Winner ? finalMatch.player2 : finalMatch.player1;
+    const runnerUpTeam = isP1Winner ? finalMatch.player2Team : finalMatch.player1Team;
+    const runnerUpLogo = isP1Winner ? finalMatch.player2TeamLogo : finalMatch.player1TeamLogo;
+
+    const getImg = (url) => {
+        if (!url) return WAITING_IMG;
+        if (url.startsWith('data:') || url.startsWith('http')) return url;
+        const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:8000";
+        return `${baseUrl}/${url}`;
+    };
+
+    return (
+        <div className="champions-podium fade-in-down">
+            <div className="podium-card silver">
+                <div className="medal-icon silver"><FaMedal /></div>
+                <div className="podium-avatar-wrapper">
+                    <img src={getImg(runnerUpLogo || runnerUp?.avatarUrl)} alt="Runner Up" className="podium-avatar" />
+                </div>
+                <div className="podium-info">
+                    <h3 className="podium-rank">2nd Place</h3>
+                    <div className="podium-team">{runnerUpTeam}</div>
+                    <div className="podium-user">{runnerUp?.fullName}</div>
+                </div>
+            </div>
+
+            <div className="podium-card gold">
+                <div className="trophy-icon"><FaTrophy /></div>
+                <div className="podium-avatar-wrapper">
+                    <img src={getImg(championLogo || champion?.avatarUrl)} alt="Champion" className="podium-avatar" />
+                </div>
+                <div className="podium-info">
+                    <h2 className="podium-rank">CHAMPION</h2>
+                    <div className="podium-team">{championTeam}</div>
+                    <div className="podium-user">{champion?.fullName}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Sub-Component: Match Card ---
 const MatchCard = ({ match, onClick, t }) => {
     const [animateClass, setAnimateClass] = useState('');
 
@@ -96,7 +167,7 @@ const MatchCard = ({ match, onClick, t }) => {
         setAnimateClass('just-updated');
         const timer = setTimeout(() => setAnimateClass(''), 1000);
         return () => clearTimeout(timer);
-    }, [match.status, match.winner, match.player1]); 
+    }, [match.status, match.winner, match.player1]);
 
     const getImg = (url) => {
         if (!url) return WAITING_IMG;
@@ -133,21 +204,17 @@ const MatchCard = ({ match, onClick, t }) => {
 
     const statusClass = `status-${match.status}`;
     const disputeClass = match.status === 'dispute' ? 'dispute-card' : '';
-    
-    // [جديد] التحقق من قرار الأدمن (لإظهار المطرقة)
     const isAdminResolved = match.dispute && match.dispute.adminDecision;
 
-    const hasPenalties = (match.penaltiesPlayer1 !== undefined && match.penaltiesPlayer1 !== null) || 
-                         (match.penaltiesPlayer2 !== undefined && match.penaltiesPlayer2 !== null);
+    const hasPenalties = (match.penaltiesPlayer1 !== undefined && match.penaltiesPlayer1 !== null) ||
+        (match.penaltiesPlayer2 !== undefined && match.penaltiesPlayer2 !== null);
 
     const renderPlayer = (player, teamName, teamLogo, isWinner, score, penaltyScore) => {
         let displayImg = WAITING_IMG;
         if (teamLogo) displayImg = getImg(teamLogo);
         else if (player && player.avatarUrl) displayImg = getImg(player.avatarUrl);
 
-        if (match.isBye && !player) {
-            displayImg = DEAD_IMG;
-        }
+        if (match.isBye && !player) displayImg = DEAD_IMG;
 
         const animationKey = player ? player._id : (match.isBye ? 'bye' : 'empty');
 
@@ -160,7 +227,6 @@ const MatchCard = ({ match, onClick, t }) => {
                         alt="team"
                         onError={(e) => e.target.src = WAITING_IMG}
                     />
-
                     <div className="text-content">
                         <span className="team-name-bold">
                             {teamName || (player ? "---" : (match.isBye ? "---" : t('matchRoom.tbd')))}
@@ -176,7 +242,7 @@ const MatchCard = ({ match, onClick, t }) => {
                         {match.status === 'scheduled' ? '-' : score}
                     </span>
                     {hasPenalties && (
-                        <span style={{fontSize: '0.65rem', color: '#f59e0b', marginTop: '-2px', fontWeight: 'bold'}}>
+                        <span style={{ fontSize: '0.65rem', color: '#f59e0b', marginTop: '-2px', fontWeight: 'bold' }}>
                             ({penaltyScore})
                         </span>
                     )}
@@ -188,8 +254,7 @@ const MatchCard = ({ match, onClick, t }) => {
     return (
         <div className={`match-card ${animateClass} ${disputeClass}`} onClick={onClick}>
             <div className={`match-status-bar ${statusClass}`}></div>
-            
-            {/* [جديد] شارة الأدمن */}
+
             {isAdminResolved && (
                 <div className="admin-resolution-badge" title="Resolved by Admin">
                     <FaGavel size={12} />

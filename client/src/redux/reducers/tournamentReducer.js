@@ -119,10 +119,9 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
 
         // 1. إضافة بطولة جديدة (Socket)
         case ADD_TOURNAMENT_SOCKET:
-            // منع التكرار
-            if (state.tournaments.some(t => t._id === payload._id)) return state;
             return {
                 ...state,
+                // نضيف البطولة الجديدة في بداية القائمة الحالية
                 tournaments: [payload, ...state.tournaments]
             };
 
@@ -143,29 +142,60 @@ const tournamentReducer = (state = initialState, { type, payload }) => {
                 };
             }
 
+            // 3. تحديث المباريات إذا أتت مع التحديث
+            const newMatches = payload.matches || state.matches;
+
             return {
                 ...state,
                 tournaments: updatedList,
-                currentTournament: updatedCurrent
+                currentTournament: updatedCurrent,
+                matches: newMatches
             };
 
-        case UPDATE_TOURNAMENT_PARTICIPANTS_SOCKET:
-            if (state.currentTournament && state.currentTournament._id === payload.tournamentId) {
-                // تحديث المشاركين
-                const updatedParticipants = [...state.currentTournament.participants, payload.participant];
-                // تحديث الفرق المحجوزة
-                const updatedTakenTeams = [...state.takenTeams, payload.takenTeam];
+        case UPDATE_TOURNAMENT_PARTICIPANTS_SOCKET: {
+            const { tournamentId, participants, participant, takenTeam } = payload;
 
-                return {
-                    ...state,
-                    currentTournament: {
+            // 1. تحديث القائمة الرئيسية (للصفحة الرئيسية)
+            const updatedTournamentsList = state.tournaments.map(t => {
+                if (t._id === tournamentId) {
+                    // إذا أتت قائمة كاملة للمشاركين
+                    if (participants) {
+                        return { ...t, participants };
+                    }
+                    // إذا أتى مشارك واحد جديد
+                    if (participant) {
+                        return { ...t, participants: [...(t.participants || []), participant] };
+                    }
+                }
+                return t;
+            });
+
+            // 2. تحديث البطولة الحالية (إذا كنا في صفحتها)
+            let updatedCurrentTournament = state.currentTournament;
+            if (state.currentTournament && state.currentTournament._id === tournamentId) {
+                if (participants) {
+                    updatedCurrentTournament = { ...state.currentTournament, participants };
+                } else if (participant) {
+                    updatedCurrentTournament = {
                         ...state.currentTournament,
-                        participants: updatedParticipants
-                    },
-                    takenTeams: updatedTakenTeams
-                };
+                        participants: [...(state.currentTournament.participants || []), participant]
+                    };
+                }
             }
-            return state;
+
+            // 3. تحديث الفرق المحجوزة
+            let updatedTakenTeams = state.takenTeams;
+            if (takenTeam) {
+                updatedTakenTeams = [...state.takenTeams, takenTeam];
+            }
+
+            return {
+                ...state,
+                tournaments: updatedTournamentsList,
+                currentTournament: updatedCurrentTournament,
+                takenTeams: updatedTakenTeams
+            };
+        }
 
         case UPDATE_MATCH_SOCKET:
             return {

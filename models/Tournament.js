@@ -1,54 +1,73 @@
-// server/models/Tournament.js
 const mongoose = require('mongoose');
 
 const TournamentSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
-  
-  // إعدادات الدخول والجوائز
-  entryFee: { type: Number, required: true }, // التكلفة (TND)
-  prizePool: { type: Number, required: true }, // مجموع الجوائز
+
+  entryFee: { type: Number, required: true },
+  prizePool: { type: Number, required: true },
   prizesDistribution: {
     firstPlace: { type: Number, required: true },
     secondPlace: { type: Number, default: 0 },
-    thirdPlace: { type: Number, default: 0 }
+    thirdPlace: { type: Number, default: 0 },
+    bestAttack: { type: Number, default: 0 },
+    bestDefense: { type: Number, default: 0 }
   },
 
-  // هيكلية البطولة
-  maxParticipants: { 
-    type: Number, 
-    enum: [16, 32], 
-    required: true 
+  maxParticipants: {
+    type: Number,
+    enum: [8, 16, 32],
+    required: true
   },
-  
-  // حالة البطولة
+
+  // [جديد] نوع البطولة
+  format: {
+    type: String,
+    enum: ['knockout', 'league', 'hybrid'], // knockout=كأس, league=دوري فقط, hybrid=مجموعات ثم كأس
+    default: 'knockout',
+    required: true
+  },
+
+  // [جديد] إعدادات المجموعات (تستخدم فقط إذا كان النوع league أو hybrid)
+  groupSettings: {
+    numberOfGroups: { type: Number, default: 4 }, // مثلاً 4 مجموعات
+    qualifiersPerGroup: { type: Number, default: 2 }, // يتأهل 2 من كل مجموعة
+    pointsWin: { type: Number, default: 3 },
+    pointsDraw: { type: Number, default: 1 },
+    pointsLoss: { type: Number, default: 0 }
+  },
+
   status: {
     type: String,
     enum: ['open', 'check-in', 'active', 'completed', 'cancelled'],
     default: 'open'
   },
-  
+
+  // يمكن أن نستخدم هذا لتتبع المرحلة الحالية (هل نحن في المجموعات أم في الأدوار الإقصائية)
+  currentStage: {
+    type: String,
+    enum: ['group_stage', 'knockout_stage', 'finished'],
+    default: 'group_stage'
+  },
+
   currentRound: { type: Number, default: 1 },
 
-  // إعدادات مصير البطولة إذا لم يكتمل العدد (طلبك الثاني)
   incompleteAction: {
     type: String,
-    enum: ['cancel', 'play_with_byes'], // إلغاء وإرجاع المال، أو إكمال بوجود Byes
+    enum: ['cancel', 'play_with_byes'],
     default: 'cancel',
     required: true
   },
 
-  // التوقيت
   startDate: { type: Date, required: true },
-  checkInOpenDate: { type: Date }, 
+  checkInOpenDate: { type: Date },
   checkInDurationMinutes: { type: Number, default: 15 },
 
-  // القوانين واختيار الفرق (طلبك الأول)
   rules: {
-    teamCategory: { 
-      type: String, 
-      enum: ['Clubs', 'National Teams'], // أندية أو منتخبات
-      required: true 
+    teamCategory: {
+      type: String,
+      enum: ['Clubs', 'National Teams'],
+      required: true
     },
     specificLeague: { type: mongoose.Schema.Types.ObjectId, ref: 'League', default: null },
     matchDurationMinutes: { type: Number, default: 15 },
@@ -58,21 +77,30 @@ const TournamentSchema = new mongoose.Schema({
     penalties: { type: Boolean, default: true }
   },
 
-  // المشاركون
   participants: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    username: { type: String }, // للتسريع
-    avatar: { type: String },   // للتسريع
-    
-    // الفريق المختار (يجب أن يكون فريداً داخل هذه البطولة)
-    selectedTeam: { type: String, required: true }, 
-    selectedTeamLogo: { type: String }, // رابط شعار الفريق
+    username: { type: String },
+    avatar: { type: String },
+    selectedTeam: { type: String, required: true },
+    selectedTeamLogo: { type: String },
+    isCheckedIn: { type: Boolean, default: false },
 
-    isCheckedIn: { type: Boolean, default: false }, // حالة الـ Check-in
-    
+    // [جديد] تتبع احصائيات المجموعات لكل لاعب
+    groupStats: {
+      groupId: { type: String }, // A, B, C...
+      played: { type: Number, default: 0 },
+      won: { type: Number, default: 0 },
+      drawn: { type: Number, default: 0 },
+      lost: { type: Number, default: 0 },
+      goalsFor: { type: Number, default: 0 },
+      goalsAgainst: { type: Number, default: 0 },
+      points: { type: Number, default: 0 },
+      rank: { type: Number, default: 0 } // ترتيبه في المجموعة
+    },
+
     status: {
       type: String,
-      enum: ['registered', 'eliminated', 'disqualified', 'winner'],
+      enum: ['registered', 'active', 'eliminated', 'disqualified', 'winner'],
       default: 'registered'
     },
     joinedAt: { type: Date, default: Date.now }
@@ -81,8 +109,7 @@ const TournamentSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-// ضبط توقيت الـ Check-in تلقائياً
-TournamentSchema.pre('save', function(next) {
+TournamentSchema.pre('save', function (next) {
   if (this.startDate && this.checkInDurationMinutes) {
     this.checkInOpenDate = new Date(this.startDate.getTime() - (this.checkInDurationMinutes * 60000));
   }

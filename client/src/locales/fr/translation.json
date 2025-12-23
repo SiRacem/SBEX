@@ -633,6 +633,10 @@
     "at": "à",
     "currency": "TND",
     "taken": "Réservé",
+    "submit": "Soumettre",
+    "yes": "Oui",
+    "no": "Non",
+    "all": "Tout",
     "statuses": {
       "active": "Actif",
       "blocked": "Bloqué",
@@ -1323,7 +1327,8 @@
     "Account_blocked": "Votre compte est bloqué. Veuillez contacter le support.",
     "userMuted": "Vous êtes mis en sourdine. Réessayez dans {{minutes}} minutes.",
     "spamCooldown": "Veuillez patienter un moment avant d'envoyer un autre message.",
-    "writeConflict": "Un conflit de données est survenu. Veuillez réessayer."
+    "writeConflict": "Un conflit de données est survenu. Veuillez réessayer.",
+    "registrationClosed": "Les inscriptions sont fermées."
   },
   "confirmLogout": "Êtes-vous sûr de vouloir vous déconnecter ?",
   "forSellersOnly": "Pour les vendeurs uniquement.",
@@ -2756,9 +2761,12 @@
     "live": "En Direct",
     "completed": "Terminé",
     "active": "Actif",
-    "cancelled": "Annulé"
+    "cancelled": "Annulé",
+    "registered": "Enregistré",
+    "checkedIn": "Enregistré"
   },
   "createTournament": {
+    "pageTitle": "Créer un Nouveau Tournoi",
     "steps": {
       "basics": "Infos",
       "prizes": "Prix",
@@ -2775,44 +2783,80 @@
       "description": "Description",
       "startDate": "Date de début",
       "startTime": "Heure de début",
-      "entryFee": "Frais d'entrée (TND)",
-      "prizePool": "Cagnotte totale (TND)",
+      "entryFee": "Frais d'entrée",
+      "prizePool": "Cagnotte totale",
       "firstPlace": "Prix 1ère place",
       "secondPlace": "Prix 2ème place",
       "participants": "Participants max",
       "teams": "Catégorie d'équipe",
       "incompleteAction": "Si incomplet ?",
-      "specificLeague": "Ligue spécifique (Optionnel)"
+      "specificLeague": "Ligue spécifique (Optionnel)",
+      "format": "Format du tournoi",
+      "knockout": "Élimination directe (Coupe)",
+      "league": "Ligue Régulière (Tous contre tous)",
+      "hybrid": "Hybride (Groupes + Élimination)",
+      "numGroups": "Nombre de groupes",
+      "qualifiers": "Qualifiés par groupe"
     },
-    "allLeagues": "-- Toutes les ligues --",
+    "placeholders": {
+      "title": "ex: Soirée Ligue des Champions"
+    },
+    "hints": {
+      "league": "Laisser vide pour autoriser toutes les équipes."
+    },
+    "groups": "Groupes",
+    "winnerOnly": "Vainqueur uniquement",
+    "winnerRunner": "Vainqueur & Deuxième",
     "players": "Joueurs",
     "clubs": "Clubs",
     "nations": "Équipes nationales",
+    "allLeagues": "-- Toutes les ligues --",
     "cancelAction": "Annuler le tournoi",
     "playByesAction": "Jouer avec 'Byes'",
     "submitBtn": "Créer le tournoi",
     "successMessage": "Tournoi créé avec succès !"
   },
   "tournamentDetails": {
+    "notFound": "Tournoi introuvable ou supprimé.",
+    "startConfirm": "Êtes-vous sûr de vouloir commencer le tournoi maintenant ?",
     "tabs": {
       "overview": "Aperçu",
       "participants": "Participants",
-      "bracket": "Tableau"
+      "bracket": "Tableau",
+      "stats": "Statistiques"
     },
     "headers": {
       "description": "DESCRIPTION",
       "rules": "RÈGLES",
-      "prizes": "PRIX"
+      "prizes": "PRIX",
+      "formatDetails": "DÉTAILS DU FORMAT"
     },
     "rules": {
       "teamType": "Type d'équipe",
       "matchTime": "Temps de match",
       "duration": "Durée",
-      "mins": "min/match"
+      "mins": "mins",
+      "minsShort": "min"
+    },
+    "format": {
+      "type": "Type de format",
+      "leagueOnly": "Ligue Régulière (Tous contre tous)",
+      "hybrid": "Hybride (Groupes + Élimination)",
+      "numGroups": "Nombre de groupes",
+      "groups": "groupes",
+      "qualifiersPerGroup": "Qualifiés par groupe",
+      "oneQualifier": "Premier seulement",
+      "twoQualifiers": "1er et 2ème",
+      "pointsSystem": "Système de points",
+      "pointsDisplay": "Victoire: {{win}} | Nul: {{draw}} | Défaite: {{loss}}",
+      "matchSystem": "Système de matchs",
+      "roundRobin": "Round Robin (Tous contre tous)"
     },
     "prizes": {
       "first": "1ère Place",
-      "second": "2ème Place"
+      "second": "2ème Place",
+      "bestAttack": "Meilleure Attaque",
+      "bestDefense": "Meilleure Défense"
     },
     "sidebar": {
       "yourStatus": "Votre Statut",
@@ -2821,7 +2865,8 @@
       "playingAs": "Jouant avec :",
       "checkInBtn": "S'ENREGISTRER MAINTENANT",
       "adminControls": "Contrôles Admin",
-      "startBtn": "Démarrer le tournoi"
+      "startBtn": "Démarrer le tournoi",
+      "manageBtn": "Gérer les paramètres du tournoi"
     },
     "status": {
       "registered": "Vous êtes inscrit",
@@ -2855,7 +2900,9 @@
     "round": "16ème de finale",
     "quarterFinal": "Quarts de finale",
     "semiFinal": "Demi-finales",
-    "final": "Grande Finale"
+    "final": "Grande Finale",
+    "secondPlace": "2ème Place",
+    "champion": "CHAMPION"
   },
   "matchRoom": {
     "loading": "Chargement des données du match...",
@@ -2911,5 +2958,59 @@
     "yourBalance": "Votre solde",
     "confirmPay": "Confirmer & Payer",
     "changeTeam": "Changer d'équipe"
+  },
+  "groupStage": {
+    "groupTitle": "Groupe {{letter}}",
+    "table": {
+      "team": "Équipe",
+      "mp": "MJ",
+      "w": "G",
+      "d": "N",
+      "l": "P",
+      "gf": "BP",
+      "ga": "BC",
+      "gd": "DB",
+      "pts": "PTS"
+    },
+    "matches": "Matchs du groupe",
+    "matchNumber": "Match #{{num}}"
+  },
+  "tournament": {
+    "stats": {
+      "title": "Statistiques du tournoi",
+      "topScorers": "Top 5 buteurs",
+      "topDefense": "Top 5 défenses",
+      "fixtures": "Calendrier par joueur",
+      "bestAttack": "Meilleure attaque",
+      "bestDefense": "Meilleure défense",
+      "leader": "Leader"
+    },
+    "standings": {
+      "title": "Classement du championnat",
+      "team": "Équipe",
+      "played": "J",
+      "won": "V",
+      "drawn": "N",
+      "lost": "D",
+      "gf": "BP",
+      "ga": "BC",
+      "gd": "DB",
+      "points": "PTS"
+    },
+    "noMatches": "Pas encore de matchs",
+    "teamTypes": {
+      "National Teams": "Équipes Nationales",
+      "Clubs": "Clubs"
+    }
+  },
+  "match": {
+    "status": {
+      "scheduled": "Programmé",
+      "ongoing": "En cours",
+      "review": "En révision",
+      "completed": "Terminé",
+      "dispute": "Litige",
+      "cancelled": "Annulé"
+    }
   }
 }

@@ -1,186 +1,337 @@
 /* src/pages/TournamentDetailsPage.css */
 
-.tournament-details-container {
-    background-color: #0f172a;
-    min-height: 100vh;
-    color: #fff;
-    padding-bottom: 3rem;
+.tournament-details-page {
+    color: #e2e8f0;
 }
 
-.loading-screen {
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #0f172a;
-}
-
-/* Header */
-.details-headers {
-    background: linear-gradient(to bottom, #1e293b, #0f172a);
-    padding: 3rem 0 2rem;
-    border-bottom: 1px solid #334155;
-    text-align: center;
-}
-
-.tournament-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
-    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-}
-
-.meta-badge {
-    margin: 0 5px;
-    font-size: 0.9rem;
-    padding: 6px 12px;
-}
-
-/* Panels */
-.glass-panel {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+/* --- Header & Banner --- */
+.tournament-header-card {
     border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.sections-title {
-    font-size: 1.2rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 1px solid #334155;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.text-gray {
-    color: #cbd5e1;
-    line-height: 1.6;
-}
-
-/* Prizes */
-.prizes-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-}
-
-.prize-card {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 1rem;
-    border-radius: 10px;
-    text-align: center;
+.tournament-header-wrapper {
+    position: relative;
+    /* يمكنك تغيير رابط الصورة بصورة افتراضية أخرى إذا رغبت */
+    background-image: url('https://res.cloudinary.com/draghygoj/image/upload/v1746477147/wmremove-transformed-removebg-preview_adyzjs.png');
+    background-size: cover;
+    background-position: center;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 280px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
-    align-items: center;
-}
-
-.prize-card.gold { border: 1px solid #fbbf24; box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
-.prize-card.silver { border: 1px solid #94a3b8; }
-
-.prize-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-.gold .prize-icon { color: #fbbf24; }
-.silver .prize-icon { color: #cbd5e1; }
-
-.prize-amount { font-size: 1.2rem; font-weight: 700; }
-
-/* Participants */
-.participants-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-}
-
-.participant-card {
-    background: #1e293b;
-    padding: 10px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid #334155;
-}
-
-.participant-card.me {
-    border-color: #3b82f6;
-    background: rgba(59, 130, 246, 0.1);
-}
-
-.p-avatar {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.p-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.p-name { font-weight: 600; font-size: 0.9rem; }
-.p-team { font-size: 0.75rem; color: #94a3b8; }
-
-/* Right Panel */
-.panel-title {
-    font-size: 1.1rem;
-    margin-bottom: 1.5rem;
-}
-
-.entry-fee-display {
-    text-align: center;
-    background: rgba(0, 0, 0, 0.2);
-    padding: 1rem;
-    border-radius: 10px;
-    margin-bottom: 1.5rem;
-}
-
-.entry-fee-display h3 {
-    color: #3b82f6;
-    margin: 0;
-}
-
-.action-btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border: none;
-    padding: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.action-btn-primary:hover {
-    box-shadow: 0 5px 15px rgba(37, 99, 235, 0.4);
-}
-
-/* Modal Dark Theme */
-.dark-modal .modal-content {
-    background-color: #1e293b;
-    color: #fff;
-    border: 1px solid #334155;
-}
-
-.dark-modal .modal-header { border-bottom-color: #334155; }
-.dark-modal .modal-footer { border-top-color: #334155; }
-.dark-modal .btn-close { filter: invert(1); }
-
-.fee-summary {
-    display: flex;
     justify-content: space-between;
-    margin-top: 1rem;
-    font-weight: 600;
-    border-top: 1px solid #334155;
-    padding-top: 0.5rem;
+    transition: transform 0.3s ease;
 }
 
-/* Tabs Override */
+.tournament-header-wrapper:hover {
+    transform: translateY(-2px);
+}
+
+.header-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.4));
+    z-index: 1;
+}
+
+.header-content {
+    position: relative;
+    z-index: 2;
+}
+
+.header-actions {
+    position: relative;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.text-shadow {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.meta-item {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 6px 12px;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- Status Indicator --- */
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-dot.open {
+    background-color: #3b82f6;
+    box-shadow: 0 0 10px #3b82f6;
+}
+
+.status-dot.check-in {
+    background-color: #10b981;
+    box-shadow: 0 0 10px #10b981;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.active {
+    background-color: #f59e0b;
+    box-shadow: 0 0 10px #f59e0b;
+    animation: pulse 1s infinite;
+}
+
+.status-dot.completed {
+    background-color: #8b5cf6;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* --- Tabs & Cards --- */
 .custom-tabs .nav-link {
     color: #94a3b8;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 12px 25px;
+    font-weight: 700;
+    transition: all 0.3s;
+    letter-spacing: 0.5px;
 }
+
+.custom-tabs .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
 .custom-tabs .nav-link.active {
-    background-color: transparent !important;
-    color: #fff !important;
-    border-bottom: 2px solid #3b82f6 !important;
+    color: #3b82f6;
+    background: transparent;
+    border-bottom-color: #3b82f6;
+}
+
+.card-content {
+    border-radius: 12px;
+    background: #1e293b !important;
+}
+
+.bg-darker {
+    background-color: #0f172a !important;
+}
+
+/* --- Prize Cards --- */
+.prize-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: #0f172a;
+}
+
+.prize-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.prize-card.gold {
+    background: linear-gradient(145deg, #1e293b, #453a20);
+    border-color: #f59e0b;
+    color: #f59e0b;
+}
+
+.prize-card.silver {
+    background: linear-gradient(145deg, #1e293b, #2a313d);
+    border-color: #94a3b8;
+    color: #94a3b8;
+}
+
+.prize-card.attack {
+    background: linear-gradient(145deg, #1e293b, #1a3a2e);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.prize-card.defense {
+    background: linear-gradient(145deg, #1e293b, #1a2a4a);
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.prize-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+/* --- Participant List (New "Old" Design) --- */
+.participant-card-item.old-design {
+    background: #151e32;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px 16px;
+    /* تقليل الحشو */
+    display: flex;
+    align-items: center;
+    /* محاذاة عمودية */
+    gap: 15px;
+    /* مسافة ثابتة وصغيرة بين العناصر */
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.participant-card-item.old-design:hover {
+    background: #1e293b;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.participant-card-item.highlight {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.participant-info {
+    flex-grow: 1;
+    text-align: right;
+    /* محاذاة النص لليمين */
+    order: 2;
+}
+
+/* Team Logo (Left/Right) */
+.participant-logo {
+    flex-shrink: 0;
+    order: 1;
+    /* ترتيبها الأول */
+}
+
+/* تحسين النصوص */
+.participant-info .user-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+}
+
+.text-muted p {
+    color: #94a3b8 !important;
+}
+
+.participant-info .team-name {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.team-logo-md {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* User Avatar (Left/Right) */
+.participant-user-img {
+    flex-shrink: 0;
+    order: 3;
+    /* ترتيبها الأخير */
+}
+
+.participant-user-img img {
+    border: 2px solid #475569;
+    transition: border-color 0.3s;
+}
+
+.participant-card-item:hover .participant-user-img img {
+    border-color: #3b82f6;
+}
+
+/* Check-in Badge Overlay */
+.checked-in-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    /* Or left depending on RTL */
+    font-size: 1.2rem;
+    background: rgba(16, 185, 129, 0.2);
+    border-radius: 50%;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Sidebar --- */
+.sidebar-card {
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.action-btn {
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.2s;
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+}
+
+.glow-btn {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Rules List */
+.rules-list .list-group-item {
+    padding: 12px 0;
 }
