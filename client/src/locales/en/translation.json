@@ -1,4 +1,20 @@
 {
+  "apiErrors": {
+    "teamAlreadyTaken": "The team '{{team}}' is already taken.",
+    "serverError": "Server error occurred. Please try again.",
+    "writeConflict": "A conflict occurred. Please try again."
+  },
+  "matchRoom": {
+    "admin": {
+      "resolutionTitle": "Dispute Resolution",
+      "resolutionDesc": "Choose the winner to resolve this dispute.",
+      "viewProof": "View Proof Screenshot",
+      "winBtn": "{{team}} Wins"
+    },
+    "disputeActive": "Dispute Active",
+    "disputeInfo": "A dispute has been opened for this match. An admin will review and determine the winner.",
+    "yourProof": "Your uploaded proof:"
+  },
   "app": {
     "loadingSession": "Loading session...",
     "sessionError": "Your session may have expired. Please log in again.",
@@ -2797,7 +2813,9 @@
       "league": "Regular League (All vs All)",
       "hybrid": "Hybrid (Groups + Knockout)",
       "numGroups": "Number of Groups",
-      "qualifiers": "Qualifiers per Group"
+      "qualifiers": "Qualifiers per Group",
+      "bestAttack": "Best Attack Prize",
+      "bestDefense": "Best Defense Prize"
     },
     "allLeagues": "-- All Leagues --",
     "players": "Players",

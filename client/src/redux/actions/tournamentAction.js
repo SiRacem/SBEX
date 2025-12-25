@@ -16,7 +16,7 @@ import {
 // Helper to get token (if not using an interceptor)
 const getConfig = () => {
     const token = localStorage.getItem('token');
-    
+
     return {
         headers: {
             'Content-Type': 'application/json',
@@ -60,11 +60,11 @@ export const createTournament = (formData) => async (dispatch) => {
     dispatch({ type: CREATE_TOURNAMENT_REQUEST });
     try {
         const { data } = await axios.post(
-            `${API_URL}/tournaments/create`, 
-            formData, 
+            `${API_URL}/tournaments/create`,
+            formData,
             getConfig()
         );
-        
+
         dispatch({ type: CREATE_TOURNAMENT_SUCCESS, payload: data.tournament });
         return { success: true, message: data.message };
     } catch (error) {
@@ -152,7 +152,13 @@ export const submitMatchResult = (matchId, resultData) => async (dispatch) => {
             getConfig()
         );
         dispatch({ type: SUBMIT_MATCH_RESULT_SUCCESS, payload: data });
-        return { success: true, message: data.message };
+
+        // تحديث فوري للمباراة في Redux لضمان التحديث للمرسل
+        if (data.match) {
+            dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: data.match });
+        }
+
+        return { success: true, message: data.message, match: data.match };
     } catch (error) {
         const msg = error.response?.data?.message || 'Submit Failed';
         dispatch({ type: SUBMIT_MATCH_RESULT_FAIL, payload: msg });
@@ -170,7 +176,13 @@ export const confirmMatchResult = (matchId) => async (dispatch) => {
             getConfig()
         );
         dispatch({ type: CONFIRM_MATCH_RESULT_SUCCESS, payload: data });
-        return { success: true, message: data.message };
+
+        // تحديث فوري للمباراة في Redux لضمان التحديث للمؤكد
+        if (data.match) {
+            dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: data.match });
+        }
+
+        return { success: true, message: data.message, match: data.match };
     } catch (error) {
         const msg = error.response?.data?.message || 'Confirm Failed';
         dispatch({ type: CONFIRM_MATCH_RESULT_FAIL, payload: msg });

@@ -226,7 +226,11 @@ exports.joinTournament = async (req, res) => {
         );
         if (isTeamTaken) {
             await session.abortTransaction();
-            return res.status(400).json({ success: false, message: `The team '${selectedTeam}' is already taken.` });
+            return res.status(400).json({
+                success: false,
+                message: "apiErrors.teamAlreadyTaken",
+                messageParams: { team: selectedTeam }
+            });
         }
 
         if (user.balance < tournament.entryFee) {
@@ -274,9 +278,20 @@ exports.joinTournament = async (req, res) => {
         if (req.io) {
             req.io.to(userId.toString()).emit('user_balances_updated', { _id: userId, balance: user.balance });
             req.io.to(userId.toString()).emit('dashboard_transactions_updated');
+
+            // إرسال بيانات المشارك مع معلومات المستخدم الكاملة لتحديث الـ UI
+            const participantWithUser = {
+                ...newParticipant,
+                user: {
+                    _id: user._id,
+                    fullName: user.fullName,
+                    avatarUrl: user.avatarUrl
+                }
+            };
+
             req.io.emit('tournament_participant_joined', {
                 tournamentId: id,
-                participant: newParticipant,
+                participant: participantWithUser,
                 takenTeam: selectedTeam
             });
         }

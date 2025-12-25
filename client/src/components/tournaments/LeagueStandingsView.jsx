@@ -106,7 +106,7 @@ const LeagueStandingsView = ({ matches, participants, showStatsOnly = false, hid
     }, [standings, matches]);
 
     const handleMatchClick = (matchId) => {
-        navigate(`/match/${matchId}`);
+        navigate(`/dashboard/match/${matchId}`);
     };
 
     const getStatusBadge = (status) => {
@@ -219,7 +219,7 @@ const LeagueStandingsView = ({ matches, participants, showStatsOnly = false, hid
                                                     const oppScore = isPlayer1 ? match.scorePlayer2 : match.scorePlayer1;
 
                                                     return (
-                                                        <div key={match._id} className={`fixture-item ${match.status}`} onClick={() => navigate(`/match/${match._id}`)}>
+                                                        <div key={match._id} className={`fixture-item ${match.status}`} onClick={() => navigate(`/dashboard/match/${match._id}`)}>
                                                             <span className="fixture-round">ج{idx + 1}</span>
                                                             <img src={opponentLogo || 'https://placehold.co/24'} alt="" className="opponent-logo" />
                                                             <span className="opponent-name">{opponent || 'TBD'}</span>
@@ -395,7 +395,7 @@ const LeagueStandingsView = ({ matches, participants, showStatsOnly = false, hid
                                                         const oppScore = isPlayer1 ? match.scorePlayer2 : match.scorePlayer1;
 
                                                         return (
-                                                            <div key={match._id} className={`fixture-item ${match.status}`} onClick={() => navigate(`/match/${match._id}`)}>
+                                                            <div key={match._id} className={`fixture-item ${match.status}`} onClick={() => navigate(`/dashboard/match/${match._id}`)}>
                                                                 <span className="fixture-round">ج{idx + 1}</span>
                                                                 <img src={opponentLogo || 'https://placehold.co/24'} alt="" className="opponent-logo" />
                                                                 <span className="opponent-name">{opponent || 'TBD'}</span>

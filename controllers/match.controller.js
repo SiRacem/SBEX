@@ -2,8 +2,31 @@
 const mongoose = require('mongoose');
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
-const User = require('../models/User'); 
+const User = require('../models/User');
 const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
+
+// ==========================================
+// 0. جلب مباراة واحدة بالـ ID
+// ==========================================
+exports.getMatchById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const match = await Match.findById(id)
+            .populate('player1', 'fullName avatarUrl')
+            .populate('player2', 'fullName avatarUrl')
+            .populate('winner', 'fullName')
+            .populate('submittedBy', 'fullName');
+
+        if (!match) {
+            return res.status(404).json({ message: "Match not found" });
+        }
+
+        res.status(200).json(match);
+    } catch (error) {
+        console.error("Get Match Error:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
 
 // ==========================================
 // 1. رفع النتيجة (Submit Score / Proof)
@@ -29,8 +52,9 @@ exports.submitResult = async (req, res) => {
             return res.status(400).json({ message: "Match is not active or already completed" });
         }
 
-        // [جديد] التحقق من التعادل وركلات الترجيح
-        if (parseInt(scoreMy) === parseInt(scoreOpponent)) {
+        // [جديد] التحقق من التعادل وركلات الترجيح - فقط في مباريات غير الدوري
+        const isLeagueMatch = match.stage === 'league';
+        if (parseInt(scoreMy) === parseInt(scoreOpponent) && !isLeagueMatch) {
             if (penaltiesMy === undefined || penaltiesOpponent === undefined || penaltiesMy === '' || penaltiesOpponent === '') {
                 return res.status(400).json({ message: "Draw score requires penalties result." });
             }
@@ -43,7 +67,7 @@ exports.submitResult = async (req, res) => {
         match.status = 'review';
         match.submittedBy = userId;
         match.proofScreenshot = proofScreenshot;
-        
+
         // حفظ النتيجة المقترحة
         if (isPlayer1) {
             match.scorePlayer1 = scoreMy;
@@ -70,13 +94,20 @@ exports.submitResult = async (req, res) => {
             tentativeWinnerId = isPlayer1 ? match.player2 : match.player1;
             tentativeLoserId = userId;
         } else {
-            // حالة التعادل: الاحتكام لركلات الترجيح
-            if (parseInt(penaltiesMy) > parseInt(penaltiesOpponent)) {
-                tentativeWinnerId = userId;
-                tentativeLoserId = isPlayer1 ? match.player2 : match.player1;
+            // حالة التعادل
+            if (isLeagueMatch) {
+                // في الدوري: لا يوجد فائز في حالة التعادل
+                tentativeWinnerId = null;
+                tentativeLoserId = null;
             } else {
-                tentativeWinnerId = isPlayer1 ? match.player2 : match.player1;
-                tentativeLoserId = userId;
+                // خروج المغلوب: الاحتكام لركلات الترجيح
+                if (parseInt(penaltiesMy) > parseInt(penaltiesOpponent)) {
+                    tentativeWinnerId = userId;
+                    tentativeLoserId = isPlayer1 ? match.player2 : match.player1;
+                } else {
+                    tentativeWinnerId = isPlayer1 ? match.player2 : match.player1;
+                    tentativeLoserId = userId;
+                }
             }
         }
 
@@ -90,17 +121,18 @@ exports.submitResult = async (req, res) => {
             const updatedMatch = await Match.findById(matchId)
                 .populate('player1', 'fullName avatarUrl')
                 .populate('player2', 'fullName avatarUrl')
-                .populate('winner', 'fullName');
-                
+                .populate('winner', 'fullName')
+                .populate('submittedBy', 'fullName');
+
             req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
             // إرسال تحديث للجدول العام أيضاً
             req.io.emit('match_updated', updatedMatch);
         }
-        
-        res.status(200).json({ 
-            success: true, 
+
+        res.status(200).json({
+            success: true,
             message: "matchRoom.toasts.resultSubmitted",
-            match 
+            match
         });
 
     } catch (error) {
@@ -122,7 +154,7 @@ exports.confirmResult = async (req, res) => {
         const userId = req.user.id;
 
         const match = await Match.findById(matchId).session(session);
-        
+
         if (!match) throw new Error("Match not found");
 
         if (match.status !== 'review') {
@@ -157,7 +189,9 @@ exports.confirmResult = async (req, res) => {
         }
 
         // التأكد من الفائز النهائي (إعادة حساب للأمان)
-        let finalWinnerId, finalLoserId;
+        let finalWinnerId = null;
+        let finalLoserId = null;
+        const isLeagueMatch = match.stage === 'league';
 
         if (match.scorePlayer1 > match.scorePlayer2) {
             finalWinnerId = match.player1;
@@ -166,50 +200,65 @@ exports.confirmResult = async (req, res) => {
             finalWinnerId = match.player2;
             finalLoserId = match.player1;
         } else {
-            // حالة التعادل -> ركلات الترجيح
-            if (match.penaltiesPlayer1 > match.penaltiesPlayer2) {
-                finalWinnerId = match.player1;
-                finalLoserId = match.player2;
+            // حالة التعادل
+            if (isLeagueMatch) {
+                // في الدوري: لا يوجد فائز في حالة التعادل
+                finalWinnerId = null;
+                finalLoserId = null;
             } else {
-                finalWinnerId = match.player2;
-                finalLoserId = match.player1;
+                // خروج المغلوب -> ركلات الترجيح
+                if (match.penaltiesPlayer1 > match.penaltiesPlayer2) {
+                    finalWinnerId = match.player1;
+                    finalLoserId = match.player2;
+                } else {
+                    finalWinnerId = match.player2;
+                    finalLoserId = match.player1;
+                }
             }
         }
 
         match.winner = finalWinnerId;
         match.loser = finalLoserId;
         match.status = 'completed';
-        
+
         await match.save({ session });
 
-        // تصعيد الفائز
-        await advanceWinnerToNextRound(match, session);
+        // تصعيد الفائز (فقط في غير الدوري)
+        if (!isLeagueMatch && finalWinnerId) {
+            await advanceWinnerToNextRound(match, session);
+        }
 
         await session.commitTransaction();
+        session.endSession();
 
+        // Fetch updated match for response and socket (outside transaction)
+        let updatedMatch = null;
         if (req.io) {
-            const updatedMatch = await Match.findById(matchId)
+            updatedMatch = await Match.findById(matchId)
                 .populate('player1', 'fullName avatarUrl')
                 .populate('player2', 'fullName avatarUrl')
                 .populate('winner', 'fullName');
             req.io.to(`match_${matchId}`).emit('match_updated', updatedMatch);
             req.io.emit('match_updated', updatedMatch);
         }
-        
-        res.status(200).json({ 
-            success: true, 
-            message: "Result confirmed successfully." 
+
+        res.status(200).json({
+            success: true,
+            message: "Result confirmed successfully.",
+            match: updatedMatch
         });
 
     } catch (error) {
-        await session.abortTransaction();
-        console.error("Confirm Result Error:", error);
-        res.status(400).json({ 
-            success: false, 
-            message: error.message || "Server error during confirmation" 
-        });
-    } finally {
+        // Only abort if session is still in transaction
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         session.endSession();
+        console.error("Confirm Result Error:", error);
+        res.status(400).json({
+            success: false,
+            message: error.message || "Server error during confirmation"
+        });
     }
 };
 
@@ -258,7 +307,7 @@ exports.autoConfirmMatches = async (req, res) => {
         const pendingMatches = await Match.find({
             status: 'review',
             updatedAt: { $lte: fiveMinutesAgo },
-            'dispute.isOpen': false 
+            'dispute.isOpen': false
         }).session(session);
 
         if (pendingMatches.length === 0) {
@@ -278,7 +327,7 @@ exports.autoConfirmMatches = async (req, res) => {
         }
 
         await session.commitTransaction();
-        
+
         // إشعار بالسوكيت
         if (req.io && confirmedMatchesIds.length > 0) {
             confirmedMatchesIds.forEach(async (id) => {
@@ -314,7 +363,7 @@ exports.resolveDispute = async (req, res) => {
     try {
         const { matchId } = req.params;
         const { winnerId } = req.body; // الأدمن يرسل ID الفائز المختار
-        
+
         // تحقق أن المستخدم أدمن (يمكنك إضافتها في Middleware أيضاً)
         if (req.user.userRole !== 'Admin') {
             throw new Error("Unauthorized: Admins only.");
@@ -354,7 +403,7 @@ exports.resolveDispute = async (req, res) => {
                 .populate('player1', 'fullName avatarUrl')
                 .populate('player2', 'fullName avatarUrl')
                 .populate('winner', 'fullName');
-            
+
             const roomName = `match_${matchId}`;
             req.io.to(roomName).emit('match_updated', updatedMatch);
             req.io.emit('tournament_updated', { _id: match.tournament });

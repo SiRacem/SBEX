@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Container, Row, Col, Spinner, Form, Button, Card, Badge, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
-import { FaPaperPlane, FaUpload, FaTrophy, FaCheckCircle, FaClock, FaExclamationTriangle, FaGavel } from 'react-icons/fa';
+import { FaPaperPlane, FaUpload, FaTrophy, FaCheckCircle, FaClock, FaExclamationTriangle, FaGavel, FaArrowLeft } from 'react-icons/fa';
 import axios from 'axios';
 import { submitMatchResult, confirmMatchResult } from '../redux/actions/tournamentAction';
 import { SocketContext } from '../App';
@@ -122,7 +122,9 @@ const MatchRoomPage = () => {
         if (!proofFile) return toast.error(t('matchRoom.errors.uploadProof'));
 
         const isDraw = parseInt(myScore) === parseInt(opponentScore);
-        if (isDraw) {
+        // Only require penalties for knockout/group stages, not league
+        const requiresPenalties = isDraw && match.stage !== 'league';
+        if (requiresPenalties) {
             if (myPenalties === '' || opponentPenalties === '') {
                 return toast.error(t('matchRoom.enterPenaltiesInfo', "Please enter penalties score."));
             }
@@ -148,8 +150,8 @@ const MatchRoomPage = () => {
             const resultData = {
                 scoreMy: parseInt(myScore),
                 scoreOpponent: parseInt(opponentScore),
-                penaltiesMy: isDraw ? parseInt(myPenalties) : undefined,
-                penaltiesOpponent: isDraw ? parseInt(opponentPenalties) : undefined,
+                penaltiesMy: requiresPenalties ? parseInt(myPenalties) : undefined,
+                penaltiesOpponent: requiresPenalties ? parseInt(opponentPenalties) : undefined,
                 proofScreenshot: proofUrl
             };
 
@@ -219,8 +221,8 @@ const MatchRoomPage = () => {
 
     if (!match) return <div className="text-center py-5 text-white">{t('matchRoom.errors.refreshRedirect')}</div>;
 
-    const isPlayer1 = match.player1?._id === user?._id;
-    const isPlayer2 = match.player2?._id === user?._id;
+    const isPlayer1 = match.player1?._id?.toString() === user?._id?.toString();
+    const isPlayer2 = match.player2?._id?.toString() === user?._id?.toString();
     const isAdmin = user?.userRole === 'Admin';
 
     if (!isPlayer1 && !isPlayer2 && !isAdmin) {
@@ -231,11 +233,25 @@ const MatchRoomPage = () => {
     const myTeam = isPlayer1 ? match.player1Team : match.player2Team;
     const opponentTeam = isPlayer1 ? match.player2Team : match.player1Team;
 
-    const iSubmitted = match.submittedBy === user?._id;
-    const opponentSubmitted = match.status === 'review' && !iSubmitted;
+    // Handle both populated object and raw ObjectId/String
+    const submittedById = match.submittedBy?._id?.toString() || match.submittedBy?.toString();
+    const currentUserId = user?._id?.toString();
+    const iSubmitted = submittedById && currentUserId && submittedById === currentUserId;
+    const opponentSubmitted = match.status === 'review' && match.submittedBy && !iSubmitted;
+
+    // Debug logging
+    console.log('MatchRoom Debug:', {
+        status: match.status,
+        submittedBy: match.submittedBy,
+        submittedById,
+        currentUserId,
+        iSubmitted,
+        opponentSubmitted,
+        proofScreenshot: match.proofScreenshot
+    });
 
     const isDispute = match.status === 'dispute';
-    const isDrawInput = myScore !== '' && opponentScore !== '' && parseInt(myScore) === parseInt(opponentScore);
+    const isDrawInput = myScore !== '' && opponentScore !== '' && parseInt(myScore) === parseInt(opponentScore) && match.stage !== 'league';
 
     const renderScoreDisplay = (mainScore, penaltyScore) => {
         return (
@@ -255,6 +271,17 @@ const MatchRoomPage = () => {
 
     return (
         <div className="match-room-container">
+            {/* Back Button */}
+            <div className="match-room-back-nav p-2">
+                <Button
+                    variant="outline-light"
+                    size="sm"
+                    onClick={() => navigate(-1)}
+                    className="d-flex align-items-center gap-2"
+                >
+                    <FaArrowLeft /> {t('common.back', 'رجوع')}
+                </Button>
+            </div>
             <div className={`match-header ${isDispute ? 'dispute-header' : ''}`}>
                 <Container>
                     <div className="vs-display">
@@ -368,17 +395,19 @@ const MatchRoomPage = () => {
                                 </div>
                             </div>
 
-                            <div className="proof-preview mb-3">
-                                <p className="text-muted small">Proof Screenshot:</p>
-                                <a href={getAvatarUrl(match.proofScreenshot)} target="_blank" rel="noopener noreferrer">
-                                    <img
-                                        src={getAvatarUrl(match.proofScreenshot)}
-                                        alt="Proof"
-                                        className="img-fluid rounded border border-light"
-                                        style={{ maxHeight: '200px', cursor: 'pointer' }}
-                                    />
-                                </a>
-                            </div>
+                            {match.proofScreenshot && (
+                                <div className="proof-preview mb-3">
+                                    <p className="text-muted small">{t('matchRoom.proofScreenshot', 'Proof Screenshot:')}</p>
+                                    <a href={getAvatarUrl(match.proofScreenshot)} target="_blank" rel="noopener noreferrer">
+                                        <img
+                                            src={getAvatarUrl(match.proofScreenshot)}
+                                            alt="Proof"
+                                            className="img-fluid rounded border border-light"
+                                            style={{ maxHeight: '200px', cursor: 'pointer' }}
+                                        />
+                                    </a>
+                                </div>
+                            )}
 
                             <Button
                                 variant="success"
@@ -465,17 +494,35 @@ const MatchRoomPage = () => {
                                 </div>
                             )}
 
-                            <label className="file-upload-label mt-3">
-                                <input type="file" hidden onChange={handleFileChange} accept="image/*" />
-                                {proofFile ? (
-                                    <div className="text-success fw-bold">{proofFile.name}</div>
-                                ) : (
-                                    <>
-                                        <FaUpload className="upload-icon" />
-                                        <div className="text-muted small mt-2">{t('matchRoom.actions.uploadProof')}</div>
-                                    </>
-                                )}
-                            </label>
+                            {/* Show uploaded proof image if match is in review and user already submitted */}
+                            {iSubmitted && match.proofScreenshot && (
+                                <div className="proof-preview mb-3 text-center">
+                                    <p className="text-muted small">{t('matchRoom.yourProof', 'Your uploaded proof:')}</p>
+                                    <a href={getAvatarUrl(match.proofScreenshot)} target="_blank" rel="noopener noreferrer">
+                                        <img
+                                            src={getAvatarUrl(match.proofScreenshot)}
+                                            alt="Proof"
+                                            className="img-fluid rounded border border-light"
+                                            style={{ maxHeight: '200px', cursor: 'pointer' }}
+                                        />
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Show file upload only if not submitted yet */}
+                            {!iSubmitted && (
+                                <label className="file-upload-label mt-3">
+                                    <input type="file" hidden onChange={handleFileChange} accept="image/*" />
+                                    {proofFile ? (
+                                        <div className="text-success fw-bold">{proofFile.name}</div>
+                                    ) : (
+                                        <>
+                                            <FaUpload className="upload-icon" />
+                                            <div className="text-muted small mt-2">{t('matchRoom.actions.uploadProof')}</div>
+                                        </>
+                                    )}
+                                </label>
+                            )}
 
                             <Button
                                 type="submit"

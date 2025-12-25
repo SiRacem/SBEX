@@ -1,4 +1,20 @@
 {
+  "apiErrors": {
+    "teamAlreadyTaken": "الفرقة '{{team}}' خذاها واحد آخر.",
+    "serverError": "صار مشكل في السيرفور. عاود جرب.",
+    "writeConflict": "صار تضارب. عاود جرب."
+  },
+  "matchRoom": {
+    "admin": {
+      "resolutionTitle": "حل المشكل",
+      "resolutionDesc": "اختار الفايز باش تحل المشكل.",
+      "viewProof": "شوف تصويرة الاثبات",
+      "winBtn": "{{team}} ربح"
+    },
+    "disputeActive": "المشكل مازال قيد المعالجة",
+    "disputeInfo": "فما مشكل فتح على الماتش هذا. الأدمن باش يراجعو ويقرر الفايز.",
+    "yourProof": "التصويرة اللي رفعتها:"
+  },
   "app": {
     "loadingSession": "قاعدين نحملو في السيّسيون...",
     "sessionError": "السيّسيون متاعك يمكن وفات. يرحم والديك عاود حل الكونت.",

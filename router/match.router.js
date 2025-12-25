@@ -12,6 +12,7 @@ const { isAdmin } = require('../middlewares/roleCheck');
 // ==========================================
 // 1. التفاعل مع المباراة (للاعبين)
 // ==========================================
+router.get('/:id', matchController.getMatchById);
 router.post('/:matchId/submit', verifyAuth, matchController.submitResult);
 router.post('/:matchId/confirm', verifyAuth, matchController.confirmResult);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Container, Row, Col, Card, Button, Spinner, Tabs, Tab, Badge, ListGroup, Alert } from 'react-bootstrap';
@@ -11,12 +11,14 @@ import TournamentBracket from '../components/tournaments/TournamentBracket';
 import GroupStageView from '../components/tournaments/GroupStageView';
 import LeagueStandingsView from '../components/tournaments/LeagueStandingsView';
 import './TournamentDetailsPage.css';
+import { SocketContext } from '../App';
 
 const TournamentDetailsPage = () => {
     const { id } = useParams();
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const socket = useContext(SocketContext);
 
     const { currentTournament: tournament, loadingDetails, takenTeams, errors, matches } = useSelector(state => state.tournamentReducer);
     const { user } = useSelector(state => state.userReducer);
@@ -28,6 +30,26 @@ const TournamentDetailsPage = () => {
     useEffect(() => {
         dispatch(getTournamentDetails(id));
     }, [dispatch, id]);
+
+    // Socket listener for real-time match updates (standings, stats)
+    useEffect(() => {
+        if (socket && tournament?._id) {
+            const handleMatchUpdate = (updatedMatch) => {
+                // If the updated match belongs to this tournament, re-fetch matches
+                if (updatedMatch.tournament === tournament._id ||
+                    (updatedMatch.tournament?._id && updatedMatch.tournament._id === tournament._id)) {
+                    console.log('[Socket] Match updated for this tournament, re-fetching matches');
+                    dispatch(getTournamentMatches(id));
+                }
+            };
+
+            socket.on('match_updated', handleMatchUpdate);
+
+            return () => {
+                socket.off('match_updated', handleMatchUpdate);
+            };
+        }
+    }, [socket, tournament?._id, dispatch, id]);
 
     // تم نقل socket listener لـ tournament_participant_joined إلى App.js للمركزية
     // Fetch taken teams when modal opens

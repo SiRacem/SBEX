@@ -1,4 +1,20 @@
 {
+  "apiErrors": {
+    "teamAlreadyTaken": "L'équipe '{{team}}' est déjà prise.",
+    "serverError": "Une erreur serveur s'est produite. Veuillez réessayer.",
+    "writeConflict": "Un conflit s'est produit. Veuillez réessayer."
+  },
+  "matchRoom": {
+    "admin": {
+      "resolutionTitle": "Résolution du litige",
+      "resolutionDesc": "Choisissez le gagnant pour résoudre ce litige.",
+      "viewProof": "Voir la capture d'écran",
+      "winBtn": "{{team}} gagne"
+    },
+    "disputeActive": "Litige en cours",
+    "disputeInfo": "Un litige a été ouvert pour ce match. Un administrateur examinera et déterminera le gagnant.",
+    "yourProof": "Votre preuve téléchargée :"
+  },
   "app": {
     "loadingSession": "Chargement de la session...",
     "sessionError": "Votre session a peut-être expiré. Veuillez vous reconnecter.",
@@ -2796,7 +2812,9 @@
       "league": "Ligue Régulière (Tous contre tous)",
       "hybrid": "Hybride (Groupes + Élimination)",
       "numGroups": "Nombre de groupes",
-      "qualifiers": "Qualifiés par groupe"
+      "qualifiers": "Qualifiés par groupe",
+      "bestAttack": "Prix Meilleure Attaque",
+      "bestDefense": "Prix Meilleure Défense"
     },
     "placeholders": {
       "title": "ex: Soirée Ligue des Champions"
