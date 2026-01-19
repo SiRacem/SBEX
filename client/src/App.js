@@ -320,6 +320,16 @@ function App() {
         dispatch({ type: 'UPDATE_TOURNAMENT_SOCKET', payload: data });
       });
 
+      // 🔔 Admin notification for disputes
+      newSocket.on('admin_notification', (data) => {
+        console.log('[Socket] Admin Notification:', data);
+        if (user?.userRole === 'Admin' && data.type === 'new_dispute') {
+          // استخدم النص مباشرة بدلاً من الترجمة لتجنب المشاكل
+          const message = `⚠️ نزاع جديد: ${data.player1 || 'لاعب 1'} vs ${data.player2 || 'لاعب 2'} في بطولة "${data.tournamentTitle || 'غير معروف'}"`;
+          toast.warning(message, { autoClose: 10000 });
+        }
+      });
+
       newSocket.on('dashboard_transactions_updated', () => {
         dispatch(getTransactionsForDashboard());
         dispatch(getTransactions());
@@ -365,7 +375,13 @@ function App() {
       });
 
       newSocket.on('new_notification', (notification) => {
-        toast.info(`🔔 ${t(notification.title, { ...notification.messageParams, defaultValue: notification.title })}`, { position: "top-right" });
+        // تحقق من وجود عنوان صالح قبل عرض الـ toast
+        const translatedTitle = t(notification.title, { ...notification.messageParams, defaultValue: '' });
+        const displayTitle = translatedTitle || notification.title || notification.message || '';
+
+        if (displayTitle && displayTitle.trim()) {
+          toast.info(`🔔 ${displayTitle}`, { position: "top-right" });
+        }
         dispatch(addNotificationFromSocket(notification));
       });
 
@@ -538,9 +554,9 @@ function App() {
 
       // [جديد] تحديث الجدول عند انتهاء أي مباراة
       newSocket.on('match_updated', (updatedMatch) => {
-          console.log('[Socket App.js] Match Updated:', updatedMatch);
-          // dispatch action to update redux matches list directly
-          dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: updatedMatch });
+        console.log('[Socket App.js] Match Updated:', updatedMatch);
+        // dispatch action to update redux matches list directly
+        dispatch({ type: 'UPDATE_MATCH_SOCKET', payload: updatedMatch });
       });
     }
 

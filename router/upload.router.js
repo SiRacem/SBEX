@@ -40,7 +40,7 @@ router.post('/proof', verifyAuth.verifyAuth, uploadProof.single('proofImage'), (
 const chatImageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = path.join(__dirname, '../uploads/chat_images'); // تأكد أن هذا المسار صحيح
-        if (!fs.existsSync(dir)){
+        if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
         cb(null, dir);
@@ -60,6 +60,26 @@ const uploadChatImage = multer({
         }
     },
     limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
+});
+
+// --- [!] مسار رفع صور شات المباراة ---
+// POST /uploads/chat-image
+router.post('/chat-image', verifyAuth.verifyAuth, uploadChatImage.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ msg: 'No valid image file uploaded.' });
+    }
+
+    try {
+        console.log('[Upload] Chat image uploaded:', req.file.filename);
+        const imageUrl = `/uploads/chat_images/${req.file.filename}`;
+        res.status(201).json({
+            msg: 'Image uploaded successfully.',
+            imageUrl: imageUrl
+        });
+    } catch (error) {
+        console.error("[Upload] Error processing chat image:", error);
+        res.status(500).json({ msg: 'Server error processing upload.' });
+    }
 });
 
 // يمكنك إضافة مسارات رفع أخرى هنا لأنواع ملفات مختلفة

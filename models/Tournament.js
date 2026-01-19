@@ -106,6 +106,36 @@ const TournamentSchema = new mongoose.Schema({
     joinedAt: { type: Date, default: Date.now }
   }],
 
+  // 🏆 الفائزين في البطولة
+  winners: {
+    champion: {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      teamName: { type: String },
+      teamLogo: { type: String },
+      prize: { type: Number }
+    },
+    topScorer: {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      teamName: { type: String },
+      teamLogo: { type: String },
+      goals: { type: Number },
+      prize: { type: Number }
+    },
+    bestDefense: {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      teamName: { type: String },
+      teamLogo: { type: String },
+      goalsAgainst: { type: Number },
+      prize: { type: Number }
+    },
+    runnerUp: {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      teamName: { type: String },
+      teamLogo: { type: String },
+      prize: { type: Number }
+    }
+  },
+
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 

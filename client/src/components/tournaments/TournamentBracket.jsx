@@ -138,7 +138,7 @@ const ChampionsPodium = ({ finalMatch, t }) => {
                     <img src={getImg(runnerUpLogo || runnerUp?.avatarUrl)} alt="Runner Up" className="podium-avatar" />
                 </div>
                 <div className="podium-info">
-                    <h3 className="podium-rank">2nd Place</h3>
+                    <h3 className="podium-rank">{t('bracket.runnerUp', '2nd Place')}</h3>
                     <div className="podium-team">{runnerUpTeam}</div>
                     <div className="podium-user">{runnerUp?.fullName}</div>
                 </div>
@@ -150,7 +150,7 @@ const ChampionsPodium = ({ finalMatch, t }) => {
                     <img src={getImg(championLogo || champion?.avatarUrl)} alt="Champion" className="podium-avatar" />
                 </div>
                 <div className="podium-info">
-                    <h2 className="podium-rank">CHAMPION</h2>
+                    <h2 className="podium-rank">{t('bracket.champion', 'CHAMPION')}</h2>
                     <div className="podium-team">{championTeam}</div>
                     <div className="podium-user">{champion?.fullName}</div>
                 </div>

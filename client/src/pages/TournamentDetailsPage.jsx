@@ -97,10 +97,38 @@ const TournamentDetailsPage = () => {
         }
     };
 
+    // 🏆 Handle Force Complete Tournament (Admin Only)
+    const handleForceComplete = async () => {
+        if (!window.confirm(t('tournamentDetails.forceCompleteConfirm', 'هل أنت متأكد من إكمال البطولة وتوزيع الجوائز؟'))) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${process.env.REACT_APP_API_URL}/tournaments/${id}/force-complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                toast.success('🏆 تم إكمال البطولة وتوزيع الجوائز بنجاح!');
+                dispatch(getTournamentDetails(id)); // Refresh tournament data
+            } else {
+                toast.error(data.message || 'حدث خطأ');
+            }
+        } catch (error) {
+            console.error('Force complete error:', error);
+            toast.error('حدث خطأ في الاتصال');
+        }
+    };
+
     // Helper to get image URL with fallback
     const getAvatarUrl = (url) => {
         if (!url) return "https://bootdey.com/img/Content/avatar/avatar7.png"; // Default User Avatar
         if (url.startsWith('http')) return url;
+        if (url.startsWith('data:')) return url; // base64 data URLs
         return `${process.env.REACT_APP_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 
@@ -169,6 +197,164 @@ const TournamentDetailsPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* 🏆 Winners Podium - 3D Design */}
+            {tournament.status === 'completed' && tournament.winners && (
+                <div className="winners-podium mb-4 p-4 rounded-4 position-relative overflow-hidden"
+                    style={{
+                        background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+                        border: '3px solid #ffd700',
+                        boxShadow: '0 25px 80px rgba(255, 215, 0, 0.25), inset 0 0 120px rgba(255, 215, 0, 0.03)'
+                    }}>
+
+                    {/* Animated glow background */}
+                    <div className="podium-glow" style={{
+                        position: 'absolute', top: '-50%', left: '50%', transform: 'translateX(-50%)',
+                        width: '100%', height: '200%',
+                        background: 'radial-gradient(ellipse at center, rgba(255,215,0,0.15) 0%, transparent 60%)',
+                        animation: 'pulseGlow 3s ease-in-out infinite', pointerEvents: 'none'
+                    }} />
+
+                    <h4 className="text-center mb-5 position-relative" style={{
+                        color: '#ffd700',
+                        textShadow: '0 0 30px rgba(255,215,0,0.6), 0 0 60px rgba(255,215,0,0.3)',
+                        fontSize: '1.63rem', fontWeight: 'bold', letterSpacing: '2px',
+                        zIndex: 20
+                    }}>
+                        🏆 {t('tournamentDetails.winners.title', 'الأبطال والجوائز')} 🏆
+                    </h4>
+
+                    <Row className="justify-content-center align-items-end g-3 position-relative" style={{ minHeight: '260px', paddingTop: '20px' }}>
+
+                        {/* أفضل هجوم - يسار */}
+                        {tournament.winners.topScorer?.user && (
+                            <Col xs={6} md={4} className="order-md-1 order-2">
+                                <div className="winner-card-3d text-center p-3 rounded-4"
+                                    style={{
+                                        background: 'linear-gradient(180deg, #34d058 0%, #22863a 100%)',
+                                        color: 'white',
+                                        boxShadow: '0 20px 50px rgba(52, 208, 88, 0.4), 0 8px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                                        transform: 'perspective(800px) rotateY(8deg) translateY(20px)',
+                                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                        border: '2px solid rgba(255,255,255,0.15)', cursor: 'pointer'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'perspective(800px) rotateY(0deg) translateY(0px) scale(1.08)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'perspective(800px) rotateY(8deg) translateY(20px)'; }}
+                                >
+                                    <div style={{ fontSize: '2.8rem', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.4))', marginBottom: '8px' }}>⚽</div>
+                                    {tournament.winners.topScorer.teamLogo && (
+                                        <img src={getAvatarUrl(tournament.winners.topScorer.teamLogo)} alt=""
+                                            style={{
+                                                width: '55px', height: '55px', objectFit: 'contain', borderRadius: '50%',
+                                                background: 'white', padding: '4px', boxShadow: '0 8px 20px rgba(0,0,0,0.35)', border: '2px solid rgba(255,255,255,0.3)'
+                                            }}
+                                            className="mb-2" />
+                                    )}
+                                    <div className="fw-bold opacity-75" style={{ fontSize: '0.85rem' }}>{t('tournamentDetails.winners.topScorer', 'أقوى هجوم')}</div>
+                                    <div className="fw-bold" style={{ fontSize: '1.1rem' }}>{tournament.winners.topScorer.teamName}</div>
+                                    <div className="opacity-75" style={{ fontSize: '0.8rem' }}>{tournament.winners.topScorer.goals} {t('tournamentDetails.winners.goals', 'هدف')}</div>
+                                    <div className="mt-2 fw-bold" style={{
+                                        background: 'rgba(0,0,0,0.25)', borderRadius: '20px', padding: '6px 16px',
+                                        display: 'inline-block', fontSize: '0.9rem', backdropFilter: 'blur(10px)'
+                                    }}>{tournament.winners.topScorer.prize} {t('dashboard.currencies.TND')}</div>
+                                </div>
+                            </Col>
+                        )}
+
+                        {/* البطل - المركز (مرتفع ومتحرك) */}
+                        {tournament.winners.champion?.user && (
+                            <Col xs={12} md={4} className="order-md-2 order-1">
+                                <div className="winner-card-champion text-center p-4 rounded-4 position-relative"
+                                    style={{
+                                        background: 'linear-gradient(180deg, #ffd700 0%, #ffb700 40%, #d4a000 100%)',
+                                        color: '#1a1a2e',
+                                        boxShadow: '0 30px 70px rgba(255, 215, 0, 0.5), 0 15px 40px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.4)',
+                                        transform: 'translateY(-10px) scale(1.08)',
+                                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                        border: '3px solid rgba(255,255,255,0.4)', cursor: 'pointer',
+                                        zIndex: 10
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-20px) scale(1.12)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(-10px) scale(1.08)'; }}
+                                >
+                                    {/* Crown decoration */}
+                                    <div style={{
+                                        position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                                        fontSize: '1.5rem', textShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                                    }}>👑</div>
+
+                                    <div className="trophy-animate" style={{
+                                        fontSize: '4rem', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))',
+                                        animation: 'trophyBounce 2s ease-in-out infinite', marginBottom: '10px'
+                                    }}>🏆</div>
+                                    {tournament.winners.champion.teamLogo && (
+                                        <img src={getAvatarUrl(tournament.winners.champion.teamLogo)} alt=""
+                                            style={{
+                                                width: '75px', height: '75px', objectFit: 'contain', borderRadius: '50%',
+                                                background: 'white', padding: '5px', boxShadow: '0 10px 30px rgba(0,0,0,0.4)', border: '3px solid rgba(255,255,255,0.5)'
+                                            }}
+                                            className="mb-2" />
+                                    )}
+                                    <div className="fw-bold" style={{ fontSize: '1rem', opacity: 0.8 }}>{t('tournamentDetails.winners.champion', 'البطل')}</div>
+                                    <div className="fw-bold" style={{ fontSize: '1.5rem', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>{tournament.winners.champion.teamName}</div>
+                                    <div className="mt-2 fw-bold" style={{
+                                        background: 'rgba(0,0,0,0.15)', borderRadius: '25px', padding: '8px 24px',
+                                        fontSize: '1.2rem', display: 'inline-block', boxShadow: '0 4px 15px rgba(0,0,0,0.15)'
+                                    }}>{tournament.winners.champion.prize} {t('dashboard.currencies.TND')}</div>
+                                </div>
+                            </Col>
+                        )}
+
+                        {/* أفضل دفاع - يمين */}
+                        {tournament.winners.bestDefense?.user && (
+                            <Col xs={6} md={4} className="order-md-3 order-3">
+                                <div className="winner-card-3d text-center p-3 rounded-4"
+                                    style={{
+                                        background: 'linear-gradient(180deg, #2188ff 0%, #0366d6 100%)',
+                                        color: 'white',
+                                        boxShadow: '0 20px 50px rgba(33, 136, 255, 0.4), 0 8px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                                        transform: 'perspective(800px) rotateY(-8deg) translateY(20px)',
+                                        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                        border: '2px solid rgba(255,255,255,0.15)', cursor: 'pointer'
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'perspective(800px) rotateY(0deg) translateY(0px) scale(1.08)'; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'perspective(800px) rotateY(-8deg) translateY(20px)'; }}
+                                >
+                                    <div style={{ fontSize: '2.8rem', filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.4))', marginBottom: '8px' }}>🛡️</div>
+                                    {tournament.winners.bestDefense.teamLogo && (
+                                        <img src={getAvatarUrl(tournament.winners.bestDefense.teamLogo)} alt=""
+                                            style={{
+                                                width: '55px', height: '55px', objectFit: 'contain', borderRadius: '50%',
+                                                background: 'white', padding: '4px', boxShadow: '0 8px 20px rgba(0,0,0,0.35)', border: '2px solid rgba(255,255,255,0.3)'
+                                            }}
+                                            className="mb-2" />
+                                    )}
+                                    <div className="fw-bold opacity-75" style={{ fontSize: '0.85rem' }}>{t('tournamentDetails.winners.bestDefense', 'أقوى دفاع')}</div>
+                                    <div className="fw-bold" style={{ fontSize: '1.1rem' }}>{tournament.winners.bestDefense.teamName}</div>
+                                    <div className="opacity-75" style={{ fontSize: '0.8rem' }}>{tournament.winners.bestDefense.goalsAgainst} {t('tournamentDetails.winners.goalsAgainst', 'هدف ضده')}</div>
+                                    <div className="mt-2 fw-bold" style={{
+                                        background: 'rgba(0,0,0,0.25)', borderRadius: '20px', padding: '6px 16px',
+                                        display: 'inline-block', fontSize: '0.9rem', backdropFilter: 'blur(10px)'
+                                    }}>{tournament.winners.bestDefense.prize} {t('dashboard.currencies.TND')}</div>
+                                </div>
+                            </Col>
+                        )}
+                    </Row>
+
+                    {/* CSS Animations */}
+                    <style>{`
+                        @keyframes trophyBounce {
+                            0%, 100% { transform: translateY(0) rotate(0deg); }
+                            25% { transform: translateY(-8px) rotate(-3deg); }
+                            75% { transform: translateY(-8px) rotate(3deg); }
+                        }
+                        @keyframes pulseGlow {
+                            0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+                            50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+                        }
+                    `}</style>
+                </div>
+            )}
 
             <Row>
                 {/* Main Content (Tabs) */}
@@ -420,7 +606,7 @@ const TournamentDetailsPage = () => {
                                     <div className="d-flex align-items-center mb-3 p-2 bg-darker rounded">
                                         <img src={myParticipantData.selectedTeamLogo} alt="Team" className="me-3 rounded" width="50" />
                                         <div>
-                                            <div className="small text-muted">{t('tournamentDetails.sidebar.playingAs')}</div>
+                                            <div className="small text-info opacity-75">{t('tournamentDetails.sidebar.playingAs')}</div>
                                             <div className="fw-bold text-white">{myParticipantData.selectedTeam}</div>
                                         </div>
                                     </div>
@@ -456,6 +642,18 @@ const TournamentDetailsPage = () => {
                                             {t('tournamentDetails.sidebar.startBtn')}
                                         </Button>
                                     )}
+
+                                    {/* 🏆 زر إكمال البطولة وتوزيع الجوائز */}
+                                    {tournament.status === 'active' && (
+                                        <Button
+                                            variant="success"
+                                            onClick={handleForceComplete}
+                                            className="d-flex align-items-center justify-content-center gap-2"
+                                        >
+                                            <FaTrophy /> {t('tournamentDetails.sidebar.forceCompleteBtn', 'إكمال البطولة وتوزيع الجوائز')}
+                                        </Button>
+                                    )}
+
                                     <Button variant="outline-light" size="sm" onClick={() => navigate('/dashboard/admin/create-tournament')}>
                                         {t('tournamentDetails.sidebar.manageBtn')}
                                     </Button>

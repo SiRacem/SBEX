@@ -4,17 +4,6 @@
     "serverError": "صار مشكل في السيرفور. عاود جرب.",
     "writeConflict": "صار تضارب. عاود جرب."
   },
-  "matchRoom": {
-    "admin": {
-      "resolutionTitle": "حل المشكل",
-      "resolutionDesc": "اختار الفايز باش تحل المشكل.",
-      "viewProof": "شوف تصويرة الاثبات",
-      "winBtn": "{{team}} ربح"
-    },
-    "disputeActive": "المشكل مازال قيد المعالجة",
-    "disputeInfo": "فما مشكل فتح على الماتش هذا. الأدمن باش يراجعو ويقرر الفايز.",
-    "yourProof": "التصويرة اللي رفعتها:"
-  },
   "app": {
     "loadingSession": "قاعدين نحملو في السيّسيون...",
     "sessionError": "السيّسيون متاعك يمكن وفات. يرحم والديك عاود حل الكونت.",
@@ -410,7 +399,10 @@
     "TOURNAMENT_STARTED": "التورنوا بدات!",
     "TOURNAMENT_WIN": "مبروك الربح!",
     "TOURNAMENT_REFUND": "التورنوا تبطلت",
-    "TOURNAMENT_MATCH_READY": "الماتش متاعك حاضر"
+    "TOURNAMENT_MATCH_READY": "الماتش متاعك حاضر",
+    "MATCH_TIMEOUT_CANCELLED": "الطرح تلغى",
+    "MATCH_TIMEOUT_LOSS": "خسرت الطرح (الوقت وفى)",
+    "MATCH_TIMEOUT_WIN": "ربحت الطرح (لاخر ما جاش)"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بيك، {{name}}! فرحانين بيك معانا.",
@@ -516,7 +508,10 @@
     "TOURNAMENT_STARTED": "التورنوا {{title}} بدات! برى شوف الجدول توّا.",
     "TOURNAMENT_WIN": "صحّة! ربحت {{amount}} دينار كي جبت المرتبة {{rank}} في {{tournamentTitle}}.",
     "TOURNAMENT_REFUND": "التورنوا {{title}} تبطلت. رجعنالك {{amount}} دينار للبورطفاي متاعك.",
-    "TOURNAMENT_MATCH_READY": "الماتش متاعك في {{title}} حاضر. ادخل للروم فيسع."
+    "TOURNAMENT_MATCH_READY": "الماتش متاعك في {{title}} حاضر. ادخل للروم فيسع.",
+    "MATCH_TIMEOUT_CANCELLED": "الطرح تلغى خاطر الزوز ما جيتوش في الوقت.",
+    "MATCH_TIMEOUT_LOSS": "خسرت الطرح خاطر ما جيتش في الوقت.",
+    "MATCH_TIMEOUT_WIN": "ربحت الطرح خاطر خصمك ما جاش."
   },
   "auth": {
     "welcomeBack": "مرحبا بيك مرة أخرى!",
@@ -2780,7 +2775,11 @@
     "active": "تخدم",
     "cancelled": "تبطلت",
     "registered": "مسجل",
-    "checkedIn": "حاضر"
+    "checkedIn": "حاضر",
+    "scheduled": "مبرمجة",
+    "ongoing": "قاعدين يلعبو",
+    "review": "قيد المراجعة",
+    "dispute": "فيها مشكل"
   },
   "createTournament": {
     "pageTitle": "اصنع تورنوا جديدة",
@@ -2839,6 +2838,14 @@
     "successMessage": "التورنوا تعملت ومريقلة!"
   },
   "tournamentDetails": {
+    "winners": {
+      "title": "الأبطال والجوايز",
+      "champion": "البطل",
+      "topScorer": "أحسن هجوم",
+      "bestDefense": "أحسن دفاع",
+      "goals": "بيت",
+      "goalsAgainst": "بيت دخلولو"
+    },
     "notFound": "التورنوا موش موجودة ولا تفسخت.",
     "startConfirm": "بالرسمي تحب تبدا التورنوا توّا؟",
     "tabs": {
@@ -2930,6 +2937,23 @@
     "champion": "الفائز بالبطولة"
   },
   "matchRoom": {
+    "penalties": "ض.ج",
+    "admin": {
+      "resolutionTitle": "حل المشكل",
+      "resolutionDesc": "اختار الفايز باش تحل المشكل.",
+      "viewProof": "شوف تصويرة الاثبات",
+      "winBtn": "{{team}} ربح",
+      "drawBtn": "تعادل",
+      "setFinalScore": "حط النتيجة النهائية:",
+      "confirmResolve": "متأكد؟ الحركة هاذي نهائية.",
+      "drawScoresMustMatch": "للتعادل، لازم النتائج تكون كيف بعضها.",
+      "selectWinner": "اختار الفايز.",
+      "resolveSuccess": "تحل المشكل بنجاح!",
+      "resolveError": "صار مشكل في الحل."
+    },
+    "disputeActive": "المشكل مازال قيد المعالجة",
+    "disputeInfo": "فما مشكل فتح على الماتش هذا. الأدمن باش يراجعو ويقرر الفايز.",
+    "yourProof": "التصويرة اللي رفعتها:",
     "loading": "قاعدين نحملو في الماتش...",
     "accessDenied": "ما تنجمش تدخل. مانكش مشارك.",
     "you": "إنت",
@@ -3037,5 +3061,90 @@
       "dispute": "فيها مشكل",
       "cancelled": "تلغات"
     }
+  },
+  "bracket": {
+    "champion": "البطل",
+    "runnerUp": "المركز الثاني",
+    "final": "الفينال",
+    "semiFinal": "نص الفينال",
+    "quarterFinal": "ربع الفينال",
+    "round": "الدور"
+  },
+  "matchRoom": {
+    "roundTimeRemaining": "الوقيت اللي مازال في الطرح",
+    "you": "إنت",
+    "opponent": "الخصم",
+    "readyToPlay": "حاضر بش نلعب!",
+    "youAreReady": "راك حاضر! سنى خونا...",
+    "readyWarning": "رد بالك! كان يوفى الوقت وأنت مش حاضر، بش تخسر الطرح ديركت.",
+    "toasts": {
+      "resultSubmitted": "تبعثت النتيجة مريقل!",
+      "matchCompleted": "وفا الطرح!"
+    },
+    "accessDenied": "ما عندكش الحق تدخل. ماكش طرف في الطرح.",
+    "status": {
+      "winner": "الرابح",
+      "completed": "وفات"
+    },
+    "errors": {
+      "connectionError": "مشكلة في الريزو، عاود جرب."
+    },
+    "tbd": "مازال",
+    "waiting": "تستنى...",
+    "joinTournament": "شارك في التورنوا",
+    "vs": "VS",
+    "penalties": "بينالتيات",
+    "chat": {
+      "title": "شات الماتش",
+      "welcome": "مرحباً بيك في بيت الماتش!",
+      "placeholder": "اكتب ميساج...",
+      "uploadImage": "بعث تصويرة",
+      "uploadError": "مشكلة في بعثان التصويرة"
+    },
+    "actions": {
+      "reportResult": "حط النتيجة",
+      "submitBtn": "ابعث النتيجة",
+      "uploadProof": "حط تصويرة تثبت النتيجة",
+      "confirmResult": "أكد النتيجة",
+      "dispute": "النتيجة غالطة (Dispute)",
+      "opponentSubmittedMsg": "الخصم حط النتيجة. ثبت منها وإلا اشكي.",
+      "waitingOpponent": "نستناو في الخصم...",
+      "yourProof": "الدليل متاعك:"
+    },
+    "errors": {
+      "connectionError": "مشكلة في الكونكسيون، عاود جرب.",
+      "refreshRedirect": "الماتش مش موجود، قاعدين نحولو فيك...",
+      "uploadProof": "بربي حط تصويرة تثبت النتيجة.",
+      "uploadFailed": "ما تعداتش التصويرة، عاود جرب."
+    },
+    "admin": {
+      "resolutionTitle": "فض النزاع",
+      "resolutionDesc": "الادمين ينجم يحل المشاكل هنا.",
+      "viewProof": "شوف الدليل",
+      "setFinalScore": "حط النتيجة النهائية",
+      "penaltiesRequired": "لازم ضربات جزاء",
+      "selectWinnerHint": "اختار شكون ربح",
+      "drawBtn": "تعادل",
+      "drawScoresMustMatch": "السكور لازم يكون كيف كيف بش تحط تعادل.",
+      "selectWinner": "بربي اختار شكون الرابح.",
+      "confirmResolve": "متأكد؟ راهو ما تنجمش ترجع فيها.",
+      "resolveSuccess": "تحلت المشكلة!",
+      "resolveError": "صار غلط في حل النزاع."
+    },
+    "socketNotReady": "قاعد يركح في الجو...",
+    "fillAllFields": "بربي عمر الخانات الكل.",
+    "enterPenaltiesInfo": "بربي حط سكور البينالتيات.",
+    "noDrawInPenalties": "البينالتيات ما فيهمش تعادل.",
+    "disputeActive": "فمة نزاع (Dispute)",
+    "disputeInfo": "الادمين باش يثبت في الماتش هذا.",
+    "proofScreenshot": "تصويرة الدليل:",
+    "waitingForOpponent": "نستناو في الخصم",
+    "cannotSubmitYet": "ما تنجمش تحط النتيجة توة.",
+    "waitingForOpponentOnline": "نستناو في الخصم يدخل",
+    "opponentMustBeOnline": "لازم الخصم يكون كونكتي بش تنجم تحط النتيجة.",
+    "opponentOffline": "الخصم موش كونكتي",
+    "canSubmitAfter": "تنجم تحط النتيجة بعد:",
+    "drawDetected": "تعادل! حط البينالتيات:",
+    "yourProof": "الدليل اللي حطيتو:"
   }
 }

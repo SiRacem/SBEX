@@ -4,17 +4,6 @@
     "serverError": "Server error occurred. Please try again.",
     "writeConflict": "A conflict occurred. Please try again."
   },
-  "matchRoom": {
-    "admin": {
-      "resolutionTitle": "Dispute Resolution",
-      "resolutionDesc": "Choose the winner to resolve this dispute.",
-      "viewProof": "View Proof Screenshot",
-      "winBtn": "{{team}} Wins"
-    },
-    "disputeActive": "Dispute Active",
-    "disputeInfo": "A dispute has been opened for this match. An admin will review and determine the winner.",
-    "yourProof": "Your uploaded proof:"
-  },
   "app": {
     "loadingSession": "Loading session...",
     "sessionError": "Your session may have expired. Please log in again.",
@@ -410,7 +399,10 @@
     "TOURNAMENT_STARTED": "Tournament Started!",
     "TOURNAMENT_WIN": "Tournament Victory!",
     "TOURNAMENT_REFUND": "Tournament Cancelled",
-    "TOURNAMENT_MATCH_READY": "Match Ready"
+    "TOURNAMENT_MATCH_READY": "Match Ready",
+    "MATCH_TIMEOUT_CANCELLED": "Match Cancelled",
+    "MATCH_TIMEOUT_LOSS": "Match Loss (Timeline)",
+    "MATCH_TIMEOUT_WIN": "Match Win (Timeline)"
   },
   "notification_messages": {
     "WELCOME": "Welcome, {{name}}! We are excited to have you on board.",
@@ -2781,7 +2773,11 @@
     "active": "Active",
     "cancelled": "Cancelled",
     "registered": "Registered",
-    "checkedIn": "Checked In"
+    "checkedIn": "Checked In",
+    "scheduled": "Scheduled",
+    "ongoing": "Ongoing",
+    "review": "Under Review",
+    "dispute": "Disputed"
   },
   "createTournament": {
     "steps": {
@@ -2840,6 +2836,14 @@
     }
   },
   "tournamentDetails": {
+    "winners": {
+      "title": "Champions & Prizes",
+      "champion": "Champion",
+      "topScorer": "Top Scorer",
+      "bestDefense": "Best Defense",
+      "goals": "goals",
+      "goalsAgainst": "goals conceded"
+    },
     "notFound": "Tournament not found or deleted.",
     "startConfirm": "Are you sure you want to start the tournament now?",
     "tabs": {
@@ -2928,6 +2932,23 @@
     "champion": "CHAMPION"
   },
   "matchRoom": {
+    "penalties": "Pen",
+    "admin": {
+      "resolutionTitle": "Dispute Resolution",
+      "resolutionDesc": "Choose the winner to resolve this dispute.",
+      "viewProof": "View Proof Screenshot",
+      "winBtn": "{{team}} Wins",
+      "drawBtn": "Draw",
+      "setFinalScore": "Set Final Score:",
+      "confirmResolve": "Are you sure? This action is final.",
+      "drawScoresMustMatch": "For a draw, scores must be equal.",
+      "selectWinner": "Please select a winner.",
+      "resolveSuccess": "Dispute resolved successfully!",
+      "resolveError": "Error resolving dispute."
+    },
+    "disputeActive": "Dispute Active",
+    "disputeInfo": "A dispute has been opened for this match. An admin will review and determine the winner.",
+    "yourProof": "Your uploaded proof:",
     "loading": "Loading Match Data...",
     "accessDenied": "Access Denied. You are not a participant.",
     "you": "You",
@@ -3037,5 +3058,90 @@
       "dispute": "Disputed",
       "cancelled": "Cancelled"
     }
+  },
+  "bracket": {
+    "champion": "CHAMPION",
+    "runnerUp": "2nd Place",
+    "final": "Final",
+    "semiFinal": "Semi Final",
+    "quarterFinal": "Quarter Final",
+    "round": "Round"
+  },
+  "matchRoom": {
+    "roundTimeRemaining": "Time Remaining for Round",
+    "you": "You",
+    "opponent": "Opponent",
+    "readyToPlay": "Ready to Play!",
+    "youAreReady": "You are Ready! Waiting for opponent...",
+    "readyWarning": "Warning! If time runs out and you are not ready, you will automatically lose.",
+    "toasts": {
+      "resultSubmitted": "Result submitted successfully!",
+      "matchCompleted": "Match completed!"
+    },
+    "status": {
+      "winner": "Winner",
+      "completed": "COMPLETED"
+    },
+    "errors": {
+      "connectionError": "Connection error, please try again."
+    },
+    "tbd": "TBD",
+    "waiting": "Waiting...",
+    "accessDenied": "Access denied. You are not a participant.",
+    "joinTournament": "JOIN TOURNAMENT",
+    "vs": "VS",
+    "penalties": "Pen",
+    "chat": {
+      "title": "Match Chat",
+      "welcome": "Welcome to the match room!",
+      "placeholder": "Type a message...",
+      "uploadImage": "Send Image",
+      "uploadError": "Error uploading image"
+    },
+    "actions": {
+      "reportResult": "Report Result",
+      "submitBtn": "Submit Result",
+      "uploadProof": "Upload Proof Screenshot",
+      "confirmResult": "Confirm Result",
+      "dispute": "Dispute Result",
+      "opponentSubmittedMsg": "Opponent has submitted a result. Please confirm or dispute.",
+      "waitingOpponent": "Waiting for opponent...",
+      "yourProof": "Your Proof:"
+    },
+    "errors": {
+      "connectionError": "Connection error, please try again.",
+      "refreshRedirect": "Match not found, redirecting...",
+      "uploadProof": "Please upload a proof screenshot.",
+      "uploadFailed": "Upload failed, please try again."
+    },
+    "admin": {
+      "resolutionTitle": "Dispute Resolution",
+      "resolutionDesc": "Admins can resolve disputes here.",
+      "viewProof": "View Proof",
+      "setFinalScore": "Set Final Score",
+      "penaltiesRequired": "Penalties Required",
+      "selectWinnerHint": "Select the winner",
+      "drawBtn": "Draw",
+      "drawScoresMustMatch": "Scores must be equal for a draw.",
+      "selectWinner": "Please select a winner.",
+      "confirmResolve": "Are you sure? This action is final.",
+      "resolveSuccess": "Resolved successfully!",
+      "resolveError": "Error resolving dispute."
+    },
+    "socketNotReady": "Connecting...",
+    "fillAllFields": "Please fill all fields.",
+    "enterPenaltiesInfo": "Please enter penalties score.",
+    "noDrawInPenalties": "Penalties cannot end in a draw.",
+    "disputeActive": "Dispute Active",
+    "disputeInfo": "An admin will review this match.",
+    "proofScreenshot": "Proof Screenshot:",
+    "waitingForOpponent": "Waiting for Opponent",
+    "cannotSubmitYet": "Cannot submit result yet.",
+    "waitingForOpponentOnline": "Waiting for Opponent Online",
+    "opponentMustBeOnline": "Opponent must be online to submit result.",
+    "opponentOffline": "Opponent Offline",
+    "canSubmitAfter": "You can submit result after:",
+    "drawDetected": "Draw Detected! Enter Penalties:",
+    "yourProof": "Your uploaded proof:"
   }
 }

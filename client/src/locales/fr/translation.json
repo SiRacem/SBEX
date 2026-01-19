@@ -4,17 +4,6 @@
     "serverError": "Une erreur serveur s'est produite. Veuillez réessayer.",
     "writeConflict": "Un conflit s'est produit. Veuillez réessayer."
   },
-  "matchRoom": {
-    "admin": {
-      "resolutionTitle": "Résolution du litige",
-      "resolutionDesc": "Choisissez le gagnant pour résoudre ce litige.",
-      "viewProof": "Voir la capture d'écran",
-      "winBtn": "{{team}} gagne"
-    },
-    "disputeActive": "Litige en cours",
-    "disputeInfo": "Un litige a été ouvert pour ce match. Un administrateur examinera et déterminera le gagnant.",
-    "yourProof": "Votre preuve téléchargée :"
-  },
   "app": {
     "loadingSession": "Chargement de la session...",
     "sessionError": "Votre session a peut-être expiré. Veuillez vous reconnecter.",
@@ -409,7 +398,10 @@
     "TOURNAMENT_STARTED": "Le Tournoi a Commencé !",
     "TOURNAMENT_WIN": "Victoire en Tournoi !",
     "TOURNAMENT_REFUND": "Tournoi Annulé",
-    "TOURNAMENT_MATCH_READY": "Match Prêt"
+    "TOURNAMENT_MATCH_READY": "Match Prêt",
+    "MATCH_TIMEOUT_CANCELLED": "Match annulé",
+    "MATCH_TIMEOUT_LOSS": "Match perdu (Temps écoulé)",
+    "MATCH_TIMEOUT_WIN": "Match gagné (Par forfait)"
   },
   "notification_messages": {
     "WELCOME": "Bienvenue, {{name}} ! Nous sommes ravis de vous compter parmi nous.",
@@ -515,7 +507,10 @@
     "TOURNAMENT_STARTED": "Le tournoi {{title}} a commencé ! Consultez le tableau maintenant.",
     "TOURNAMENT_WIN": "Félicitations ! Vous avez gagné {{amount}} TND pour le rang {{rank}} dans {{tournamentTitle}}.",
     "TOURNAMENT_REFUND": "Le tournoi {{title}} a été annulé. {{amount}} TND ont été remboursés sur votre portefeuille.",
-    "TOURNAMENT_MATCH_READY": "Votre match dans {{title}} est prêt. Rejoignez la salle maintenant."
+    "TOURNAMENT_MATCH_READY": "Votre match dans {{title}} est prêt. Rejoignez la salle maintenant.",
+    "MATCH_TIMEOUT_CANCELLED": "Le match a été annulé car aucun joueur n'était présent à temps.",
+    "MATCH_TIMEOUT_LOSS": "Vous avez perdu le match car vous n'étiez pas présent à temps.",
+    "MATCH_TIMEOUT_WIN": "Vous avez gagné le match car votre adversaire n'était pas présent à temps."
   },
   "auth": {
     "welcomeBack": "Content de vous revoir !",
@@ -2779,7 +2774,11 @@
     "active": "Actif",
     "cancelled": "Annulé",
     "registered": "Enregistré",
-    "checkedIn": "Enregistré"
+    "checkedIn": "Enregistré",
+    "scheduled": "Programmé",
+    "ongoing": "En cours",
+    "review": "En révision",
+    "dispute": "Litige"
   },
   "createTournament": {
     "pageTitle": "Créer un Nouveau Tournoi",
@@ -2835,6 +2834,14 @@
     "successMessage": "Tournoi créé avec succès !"
   },
   "tournamentDetails": {
+    "winners": {
+      "title": "Champions & Prix",
+      "champion": "Champion",
+      "topScorer": "Meilleur buteur",
+      "bestDefense": "Meilleure défense",
+      "goals": "buts",
+      "goalsAgainst": "buts encaissés"
+    },
     "notFound": "Tournoi introuvable ou supprimé.",
     "startConfirm": "Êtes-vous sûr de vouloir commencer le tournoi maintenant ?",
     "tabs": {
@@ -2923,6 +2930,23 @@
     "champion": "CHAMPION"
   },
   "matchRoom": {
+    "penalties": "Tirs",
+    "admin": {
+      "resolutionTitle": "Résolution du litige",
+      "resolutionDesc": "Choisissez le gagnant pour résoudre ce litige.",
+      "viewProof": "Voir la capture d'écran",
+      "winBtn": "{{team}} gagne",
+      "drawBtn": "Match nul",
+      "setFinalScore": "Définir le score final:",
+      "confirmResolve": "Êtes-vous sûr? Cette action est définitive.",
+      "drawScoresMustMatch": "Pour un match nul, les scores doivent être égaux.",
+      "selectWinner": "Veuillez sélectionner un gagnant.",
+      "resolveSuccess": "Litige résolu avec succès!",
+      "resolveError": "Erreur lors de la résolution du litige."
+    },
+    "disputeActive": "Litige en cours",
+    "disputeInfo": "Un litige a été ouvert pour ce match. Un administrateur examinera et déterminera le gagnant.",
+    "yourProof": "Votre preuve téléchargée:",
     "loading": "Chargement des données du match...",
     "accessDenied": "Accès refusé. Vous n'êtes pas un participant.",
     "you": "Vous",
@@ -3030,5 +3054,90 @@
       "dispute": "Litige",
       "cancelled": "Annulé"
     }
+  },
+  "bracket": {
+    "champion": "CHAMPION",
+    "runnerUp": "2ème Place",
+    "final": "Finale",
+    "semiFinal": "Demi-finale",
+    "quarterFinal": "Quart de finale",
+    "round": "Tour"
+  },
+  "matchRoom": {
+    "roundTimeRemaining": "Temps restant pour le tour",
+    "you": "Vous",
+    "opponent": "Adversaire",
+    "readyToPlay": "Prêt à jouer !",
+    "youAreReady": "Vous êtes prêt ! En attente de l'adversaire...",
+    "readyWarning": "Attention ! Si le temps s'écoule et que vous n'êtes pas prêt, vous perdrez automatiquement.",
+    "toasts": {
+      "resultSubmitted": "Résultat soumis avec succès !",
+      "matchCompleted": "Match terminé !"
+    },
+    "accessDenied": "Accès refusé. Vous n'êtes pas un participant.",
+    "status": {
+      "winner": "VAINQUEUR",
+      "completed": "TERMINÉ"
+    },
+    "errors": {
+      "connectionError": "Erreur de connexion, veuillez réessayer."
+    },
+    "tbd": "À déterminer",
+    "waiting": "En attente...",
+    "joinTournament": "REJOINDRE LE TOURNOI",
+    "vs": "VS",
+    "penalties": "Pén",
+    "chat": {
+      "title": "Chat du match",
+      "welcome": "Bienvenue dans la salle de match !",
+      "placeholder": "Tapez un message...",
+      "uploadImage": "Envoyer une image",
+      "uploadError": "Erreur lors de l'envoi de l'image"
+    },
+    "actions": {
+      "reportResult": "Signaler le résultat",
+      "submitBtn": "Soumettre le résultat",
+      "uploadProof": "Télécharger une preuve (Capture d'écran)",
+      "confirmResult": "Confirmer le résultat",
+      "dispute": "Contester le résultat",
+      "opponentSubmittedMsg": "L'adversaire a soumis un résultat. Veuillez confirmer ou contester.",
+      "waitingOpponent": "En attente de l'adversaire...",
+      "yourProof": "Votre preuve :"
+    },
+    "errors": {
+      "connectionError": "Erreur de connexion, veuillez réessayer.",
+      "refreshRedirect": "Match introuvable, redirection...",
+      "uploadProof": "Veuillez télécharger une capture d'écran de preuve.",
+      "uploadFailed": "Le téléchargement a échoué, veuillez réessayer."
+    },
+    "admin": {
+      "resolutionTitle": "Résolution de litige",
+      "resolutionDesc": "Les administrateurs peuvent résoudre les litiges ici.",
+      "viewProof": "Voir la preuve",
+      "setFinalScore": "Définir le score final",
+      "penaltiesRequired": "Pénaltys requis",
+      "selectWinnerHint": "Sélectionnez le vainqueur",
+      "drawBtn": "Égalité",
+      "drawScoresMustMatch": "Les scores doivent être égaux pour un match nul.",
+      "selectWinner": "Veuillez sélectionner un vainqueur.",
+      "confirmResolve": "Êtes-vous sûr ? Cette action est définitive.",
+      "resolveSuccess": "Résolu avec succès !",
+      "resolveError": "Erreur lors de la résolution du litige."
+    },
+    "socketNotReady": "Connexion en cours...",
+    "fillAllFields": "Veuillez remplir tous les champs.",
+    "enterPenaltiesInfo": "Veuillez saisir le score des pénaltys.",
+    "noDrawInPenalties": "Les pénaltys ne peuvent pas finir par un match nul.",
+    "disputeActive": "Litige en cours",
+    "disputeInfo": "Un administrateur va examiner ce match.",
+    "proofScreenshot": "Capture d'écran de preuve :",
+    "waitingForOpponent": "En attente de l'adversaire",
+    "cannotSubmitYet": "Impossible de soumettre le résultat pour le moment.",
+    "waitingForOpponentOnline": "En attente de la connexion de l'adversaire",
+    "opponentMustBeOnline": "L'adversaire doit être en ligne pour soumettre le résultat.",
+    "opponentOffline": "Adversaire hors ligne",
+    "canSubmitAfter": "Vous pourrez soumettre le résultat après :",
+    "drawDetected": "Égalité détectée ! Saisissez les pénaltys :",
+    "yourProof": "Votre preuve téléchargée :"
   }
 }

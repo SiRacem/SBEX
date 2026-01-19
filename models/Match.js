@@ -26,6 +26,30 @@ const MatchSchema = new mongoose.Schema({
 
   isBye: { type: Boolean, default: false },
 
+  // ⏱️ نظام الوقت المحدد للمباريات
+  roundStartTime: { type: Date, default: null },
+  roundDeadline: { type: Date, default: null },
+  extraTimeTriggered: { type: Boolean, default: false },
+
+  // 🎮 حالة جهوزية اللاعبين
+  player1Ready: {
+    isReady: { type: Boolean, default: false },
+    readyAt: { type: Date, default: null },
+    lastActivity: { type: Date, default: null }
+  },
+  player2Ready: {
+    isReady: { type: Boolean, default: false },
+    readyAt: { type: Date, default: null },
+    lastActivity: { type: Date, default: null }
+  },
+
+  // سبب انتهاء المباراة
+  completionReason: {
+    type: String,
+    enum: ['normal', 'timeout_player1', 'timeout_player2', 'timeout_both', 'walkover', 'bye', 'timeout_draw_after_extra'],
+    default: null
+  },
+
   status: {
     type: String,
     enum: ['scheduled', 'ongoing', 'review', 'completed', 'dispute', 'cancelled'],
@@ -59,6 +83,7 @@ const MatchSchema = new mongoose.Schema({
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     senderName: String,
     text: String,
+    imageUrl: String,
     timestamp: { type: Date, default: Date.now }
   }]
 

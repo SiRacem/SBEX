@@ -4,17 +4,6 @@
     "serverError": "حدث خطأ في الخادم. حاول مرة أخرى.",
     "writeConflict": "حدث تعارض. يرجى المحاولة مرة أخرى."
   },
-  "matchRoom": {
-    "admin": {
-      "resolutionTitle": "حل النزاع",
-      "resolutionDesc": "اختر الفائز في هذه المباراة لحل النزاع.",
-      "viewProof": "عرض صورة الإثبات",
-      "winBtn": "فوز {{team}}"
-    },
-    "disputeActive": "النزاع قيد المعالجة",
-    "disputeInfo": "تم فتح نزاع على هذه المباراة. سيقوم الأدمن بمراجعتها وتحديد الفائز.",
-    "yourProof": "صورة الإثبات التي رفعتها:"
-  },
   "app": {
     "loadingSession": "جاري تحميل الجلسة...",
     "sessionError": "ربما انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
@@ -413,7 +402,10 @@
     "TOURNAMENT_STARTED": "بدأت البطولة!",
     "TOURNAMENT_WIN": "فوز في البطولة!",
     "TOURNAMENT_REFUND": "إلغاء البطولة",
-    "TOURNAMENT_MATCH_READY": "المباراة جاهزة"
+    "TOURNAMENT_MATCH_READY": "المباراة جاهزة",
+    "MATCH_TIMEOUT_WIN": "🏆 فزت بالمباراة!",
+    "MATCH_TIMEOUT_LOSS": "❌ خسرت المباراة",
+    "MATCH_TIMEOUT_CANCELLED": "⚠️ تم إلغاء المباراة"
   },
   "notification_messages": {
     "WELCOME": "أهلاً بك، {{name}}! يسعدنا انضمامك إلينا.",
@@ -519,7 +511,10 @@
     "TOURNAMENT_STARTED": "انطلقت البطولة {{title}}! تحقق من الجدول الآن.",
     "TOURNAMENT_WIN": "تهانينا! لقد ربحت {{amount}} دينار لحصولك على المركز {{rank}} في {{tournamentTitle}}.",
     "TOURNAMENT_REFUND": "تم إلغاء البطولة {{title}}. تم استرداد {{amount}} دينار إلى محفظتك.",
-    "TOURNAMENT_MATCH_READY": "مباراتك في {{title}} جاهزة. انضم إلى الغرفة الآن."
+    "TOURNAMENT_MATCH_READY": "مباراتك في {{title}} جاهزة. انضم إلى الغرفة الآن.",
+    "MATCH_TIMEOUT_WIN": "لقد فزت بالمباراة لأن الخصم لم يحضر في الوقت المحدد.",
+    "MATCH_TIMEOUT_LOSS": "خسرت المباراة بسبب عدم تواجدك في الوقت المحدد. الرجاء الانتباه للمواعيد.",
+    "MATCH_TIMEOUT_CANCELLED": "تم إلغاء المباراة لأن كلا اللاعبين لم يحضرا في الوقت المحدد."
   },
   "auth": {
     "welcomeBack": "مرحباً بعودتك!",
@@ -2789,7 +2784,11 @@
     "active": "نشطة",
     "cancelled": "ملغاة",
     "registered": "مسجل",
-    "checkedIn": "سجل الحضور"
+    "checkedIn": "سجل الحضور",
+    "scheduled": "مجدولة",
+    "ongoing": "جارية",
+    "review": "قيد المراجعة",
+    "dispute": "متنازع عليها"
   },
   "createTournament": {
     "pageTitle": "إنشاء بطولة جديدة",
@@ -2848,6 +2847,14 @@
     }
   },
   "tournamentDetails": {
+    "winners": {
+      "title": "الأبطال والجوائز",
+      "champion": "البطل",
+      "topScorer": "أقوى هجوم",
+      "bestDefense": "أقوى دفاع",
+      "goals": "هدف",
+      "goalsAgainst": "هدف ضده"
+    },
     "notFound": "البطولة غير موجودة أو تم حذفها.",
     "startConfirm": "هل أنت متأكد من أنك تريد بدء البطولة الآن؟",
     "tabs": {
@@ -2936,6 +2943,23 @@
     "champion": "الفائز بالبطولة"
   },
   "matchRoom": {
+    "penalties": "ض.ج",
+    "admin": {
+      "resolutionTitle": "حل النزاع",
+      "resolutionDesc": "اختر الفائز في هذه المباراة لحل النزاع.",
+      "viewProof": "عرض صورة الإثبات",
+      "winBtn": "فوز {{team}}",
+      "drawBtn": "تعادل",
+      "setFinalScore": "تحديد النتيجة النهائية:",
+      "confirmResolve": "هل أنت متأكد؟ هذا الإجراء نهائي.",
+      "drawScoresMustMatch": "للتعادل، يجب أن تكون النتائج متساوية.",
+      "selectWinner": "يرجى اختيار الفائز.",
+      "resolveSuccess": "تم حل النزاع بنجاح!",
+      "resolveError": "خطأ في حل النزاع."
+    },
+    "disputeActive": "النزاع قيد المعالجة",
+    "disputeInfo": "تم فتح نزاع على هذه المباراة. سيقوم الأدمن بمراجعتها وتحديد الفائز.",
+    "yourProof": "صورة الإثبات التي رفعتها:",
     "loading": "جاري تحميل بيانات المباراة...",
     "accessDenied": "تم رفض الوصول. أنت لست مشاركاً.",
     "you": "أنت",
@@ -3043,5 +3067,91 @@
       "dispute": "متنازع عليها",
       "cancelled": "ملغاة"
     }
+  },
+  "bracket": {
+    "champion": "البطل",
+    "runnerUp": "المركز الثاني",
+    "final": "النهائي",
+    "semiFinal": "نصف النهائي",
+    "quarterFinal": "ربع النهائي",
+    "round": "الدور"
+  },
+  "matchRoom": {
+    "vs": "ضد",
+    "roundTimeRemaining": "الوقت المتبقي للجولة",
+    "you": "أنت",
+    "opponent": "الخصم",
+    "readyToPlay": "جاهز للعب!",
+    "youAreReady": "أنت جاهز انتظر الخصم...",
+    "readyWarning": "تحذير! إذا انتهى الوقت وأنت غير جاهز، سوف تخسر تلقائياً.",
+    "toasts": {
+      "resultSubmitted": "تم إرسال النتيجة بنجاح!",
+      "matchCompleted": "انتهت المباراة!"
+    },
+    "accessDenied": "تم رفض الوصول. أنت لست مشاركاً.",
+    "status": {
+      "winner": "الفائز",
+      "completed": "مكتملة"
+    },
+    "errors": {
+      "connectionError": "خطأ في الاتصال، يرجى المحاولة مرة أخرى."
+    },
+    "tbd": "يحدد لاحقاً",
+    "waiting": "انتظار...",
+    "joinTournament": "انضم للبطولة",
+    "vs": "ضد",
+    "penalties": "ركلات الترجيح",
+    "chat": {
+      "title": "دردشة المباراة",
+      "welcome": "مرحباً بك في غرفة المباراة!",
+      "placeholder": "اكتب رسالة...",
+      "uploadImage": "إرسال صورة",
+      "uploadError": "خطأ في رفع الصورة"
+    },
+    "actions": {
+      "reportResult": "إبلاغ النتيجة",
+      "submitBtn": "إرسال النتيجة",
+      "uploadProof": "رفع إثبات (لقطة شاشة)",
+      "confirmResult": "تأكيد النتيجة",
+      "dispute": "الاعتراض على النتيجة",
+      "opponentSubmittedMsg": "قام الخصم بإرسال النتيجة. يرجى التأكيد أو الاعتراض.",
+      "waitingOpponent": "في انتظار الخصم...",
+      "yourProof": "دليلك:"
+    },
+    "errors": {
+      "connectionError": "خطأ في الاتصال، يرجى المحاولة مرة أخرى.",
+      "refreshRedirect": "المباراة غير موجودة، جاري إعادة التوجيه...",
+      "uploadProof": "يرجى رفع لقطة شاشة للإثبات.",
+      "uploadFailed": "فشل الرفع، يرجى المحاولة مرة أخرى."
+    },
+    "admin": {
+      "resolutionTitle": "حل النزاع",
+      "resolutionDesc": "يمكن للمسؤولين حل النزاعات هنا.",
+      "viewProof": "عرض الدليل",
+      "setFinalScore": "تحديد النتيجة النهائية",
+      "penaltiesRequired": "ركلات الترجيح مطلوبة",
+      "selectWinnerHint": "اختر الفائز",
+      "drawBtn": "تعادل",
+      "drawScoresMustMatch": "يجب أن تكون النتائج متساوية للتعادل.",
+      "selectWinner": "يرجى اختيار فائز.",
+      "confirmResolve": "هل أنت متأكد؟ هذا الإجراء نهائي.",
+      "resolveSuccess": "تم الحل بنجاح!",
+      "resolveError": "خطأ في حل النزاع."
+    },
+    "socketNotReady": "جاري الاتصال...",
+    "fillAllFields": "يرجى ملء جميع الحقول.",
+    "enterPenaltiesInfo": "يرجى إدخال نتيجة ركلات الترجيح.",
+    "noDrawInPenalties": "لا يمكن التعادل في ركلات الترجيح.",
+    "disputeActive": "نزاع نشط",
+    "disputeInfo": "سيقوم أحد المسؤولين بمراجعة هذه المباراة.",
+    "proofScreenshot": "لقطة شاشة الإثبات:",
+    "waitingForOpponent": "في انتظار الخصم",
+    "cannotSubmitYet": "لا يمكن إرسال النتيجة بعد.",
+    "waitingForOpponentOnline": "في انتظار اتصال الخصم",
+    "opponentMustBeOnline": "يجب أن يكون الخصم متصلاً لإرسال النتيجة.",
+    "opponentOffline": "الخصم غير متصل",
+    "canSubmitAfter": "يمكنك إرسال النتيجة بعد:",
+    "drawDetected": "تم اكتشاف تعادل! أدخل ركلات الترجيح:",
+    "yourProof": "الإثبات الذي رفعته:"
   }
 }

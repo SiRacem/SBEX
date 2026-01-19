@@ -104,7 +104,13 @@ const NotificationSchema = new Schema({
             'TOURNAMENT_MATCH_READY',  // مباراتك جاهزة
             'TOURNAMENT_WIN',          // الفوز بجائزة
             'TOURNAMENT_REFUND',       // استرجاع الأموال
-            'TOURNAMENT_ELIMINATED'    // تم إقصاؤك
+            'TOURNAMENT_ELIMINATED',   // تم إقصاؤك
+            'TOURNAMENT_DISPUTE',      // نزاع جديد في البطولة (للأدمن)
+
+            // Match Timeout related
+            'MATCH_TIMEOUT_WIN',       // فوز بسبب انتهاء الوقت
+            'MATCH_TIMEOUT_LOSS',      // خسارة بسبب عدم الحضور
+            'MATCH_TIMEOUT_CANCELLED'  // إلغاء المباراة (كلاهما غائب)
         ],
         required: true
     },

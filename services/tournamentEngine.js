@@ -6,7 +6,7 @@ const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 
 // 1. توزيع الجوائز
-async function distributePrizes(tournamentId, finalMatch, session) {
+async function distributePrizes(tournamentId, finalMatch, session, io) {
     const tournament = await Tournament.findById(tournamentId).session(session);
     if (!tournament) return;
 
@@ -16,10 +16,10 @@ async function distributePrizes(tournamentId, finalMatch, session) {
     const prizes = tournament.prizesDistribution;
 
     if (winnerId && prizes.firstPlace > 0) {
-        await processReward(winnerId, prizes.firstPlace, tournament, '1', session);
+        await processReward(winnerId, prizes.firstPlace, tournament, '1', session, io);
     }
     if (runnerUpId && prizes.secondPlace > 0) {
-        await processReward(runnerUpId, prizes.secondPlace, tournament, '2', session);
+        await processReward(runnerUpId, prizes.secondPlace, tournament, '2', session, io);
     }
 
     tournament.status = 'completed';
@@ -27,7 +27,7 @@ async function distributePrizes(tournamentId, finalMatch, session) {
 }
 
 // دالة مساعدة لتحويل الأموال
-async function processReward(userId, amount, tournament, rankPosition, session) {
+async function processReward(userId, amount, tournament, rankPosition, session, io) {
     const user = await User.findById(userId).session(session);
     if (user) {
         user.balance += amount;
@@ -59,11 +59,20 @@ async function processReward(userId, amount, tournament, rankPosition, session) 
             },
             relatedEntity: { id: tournament._id, modelName: 'Tournament' }
         }], { session });
+
+        // [⚡ FIX] إرسال تحديث الرصيد فوراً عبر السوكت
+        if (io) {
+            io.to(userId.toString()).emit('user_balances_updated', {
+                _id: userId,
+                balance: user.balance
+            });
+            io.to(userId.toString()).emit('dashboard_transactions_updated');
+        }
     }
 }
 
 // 2. تصعيد الفائز (محدث للتوافق مع الجدول المولد مسبقاً)
-async function advanceWinnerToNextRound(currentMatch, session) {
+async function advanceWinnerToNextRound(currentMatch, session, io) {
     // إنشاء جلسة محلية إذا لم يتم تمرير واحدة، لضمان عمليات قاعدة البيانات الذرية
     const localSession = session || await mongoose.startSession();
     if (!session) localSession.startTransaction();
@@ -102,7 +111,7 @@ async function advanceWinnerToNextRound(currentMatch, session) {
         // إذا وصلنا للنهاية
         if (currentRound >= totalRounds) {
             console.log(`🏆 Tournament Finished! Winner: ${winnerId}`);
-            await distributePrizes(tournamentId, currentMatch, localSession);
+            await distributePrizes(tournamentId, currentMatch, localSession, io);
             if (!session) await localSession.commitTransaction();
             return;
         }
@@ -125,7 +134,7 @@ async function advanceWinnerToNextRound(currentMatch, session) {
 
         // تصحيح الحالة إذا كانت المباراة معلمة بالخطأ كـ ملغاة ولكن وصلها لاعب
         if (nextMatch.status === 'cancelled') {
-             nextMatch.status = 'scheduled';
+            nextMatch.status = 'scheduled';
         }
 
         const isPlayer1Slot = (currentIndex % 2 === 0);
@@ -145,7 +154,7 @@ async function advanceWinnerToNextRound(currentMatch, session) {
         // --- الفحص الذكي: هل الخصم ميت (Cancelled)؟ ---
         // الخصم هو الذي يأتي من المباراة المجاورة في نفس الجولة الحالية
         const opponentPrevMatchIndex = isPlayer1Slot ? (currentIndex + 1) : (currentIndex - 1);
-        
+
         const opponentPrevMatch = await Match.findOne({
             tournament: tournamentId,
             round: currentRound,
@@ -178,7 +187,7 @@ async function advanceWinnerToNextRound(currentMatch, session) {
             if (!session) await localSession.commitTransaction();
 
             // نستدعي الدالة مرة أخرى للمباراة الجديدة
-            await advanceWinnerToNextRound(nextMatch, null);
+            await advanceWinnerToNextRound(nextMatch, null, io);
             return;
         }
 
@@ -217,14 +226,14 @@ async function runAutoConfirmJob(io) {
         // معالجة التصعيد والإشعارات
         for (const match of pendingMatches) {
             // 1. تصعيد الفائز
-            await advanceWinnerToNextRound(match, null);
+            await advanceWinnerToNextRound(match, null, io);
             processedCount++;
 
             // 2. إرسال إشعار السوكيت (التصحيح هنا)
             if (io) {
                 // [تصحيح هام] يجب إضافة 'match_' لاسم الغرفة لتطابق الفرونت إند
                 const roomName = `match_${match._id.toString()}`;
-                
+
                 io.to(roomName).emit('match_updated', {
                     _id: match._id,
                     status: 'completed',

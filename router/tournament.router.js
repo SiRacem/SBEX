@@ -5,7 +5,7 @@ const tournamentController = require('../controllers/tournament.controller');
 
 // [!] تصحيح 1: استيراد verifyAuth بالأقواس إذا كانت module.exports = { verifyAuth }
 // جرب هذا أولاً:
-const { verifyAuth } = require('../middlewares/verifyAuth'); 
+const { verifyAuth } = require('../middlewares/verifyAuth');
 // إذا فشل وجاء خطأ "verifyAuth is not a function"، جرب: const verifyAuth = require('../middlewares/verifyAuth');
 
 // [!] تصحيح 2: استيراد isAdmin بالأقواس لأنها export منفصلة
@@ -20,8 +20,8 @@ router.post('/create', verifyAuth, isAdmin, tournamentController.createTournamen
 // ==========================================
 // 2. تفاعل المستخدمين (Users)
 // ==========================================
-router.get('/', tournamentController.getAllTournaments); 
-router.get('/:id', tournamentController.getTournamentDetails); 
+router.get('/', tournamentController.getAllTournaments);
+router.get('/:id', tournamentController.getTournamentDetails);
 
 // التسجيل واختيار الفريق
 router.post('/:id/join', verifyAuth, tournamentController.joinTournament);
@@ -41,5 +41,14 @@ router.get('/:id/matches', tournamentController.getTournamentMatches);
 router.post('/:id/start', verifyAuth, isAdmin, tournamentController.startTournament);
 
 router.get('/:id/taken-teams', verifyAuth, tournamentController.getTakenTeams);
+
+// 🏆 إكمال البطولة وتوزيع الجوائز يدوياً (Admin Only)
+router.post('/:id/force-complete', verifyAuth, isAdmin, tournamentController.forceCompleteTournament);
+
+// 🔄 الانتقال للإقصائيات في البطولات الهجينة (Admin Only)
+router.post('/:id/start-knockout', verifyAuth, isAdmin, tournamentController.transitionToKnockoutStage);
+
+// 🔧 إعادة حساب جدول الترتيب (Admin Only)
+router.post('/:id/recalculate-stats', verifyAuth, isAdmin, tournamentController.recalculateGroupStats);
 
 module.exports = router;

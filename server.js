@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const { handleExpiredMediationAssignments } = require('./controllers/mediation.controller');
 const { updateLeaderboardSnapshots } = require('./services/leaderboardService');
 const { runAutoConfirmJob } = require('./services/tournamentEngine'); // استيراد خدمة الأتمتة
+const { checkMatchTimeouts, setPlayerReady, updatePlayerActivity, getMatchTimeoutStatus } = require('./services/matchTimeout.service');
 const tournamentController = require('./controllers/tournament.controller');
 
 // --- Configuration Reading ---
@@ -75,6 +76,7 @@ const io = new Server(server, {
 });
 
 let onlineUsers = {}; // { userId: socketId }
+let matchRoomUsers = {}; // { matchId: [userId1, userId2, ...] } - Track users per match room
 
 // --- Socket.IO Connection Logic ---
 io.on('connection', (socket) => {
@@ -85,6 +87,7 @@ io.on('connection', (socket) => {
         if (userId && mongoose.Types.ObjectId.isValid(userId)) {
             const userIdStr = userId.toString();
             onlineUsers[userIdStr] = socket.id;
+            socket.join(userIdStr); // [⚡ FIX] Join the specific user room
             socket.userIdForChat = userIdStr;
             try {
                 const userDoc = await User.findById(userIdStr).select('fullName avatarUrl').lean();
@@ -599,22 +602,138 @@ io.on('connection', (socket) => {
     });
 
     // --- Match Chat ---
-    socket.on('join_match_room', (matchId) => {
-        socket.join(`match_${matchId}`);
-        console.log(`User ${socket.id} joined match room: match_${matchId}`);
+    socket.on('join_match_room', (data) => {
+        // Support both old format (string matchId) and new format ({ matchId, userId })
+        const matchId = typeof data === 'object' ? data.matchId : data;
+        const userId = typeof data === 'object' ? data.userId : null;
+
+        if (matchId) {
+            const roomName = `match_${matchId}`;
+            socket.join(roomName);
+            socket.matchRoomId = matchId; // Store for cleanup on disconnect
+            socket.matchUserId = userId;
+
+            // Track user in match room
+            if (userId) {
+                if (!matchRoomUsers[matchId]) {
+                    matchRoomUsers[matchId] = [];
+                }
+                if (!matchRoomUsers[matchId].includes(userId)) {
+                    matchRoomUsers[matchId].push(userId);
+                }
+
+                // Emit updated room users list to all in room
+                io.to(roomName).emit('room_users', matchRoomUsers[matchId]);
+                console.log(`[Socket] User ${userId} joined match room: ${roomName}. Room users:`, matchRoomUsers[matchId]);
+            } else {
+                console.log(`[Socket] Socket ${socket.id} joined match room: ${roomName} (no userId)`);
+            }
+        }
+    });
+
+    socket.on('leave_match_room', (data) => {
+        const matchId = typeof data === 'object' ? data.matchId : data;
+        const userId = typeof data === 'object' ? data.userId : null;
+
+        if (matchId) {
+            const roomName = `match_${matchId}`;
+            socket.leave(roomName);
+
+            // Remove user from tracking
+            if (userId && matchRoomUsers[matchId]) {
+                matchRoomUsers[matchId] = matchRoomUsers[matchId].filter(id => id !== userId);
+
+                // Emit updated room users list to all in room
+                io.to(roomName).emit('room_users', matchRoomUsers[matchId]);
+                console.log(`[Socket] User ${userId} left match room: ${roomName}. Room users:`, matchRoomUsers[matchId]);
+
+                // Cleanup empty rooms
+                if (matchRoomUsers[matchId].length === 0) {
+                    delete matchRoomUsers[matchId];
+                }
+            }
+        }
     });
 
     socket.on('send_match_message', async (data) => {
-        // 1. إرسال فوري (للـ Real-time)
-        io.to(`match_${data.matchId}`).emit('new_match_message', data);
+        // يجب أن يكون هناك نص أو صورة
+        if (!data.matchId || !data.senderId || (!data.text && !data.imageUrl)) {
+            console.error('[Socket] Invalid match message data:', data);
+            return;
+        }
 
-        // 2. حفظ في القاعدة (للتاريخ)
         try {
             const Match = require('./models/Match');
+
+            // إنشاء كائن الرسالة مع ObjectId
+            const messageToSave = {
+                _id: new mongoose.Types.ObjectId(),
+                senderId: new mongoose.Types.ObjectId(data.senderId),
+                senderName: data.senderName || socket.userFullNameForChat || 'Unknown',
+                text: data.text || '',
+                imageUrl: data.imageUrl || null,
+                timestamp: data.timestamp || new Date()
+            };
+
+            // حفظ في القاعدة
             await Match.findByIdAndUpdate(data.matchId, {
-                $push: { chatMessages: data }
+                $push: { chatMessages: messageToSave }
             });
-        } catch (e) { console.error("Chat save error", e); }
+
+            // ⏱️ تحديث آخر نشاط للاعب
+            await updatePlayerActivity(data.matchId, data.senderId);
+
+            console.log(`[Socket] Saved match message for match_${data.matchId}`, data.imageUrl ? '(with image)' : '');
+
+            // إرسال فوري لجميع المشاركين في الغرفة
+            io.to(`match_${data.matchId}`).emit('new_match_message', {
+                _id: messageToSave._id,
+                senderId: data.senderId,
+                senderName: messageToSave.senderName,
+                text: messageToSave.text,
+                imageUrl: messageToSave.imageUrl,
+                timestamp: messageToSave.timestamp
+            });
+
+        } catch (error) {
+            console.error('[Socket] Match chat save error:', error);
+        }
+    });
+
+    // 🎮 اللاعب يضغط "جاهز للعب"
+    socket.on('player_ready', async ({ matchId, userId }) => {
+        if (!matchId || !userId) return;
+
+        try {
+            const result = await setPlayerReady(matchId, userId, io);
+
+            if (result.success) {
+                socket.emit('player_ready_confirmed', {
+                    matchId,
+                    isPlayer1: result.isPlayer1,
+                    bothReady: result.bothReady
+                });
+
+                console.log(`[Socket] Player ${userId} is now ready for match ${matchId}`);
+            } else {
+                socket.emit('player_ready_error', { matchId, message: result.message });
+            }
+        } catch (error) {
+            console.error('[Socket] player_ready error:', error);
+            socket.emit('player_ready_error', { matchId, message: error.message });
+        }
+    });
+
+    // ⏰ طلب حالة الـ timeout
+    socket.on('get_match_timeout_status', async ({ matchId }) => {
+        if (!matchId) return;
+
+        try {
+            const status = await getMatchTimeoutStatus(matchId);
+            socket.emit('match_timeout_status', { matchId, ...status });
+        } catch (error) {
+            console.error('[Socket] get_match_timeout_status error:', error);
+        }
     });
 
     socket.on('disconnect', (reason) => {
@@ -623,6 +742,21 @@ io.on('connection', (socket) => {
             if (onlineUsers[userIdStr] === socket.id) {
                 delete onlineUsers[userIdStr];
                 io.emit('onlineUsersListUpdated', Object.keys(onlineUsers));
+            }
+        }
+
+        // 🔄 إزالة المستخدم من غرفة المباراة عند قطع الاتصال
+        if (socket.matchRoomId && socket.matchUserId) {
+            const matchId = socket.matchRoomId;
+            const userId = socket.matchUserId;
+
+            if (matchRoomUsers[matchId]) {
+                matchRoomUsers[matchId] = matchRoomUsers[matchId].filter(id => id !== userId);
+                io.to(`match_${matchId}`).emit('room_users', matchRoomUsers[matchId]);
+
+                if (matchRoomUsers[matchId].length === 0) {
+                    delete matchRoomUsers[matchId];
+                }
             }
         }
     });
@@ -673,13 +807,24 @@ cron.schedule('* * * * *', async () => {
 cron.schedule('* * * * *', async () => {
     try {
         console.log('[CRON] Checking for tournaments to start/cancel...');
-        // نحتاج لدالة جديدة في الكونترولر تسمى checkAndStartScheduledTournaments
-        // سأعطيك إياها لتضيفها في tournament.controller.js
         await tournamentController.checkAndStartScheduledTournaments(io);
     } catch (error) {
         console.error('[CRON TOURNAMENT START] Error:', error);
     }
 });
+
+// [!!!] START: مهمة فحص انتهاء وقت المباريات (كل دقيقة) [!!!]
+cron.schedule('* * * * *', async () => {
+    try {
+        const result = await checkMatchTimeouts(io);
+        if (result.processed > 0) {
+            console.log(`[CRON MATCH TIMEOUT] Processed ${result.processed} timed-out matches.`);
+        }
+    } catch (error) {
+        console.error('[CRON MATCH TIMEOUT] Error:', error);
+    }
+});
+// [!!!] END: نهاية مهمة انتهاء الوقت [!!!]
 
 // --- [!!!] START: الترتيب الصحيح والنهائي للـ MIDDLEWARE [!!!]
 // 1. تطبيق ترويسات الأمان الأساسية

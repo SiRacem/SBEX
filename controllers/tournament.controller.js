@@ -61,6 +61,10 @@ const generateKnockoutBracket = async (tournament, activeParticipants, session) 
     const maxParticipants = tournament.maxParticipants;
     const totalRounds = Math.log2(maxParticipants);
 
+    // ⏱️ إعدادات الوقت
+    const ROUND_DURATION_MINUTES = 30;
+    const FINAL_ROUND_DURATION_MINUTES = 45;
+
     // خلط وتوزيع
     shuffleArray(activeParticipants);
 
@@ -84,6 +88,23 @@ const generateKnockoutBracket = async (tournament, activeParticipants, session) 
     const allMatchesToCreate = [];
     const matchesStatusMap = {};
 
+    // ⏱️ حساب أوقات كل دور
+    const tournamentStartTime = new Date();
+    const roundTimes = {};
+    let cumulativeTime = tournamentStartTime.getTime();
+
+    for (let r = 1; r <= totalRounds; r++) {
+        const isFinal = r === totalRounds;
+        const duration = isFinal ? FINAL_ROUND_DURATION_MINUTES : ROUND_DURATION_MINUTES;
+
+        roundTimes[r] = {
+            startTime: new Date(cumulativeTime),
+            deadline: new Date(cumulativeTime + duration * 60 * 1000)
+        };
+
+        cumulativeTime += duration * 60 * 1000;
+    }
+
     for (let r = 1; r <= totalRounds; r++) {
         const matchesInRound = maxParticipants / Math.pow(2, r);
 
@@ -99,7 +120,10 @@ const generateKnockoutBracket = async (tournament, activeParticipants, session) 
                 player1: null, player2: null,
                 player1Team: null, player2Team: null,
                 player1TeamLogo: null, player2TeamLogo: null,
-                winner: null
+                winner: null,
+                // ⏱️ إضافة أوقات الدور
+                roundStartTime: roundTimes[r].startTime,
+                roundDeadline: roundTimes[r].deadline
             };
 
             if (r === 1) {
@@ -116,8 +140,10 @@ const generateKnockoutBracket = async (tournament, activeParticipants, session) 
 
                 if (p1 && !p2) {
                     matchData.isBye = true; matchData.status = 'completed'; matchData.winner = p1.user; matchData.scorePlayer1 = 3;
+                    matchData.completionReason = 'bye';
                 } else if (!p1 && p2) {
                     matchData.isBye = true; matchData.status = 'completed'; matchData.winner = p2.user; matchData.scorePlayer2 = 3;
+                    matchData.completionReason = 'bye';
                 } else if (!p1 && !p2) {
                     matchData.status = 'cancelled';
                 }
@@ -334,7 +360,14 @@ exports.startTournament = async (req, res) => {
         // --- التفرع حسب نوع البطولة ---
         if (tournament.format === 'knockout') {
             // [A] نظام الكأس
+            if (tournament.status === 'active') {
+                return res.status(400).json({ message: "Tournament is already active" });
+            }
+
             console.log("Starting Knockout Tournament...");
+            // تنظيف أي مباريات سابقة (لتجنب التكرار في حالة إعادة البدء)
+            await Match.deleteMany({ tournament: tournament._id }).session(session);
+
             const byeMatches = await generateKnockoutBracket(tournament, activeParticipants, session);
             tournament.status = 'active';
             tournament.startDate = new Date();
@@ -344,7 +377,7 @@ exports.startTournament = async (req, res) => {
             // معالجة الـ Byes
             for (const m of byeMatches) {
                 const matchDoc = await Match.findById(m._id);
-                await advanceWinnerToNextRound(matchDoc, null);
+                await advanceWinnerToNextRound(matchDoc, null, req.io);
             }
 
         } else if (tournament.format === 'league') {
@@ -557,7 +590,7 @@ exports.checkAndStartScheduledTournaments = async (io) => {
 
                         for (const m of byeMatches) {
                             const matchDoc = await Match.findById(m._id);
-                            await advanceWinnerToNextRound(matchDoc, null);
+                            await advanceWinnerToNextRound(matchDoc, null, io);
                         }
 
                     } else if (t.format === 'league') {
@@ -746,5 +779,299 @@ exports.getTakenTeams = async (req, res) => {
     } catch (error) {
         console.error("Get Taken Teams Error:", error);
         res.status(500).json({ message: "Server error" });
+    }
+};
+
+// ==========================================
+// 🏆 إكمال البطولة يدوياً (Admin Only)
+// ==========================================
+exports.forceCompleteTournament = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // تحقق أن المستخدم أدمن
+        if (req.user.userRole !== 'Admin') {
+            return res.status(403).json({ message: "Unauthorized: Admins only" });
+        }
+
+        const tournament = await Tournament.findById(id);
+        if (!tournament) {
+            return res.status(404).json({ message: "Tournament not found" });
+        }
+
+        if (tournament.status === 'completed') {
+            return res.status(400).json({ message: "Tournament already completed" });
+        }
+
+        // تحقق من أن جميع المباريات مكتملة
+        const matches = await Match.find({ tournament: id });
+        const pendingMatches = matches.filter(m =>
+            m.status !== 'completed' &&
+            m.status !== 'cancelled' &&
+            m.player1 && m.player2
+        );
+
+        if (pendingMatches.length > 0) {
+            return res.status(400).json({
+                message: `Cannot complete tournament. ${pendingMatches.length} matches still pending.`,
+                pendingMatches: pendingMatches.map(m => ({
+                    id: m._id,
+                    status: m.status,
+                    round: m.round
+                }))
+            });
+        }
+
+        // توزيع الجوائز
+        const { checkAndDistributePrizes } = require('../services/tournamentPrize.service');
+        const result = await checkAndDistributePrizes(id, req.io);
+
+        if (result) {
+            res.status(200).json({
+                success: true,
+                message: "Tournament completed and prizes distributed!",
+                prizes: result
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                message: "Could not complete tournament. Check server logs."
+            });
+        }
+
+    } catch (error) {
+        console.error("Force Complete Tournament Error:", error);
+        res.status(500).json({ message: error.message || "Server error" });
+    }
+};
+
+// ==========================================
+// 🔄 الانتقال من المجموعات إلى خروج المغلوب (Hybrid Only)
+// ==========================================
+exports.transitionToKnockoutStage = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { id } = req.params;
+        const tournament = await Tournament.findById(id).session(session);
+
+        if (!tournament) throw new Error("Tournament not found");
+        if (tournament.format !== 'hybrid') throw new Error("This function is for hybrid tournaments only");
+        if (tournament.currentStage !== 'group_stage') throw new Error("Tournament is not in group stage");
+
+        // التحقق من اكتمال جميع مباريات المجموعات
+        const groupMatches = await Match.find({
+            tournament: id,
+            stage: 'group'
+        }).session(session);
+
+        const incompleteMatches = groupMatches.filter(m => m.status !== 'completed' && m.status !== 'cancelled');
+        if (incompleteMatches.length > 0) {
+            throw new Error(`Cannot transition: ${incompleteMatches.length} group matches are not completed`);
+        }
+
+        // ترتيب اللاعبين في كل مجموعة
+        const qualifiersPerGroup = tournament.groupSettings?.qualifiersPerGroup || 2;
+
+        // تجميع اللاعبين حسب المجموعات
+        const groupsMap = {};
+        tournament.participants.forEach(p => {
+            if (p.groupStats && p.groupStats.groupId) {
+                const gid = p.groupStats.groupId;
+                if (!groupsMap[gid]) groupsMap[gid] = [];
+                groupsMap[gid].push(p);
+            }
+        });
+
+        // ترتيب كل مجموعة وتحديد المتأهلين
+        const qualifiedPlayers = [];
+        Object.keys(groupsMap).sort().forEach(groupId => {
+            const groupPlayers = groupsMap[groupId];
+
+            // ترتيب حسب: النقاط، فارق الأهداف، الأهداف المسجلة
+            groupPlayers.sort((a, b) => {
+                const statsA = a.groupStats;
+                const statsB = b.groupStats;
+
+                // 1. النقاط (تنازلي)
+                if (statsB.points !== statsA.points) return statsB.points - statsA.points;
+
+                // 2. فارق الأهداف (تنازلي)
+                const gdA = statsA.goalsFor - statsA.goalsAgainst;
+                const gdB = statsB.goalsFor - statsB.goalsAgainst;
+                if (gdB !== gdA) return gdB - gdA;
+
+                // 3. الأهداف المسجلة (تنازلي)
+                return statsB.goalsFor - statsA.goalsFor;
+            });
+
+            // تحديث الترتيب وتحديد المتأهلين
+            groupPlayers.forEach((p, index) => {
+                p.groupStats.rank = index + 1;
+                if (index < qualifiersPerGroup) {
+                    qualifiedPlayers.push(p);
+                    p.status = 'active';
+                } else {
+                    p.status = 'eliminated';
+                }
+            });
+
+            console.log(`[Transition] Group ${groupId}: ${groupPlayers.slice(0, qualifiersPerGroup).map(p => p.username).join(', ')} qualified`);
+        });
+
+        console.log(`[Transition] Total qualified players: ${qualifiedPlayers.length}`);
+
+        // توليد شجرة الإقصائيات
+        const byeMatches = await generateKnockoutBracket(tournament, qualifiedPlayers, session);
+
+        // تحديث حالة البطولة
+        tournament.currentStage = 'knockout_stage';
+        await tournament.save({ session });
+
+        await session.commitTransaction();
+
+        // معالجة الـ Byes
+        const { advanceWinnerToNextRound } = require('../services/tournamentEngine');
+        for (const m of byeMatches) {
+            const matchDoc = await Match.findById(m._id);
+            await advanceWinnerToNextRound(matchDoc, null, req.io);
+        }
+
+        // إشعار الجميع
+        if (req.io) {
+            const fullTournament = await Tournament.findById(id)
+                .populate('participants.user', 'fullName avatarUrl')
+                .lean();
+            const matches = await Match.find({ tournament: id }).lean();
+            fullTournament.matches = matches;
+            req.io.emit('tournament_updated', fullTournament);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Transitioned to knockout stage with ${qualifiedPlayers.length} qualified players`,
+            qualifiedCount: qualifiedPlayers.length
+        });
+
+    } catch (error) {
+        if (session.inTransaction()) await session.abortTransaction();
+        console.error("Transition to Knockout Error:", error);
+        res.status(500).json({ message: error.message || "Server error" });
+    } finally {
+        session.endSession();
+    }
+};
+
+// ==========================================
+// 🔄 إعادة حساب جدول الترتيب (Admin Only)
+// ==========================================
+exports.recalculateGroupStats = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // تحقق أن المستخدم أدمن
+        if (req.user.userRole !== 'Admin') {
+            return res.status(403).json({ message: "Unauthorized: Admins only." });
+        }
+
+        const tournament = await Tournament.findById(id);
+        if (!tournament) return res.status(404).json({ message: "Tournament not found" });
+
+        // جلب جميع مباريات المجموعات المكتملة
+        const completedMatches = await Match.find({
+            tournament: id,
+            stage: { $in: ['group', 'league'] },
+            status: 'completed'
+        });
+
+        console.log(`[Recalculate] Found ${completedMatches.length} completed group/league matches`);
+
+        // إعادة تعيين إحصائيات جميع المشاركين
+        tournament.participants.forEach(p => {
+            if (p.groupStats) {
+                p.groupStats.played = 0;
+                p.groupStats.won = 0;
+                p.groupStats.drawn = 0;
+                p.groupStats.lost = 0;
+                p.groupStats.goalsFor = 0;
+                p.groupStats.goalsAgainst = 0;
+                p.groupStats.points = 0;
+                p.groupStats.rank = 0;
+            }
+        });
+
+        // إعدادات النقاط
+        const pointsWin = tournament.groupSettings?.pointsWin || 3;
+        const pointsDraw = tournament.groupSettings?.pointsDraw || 1;
+        const pointsLoss = tournament.groupSettings?.pointsLoss || 0;
+
+        // إعادة حساب من جميع المباريات المكتملة
+        completedMatches.forEach(match => {
+            const player1Id = match.player1?._id?.toString() || match.player1?.toString();
+            const player2Id = match.player2?._id?.toString() || match.player2?.toString();
+            const score1 = match.scorePlayer1 || 0;
+            const score2 = match.scorePlayer2 || 0;
+
+            // تحديث إحصائيات اللاعب الأول
+            const participant1 = tournament.participants.find(p => p.user?.toString() === player1Id);
+            if (participant1 && participant1.groupStats) {
+                participant1.groupStats.played += 1;
+                participant1.groupStats.goalsFor += score1;
+                participant1.groupStats.goalsAgainst += score2;
+
+                if (score1 > score2) {
+                    participant1.groupStats.won += 1;
+                    participant1.groupStats.points += pointsWin;
+                } else if (score1 < score2) {
+                    participant1.groupStats.lost += 1;
+                    participant1.groupStats.points += pointsLoss;
+                } else {
+                    participant1.groupStats.drawn += 1;
+                    participant1.groupStats.points += pointsDraw;
+                }
+            }
+
+            // تحديث إحصائيات اللاعب الثاني
+            const participant2 = tournament.participants.find(p => p.user?.toString() === player2Id);
+            if (participant2 && participant2.groupStats) {
+                participant2.groupStats.played += 1;
+                participant2.groupStats.goalsFor += score2;
+                participant2.groupStats.goalsAgainst += score1;
+
+                if (score2 > score1) {
+                    participant2.groupStats.won += 1;
+                    participant2.groupStats.points += pointsWin;
+                } else if (score2 < score1) {
+                    participant2.groupStats.lost += 1;
+                    participant2.groupStats.points += pointsLoss;
+                } else {
+                    participant2.groupStats.drawn += 1;
+                    participant2.groupStats.points += pointsDraw;
+                }
+            }
+        });
+
+        await tournament.save();
+
+        // إشعار الجميع
+        if (req.io) {
+            const fullTournament = await Tournament.findById(id)
+                .populate('participants.user', 'fullName avatarUrl')
+                .lean();
+            req.io.emit('tournament_updated', fullTournament);
+        }
+
+        console.log(`[Recalculate] Stats recalculated for ${tournament.participants.length} participants`);
+
+        res.status(200).json({
+            success: true,
+            message: `Recalculated stats from ${completedMatches.length} matches`,
+            matchesProcessed: completedMatches.length
+        });
+
+    } catch (error) {
+        console.error("Recalculate Group Stats Error:", error);
+        res.status(500).json({ message: error.message || "Server error" });
     }
 };
